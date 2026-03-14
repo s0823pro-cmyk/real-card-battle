@@ -33,6 +33,7 @@ import {
   movePlayerBySteps,
 } from '../utils/boardGenerator';
 import { upgradeCard } from '../utils/cardUpgrade';
+import type { UpgradeType } from '../utils/cardUpgrade';
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const rollRoulette = (): number => {
@@ -53,6 +54,7 @@ type Action =
   | { type: 'set_branch'; tileId: number | null }
   | { type: 'set_event'; event: GameEvent | null }
   | { type: 'set_shop'; shopItems: ShopItem[] }
+  | { type: 'set_pawnshop_sell_used'; used: boolean }
   | { type: 'set_card_reward'; cards: Card[] | null }
   | { type: 'set_omamori_reward'; omamoris: Omamori[] | null; source: 'battle' | 'shrine' | null }
   | { type: 'set_battle_setup'; setup: BattleSetup | null; tileType: TileType | null }
@@ -97,6 +99,7 @@ const makeInitialProgress = (): GameProgress => {
     traveledEdges: [],
     activeEvent: null,
     activeShopItems: [],
+    pawnshopSellUsedThisVisit: false,
     cardReward: null,
     omamoriRewardChoices: null,
     omamoriRewardSource: null,
@@ -145,6 +148,8 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       return { ...state, activeEvent: action.event };
     case 'set_shop':
       return { ...state, activeShopItems: action.shopItems };
+    case 'set_pawnshop_sell_used':
+      return { ...state, pawnshopSellUsedThisVisit: action.used };
     case 'set_card_reward':
       return {
         ...state,
@@ -205,6 +210,8 @@ const getSellPrice = (card: Card): number => {
   if (buyPrice >= 80) return 25;
   return 15;
 };
+
+const getRemoveCost = (removeCount: number): number => 50 + removeCount * 25;
 
 const applySingleEffect = (
   state: GameProgress,
@@ -351,6 +358,7 @@ export const useRunProgress = () => {
         type: 'set_shop',
         shopItems: [...cards, omamori, ...items],
       });
+      dispatch({ type: 'set_pawnshop_sell_used', used: false });
       dispatch({ type: 'set_screen', screen: 'pawnshop' });
       return;
     }
@@ -436,6 +444,10 @@ export const useRunProgress = () => {
     dispatch({ type: 'open_card_upgrade', mode: 'upgrade', returnScreen: 'map' });
   };
 
+  const closeCardUpgrade = () => {
+    dispatch({ type: 'close_card_upgrade' });
+  };
+
   const hotelHeal = () => {
     const bonus = stateRef.current.omamoris.find((item) => item.effect.stat === 'rest_heal')?.effect.value ?? 0;
     const healAmount = Math.floor(stateRef.current.player.maxHp * 0.3) + bonus;
@@ -462,23 +474,45 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
-  const upgradeOrRemoveCard = (cardId: string) => {
-    if (!stateRef.current.cardUpgradeMode) return;
+  const upgradeDeckCard = (cardId: string, upgradeType: UpgradeType) => {
     const target = stateRef.current.deck.find((card) => card.id === cardId);
     if (!target) return;
-    if (stateRef.current.cardUpgradeMode === 'upgrade') {
-      dispatch({
-        type: 'set_deck',
-        deck: stateRef.current.deck.map((card) => (card.id === cardId ? upgradeCard(card) : card)),
-      });
-    } else {
-      dispatch({
-        type: 'set_deck',
-        deck: stateRef.current.deck.filter((card) => card.id !== cardId),
-      });
-      dispatch({ type: 'set_card_remove_count', value: stateRef.current.cardRemoveCount + 1 });
-    }
+    if (target.upgraded) return;
+    dispatch({
+      type: 'set_deck',
+      deck: stateRef.current.deck.map((card) =>
+        card.id === cardId ? upgradeCard(card, upgradeType) : card,
+      ),
+    });
     dispatch({ type: 'close_card_upgrade' });
+  };
+
+  const removeCardInUpgrade = (cardId: string) => {
+    const target = stateRef.current.deck.find((card) => card.id === cardId);
+    if (!target) return;
+    dispatch({
+      type: 'set_deck',
+      deck: stateRef.current.deck.filter((card) => card.id !== cardId),
+    });
+    dispatch({ type: 'close_card_upgrade' });
+  };
+
+  const removeCardAtPawnshop = (cardId: string) => {
+    const target = stateRef.current.deck.find((card) => card.id === cardId);
+    if (!target) return;
+    const cost = getRemoveCost(stateRef.current.cardRemoveCount);
+    if (stateRef.current.player.gold < cost) return;
+    const confirmed = window.confirm(`${target.name} を ${cost}Gで削除しますか？`);
+    if (!confirmed) return;
+    dispatch({
+      type: 'set_deck',
+      deck: stateRef.current.deck.filter((card) => card.id !== cardId),
+    });
+    dispatch({
+      type: 'set_player',
+      player: { ...stateRef.current.player, gold: stateRef.current.player.gold - cost },
+    });
+    dispatch({ type: 'set_card_remove_count', value: stateRef.current.cardRemoveCount + 1 });
   };
 
   const buyShopItem = (shopId: string) => {
@@ -510,6 +544,7 @@ export const useRunProgress = () => {
   };
 
   const sellPawnshopCard = (cardId: string) => {
+    if (stateRef.current.pawnshopSellUsedThisVisit) return;
     const card = stateRef.current.deck.find((entry) => entry.id === cardId);
     if (!card) return;
     const sellPrice = getSellPrice(card);
@@ -520,6 +555,7 @@ export const useRunProgress = () => {
       type: 'set_player',
       player: { ...stateRef.current.player, gold: stateRef.current.player.gold + sellPrice },
     });
+    dispatch({ type: 'set_pawnshop_sell_used', used: true });
   };
 
   const closePawnshop = () => {
@@ -585,18 +621,33 @@ export const useRunProgress = () => {
   };
 
   const resetRun = () => {
-    const next = makeInitialProgress();
-    dispatch({ type: 'set_job', jobId: next.jobId });
-    dispatch({ type: 'set_board', board: next.board });
+    const resetJobId = stateRef.current.jobId;
+    const jobConfig = getJobConfig(resetJobId);
+    const nextBoard = updateBoardPosition(generateBoard(), 1);
+    const resetPlayer: PlayerState = {
+      ...stateRef.current.player,
+      jobId: resetJobId,
+      maxHp: jobConfig.initialHp,
+      currentHp: jobConfig.initialHp,
+      block: 0,
+      gold: 0,
+      scaffold: 0,
+      cookingGauge: 0,
+      mental: jobConfig.initialMental,
+      statusEffects: [],
+    };
+    dispatch({ type: 'set_job', jobId: resetJobId });
+    dispatch({ type: 'set_board', board: nextBoard });
     dispatch({ type: 'set_current_tile', tileId: 1 });
-    dispatch({ type: 'set_player', player: next.player });
-    dispatch({ type: 'set_deck', deck: next.deck });
+    dispatch({ type: 'set_player', player: resetPlayer });
+    dispatch({ type: 'set_deck', deck: jobConfig.createStarterDeck() });
     dispatch({ type: 'set_items', items: [] });
     dispatch({ type: 'set_omamoris', omamoris: [] });
     dispatch({ type: 'set_card_remove_count', value: 0 });
     dispatch({ type: 'set_card_reward', cards: null });
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
     dispatch({ type: 'set_shop', shopItems: [] });
+    dispatch({ type: 'set_pawnshop_sell_used', used: false });
     dispatch({ type: 'set_event', event: null });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
     dispatch({ type: 'set_branch', tileId: null });
@@ -604,7 +655,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'clear_traveled_edges' });
     dispatch({ type: 'set_pending_steps', steps: 0 });
     dispatch({ type: 'set_dice', value: null, rolling: false });
-    dispatch({ type: 'set_screen', screen: 'map' });
+    dispatch({ type: 'set_screen', screen: 'home' });
   };
 
   const startRunFromHome = () => {
@@ -636,6 +687,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_card_reward', cards: null });
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
     dispatch({ type: 'set_shop', shopItems: [] });
+    dispatch({ type: 'set_pawnshop_sell_used', used: false });
     dispatch({ type: 'set_event', event: null });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
     dispatch({ type: 'set_branch', tileId: null });
@@ -657,7 +709,11 @@ export const useRunProgress = () => {
     hotelHeal,
     hotelMeditate,
     openHotelUpgrade,
-    upgradeOrRemoveCard,
+    closeCardUpgrade,
+    upgradeDeckCard,
+    removeCardInUpgrade,
+    removeCardAtPawnshop,
+    getRemoveCost,
     buyShopItem,
     sellPawnshopCard,
     closePawnshop,

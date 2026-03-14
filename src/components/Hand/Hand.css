@@ -66,8 +66,8 @@
 }
 
 .hand-card-wrapper--disabled {
-  opacity: 0.35;
-  filter: grayscale(0.8);
+  opacity: 1;
+  filter: none;
 }
 
 .hand-card {
@@ -115,8 +115,27 @@
 }
 
 .hand-card.disabled {
-  opacity: 0.42;
-  filter: grayscale(0.8);
+  opacity: 1;
+  filter: none;
+  position: relative;
+}
+
+.hand-card.disabled::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  background: #0d1117;
+  opacity: 0.75;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.hand-card.disabled .time-shortage {
+  z-index: 6;
 }
 
 .hand-card.selling {
@@ -155,6 +174,15 @@
   transition: box-shadow 0.2s ease;
 }
 
+.card-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 10px;
+  z-index: 0;
+}
+
 .card-frame::before {
   content: '';
   position: absolute;
@@ -178,45 +206,52 @@
   z-index: 1;
 }
 
-.card-cost-badge {
-  position: absolute;
-  top: -8px;
-  left: -8px;
-  width: 32px;
-  height: 32px;
-  background: radial-gradient(circle, #1c2128, #0d1117);
-  border: 2px solid var(--job-color, #8b949e);
-  border-radius: 50%;
+.card-header {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-size: 9px;
-  font-weight: 900;
-  color: var(--job-color, #8b949e);
-  z-index: 10;
-  line-height: 1;
-  box-shadow: 0 0 8px var(--glow-color, rgba(74, 85, 104, 0.3));
+  gap: 4px;
+  padding: 6px 6px 4px 34px;
+  flex-shrink: 0;
 }
 
-.card-cost-icon {
-  font-size: 8px;
-  margin-bottom: 1px;
+.card-cost-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  background: radial-gradient(circle, #1c2128, #0d1117);
+  border: 1.5px solid var(--job-color, #8b949e);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 0 6px var(--glow-color, rgba(74, 85, 104, 0.3));
 }
 
 .card-cost-value {
-  font-size: 8px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--job-color, #8b949e);
+  line-height: 1;
+}
+
+.card-cost-unit {
+  font-size: 7px;
+  font-weight: 700;
+  vertical-align: baseline;
 }
 
 .card-illustration {
   width: 100%;
-  height: 42%;
+  height: 45%;
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
   background: #0a0e14;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .card-illustration-emoji {
@@ -225,7 +260,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 38px;
+  font-size: 42px;
+  line-height: 1;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
@@ -248,43 +284,45 @@
 }
 
 .card-name {
-  font-family: var(--font-ui);
-  font-size: 11px;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: clamp(7px, 2.2vw, 11px);
   font-weight: 700;
   color: #e6edf3;
-  text-align: center;
-  padding: 4px 6px 2px;
   line-height: 1.2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  display: block;
+  max-width: 100%;
 }
 
 .card-type-badge {
   display: block;
   width: fit-content;
-  margin: 0 auto 3px;
-  padding: 1px 7px;
+  margin: 0 auto 2px;
+  padding: 1px 5px;
   border-radius: 3px;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
-.card-divider {
-  height: 1px;
-  margin: 2px 8px;
-  background: linear-gradient(90deg, transparent, var(--job-color, #8b949e), transparent);
-  opacity: 0.5;
-}
-
 .card-description {
-  margin: 0;
-  font-family: var(--font-ui);
-  font-size: 9px;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: clamp(6px, 1.8vw, 8px);
   color: #8b949e;
   text-align: center;
-  padding: 2px 6px 6px;
-  line-height: 1.5;
+  padding: 2px 4px 6px;
+  line-height: 1.4;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  white-space: normal;
+  word-break: break-all;
 }
 
 .card-reserve-bonus {
@@ -296,28 +334,35 @@
   line-height: 1.2;
 }
 
-.card-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: auto;
-  padding: 2px 6px 4px;
-  justify-content: center;
-  font-size: 9px;
-  color: #aac7f5;
-  font-family: var(--font-display);
-}
-
-.card-value {
-  color: var(--text-primary);
-  display: inline-flex;
-  transform-origin: center;
-  font-size: 9px;
-  font-weight: 700;
-}
-
 .card-frame--uncommon {
   animation: uncommon-pulse 3s ease-in-out infinite;
+}
+
+.card-frame--uncommon .card-particles {
+  background:
+    radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+  animation: uncommon-drift 4s ease-in-out infinite;
+}
+
+.card-frame--uncommon .card-particles::before,
+.card-frame--uncommon .card-particles::after {
+  content: '✦';
+  position: absolute;
+  bottom: 10%;
+  font-size: 6px;
+  color: rgba(147, 197, 253, 0.8);
+  animation: particle-float 3s ease-in-out infinite;
+}
+
+.card-frame--uncommon .card-particles::before {
+  left: 20%;
+  animation-delay: 0s;
+}
+
+.card-frame--uncommon .card-particles::after {
+  left: 70%;
+  animation-delay: 1.5s;
 }
 
 .card-frame--rare {
@@ -325,24 +370,52 @@
 }
 
 .card-frame--rare::after {
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
   background: linear-gradient(
     125deg,
-    transparent 0%,
-    rgba(240, 180, 41, 0.15) 30%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(240, 180, 41, 0.15) 70%,
-    transparent 100%
+    transparent 40%,
+    rgba(240, 180, 41, 0.2) 50%,
+    transparent 60%
   );
-  background-size: 200% 200%;
-  animation: rare-shine 3s ease-in-out infinite;
+  border-radius: 10px;
+  animation: rare-sweep 3s ease-in-out infinite;
+  z-index: 3;
+}
+
+.card-frame--rare .card-particles::before,
+.card-frame--rare .card-particles::after {
+  content: '✦';
+  position: absolute;
+  bottom: 5%;
+  font-size: 7px;
+  color: rgba(240, 180, 41, 0.9);
+  animation: particle-float-rare 2.5s ease-in-out infinite;
+}
+
+.card-frame--rare .card-particles::before {
+  left: 24%;
+  animation-delay: 0s;
+}
+
+.card-frame--rare .card-particles::after {
+  left: 68%;
+  animation-delay: 1.2s;
+}
+
+.card-frame--reserved {
+  border-color: #f0b429 !important;
+  animation: reserved-shine 1.5s ease-in-out infinite;
 }
 
 .hand-card.reserve-ready {
-  box-shadow: 0 0 12px rgba(46, 213, 115, 0.5);
+  box-shadow: 0 0 12px rgba(240, 180, 41, 0.5);
 }
 
 .hand-card.reserve-ready .hand-card-inner {
-  border-color: var(--color-skill);
+  border-color: #f0b429;
 }
 
 .hand-card.reserve-ready::after {
@@ -413,15 +486,30 @@
   }
 }
 
-@keyframes rare-shine {
-  0% {
-    background-position: 200% 200%;
+@keyframes uncommon-drift {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
   }
   50% {
-    background-position: -200% -200%;
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes particle-float {
+  0% {
+    bottom: 10%;
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
   }
   100% {
-    background-position: 200% 200%;
+    bottom: 90%;
+    opacity: 0;
+    transform: translateX(10px);
   }
 }
 
@@ -455,6 +543,39 @@
   }
 }
 
+@keyframes rare-sweep {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(0deg);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(0deg);
+    opacity: 0;
+  }
+}
+
+@keyframes particle-float-rare {
+  0% {
+    bottom: 5%;
+    opacity: 0;
+    transform: translateX(0);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    bottom: 95%;
+    opacity: 0;
+    transform: translateX(-15px);
+  }
+}
+
 @keyframes value-pulse {
   0% {
     transform: scale(1);
@@ -464,5 +585,19 @@
   }
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes reserved-shine {
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px rgba(240, 180, 41, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 20px rgba(240, 180, 41, 0.8),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 }

@@ -14,6 +14,30 @@ export interface CardResolveResult {
 }
 
 export const useBattleLogic = () => {
+  const upsertEnemyStatus = (enemy: Enemy, type: Enemy['statusEffects'][number]['type'], value: number): void => {
+    const idx = enemy.statusEffects.findIndex((status) => status.type === type);
+    if (idx < 0) {
+      const baseDuration = type === 'vulnerable' || type === 'weak' ? value : 1;
+      enemy.statusEffects.push({ type, value, duration: baseDuration });
+      return;
+    }
+    const current = enemy.statusEffects[idx];
+    if (type === 'vulnerable' || type === 'weak') {
+      const turns = Math.max(1, value);
+      enemy.statusEffects[idx] = {
+        ...current,
+        value: current.value + turns,
+        duration: current.duration + turns,
+      };
+      return;
+    }
+    enemy.statusEffects[idx] = {
+      ...current,
+      value: current.value + value,
+      duration: 1,
+    };
+  };
+
   const getAliveEnemyIndex = (enemies: Enemy[]): number =>
     enemies.findIndex((enemy) => enemy.currentHp > 0);
 
@@ -110,11 +134,7 @@ export const useBattleLogic = () => {
                 : effect.type === 'debuff_enemy_atk'
                   ? 'attack_down'
                   : 'weak';
-          nextEnemies[targetIndex].statusEffects.push({
-            type: statusType,
-            duration: Math.max(1, effect.duration ?? effect.value),
-            value: effect.value,
-          });
+          upsertEnemyStatus(nextEnemies[targetIndex], statusType, effect.value);
         }
       }
     }

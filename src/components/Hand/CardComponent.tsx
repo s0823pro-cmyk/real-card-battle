@@ -47,8 +47,9 @@ const CardComponent = ({
   const JOB_COLORS = {
     carpenter: '#c0392b',
     cook: '#f9ca24',
-    unemployed: '#8b949e',
+    unemployed: '#3d444d',
   } as const;
+  const NEUTRAL_COLOR = '#ffffff';
 
   const TYPE_COLORS = {
     attack: { bg: '#7f1d1d', text: '#fca5a5', label: 'アタック' },
@@ -61,6 +62,7 @@ const CardComponent = ({
 
   type Rarity = 'common' | 'uncommon' | 'rare' | 'starter';
   const getRarity = (target: Card): Rarity => {
+    if (target.rarity) return target.rarity;
     // 報酬/ショップで生成されたカードは reward サフィックス付き。
     // それ以外は初期デッキ由来として扱う。
     if (!target.id.includes('_reward_')) return 'starter';
@@ -79,8 +81,13 @@ const CardComponent = ({
 
   const typeColor = TYPE_COLORS[card.type] ?? TYPE_COLORS.status;
   const rarity = getRarity(card);
+  const reserveBonusReady = Boolean(card.wasReserved && card.reserveBonus);
+  const getJobColor = (targetCard: Card, targetJobId: JobId): string => {
+    if (targetCard.neutral) return NEUTRAL_COLOR;
+    return JOB_COLORS[targetJobId] ?? '#3d444d';
+  };
   const innerStyle = {
-    '--job-color': JOB_COLORS[jobId] ?? '#8b949e',
+    '--job-color': getJobColor(card, jobId),
     '--border-color': RARITY_COLORS[rarity],
     '--glow-color':
       rarity === 'rare'
@@ -96,7 +103,7 @@ const CardComponent = ({
       className={`hand-card ${card.type} ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${
         isSelling ? 'selling' : ''
       } ${isReturning ? 'returning' : ''} ${isGhost ? 'ghost' : ''} ${isDragging ? 'hand-card--dragging' : ''} ${
-        card.wasReserved ? 'reserve-ready' : ''
+        reserveBonusReady ? 'reserve-ready' : ''
       }`}
       onClick={(event) => event.preventDefault()}
       onMouseDown={(event) => event.preventDefault()}
@@ -117,20 +124,26 @@ const CardComponent = ({
       }}
     >
       <div
-        className={`hand-card-inner card-frame card-frame--${rarity}`}
+        className={`hand-card-inner card-frame card-frame--${rarity} ${reserveBonusReady ? 'card-frame--reserved' : ''}`}
         style={innerStyle}
       >
-        <div
-          className={`card-cost-badge ${
-            effectiveValues.isTimeBuffed
-              ? 'card-value--buffed'
-              : effectiveValues.isTimeDebuffed
-                ? 'card-value--debuffed'
-                : ''
-          }`}
-        >
-          <span className="card-cost-icon">⏱</span>
-          <span className="card-cost-value">{effectiveValues.effectiveTimeCost}s</span>
+        {(rarity === 'uncommon' || rarity === 'rare') && <div className="card-particles" />}
+        <div className="card-header">
+          <div
+            className={`card-cost-badge ${
+              effectiveValues.isTimeBuffed
+                ? 'card-value--buffed'
+                : effectiveValues.isTimeDebuffed
+                  ? 'card-value--debuffed'
+                  : ''
+            }`}
+          >
+            <span className="card-cost-value">
+              {effectiveValues.effectiveTimeCost}
+              <span className="card-cost-unit">s</span>
+            </span>
+          </div>
+          <div className="card-name">{card.name}</div>
         </div>
 
         <div className="card-illustration">
@@ -141,8 +154,6 @@ const CardComponent = ({
           )}
         </div>
 
-        <div className="card-name">{card.name}</div>
-
         <div
           className="card-type-badge"
           style={{ background: typeColor.bg, color: typeColor.text }}
@@ -150,42 +161,8 @@ const CardComponent = ({
           {typeColor.label}
         </div>
 
-        <div className="card-divider" />
-
-        <p className="card-description">{card.description}</p>
+        <div className="card-description">{card.description}</div>
         {card.reserveBonus && <p className="card-reserve-bonus">{card.reserveBonus.description}</p>}
-
-        <div className="card-foot">
-          {effectiveValues.damage !== null && (
-            <span
-              key={`damage-${effectiveValues.damage}`}
-              className={`card-value ${
-                effectiveValues.isDamageBuffed
-                  ? 'card-value--buffed card-value--changed'
-                  : effectiveValues.isDamageDebuffed
-                    ? 'card-value--debuffed card-value--changed'
-                    : ''
-              }`}
-            >
-              ⚔ {effectiveValues.damage}
-            </span>
-          )}
-          {effectiveValues.block !== null && (
-            <span
-              key={`block-${effectiveValues.block}`}
-              className={`card-value ${
-                effectiveValues.isBlockBuffed
-                  ? 'card-value--buffed card-value--changed'
-                  : effectiveValues.isBlockDebuffed
-                    ? 'card-value--debuffed card-value--changed'
-                    : ''
-              }`}
-            >
-              🛡 {effectiveValues.block}
-            </span>
-          )}
-          {card.type === 'tool' && <span className="card-value">🔧 道具</span>}
-        </div>
       </div>
       {isDragUnavailable && (
         <span className="time-shortage">{card.type === 'status' ? '使用不可' : '時間不足'}</span>

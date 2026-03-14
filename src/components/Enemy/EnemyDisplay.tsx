@@ -1,5 +1,6 @@
 import type { Enemy, EnemyIntent } from '../../types/game';
 import EnemyIntentView from './EnemyIntent';
+import Tooltip from '../Tooltip/Tooltip';
 import './Enemy.css';
 
 interface Props {
@@ -19,6 +20,11 @@ const EnemyDisplay = ({
   previewDamage = 0,
   previewHp = 0,
 }: Props) => {
+  const getStatusValue = (enemy: Enemy, type: Enemy['statusEffects'][number]['type']): number =>
+    enemy.statusEffects
+      .filter((status) => status.type === type)
+      .reduce((total, status) => total + status.value, 0);
+
   return (
     <section className="enemy-list">
       {enemies.map((enemy) => {
@@ -28,11 +34,11 @@ const EnemyDisplay = ({
         const previewPercent = isPreviewTarget ? Math.max(0, (previewHp / enemy.maxHp) * 100) : hpPercent;
         const previewLossPercent = isPreviewTarget ? Math.max(0, hpPercent - previewPercent) : 0;
         const intent = intents[enemy.id];
-        const strengthUp = enemy.statusEffects.find((status) => status.type === 'strength_up')?.value ?? 0;
-        const attackDown = enemy.statusEffects.find((status) => status.type === 'attack_down')?.value ?? 0;
-        const burn = enemy.statusEffects.find((status) => status.type === 'burn')?.value ?? 0;
-        const weak = enemy.statusEffects.find((status) => status.type === 'weak')?.value ?? 0;
-        const vulnerable = enemy.statusEffects.find((status) => status.type === 'vulnerable')?.value ?? 0;
+        const strengthUp = getStatusValue(enemy, 'strength_up');
+        const attackDown = getStatusValue(enemy, 'attack_down');
+        const burn = getStatusValue(enemy, 'burn');
+        const weak = getStatusValue(enemy, 'weak');
+        const vulnerable = getStatusValue(enemy, 'vulnerable');
         return (
           <article
             key={enemy.id}
@@ -41,6 +47,26 @@ const EnemyDisplay = ({
             } ${previewTargetEnemyId === enemy.id ? 'enemy-card--targeted' : ''}`}
             data-enemy-id={enemy.id}
           >
+            <div className="enemy-hp-top">
+              <div className="enemy-hp-bar-container">
+                <span className={`enemy-hp-bar-fill ${hpClass}`} style={{ width: `${hpPercent}%` }} />
+                {isPreviewTarget && (
+                  <span
+                    className="enemy-hp-bar-preview"
+                    style={{
+                      width: `${previewLossPercent}%`,
+                      left: `${previewPercent}%`,
+                    }}
+                  />
+                )}
+              </div>
+              <div className="enemy-hp-text">
+                <span>
+                  ❤ {enemy.currentHp}/{enemy.maxHp}
+                </span>
+                {isPreviewTarget && <span className="enemy-hp-preview-text">→ {previewHp}</span>}
+              </div>
+            </div>
             {intent && enemy.currentHp > 0 && <EnemyIntentView enemy={enemy} intent={intent} />}
             <div className="enemy-buffs">
               {strengthUp > 0 && <span className="enemy-buff--positive">⬆️+{strengthUp}</span>}
@@ -50,30 +76,28 @@ const EnemyDisplay = ({
             ) : (
               <div className="enemy-icon">{enemy.icon ?? '👤'}</div>
             )}
-            <h3>{enemy.name}</h3>
-            <p className="enemy-hp-label enemy-hp-text">
-              <span>
-                ❤ {enemy.currentHp}/{enemy.maxHp}
-              </span>
-              {isPreviewTarget && <span className="enemy-hp-preview-text">→ {previewHp}</span>}
-            </p>
-            <div className="enemy-hp-track enemy-hp-bar-container">
-              <span className={`enemy-hp-fill ${hpClass}`} style={{ width: `${hpPercent}%` }} />
-              {isPreviewTarget && (
-                <span
-                  className="enemy-hp-bar-preview"
-                  style={{
-                    width: `${previewLossPercent}%`,
-                    left: `${previewPercent}%`,
-                  }}
-                />
+            <h3 className="enemy-name">{enemy.name}</h3>
+            <div className="enemy-status-effects">
+              {vulnerable > 0 && (
+                <Tooltip label="脆弱" description={`受けるダメージ+50%。残り${vulnerable}ターン`}>
+                  <span className="status-badge status-badge--vulnerable">💧{vulnerable}</span>
+                </Tooltip>
               )}
-            </div>
-            <div className="enemy-debuffs">
-              {burn > 0 && <span className="enemy-debuff">🔥{burn}</span>}
-              {vulnerable > 0 && <span className="enemy-debuff">💧{vulnerable}</span>}
-              {weak > 0 && <span className="enemy-debuff">🔽{weak}</span>}
-              {attackDown > 0 && <span className="enemy-debuff">📉{attackDown}</span>}
+              {weak > 0 && (
+                <Tooltip label="弱体" description={`与えるダメージ-25%。残り${weak}ターン`}>
+                  <span className="status-badge status-badge--weak">⬇️{weak}</span>
+                </Tooltip>
+              )}
+              {burn > 0 && (
+                <Tooltip label="火傷" description={`ターン終了時に${burn}ダメージ`}>
+                  <span className="status-badge status-badge--burn">🔥{burn}</span>
+                </Tooltip>
+              )}
+              {attackDown > 0 && (
+                <Tooltip label="攻撃デバフ" description={`攻撃力-${attackDown}（このターンのみ）`}>
+                  <span className="status-badge status-badge--debuff">🔽{attackDown}</span>
+                </Tooltip>
+              )}
             </div>
           </article>
         );

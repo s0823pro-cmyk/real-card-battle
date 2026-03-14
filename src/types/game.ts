@@ -23,7 +23,15 @@ export type EffectType =
   | 'time_boost'
   | 'next_turn_time_penalty'
   | 'double_next'
-  | 'attack_buff';
+  | 'attack_buff'
+  | 'draw_per_turn';
+
+export type CardRarity = 'common' | 'uncommon' | 'rare';
+
+export interface LowHpBonus {
+  threshold: number;
+  damage: number;
+}
 export type StatusEffectType = 'weak' | 'vulnerable' | 'strength_up' | 'burn' | 'attack_down';
 export type EnemyIntentType = 'attack' | 'defend' | 'buff' | 'debuff' | 'mental_attack';
 
@@ -38,11 +46,16 @@ export interface Card {
   effects?: CardEffect[];
   tags?: string[];
   sellValue?: number;
+  rarity?: CardRarity;
+  neutral?: boolean;
   imageUrl?: string;
   icon?: string;
   reserveBonus?: ReserveBonus;
   wasReserved?: boolean;
+  reservedThisTurn?: boolean;
   cookingMultiplier?: number;
+  upgraded?: boolean;
+  lowHpBonus?: LowHpBonus;
 }
 
 export interface ReserveBonus {
@@ -113,11 +126,14 @@ export interface GameState {
   turn: number;
   maxTime: number;
   usedTime: number;
+  shuffleAnimation: boolean;
   hand: Card[];
   timeline: TimelineSlot[];
   reserved: Card[];
   drawPile: Card[];
   discardPile: Card[];
+  exhaustedCards: Card[];
+  activePowers: Card[];
   player: PlayerState;
   enemies: Enemy[];
   executingIndex: number;

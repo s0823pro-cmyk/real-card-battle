@@ -14,7 +14,10 @@ interface Props {
   drawPileCount: number;
   discardPileCount: number;
   isPlayerHit: boolean;
+  isPreparationActive?: boolean;
   hungryState?: HungryState;
+  onOpenDrawPile?: () => void;
+  onOpenDiscardPile?: () => void;
 }
 
 const PlayerStatus = ({
@@ -26,7 +29,10 @@ const PlayerStatus = ({
   drawPileCount,
   discardPileCount,
   isPlayerHit,
+  isPreparationActive = false,
   hungryState = 'normal',
+  onOpenDrawPile,
+  onOpenDiscardPile,
 }: Props) => {
   const hpRatio = player.currentHp / Math.max(1, player.maxHp);
   const hpClass = hpRatio <= 0.3 ? 'hp-low' : hpRatio <= 0.7 ? 'hp-mid' : 'hp-high';
@@ -96,9 +102,24 @@ const PlayerStatus = ({
       </div>
       <div className="player-row player-row--sub">
         <ToolSlots toolSlots={toolSlots} />
-        <span className="stat-deck">
-          山:{drawPileCount} 捨:{discardPileCount}
-        </span>
+        <div className="stat-preparation">
+          {isPreparationActive && (
+            <Tooltip
+              label="⚡ 段取りボーナス"
+              description="直前に【準備】タグのカードを使用。次のカードのダメージ+30%"
+            >
+              <span className="stat-preparation-text">⚡ 段取り！</span>
+            </Tooltip>
+          )}
+        </div>
+        <div className="stat-piles">
+          <button type="button" className="btn-pile" onClick={onOpenDrawPile}>
+            山:{drawPileCount}
+          </button>
+          <button type="button" className="btn-pile" onClick={onOpenDiscardPile}>
+            捨:{discardPileCount}
+          </button>
+        </div>
       </div>
     </section>
   );

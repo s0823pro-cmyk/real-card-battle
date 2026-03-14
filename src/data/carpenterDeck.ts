@@ -36,7 +36,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     name: '作業着を着る',
     type: 'tool',
     timeCost: 3,
-    description: '【道具】毎ターン+2ブロック',
+    description: '毎ターン+2ブロック',
     block: 2,
     sellValue: 8,
     icon: '🦺',
@@ -110,10 +110,7 @@ const assignId = (card: Card): Card => {
   };
 
 export const buildStarterDeck = (): Card[] => {
-  const deck = CARPENTER_STARTER_DECK.map(assignId);
-  const bonus = RESERVE_BONUS_CARDS[Math.floor(Math.random() * RESERVE_BONUS_CARDS.length)];
-  deck.push(assignId(bonus));
-  return deck;
+  return CARPENTER_STARTER_DECK.map(assignId);
 };
 
 export const createCarpenterDeck = (): Card[] => buildStarterDeck();

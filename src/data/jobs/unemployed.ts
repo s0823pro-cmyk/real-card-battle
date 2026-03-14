@@ -23,9 +23,9 @@ export const UNEMPLOYED_COMMON_POOL: Card[] = [
 
 export const UNEMPLOYED_UNCOMMON_POOL: Card[] = [
   { id: 'welfare', name: '生活保護申請', type: 'skill', timeCost: 3, description: 'HP8回復', icon: '📄', sellValue: 12, effects: [{ type: 'heal', value: 8 }] },
-  { id: 'cardboard_house', name: '段ボールハウス', type: 'tool', timeCost: 2, description: '【道具】毎ターン3ブロック。覚醒中は8ブロック', block: 3, icon: '🏠', sellValue: 12, tags: ['awakened_boost'] },
+  { id: 'cardboard_house', name: '段ボールハウス', type: 'tool', timeCost: 2, description: '毎ターン3ブロック。覚醒中は8ブロック', block: 3, icon: '🏠', sellValue: 12, tags: ['awakened_boost'] },
   { id: 'interview', name: '面接練習', type: 'skill', timeCost: 2, description: '次に使うカードを2回発動', icon: '👔', sellValue: 12, effects: [{ type: 'double_next', value: 1 }] },
-  { id: 'lighter', name: '100円ライター', type: 'tool', timeCost: 1, description: '【道具】アタック使用時20%で火傷2付与', icon: '🔥', sellValue: 12 },
+  { id: 'lighter', name: '100円ライター', type: 'tool', timeCost: 1, description: 'アタック使用時20%で火傷2付与', icon: '🔥', sellValue: 12 },
   { id: 'konjou', name: '根性', type: 'skill', timeCost: 1, description: '自分にダメージ10、次2回のアタック+5', icon: '😤', sellValue: 12, effects: [{ type: 'self_damage', value: 10 }, { type: 'attack_buff', value: 5 }] },
   { id: 'kajiba', name: '火事場の馬鹿力', type: 'attack', timeCost: 3, description: '減っているHP×0.5ダメージ。覚醒中：×0.8', damage: 0, icon: '💪', tags: ['missing_hp_damage_scaled'], sellValue: 12 },
 ];

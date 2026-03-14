@@ -95,7 +95,13 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
   const encounter = setup?.enemies ?? createRandomEncounter();
   const initialJobId: JobId = setup?.jobId ?? 'carpenter';
   const fallbackConfig = getJobConfig(initialJobId);
-  const deck = shuffle(setup?.deck ?? fallbackConfig.createStarterDeck());
+  const deck = shuffle(
+    (setup?.deck ?? fallbackConfig.createStarterDeck()).map((card) => ({
+      ...card,
+      wasReserved: false,
+      reservedThisTurn: false,
+    })),
+  );
   const drawResult = drawCards(deck, [], DRAW_COUNT);
   const basePlayer = setup?.player ?? {
     jobId: initialJobId,
@@ -114,11 +120,14 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     turn: 1,
     maxTime: getMaxTime(basePlayer.mental),
     usedTime: 0,
+    shuffleAnimation: false,
     hand: drawResult.drawn,
     timeline: [],
     reserved: [],
     drawPile: drawResult.drawPile,
     discardPile: drawResult.discardPile,
+    exhaustedCards: [],
+    activePowers: [],
     player: { ...basePlayer, cookingGauge: 0, statusEffects: [...basePlayer.statusEffects] },
     enemies: encounter.map((enemy) => ({ ...enemy, statusEffects: [...enemy.statusEffects] })),
     executingIndex: -1,
@@ -148,6 +157,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const [victoryMentalRecovery, setVictoryMentalRecovery] = useState(0);
   const [battleItems, setBattleItems] = useState<RunItem[]>(options?.setup?.items ?? []);
   const [attackItemBuff, setAttackItemBuff] = useState<{ value: number; charges: number } | null>(null);
+  const [doubleNextCharges, setDoubleNextCharges] = useState(0);
   const [hungryFlash, setHungryFlash] = useState<'hungry' | 'awakened' | null>(null);
   const prevHungryStateRef = useRef<'normal' | 'hungry' | 'awakened'>('normal');
 
@@ -170,6 +180,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setVictoryRewardGold(0);
     setVictoryMentalRecovery(0);
     setAttackItemBuff(null);
+    setDoubleNextCharges(0);
     setHungryFlash(null);
     prevHungryStateRef.current = 'normal';
   }, [options?.setup]);
@@ -183,6 +194,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     }, 700);
     return () => window.clearTimeout(timer);
   }, [gameState.phase]);
+
+  useEffect(() => {
+    if (!gameState.shuffleAnimation) return;
+    const timer = window.setTimeout(() => {
+      setGameState((prev) => ({ ...prev, shuffleAnimation: false }));
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [gameState.shuffleAnimation]);
 
   useEffect(() => {
     if (gameState.phase !== 'player_turn') return;
@@ -213,7 +232,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       setHungryFlash('awakened');
       pushPopup('⚡覚醒！', 'player', 'buff');
     }
-    const timer = window.setTimeout(() => setHungryFlash(null), 420);
+    const timer = window.setTimeout(() => setHungryFlash(null), state === 'awakened' ? 2000 : 1500);
     return () => window.clearTimeout(timer);
     // HPと職業変化のみを監視
   }, [gameState.player.currentHp, gameState.player.maxHp, gameState.player.jobId]);
@@ -279,79 +298,111 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             : card.block,
           effects: [...(card.effects ?? []), ...(card.reserveBonus?.extraEffects ?? [])],
           wasReserved: false,
+          reservedThisTurn: false,
         }
       : card;
+
+    const effectMultiplier = doubleNextCharges > 0 ? 2 : 1;
+    const multipliedCard: Card =
+      effectMultiplier > 1
+        ? {
+            ...enhancedCard,
+            damage:
+              enhancedCard.damage !== undefined
+                ? enhancedCard.damage * effectMultiplier
+                : enhancedCard.damage,
+            block:
+              enhancedCard.block !== undefined
+                ? enhancedCard.block * effectMultiplier
+                : enhancedCard.block,
+            effects: (enhancedCard.effects ?? []).map((effect) => ({
+              ...effect,
+              value: effect.value * effectMultiplier,
+            })),
+          }
+        : enhancedCard;
 
     const enemiesBefore = gameState.enemies.map((enemy) => ({ id: enemy.id, hp: enemy.currentHp, templateId: enemy.templateId }));
 
     const buffedCard =
-      attackItemBuff && attackItemBuff.charges > 0 && enhancedCard.type === 'attack'
-        ? { ...enhancedCard, damage: (enhancedCard.damage ?? 0) + attackItemBuff.value }
-        : enhancedCard;
+      attackItemBuff && attackItemBuff.charges > 0 && multipliedCard.type === 'attack'
+        ? { ...multipliedCard, damage: (multipliedCard.damage ?? 0) + attackItemBuff.value }
+        : multipliedCard;
+    const playedCard: Card = { ...buffedCard, wasReserved: false, reservedThisTurn: false };
 
     const result = resolveCard(
-      buffedCard,
+      playedCard,
       lastPlayedCard,
       gameState.player,
       gameState.enemies,
       target.type === 'enemy' ? target.enemyId : null,
     );
     const effectiveTimeCost = getEffectiveTimeCost(
-      buffedCard,
+      playedCard,
       lastPlayedCard,
       result.player,
       result.player.jobId,
     );
 
-    const drawAmount = (buffedCard.effects ?? [])
+    const drawAmount = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'draw')
       .reduce((sum, effect) => sum + effect.value, 0);
-    const timeBoost = (buffedCard.effects ?? [])
+    const timeBoost = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'time_boost')
       .reduce((sum, effect) => sum + effect.value, 0);
-    const nextTurnPenalty = (buffedCard.effects ?? [])
+    const nextTurnPenalty = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'next_turn_time_penalty')
       .reduce((sum, effect) => sum + effect.value, 0);
 
     const drawResult =
       drawAmount > 0
         ? drawCards(gameState.drawPile, gameState.discardPile, drawAmount)
-        : { drawn: [] as Card[], drawPile: gameState.drawPile, discardPile: gameState.discardPile };
+        : { drawn: [] as Card[], drawPile: gameState.drawPile, discardPile: gameState.discardPile, shuffled: false };
 
     const allEnemiesDead = result.enemies.every((enemy) => enemy.currentHp <= 0);
+    const gainedDoubleNext = (playedCard.effects ?? [])
+      .filter((effect) => effect.type === 'double_next')
+      .reduce((sum, effect) => sum + effect.value, 0);
+    const activePowers =
+      playedCard.type === 'power' ? [...gameState.activePowers, { ...playedCard }] : gameState.activePowers;
     const postCardState: GameState = {
       ...gameState,
       discardPile:
-        buffedCard.type === 'tool'
+        playedCard.type === 'tool' || playedCard.type === 'power'
           ? drawResult.discardPile
-          : [...drawResult.discardPile, buffedCard],
+          : [...drawResult.discardPile, playedCard],
       drawPile: drawResult.drawPile,
       player: result.player,
       enemies: result.enemies,
+      activePowers,
       toolSlots: result.equippedTool ? equipTool(result.equippedTool, gameState.toolSlots) : gameState.toolSlots,
       hand: [...gameState.hand.filter((item) => item.id !== cardId), ...drawResult.drawn],
       usedTime: gameState.usedTime + effectiveTimeCost,
       maxTime: gameState.maxTime + timeBoost,
       nextTurnTimeBonus: gameState.nextTurnTimeBonus - nextTurnPenalty,
+      shuffleAnimation: drawResult.shuffled,
     };
 
     setGameState((prev) => ({
       ...prev,
       hand: [...prev.hand.filter((item) => item.id !== cardId), ...drawResult.drawn],
       discardPile:
-        buffedCard.type === 'tool'
+        playedCard.type === 'tool' || playedCard.type === 'power'
           ? drawResult.discardPile
-          : [...drawResult.discardPile, buffedCard],
+          : [...drawResult.discardPile, playedCard],
       drawPile: drawResult.drawPile,
       player: result.player,
       enemies: result.enemies,
+      activePowers,
       toolSlots: result.equippedTool ? equipTool(result.equippedTool, prev.toolSlots) : prev.toolSlots,
       usedTime: prev.usedTime + effectiveTimeCost,
       maxTime: prev.maxTime + timeBoost,
       nextTurnTimeBonus: prev.nextTurnTimeBonus - nextTurnPenalty,
+      shuffleAnimation: drawResult.shuffled,
     }));
+    setDoubleNextCharges((prev) => Math.max(0, prev - (effectMultiplier > 1 ? 1 : 0)) + gainedDoubleNext);
 
-    setLastPlayedCard(buffedCard);
+    setLastPlayedCard(playedCard);
     setSelectedCardId(null);
     if (result.damage > 0 && result.targetEnemyId) {
       setHitEnemyId(result.targetEnemyId);
@@ -381,7 +432,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (reservedBonusActive) {
       pushPopup('✨温存ボーナス！', 'player', 'buff');
     }
-    if (attackItemBuff && buffedCard.type === 'attack') {
+    if (attackItemBuff && playedCard.type === 'attack') {
       setAttackItemBuff((prev) =>
         prev ? { ...prev, charges: Math.max(0, prev.charges - 1) } : prev,
       );
@@ -412,6 +463,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             ...result.player,
             gold: result.player.gold + reward,
             mental: nextMental,
+            scaffold: 0,
           },
         });
         setBattleMessage('勝利！');
@@ -421,12 +473,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             ...result.player,
             gold: result.player.gold + reward,
             mental: nextMental,
+            scaffold: 0,
           },
           deck: [
             ...postCardState.drawPile,
             ...postCardState.discardPile,
             ...postCardState.hand,
             ...postCardState.reserved,
+            ...postCardState.activePowers,
             ...postCardState.toolSlots.map((slot) => slot.card),
           ],
           items: battleItems,
@@ -467,6 +521,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           hand: [...prev.hand, ...drawResult.drawn],
           drawPile: drawResult.drawPile,
           discardPile: drawResult.discardPile,
+          shuffleAnimation: drawResult.shuffled,
         };
       });
       pushPopup(`+${effect.value}ドロー`, 'player', 'buff');
@@ -484,10 +539,15 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       const card = prev.hand.find((item) => item.id === cardId);
       if (!card || card.type === 'status') return prev;
       changed = true;
+      const reservedCard: Card = {
+        ...card,
+        wasReserved: false,
+        reservedThisTurn: true,
+      };
       return {
         ...prev,
         hand: prev.hand.filter((item) => item.id !== cardId),
-        reserved: [...prev.reserved, card],
+        reserved: [...prev.reserved, reservedCard],
       };
     });
     if (changed) {
@@ -538,18 +598,27 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     });
     const anxietyCount = playerAfterReset.mental <= 0 ? 2 : playerAfterReset.mental <= 2 ? 1 : 0;
     const anxietyCards = anxietyCount > 0 ? createAnxietyCards(anxietyCount) : [];
+    const powerDrawPerTurn = state.activePowers
+      .flatMap((power) => power.effects ?? [])
+      .filter((effect) => effect.type === 'draw_per_turn')
+      .reduce((sum, effect) => sum + effect.value, 0);
     const drawResult = drawCards(
       shuffle([...state.drawPile, ...anxietyCards]),
       state.discardPile,
-      DRAW_COUNT,
+      DRAW_COUNT + powerDrawPerTurn,
     );
-    const reservedToHand = state.reserved.map((card) => ({ ...card, wasReserved: true }));
+    const reservedToHand = state.reserved.map((card) => ({
+      ...card,
+      wasReserved: Boolean(card.reservedThisTurn),
+      reservedThisTurn: false,
+    }));
     return {
       ...state,
       phase: 'player_turn',
       turn: state.turn + 1,
       maxTime: nextMaxTime,
       usedTime: 0,
+      shuffleAnimation: drawResult.shuffled,
       hand: [...reservedToHand, ...drawResult.drawn],
       reserved: [],
       timeline: [],
@@ -595,6 +664,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           ...workingState.player,
           gold: workingState.player.gold + reward,
           mental: nextMental,
+          scaffold: 0,
         },
       });
       setBattleMessage('勝利！');
@@ -604,12 +674,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           ...workingState.player,
           gold: workingState.player.gold + reward,
           mental: nextMental,
+          scaffold: 0,
         },
         deck: [
           ...workingState.drawPile,
           ...workingState.discardPile,
           ...workingState.hand,
           ...workingState.reserved,
+          ...workingState.activePowers,
           ...workingState.toolSlots.map((slot) => slot.card),
         ],
         items: battleItems,
@@ -665,16 +737,24 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       setGameState({
         ...workingState,
         phase: 'defeat',
+        player: {
+          ...workingState.player,
+          scaffold: 0,
+        },
       });
       setBattleMessage('敗北...');
       options?.onBattleEnd?.({
         outcome: 'defeat',
-        player: workingState.player,
+        player: {
+          ...workingState.player,
+          scaffold: 0,
+        },
         deck: [
           ...workingState.drawPile,
           ...workingState.discardPile,
           ...workingState.hand,
           ...workingState.reserved,
+          ...workingState.activePowers,
           ...workingState.toolSlots.map((slot) => slot.card),
         ],
         items: battleItems,
@@ -710,6 +790,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setVictoryMentalRecovery(0);
     setBattleItems(options?.setup?.items ?? []);
     setAttackItemBuff(null);
+    setDoubleNextCharges(0);
     setHungryFlash(null);
     prevHungryStateRef.current = 'normal';
   };

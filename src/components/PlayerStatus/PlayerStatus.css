@@ -40,6 +40,21 @@
   padding: 2px 0;
 }
 
+.stat-preparation {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 16px;
+}
+
+.stat-preparation-text {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f0b429;
+  animation: preparation-flash 0.4s ease-in-out;
+}
+
 .hp {
   color: #2ecc71;
 }
@@ -154,6 +169,29 @@
   color: #3d444d;
 }
 
+.stat-piles {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-pile {
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 2px 4px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.btn-pile:hover {
+  color: #e6edf3;
+}
+
 @keyframes player-damage-flash {
   from {
     transform: translateX(0);
@@ -192,5 +230,20 @@
   }
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes preparation-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }

@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { BranchPreview, GameProgress } from '../../types/run';
+import type { Card } from '../../types/game';
+import type { EffectiveCardValues } from '../../utils/cardPreview';
 import BranchSelectModal from './BranchSelectModal';
+import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
 import './RunMapScreen.css';
 
@@ -57,7 +61,11 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
   const [pieceLanding, setPieceLanding] = useState(false);
   const [tooltip, setTooltip] = useState<TileTooltipState | null>(null);
   const [relicsOpen, setRelicsOpen] = useState(false);
+  const [showDeck, setShowDeck] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
+  const touchStartXRef = useRef(0);
+  const touchStartYRef = useRef(0);
+  const touchMovedRef = useRef(false);
   const prevTileIdRef = useRef(progress.currentTileId);
   const isSelecting = progress.currentScreen === 'branch_select' && progress.selectableTileIds.length > 0;
 
@@ -126,6 +134,21 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
     return 'hp-high';
   };
 
+  const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
+    damage: card.damage ?? null,
+    block: card.block ?? null,
+    effectiveTimeCost: card.timeCost,
+    isTimeBuffed: false,
+    isTimeDebuffed: false,
+    isDamageBuffed: false,
+    isDamageDebuffed: false,
+    isBlockBuffed: false,
+    isBlockDebuffed: false,
+  });
+
+  const noop = () => {};
+  const sortedDeck = [...progress.deck].sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
+
   return (
     <main className="run-map-screen">
       <header className="map-header">
@@ -137,6 +160,9 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
             </span>
             <span className="map-stat">🧠 {progress.player.mental}</span>
             <span className="map-stat">💰 {progress.player.gold}G</span>
+            <button type="button" className="btn-deck-icon" onClick={() => setShowDeck(true)}>
+              🃏 {progress.deck.length}
+            </button>
           </div>
         </div>
         {progress.omamoris.length > 0 && (
@@ -242,6 +268,11 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
                 }`}
                 style={{ left: `${tile.x - 26}px`, top: `${tile.y - 26}px` }}
                 onClick={() => {
+                  if (touchMovedRef.current) {
+                    touchMovedRef.current = false;
+                    return;
+                  }
+                  touchMovedRef.current = false;
                   if (
                     progress.currentScreen === 'branch_select' &&
                     progress.selectableTileIds.includes(tile.id)
@@ -257,7 +288,21 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
                 onPointerDown={(event) => {
                   if (event.pointerType === 'mouse' || isSelecting) return;
                   clearLongPress();
+                  touchStartXRef.current = event.clientX;
+                  touchStartYRef.current = event.clientY;
+                  touchMovedRef.current = false;
                   longPressTimerRef.current = window.setTimeout(() => showTooltip(tile), 300);
+                }}
+                onPointerMove={(event) => {
+                  if (event.pointerType === 'mouse' || isSelecting) return;
+                  if (
+                    Math.abs(event.clientX - touchStartXRef.current) > 10 ||
+                    Math.abs(event.clientY - touchStartYRef.current) > 10
+                  ) {
+                    touchMovedRef.current = true;
+                    clearLongPress();
+                    hideTooltip(tile.id);
+                  }
                 }}
                 onPointerUp={() => {
                   clearLongPress();
@@ -266,6 +311,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
                 onPointerCancel={() => {
                   clearLongPress();
                   hideTooltip(tile.id);
+                  touchMovedRef.current = false;
                 }}
                 onPointerLeave={() => {
                   clearLongPress();
@@ -325,6 +371,53 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
           currentTileId={progress.currentTileId}
           onSelect={(tileId) => onSelectTile?.(tileId)}
         />
+      )}
+      {showDeck && (
+        <div className="deck-overlay" onClick={() => setShowDeck(false)}>
+          <div className="deck-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="deck-modal-header">
+              <h2 className="deck-modal-title">デッキ ({progress.deck.length}枚)</h2>
+              <button type="button" className="btn-close" onClick={() => setShowDeck(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="deck-card-grid card-display-grid">
+              {sortedDeck.map((card, idx) => (
+                <div
+                  key={`${card.id}_${idx}`}
+                  className="deck-card-item card-display-item"
+                  style={
+                    {
+                      '--hand-card-width': '90px',
+                      '--hand-card-height': '144px',
+                    } as CSSProperties
+                  }
+                >
+                  <CardComponent
+                    card={card}
+                    jobId={progress.jobId}
+                    selected={false}
+                    disabled={false}
+                    locked={false}
+                    isSelling={false}
+                    isReturning={false}
+                    isGhost={false}
+                    isDragging={false}
+                    isDragUnavailable={false}
+                    effectiveValues={getBaseEffectiveValues(card)}
+                    onSelect={noop}
+                    onPointerDown={noop}
+                    onPointerMove={noop}
+                    onPointerUp={noop}
+                    onPointerCancel={noop}
+                    onMouseEnter={noop}
+                    onMouseLeave={noop}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

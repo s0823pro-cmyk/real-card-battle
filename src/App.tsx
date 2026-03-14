@@ -30,7 +30,11 @@ function App() {
     hotelHeal,
     hotelMeditate,
     openHotelUpgrade,
-    upgradeOrRemoveCard,
+    closeCardUpgrade,
+    upgradeDeckCard,
+    removeCardInUpgrade,
+    removeCardAtPawnshop,
+    getRemoveCost,
     buyShopItem,
     sellPawnshopCard,
     closePawnshop,
@@ -94,6 +98,10 @@ function App() {
             deck={state.deck.filter((card) => card.type !== 'status')}
             onBuy={buyShopItem}
             onSell={sellPawnshopCard}
+            onRemoveCard={removeCardAtPawnshop}
+            removeCost={getRemoveCost(state.cardRemoveCount)}
+            hasUsedSellThisVisit={state.pawnshopSellUsedThisVisit}
+            jobId={state.jobId}
             onClose={closePawnshop}
             canCarryMoreItems={state.items.length < 3}
           />
@@ -109,6 +117,7 @@ function App() {
         return (
           <CardRewardScreen
             cards={state.cardReward?.cards ?? []}
+            jobId={state.player.jobId}
             onPick={pickCardReward}
             onSkip={() => pickCardReward(null)}
           />
@@ -125,7 +134,10 @@ function App() {
           <CardUpgradeScreen
             mode={state.cardUpgradeMode ?? 'upgrade'}
             cards={state.deck.filter((card) => card.type !== 'status')}
-            onSelect={upgradeOrRemoveCard}
+            jobId={state.jobId}
+            onUpgrade={upgradeDeckCard}
+            onRemove={removeCardInUpgrade}
+            onSkip={closeCardUpgrade}
           />
         );
       case 'victory':

@@ -51,6 +51,12 @@ export const getEffectiveCardValues = (
       const multiplier = getHungryState(player) === 'awakened' ? 0.8 : 0.5;
       damage = Math.floor((player.maxHp - player.currentHp) * multiplier) + getHungryDamageBonus(getHungryState(player));
     }
+    if (card.tags?.includes('low_hp_bonus') && card.lowHpBonus) {
+      const ratio = player.currentHp / Math.max(1, player.maxHp);
+      if (ratio <= card.lowHpBonus.threshold) {
+        damage = card.lowHpBonus.damage;
+      }
+    }
     if (card.tags?.includes('cooking') && card.name === '闇鍋') {
       damage = 15;
     }

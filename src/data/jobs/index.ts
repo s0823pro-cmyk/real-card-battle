@@ -12,6 +12,11 @@ import {
   UNEMPLOYED_STARTER_DECK,
   UNEMPLOYED_UNCOMMON_POOL,
 } from './unemployed';
+import {
+  NEUTRAL_COMMON_POOL,
+  NEUTRAL_RARE_POOL,
+  NEUTRAL_UNCOMMON_POOL,
+} from '../cards/neutralCards';
 
 export interface JobConfig {
   id: JobId;
@@ -71,21 +76,21 @@ export const getJobConfig = (jobId: JobId): JobConfig => {
 export const getCardPoolsByJob = (jobId: JobId): JobCardPools => {
   if (jobId === 'cook') {
     return {
-      common: COOK_COMMON_POOL,
-      uncommon: COOK_UNCOMMON_POOL,
-      rare: COOK_RARE_POOL,
+      common: [...COOK_COMMON_POOL, ...NEUTRAL_COMMON_POOL],
+      uncommon: [...COOK_UNCOMMON_POOL, ...NEUTRAL_UNCOMMON_POOL],
+      rare: [...COOK_RARE_POOL, ...NEUTRAL_RARE_POOL],
     };
   }
   if (jobId === 'unemployed') {
     return {
-      common: UNEMPLOYED_COMMON_POOL,
-      uncommon: UNEMPLOYED_UNCOMMON_POOL,
-      rare: UNEMPLOYED_RARE_POOL,
+      common: [...UNEMPLOYED_COMMON_POOL, ...NEUTRAL_COMMON_POOL],
+      uncommon: [...UNEMPLOYED_UNCOMMON_POOL, ...NEUTRAL_UNCOMMON_POOL],
+      rare: [...UNEMPLOYED_RARE_POOL, ...NEUTRAL_RARE_POOL],
     };
   }
   return {
-    common: CARPENTER_COMMON_POOL,
-    uncommon: CARPENTER_UNCOMMON_POOL,
-    rare: CARPENTER_RARE_POOL,
+    common: [...CARPENTER_COMMON_POOL, ...NEUTRAL_COMMON_POOL],
+    uncommon: [...CARPENTER_UNCOMMON_POOL, ...NEUTRAL_UNCOMMON_POOL],
+    rare: [...CARPENTER_RARE_POOL, ...NEUTRAL_RARE_POOL],
   };
 };

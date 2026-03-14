@@ -22,6 +22,8 @@ const upsertStatus = (statuses: StatusEffect[], next: StatusEffect): StatusEffec
   );
 };
 
+const TURN_DEBUFF_TYPES: StatusEffect['type'][] = ['attack_down', 'vulnerable', 'burn', 'weak'];
+
 export const useEnemyAI = () => {
   const getBossPhaseIntents = (enemy: Enemy): EnemyIntent[] => {
     if (enemy.currentHp > 130) {
@@ -77,6 +79,29 @@ export const useEnemyAI = () => {
       mentalDamage = intent.mentalDamage ?? 0;
       updatedPlayer.mental = Math.max(0, updatedPlayer.mental - mentalDamage);
     }
+
+    // 1ターン系効果の解決。火傷は行動後にダメージを与えて消去。
+    const burnDamage = updatedEnemy.statusEffects
+      .filter((status) => status.type === 'burn')
+      .reduce((total, status) => total + status.value, 0);
+    if (burnDamage > 0) {
+      updatedEnemy.currentHp = Math.max(0, updatedEnemy.currentHp - burnDamage);
+    }
+    updatedEnemy = {
+      ...updatedEnemy,
+      statusEffects: updatedEnemy.statusEffects
+        .filter((status) => !TURN_DEBUFF_TYPES.includes(status.type))
+        .concat(
+          updatedEnemy.statusEffects
+            .filter((status) => status.type === 'vulnerable' || status.type === 'weak')
+            .map((status) => ({
+              ...status,
+              duration: Math.max(0, status.duration - 1),
+              value: Math.max(0, status.value - 1),
+            }))
+            .filter((status) => status.duration > 0 && status.value > 0),
+        ),
+    };
 
     const nextAvailable = getAvailableIntents(updatedEnemy);
     const nextRandomIndex = nextAvailable.length > 0 ? Math.floor(Math.random() * 1000000) : 0;

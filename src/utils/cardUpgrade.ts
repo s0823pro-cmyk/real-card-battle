@@ -1,14 +1,29 @@
 import type { Card } from '../types/game';
 
-export const upgradeCard = (card: Card): Card => {
+export type UpgradeType = 'damage' | 'block' | 'time';
+
+export const upgradeCard = (card: Card, upgradeType: UpgradeType): Card => {
   const upgraded: Card = {
     ...card,
     name: card.name.endsWith('+') ? card.name : `${card.name}+`,
-    timeCost: Math.max(1, card.timeCost - 1),
+    upgraded: true,
   };
 
-  if (upgraded.damage) upgraded.damage += 3;
-  if (upgraded.block) upgraded.block += 3;
+  if (upgradeType === 'damage') {
+    upgraded.damage = (card.damage ?? 0) + 3;
+    upgraded.description = card.description.replace(
+      /(\d+)ダメージ/,
+      `${(card.damage ?? 0) + 3}ダメージ`,
+    );
+  } else if (upgradeType === 'block') {
+    upgraded.block = (card.block ?? 0) + 3;
+    upgraded.description = card.description.replace(
+      /(\d+)ブロック/,
+      `${(card.block ?? 0) + 3}ブロック`,
+    );
+  } else {
+    upgraded.timeCost = Math.max(1, card.timeCost - 1);
+  }
 
   if (upgraded.reserveBonus?.damageMultiplier) {
     upgraded.reserveBonus = {

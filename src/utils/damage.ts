@@ -3,20 +3,27 @@ import { getHungryDamageBonus, getHungryState } from './hungrySystem';
 
 const findStatus = (list: StatusEffect[], type: StatusEffect['type']) =>
   list.find((status) => status.type === type);
+const sumStatus = (list: StatusEffect[], type: StatusEffect['type']) =>
+  list
+    .filter((status) => status.type === type)
+    .reduce((total, status) => total + status.value, 0);
 
 export const getEnemyAttackValue = (intent: EnemyIntent, enemy: Enemy): number => {
   let damage = intent.value;
-  const attackDown = findStatus(enemy.statusEffects, 'attack_down');
-  if (attackDown) {
-    damage -= attackDown.value;
+  const attackDownValue = sumStatus(enemy.statusEffects, 'attack_down');
+  if (attackDownValue > 0) {
+    damage -= attackDownValue;
   }
-  const strengthUp = findStatus(enemy.statusEffects, 'strength_up');
-  if (strengthUp) {
-    damage += strengthUp.value;
+  const strengthUpValue = sumStatus(enemy.statusEffects, 'strength_up');
+  if (strengthUpValue > 0) {
+    damage += strengthUpValue;
   }
   const weak = findStatus(enemy.statusEffects, 'weak');
   if (weak) {
     damage = Math.floor(damage * 0.75);
+  }
+  if (intent.value > 0) {
+    return Math.max(1, damage);
   }
   return Math.max(0, damage);
 };
@@ -50,12 +57,23 @@ export const calculateCardDamage = (
     damage = Math.floor((player.maxHp - player.currentHp) * multiplier) + getHungryDamageBonus(hungryState);
   }
 
+  if (card.tags?.includes('low_hp_bonus') && card.lowHpBonus) {
+    const ratio = player.currentHp / Math.max(1, player.maxHp);
+    if (ratio <= card.lowHpBonus.threshold) {
+      damage = card.lowHpBonus.damage;
+    }
+  }
+
   if (prevCard?.tags?.includes('preparation')) {
     damage = Math.floor(damage * 1.3);
   }
 
   if (card.name === '闇鍋') {
     damage = 15 + Math.floor(Math.random() * 16);
+  }
+
+  if ((card.damage ?? 0) > 0 || card.tags?.includes('missing_hp_damage') || card.tags?.includes('missing_hp_damage_scaled')) {
+    damage = Math.max(1, damage);
   }
 
   return damage;
@@ -66,6 +84,9 @@ export const applyDamageToEnemy = (enemy: Enemy, baseDamage: number): number => 
   const vulnerable = findStatus(enemy.statusEffects, 'vulnerable');
   if (vulnerable) {
     damage = Math.floor(damage * 1.5);
+  }
+  if (baseDamage > 0) {
+    damage = Math.max(1, damage);
   }
   enemy.currentHp = Math.max(0, enemy.currentHp - damage);
   return damage;

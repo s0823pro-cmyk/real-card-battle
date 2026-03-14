@@ -9,7 +9,7 @@ interface Props {
   reserved: Card[];
   jobId: JobId;
   isDragging: boolean;
-  activeDropTarget: 'enemy' | 'field' | 'hand' | 'reserve' | 'sell' | null;
+  activeDropTarget: 'enemy' | 'field' | 'timebar' | 'hand' | 'reserve' | 'sell' | null;
   reserveFull: boolean;
   reserveDropRef?: RefObject<HTMLDivElement | null>;
 }
@@ -81,8 +81,8 @@ const ActionBar = ({
 
   return (
     <section className="action-bar bottom-area">
-      <div className="deck-info">
-        <div className="reserved-panel">
+      <div className="reserve-left">
+        <div className="reserve-slots-row">
           <div
             className={`reserved-cards drop-target reserve-target ${
               activeDropTarget === 'reserve' ? 'active' : ''
@@ -172,10 +172,12 @@ const ActionBar = ({
               );
             })}
           </div>
-          {reserved.length > 0 && <span className="reserve-penalty">次ターン -{reserved.length}秒</span>}
+          <p className="reserve-penalty-inline">
+            {reserved.length > 0 ? `次ターン -${reserved.length}秒` : ''}
+          </p>
         </div>
       </div>
-
+      <div className="reserve-right" />
     </section>
   );
 };

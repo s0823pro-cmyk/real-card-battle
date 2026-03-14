@@ -1,4 +1,5 @@
 import { cloneRewardCard, getCardPoolsByJob } from './jobs';
+import { NEUTRAL_COMMON_POOL, NEUTRAL_RARE_POOL, NEUTRAL_UNCOMMON_POOL } from './cards/neutralCards';
 import type {
   EnemyTemplateLike,
   GameEvent,
@@ -255,19 +256,33 @@ export const AREA1_EVENTS: GameEvent[] = [
 const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 export const pickRandomCommonCard = (jobId: JobId = 'carpenter'): Card =>
-  cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).common));
+  cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).common.filter((card) => !card.neutral)));
 export const pickRandomUncommonCard = (jobId: JobId = 'carpenter'): Card =>
-  cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).uncommon));
+  cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).uncommon.filter((card) => !card.neutral)));
 export const pickRandomRareCard = (jobId: JobId = 'carpenter'): Card =>
-  cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).rare));
+  cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).rare.filter((card) => !card.neutral)));
+
+const pickRandomNeutralByRarity = (rarity: 'common' | 'uncommon' | 'rare'): Card => {
+  if (rarity === 'rare') return cloneRewardCard(pickRandom(NEUTRAL_RARE_POOL));
+  if (rarity === 'uncommon') return cloneRewardCard(pickRandom(NEUTRAL_UNCOMMON_POOL));
+  return cloneRewardCard(pickRandom(NEUTRAL_COMMON_POOL));
+};
 
 export const generateCardRewardChoices = (jobId: JobId = 'carpenter', count = 3): Card[] => {
   const cards: Card[] = [];
   for (let i = 0; i < count; i += 1) {
     const roll = Math.random();
-    if (roll < 0.1) cards.push(pickRandomRareCard(jobId));
-    else if (roll < 0.4) cards.push(pickRandomUncommonCard(jobId));
-    else cards.push(pickRandomCommonCard(jobId));
+    const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.1 ? 'rare' : roll < 0.4 ? 'uncommon' : 'common';
+    const useNeutral = Math.random() < 0.3;
+    if (useNeutral) {
+      cards.push(pickRandomNeutralByRarity(rarity));
+    } else if (rarity === 'rare') {
+      cards.push(pickRandomRareCard(jobId));
+    } else if (rarity === 'uncommon') {
+      cards.push(pickRandomUncommonCard(jobId));
+    } else {
+      cards.push(pickRandomCommonCard(jobId));
+    }
   }
   return cards;
 };
@@ -280,8 +295,11 @@ export const generateOmamoriChoices = (count = 3): Omamori[] => {
 export const generateShopCards = (count: number, jobId: JobId = 'carpenter'): Card[] =>
   Array.from({ length: count }).map(() => {
     const roll = Math.random();
-    if (roll < 0.12) return pickRandomRareCard(jobId);
-    if (roll < 0.45) return pickRandomUncommonCard(jobId);
+    const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.12 ? 'rare' : roll < 0.45 ? 'uncommon' : 'common';
+    const useNeutral = Math.random() < 0.3;
+    if (useNeutral) return pickRandomNeutralByRarity(rarity);
+    if (rarity === 'rare') return pickRandomRareCard(jobId);
+    if (rarity === 'uncommon') return pickRandomUncommonCard(jobId);
     return pickRandomCommonCard(jobId);
   });
 

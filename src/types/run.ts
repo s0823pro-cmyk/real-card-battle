@@ -169,6 +169,7 @@ export interface GameProgress {
   traveledEdges: Array<{ from: number; to: number }>;
   activeEvent: GameEvent | null;
   activeShopItems: ShopItem[];
+  pawnshopSellUsedThisVisit: boolean;
   cardReward: RewardState | null;
   omamoriRewardChoices: Omamori[] | null;
   omamoriRewardSource: 'battle' | 'shrine' | null;
