@@ -1,0 +1,43 @@
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.tooltip-box {
+  background: #1c2128;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-width: 180px;
+  max-width: 240px;
+  pointer-events: none;
+  animation: tooltip-fade-in 0.15s ease;
+}
+
+.tooltip-label {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f0b429;
+  margin-bottom: 4px;
+}
+
+.tooltip-description {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 11px;
+  color: #8b949e;
+  line-height: 1.5;
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

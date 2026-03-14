@@ -1,0 +1,288 @@
+.battle-screen {
+  width: 100%;
+  max-width: 430px;
+  height: 100dvh;
+  margin: 0 auto;
+  padding: 8px 12px;
+  padding-top: env(safe-area-inset-top, 8px);
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.battle-screen--low-mental {
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.4);
+}
+
+.mental-hit-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  animation: mental-flash 0.4s ease-out;
+}
+
+.hungry-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  animation: hungry-flash 0.42s ease-out;
+}
+
+.hungry-flash--awakened {
+  animation: awakened-flash 0.42s ease-out;
+}
+
+.enemy-placeholder {
+  flex: 1;
+  min-height: 0;
+  border-radius: 8px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 8px 10px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+.battle-item-bar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 6;
+  display: flex;
+  gap: 6px;
+}
+
+.battle-item-btn {
+  border: 1px solid var(--border-card);
+  background: rgba(12, 19, 31, 0.92);
+  color: var(--text-primary);
+  border-radius: 10px;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 3px 4px;
+  font-size: 0.75rem;
+}
+
+.battle-item-btn small {
+  font-size: 0.52rem;
+  color: var(--text-secondary);
+}
+
+.enemy-placeholder.drop-active {
+  border-color: var(--color-attack);
+  box-shadow: 0 0 16px rgba(255, 71, 87, 0.35);
+}
+
+.battle-spacer {
+  display: none;
+}
+
+.player-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.battle-message {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.start-banner {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  min-width: 280px;
+  text-align: center;
+  background: rgba(13, 17, 23, 0.94);
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #fff6d2;
+  font-weight: 800;
+  animation: battle-start 680ms ease;
+  box-shadow: 0 0 24px rgba(255, 215, 0, 0.2);
+}
+
+.start-banner p {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.start-banner h3 {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  color: var(--color-dandori);
+  letter-spacing: 0.08em;
+}
+
+.drag-floating-card {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.6) rotate(-2deg);
+  opacity: 0.88;
+  transition: none;
+}
+
+.drag-floating-card.invalid {
+  filter: grayscale(0.9);
+  opacity: 0.65;
+}
+
+.context-actions {
+  position: fixed;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+.context-action {
+  position: absolute;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-subtle);
+  white-space: nowrap;
+  opacity: 0;
+  animation: action-popup 0.2s ease-out forwards;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.context-action--place {
+  border-color: #3f82f8;
+  color: #69a1ff;
+}
+
+.context-action--reserve {
+  border-color: var(--color-skill);
+  color: var(--color-skill);
+}
+
+.context-action--reserve-full {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.context-action--sell {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.context-action--active {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.15) !important;
+  box-shadow: 0 0 15px currentColor;
+}
+
+@keyframes action-popup {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes battle-start {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -24px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes screen-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  10% {
+    transform: translate(-4px, -2px);
+  }
+  20% {
+    transform: translate(4px, 2px);
+  }
+  30% {
+    transform: translate(-3px, 1px);
+  }
+  40% {
+    transform: translate(3px, -1px);
+  }
+  50% {
+    transform: translate(-2px, 2px);
+  }
+  60% {
+    transform: translate(2px, -2px);
+  }
+  70% {
+    transform: translate(-1px, 1px);
+  }
+  80% {
+    transform: translate(1px, -1px);
+  }
+}
+
+.battle-screen--shake {
+  animation: screen-shake 0.4s ease-out;
+}
+
+@keyframes mental-flash {
+  0% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(139, 92, 246, 0.15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes hungry-flash {
+  0% {
+    box-shadow: inset 0 0 0 rgba(255, 159, 67, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 0 4px rgba(255, 159, 67, 0.65);
+  }
+  100% {
+    box-shadow: inset 0 0 0 rgba(255, 159, 67, 0);
+  }
+}
+
+@keyframes awakened-flash {
+  0% {
+    box-shadow: inset 0 0 0 rgba(240, 180, 41, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 0 5px rgba(240, 180, 41, 0.75);
+  }
+  100% {
+    box-shadow: inset 0 0 0 rgba(240, 180, 41, 0);
+  }
+}

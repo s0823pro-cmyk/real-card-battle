@@ -1,0 +1,10 @@
+.app {
+  min-height: 100svh;
+}
+
+.app--map {
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}

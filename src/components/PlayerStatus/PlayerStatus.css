@@ -1,0 +1,170 @@
+.player-status {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.2s ease;
+}
+
+.player-status.player-hit {
+  box-shadow: 0 0 0 2px rgba(255, 79, 79, 0.5);
+  animation: player-damage-flash 320ms ease;
+}
+
+.player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 22px;
+}
+
+.player-row--top,
+.player-row--middle,
+.player-row--bottom {
+  font-size: 16px;
+  line-height: 1.15;
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
+.hp {
+  color: var(--color-hp);
+}
+
+.block {
+  color: #3d444d;
+}
+
+.status-block--active {
+  color: #4fc3f7;
+}
+
+.status-block--zero {
+  color: #3d444d;
+}
+
+.scaffold {
+  color: #4fc3f7;
+}
+
+.mental {
+  color: #b78cff;
+}
+
+.mental.mental-warn {
+  color: #f5c451;
+}
+
+.mental.mental-danger {
+  color: var(--color-attack);
+  animation: mental-pulse 1s ease-in-out infinite;
+}
+
+.gold {
+  color: var(--color-gold);
+}
+
+.cooking-gauge {
+  color: #ff9f43;
+  animation: cooking-bounce 0.3s ease-out;
+}
+
+.hungry-state {
+  color: #ff9f43;
+}
+
+.normal-awake-state {
+  color: #8b949e;
+}
+
+.awakened-state {
+  color: #f0b429;
+  text-shadow: 0 0 8px rgba(240, 180, 41, 0.6);
+  animation: awakened-glow 0.8s ease-in-out infinite;
+}
+
+.tool-slots-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tool-inline-label {
+  font-size: 0.7rem;
+  color: #b9c7ea;
+  margin-right: 2px;
+}
+
+.tool-slot-inline {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.86rem;
+  color: #8b949e;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tool-slot-inline.filled {
+  border-style: solid;
+  color: #f2dbac;
+  background: rgba(230, 126, 34, 0.15);
+}
+
+@keyframes player-damage-flash {
+  from {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(-5px);
+  }
+  60% {
+    transform: translateX(5px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes mental-pulse {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes cooking-bounce {
+  0% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.scaffold-bounce {
+  animation: cooking-bounce 0.3s ease-out;
+}
+
+@keyframes awakened-glow {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}

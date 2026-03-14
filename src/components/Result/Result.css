@@ -1,0 +1,94 @@
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  backdrop-filter: blur(3px);
+}
+
+.result-overlay h2 {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  letter-spacing: 0.08em;
+  font-family: var(--font-display);
+}
+
+.result-overlay p {
+  margin: 0 0 14px;
+}
+
+.victory-reward {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.victory-reward strong {
+  color: var(--color-gold);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  animation: reward-bounce 0.3s ease-out;
+}
+
+.result-overlay button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font-weight: 800;
+}
+
+.result-overlay.victory {
+  background:
+    radial-gradient(circle at center, rgba(255, 215, 0, 0.2), rgba(8, 16, 28, 0.84) 60%),
+    rgba(8, 16, 28, 0.82);
+}
+
+.result-overlay.victory h2 {
+  color: #ffd76c;
+  text-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+  animation: victory-bounce 560ms ease;
+}
+
+.result-overlay.victory button {
+  background: #2dbe6c;
+  color: #effff5;
+}
+
+.result-overlay.defeat {
+  background: rgba(13, 8, 8, 0.82);
+  filter: grayscale(0.38);
+}
+
+.result-overlay.defeat h2 {
+  color: #ff6f6f;
+}
+
+.result-overlay.defeat button {
+  background: #7f8aa8;
+  color: #f4f8ff;
+}
+
+@keyframes victory-bounce {
+  0% {
+    transform: translateY(24px) scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-10px) scale(1.08);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes reward-bounce {
+  0% {
+    transform: scale(0.85);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

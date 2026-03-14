@@ -1,0 +1,177 @@
+.enemy-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.enemy-card {
+  border: none !important;
+  border-radius: 8px;
+  padding: 8px;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  gap: 2px;
+}
+
+.enemy-card h3 {
+  margin: 4px 0;
+  font-size: 0.82rem;
+}
+
+.enemy-image {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.enemy-icon {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.enemy-hp-label {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  color: #ffd2d2;
+  font-family: var(--font-display);
+}
+
+.enemy-hp-track {
+  width: 100%;
+  height: 7px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.enemy-hp-fill {
+  display: block;
+  height: 100%;
+  transition: width 0.35s ease;
+}
+
+.enemy-hp-fill.high {
+  background: #2ed573;
+}
+
+.enemy-hp-fill.mid {
+  background: #ffa502;
+}
+
+.enemy-hp-fill.low {
+  background: #ff4757;
+}
+
+.enemy-next-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 30px;
+  margin-bottom: 2px;
+}
+
+.enemy-action-label {
+  font-size: 10px;
+  color: #8b949e;
+}
+
+.enemy-action-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e6edf3;
+}
+
+.enemy-action--attack {
+  color: var(--color-attack);
+}
+
+.enemy-action--mental {
+  color: #e74c3c;
+}
+
+.enemy-action--buff {
+  color: #2ecc71;
+}
+
+.enemy-action--defend {
+  color: var(--color-block);
+}
+
+.enemy-buffs,
+.enemy-debuffs {
+  min-height: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.enemy-buff--positive {
+  color: #2ecc71;
+}
+
+.enemy-debuff {
+  color: #e74c3c;
+}
+
+.enemy-hp-text {
+  display: flex;
+  align-items: center;
+}
+
+.enemy-card.hit {
+  animation: hit-shake 320ms ease;
+}
+
+.enemy-card.dead {
+  opacity: 0.4;
+  animation: enemy-defeat 0.8s ease-in forwards;
+}
+
+@keyframes hit-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes enemy-defeat {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.8) rotate(10deg);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(0) rotate(30deg);
+    opacity: 0;
+  }
+}

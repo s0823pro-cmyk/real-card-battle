@@ -1,0 +1,125 @@
+.timeline-section {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+.timebar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.timebar-container {
+  flex: 1;
+  max-width: 85%;
+}
+
+.timeline-bar {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  border: 2px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: visible;
+  background: #1e2a45;
+  padding: 2px 6px 2px 4px;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+}
+
+.timeline-bar.drop-active {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
+}
+
+.timeline-mental-track {
+  position: relative;
+  flex: 1;
+  height: 100%;
+}
+
+.timeline-empty {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+}
+
+.timeline-mental-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  transition: width 0.3s ease-out, background-color 0.3s ease-out;
+}
+
+.timeline-mental-fill.safe {
+  background: #8b5cf6;
+}
+
+.timeline-mental-fill.warning {
+  background: #fbbf24;
+}
+
+.timeline-mental-fill.critical {
+  background: #ff4757;
+  animation: time-critical-pulse 1s ease-in-out infinite;
+}
+
+.timeline-inline-remaining {
+  margin-left: 6px;
+  font-size: 0.82rem;
+  font-family: var(--font-display);
+  color: #c8a5ff;
+  white-space: nowrap;
+  animation: timeline-seconds-shift 0.22s ease;
+}
+
+.timeline-inline-remaining.danger {
+  color: #ff8989;
+}
+
+.btn-turn-end {
+  flex-shrink: 0;
+  white-space: nowrap;
+  width: 44px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.btn-turn-end:disabled {
+  opacity: 0.5;
+}
+
+@keyframes time-critical-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.25);
+  }
+}
+
+@keyframes timeline-seconds-shift {
+  0% {
+    transform: translateY(-3px);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

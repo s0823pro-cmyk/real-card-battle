@@ -1,0 +1,149 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { STATUS_TOOLTIPS } from './statusTooltips';
+import { ENEMY_ACTION_TOOLTIPS } from './statusTooltips';
+import type { TooltipKey } from './statusTooltips';
+import './Tooltip.css';
+
+interface TooltipProps {
+  tooltipKey?: TooltipKey;
+  label?: string;
+  description?: string;
+  children: ReactNode;
+}
+
+const PADDING = 8;
+
+const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => {
+  const [visible, setVisible] = useState(false);
+  const [position, setPosition] = useState({ top: -9999, left: -9999 });
+  const [calculated, setCalculated] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
+  const data = tooltipKey
+    ? STATUS_TOOLTIPS[tooltipKey as keyof typeof STATUS_TOOLTIPS] ??
+      ENEMY_ACTION_TOOLTIPS[tooltipKey as keyof typeof ENEMY_ACTION_TOOLTIPS]
+    : label && description
+      ? { label, description }
+      : null;
+
+  useEffect(
+    () => () => {
+      if (hideTimerRef.current !== null) {
+        window.clearTimeout(hideTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  useLayoutEffect(() => {
+    const adjustPosition = () => {
+      if (!wrapperRef.current || !tooltipRef.current) return;
+
+      const wrapRect = wrapperRef.current.getBoundingClientRect();
+      const tipRect = tooltipRef.current.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      let top = wrapRect.top - tipRect.height - 8;
+      let left = wrapRect.left + wrapRect.width / 2 - tipRect.width / 2;
+
+      if (top < PADDING) {
+        top = wrapRect.bottom + 8;
+      }
+
+      if (left < PADDING) {
+        left = PADDING;
+      }
+
+      if (left + tipRect.width > vw - PADDING) {
+        left = vw - tipRect.width - PADDING;
+      }
+
+      if (top + tipRect.height > vh - PADDING) {
+        top = wrapRect.top - tipRect.height - 8;
+      }
+
+      if (top < PADDING) {
+        top = PADDING;
+      }
+
+      setPosition({ top, left });
+      setCalculated(true);
+    };
+
+    if (!visible) {
+      setPosition({ top: -9999, left: -9999 });
+      setCalculated(false);
+      return;
+    }
+
+    setCalculated(false);
+    adjustPosition();
+    window.addEventListener('resize', adjustPosition);
+    window.addEventListener('scroll', adjustPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', adjustPosition);
+      window.removeEventListener('scroll', adjustPosition, true);
+    };
+  }, [visible]);
+
+  const show = () => {
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current);
+    }
+    setVisible(true);
+  };
+
+  const hide = () => {
+    setVisible(false);
+  };
+
+  const onTouchStart = () => {
+    setVisible(true);
+  };
+
+  const onTouchEnd = () => {
+    setVisible(false);
+  };
+
+  if (!data) return <>{children}</>;
+
+  return (
+    <div
+      ref={wrapperRef}
+      className="tooltip-wrapper"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onTouchStart={(event) => {
+        event.preventDefault();
+        onTouchStart();
+      }}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={hide}
+    >
+      {children}
+      <div
+        ref={tooltipRef}
+        className="tooltip-box"
+        style={{
+          position: 'fixed',
+          top: `${position.top}px`,
+          left: `${position.left}px`,
+          zIndex: 9999,
+          visibility: visible && calculated ? 'visible' : 'hidden',
+          opacity: visible && calculated ? 1 : 0,
+          transition: calculated ? 'opacity 0.15s ease' : 'none',
+          pointerEvents: 'none',
+        }}
+      >
+        <div className="tooltip-label">{data.label}</div>
+        <div className="tooltip-description">{data.description}</div>
+      </div>
+    </div>
+  );
+};
+
+export default Tooltip;
