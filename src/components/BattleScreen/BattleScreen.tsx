@@ -15,6 +15,7 @@ import { useGameState } from '../../hooks/useGameState';
 import type { Card } from '../../types/game';
 import type { BattleResult, BattleSetup } from '../../types/run';
 import { getEffectiveCardValues } from '../../utils/cardPreview';
+import { calculateCardDamage } from '../../utils/damage';
 import { isEnemyTargetCard } from '../../utils/cardTarget';
 import '../Enemy/Enemy.css';
 import '../Effects/Effects.css';
@@ -65,7 +66,6 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     canSellInBattle,
     showStartBanner,
     battlePopups,
-    coinBursts,
     enemyIntents,
     isDandoriReady,
     victoryRewardGold,
@@ -100,6 +100,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   });
   const [screenShake, setScreenShake] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [hoveredEnemyId, setHoveredEnemyId] = useState<string | null>(null);
 
   useEffect(() => {
     const heavyPlayerHit = battlePopups.some((popup) => {
@@ -138,6 +139,18 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     return { target: null, index: null };
   };
 
+  const detectHoveredEnemyId = (clientX: number, clientY: number): string | null => {
+    const enemyNodes = enemyAreaRef.current?.querySelectorAll<HTMLElement>('.enemy-card[data-enemy-id]');
+    if (!enemyNodes?.length) return null;
+    for (const node of enemyNodes) {
+      const rect = node.getBoundingClientRect();
+      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+        return node.dataset.enemyId ?? null;
+      }
+    }
+    return null;
+  };
+
   const onHandCardPointerDown = (
     card: Card,
     index: number,
@@ -170,7 +183,10 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
 
     event.preventDefault();
     const detection = detectDropTarget(event.clientX, event.clientY, start.x, start.y);
-    setExpandedCardId(null);
+    const enemyTargetCard = isEnemyTargetCard(start.card);
+    const nextHoveredEnemyId =
+      detection.target === 'enemy' && enemyTargetCard ? detectHoveredEnemyId(event.clientX, event.clientY) : null;
+    setHoveredEnemyId(nextHoveredEnemyId);
     setHandDrag({
       isDragging: true,
       card: start.card,
@@ -205,14 +221,8 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
           });
           return;
         }
-        const enemyRect = enemyAreaRef.current?.getBoundingClientRect();
         const aliveEnemies = gameState.enemies.filter((enemy) => enemy.currentHp > 0);
-        const segment = enemyRect ? (handDrag.x - enemyRect.left) / Math.max(1, enemyRect.width) : 0;
-        const roughIndex = Math.min(
-          Math.max(0, Math.floor(segment * Math.max(1, gameState.enemies.length))),
-          Math.max(0, gameState.enemies.length - 1),
-        );
-        const preferred = gameState.enemies[roughIndex]?.id ?? aliveEnemies[0]?.id ?? null;
+        const preferred = hoveredEnemyId ?? aliveEnemies[0]?.id ?? null;
         playCardInstant(handDrag.card.id, { type: 'enemy', enemyId: preferred });
       } else if (handDrag.dropTarget === 'field') {
         if (enemyTargetCard) {
@@ -240,6 +250,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     }
 
     dragStartRef.current = null;
+    setHoveredEnemyId(null);
     setHandDrag({
       isDragging: false,
       card: null,
@@ -254,6 +265,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const onHandCardPointerCancel = () => {
     dragStartRef.current = null;
     setExpandedCardId(null);
+    setHoveredEnemyId(null);
     setHandDrag({
       isDragging: false,
       card: null,
@@ -275,6 +287,37 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   };
 
   const dropTimelineActive = handDrag.isDragging && handDrag.dropTarget === 'field';
+  const isEnemyPreviewActive =
+    handDrag.isDragging &&
+    handDrag.card !== null &&
+    handDrag.dropTarget === 'enemy' &&
+    isEnemyTargetCard(handDrag.card) &&
+    hoveredEnemyId !== null;
+
+  const previewState = useMemo(() => {
+    if (!isEnemyPreviewActive || !handDrag.card || !hoveredEnemyId) {
+      return { enemyId: null, damage: 0, previewHp: 0 };
+    }
+    const enemy = gameState.enemies.find((entry) => entry.id === hoveredEnemyId);
+    if (!enemy || enemy.currentHp <= 0) return { enemyId: null, damage: 0, previewHp: 0 };
+
+    let previewDamage = 0;
+    if (handDrag.card.type === 'attack') {
+      previewDamage = calculateCardDamage(handDrag.card, gameState.player, lastPlayedCard);
+      const vulnerable = enemy.statusEffects.find((status) => status.type === 'vulnerable');
+      if (vulnerable) {
+        previewDamage = Math.floor(previewDamage * 1.5);
+      }
+      const enemyBlock = (enemy as unknown as { block?: number }).block ?? 0;
+      previewDamage = Math.max(0, previewDamage - enemyBlock);
+    }
+    return {
+      enemyId: enemy.id,
+      damage: previewDamage,
+      previewHp: Math.max(0, enemy.currentHp - previewDamage),
+    };
+  }, [gameState.enemies, gameState.player, handDrag.card, hoveredEnemyId, isEnemyPreviewActive, lastPlayedCard]);
+
   const reserveFull = gameState.reserved.length >= 2;
   const startTitle = useMemo(
     () => `── ${gameState.enemies.map((enemy) => enemy.name).join(' / ')} 現る ──`,
@@ -304,88 +347,84 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
         }
       />
       <section
-        className={`enemy-placeholder ${
+        className={`enemy-placeholder battle-enemy-area ${
           handDrag.isDragging && handDrag.dropTarget === 'enemy' ? 'drop-active' : ''
         }`}
         ref={enemyAreaRef}
       >
-        {battleItems.length > 0 && gameState.phase === 'player_turn' && (
-          <div className="battle-item-bar">
-            {battleItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="battle-item-btn"
-                onClick={() => useBattleItem(item.id)}
-                title={item.description}
-              >
-                <span>{item.icon}</span>
-                <small>{item.name}</small>
-              </button>
-            ))}
-          </div>
-        )}
-        <EnemyDisplay enemies={gameState.enemies} intents={enemyIntents} hitEnemyId={hitEnemyId} />
+        <EnemyDisplay
+          enemies={gameState.enemies}
+          intents={enemyIntents}
+          hitEnemyId={hitEnemyId}
+          previewTargetEnemyId={previewState.enemyId}
+          previewDamage={previewState.damage}
+          previewHp={previewState.previewHp}
+        />
       </section>
 
       <div className="battle-spacer" />
 
       <section className="player-area">
-        <Hand
-          hand={gameState.hand}
-          player={gameState.player}
-          usedTime={gameState.usedTime}
-          lastPlayedCard={lastPlayedCard}
-          selectedCardId={selectedCardId}
-          maxTime={gameState.maxTime}
-          isLocked={gameState.phase !== 'player_turn'}
-          sellingCardId={sellingCardId}
-          returningCardId={returningCardId}
-          onSelectCard={selectCard}
-          onCardPointerDown={onHandCardPointerDown}
-          onCardPointerMove={onHandCardPointerMove}
-          onCardPointerUp={onHandCardPointerUp}
-          onCardPointerCancel={onHandCardPointerCancel}
-          onCardHoverStart={onCardHoverStart}
-          onCardHoverEnd={onCardHoverEnd}
-          draggedCardId={handDrag.card?.id ?? null}
-          expandedCardId={expandedCardId}
-          handAreaRef={handAreaRef}
-        />
+        <div className="battle-timebar-row">
+          <Timeline
+            maxTime={gameState.maxTime}
+            remainingTime={remainingTime}
+            isDropActive={dropTimelineActive}
+            isEnding={gameState.phase !== 'player_turn'}
+            onEndTurn={endTurn}
+            timelineBarRef={timelineBarRef}
+          />
+        </div>
 
-        <DandoriIndicator count={isDandoriReady ? 1 : 0} />
+        <div className="battle-status-row">
+          <PlayerStatus
+            player={gameState.player}
+            toolSlots={gameState.toolSlots}
+            battleItems={battleItems}
+            canUseItems={gameState.phase === 'player_turn'}
+            onUseItem={useBattleItem}
+            drawPileCount={gameState.drawPile.length}
+            discardPileCount={gameState.discardPile.length}
+            isPlayerHit={isPlayerHit}
+            hungryState={hungryState}
+          />
+        </div>
 
-        <Timeline
-          maxTime={gameState.maxTime}
-          remainingTime={remainingTime}
-          isDropActive={dropTimelineActive}
-          isEnding={gameState.phase !== 'player_turn'}
-          onEndTurn={endTurn}
-          timelineBarRef={timelineBarRef}
-        />
+        <div className="battle-hand-area">
+          <Hand
+            hand={gameState.hand}
+            player={gameState.player}
+            usedTime={gameState.usedTime}
+            lastPlayedCard={lastPlayedCard}
+            selectedCardId={selectedCardId}
+            maxTime={gameState.maxTime}
+            isLocked={gameState.phase !== 'player_turn'}
+            sellingCardId={sellingCardId}
+            returningCardId={returningCardId}
+            onSelectCard={selectCard}
+            onCardPointerDown={onHandCardPointerDown}
+            onCardPointerMove={onHandCardPointerMove}
+            onCardPointerUp={onHandCardPointerUp}
+            onCardPointerCancel={onHandCardPointerCancel}
+            onCardHoverStart={onCardHoverStart}
+            onCardHoverEnd={onCardHoverEnd}
+            draggedCardId={handDrag.card?.id ?? null}
+            expandedCardId={expandedCardId}
+            handAreaRef={handAreaRef}
+          />
+          <DandoriIndicator count={isDandoriReady ? 1 : 0} />
+        </div>
 
-        <PlayerStatus
-          player={gameState.player}
-          toolSlots={gameState.toolSlots}
-          isPlayerHit={isPlayerHit}
-          hungryState={hungryState}
-        />
-
-        <ActionBar
-          reserved={gameState.reserved}
-          gold={gameState.player.gold}
-          turn={gameState.turn}
-          drawPileCount={gameState.drawPile.length}
-          discardPileCount={gameState.discardPile.length}
-          phaseText={gameState.phase}
-          isDragging={handDrag.isDragging}
-          activeDropTarget={handDrag.dropTarget}
-          reserveFull={reserveFull}
-          dragSellValue={canSellInBattle ? handDrag.card?.sellValue ?? null : null}
-          coinBurstIds={coinBursts.map((burst) => burst.id)}
-          reserveDropRef={reserveDropRef}
-          sellDropRef={sellDropRef}
-        />
+        <div className="battle-reserve-area">
+          <ActionBar
+            reserved={gameState.reserved}
+            jobId={gameState.player.jobId}
+            isDragging={handDrag.isDragging}
+            activeDropTarget={handDrag.dropTarget}
+            reserveFull={reserveFull}
+            reserveDropRef={reserveDropRef}
+          />
+        </div>
       </section>
 
       <div className="effects-layer">
@@ -400,12 +439,14 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
         >
           <CardComponent
             card={handDrag.card}
+            jobId={gameState.player.jobId}
             selected
             disabled={false}
             locked={false}
             isSelling={false}
             isReturning={false}
             isGhost={false}
+            isDragging
             isDragUnavailable={false}
             effectiveValues={getEffectiveCardValues(handDrag.card, gameState.player, lastPlayedCard)}
             onSelect={noop}

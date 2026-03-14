@@ -39,12 +39,7 @@ interface LayoutItem {
 
 const calcHandLayout = (cardCount: number, areaWidth: number): LayoutItem[] => {
   if (cardCount <= 0) return [];
-  const baseCardWidth = 100;
-  const minCardWidth = 70;
-  const cardWidth = Math.max(
-    minCardWidth,
-    Math.min(baseCardWidth, (areaWidth - 16) / Math.max(cardCount, 1)),
-  );
+  const cardWidth = 105;
   const cardHeight = cardWidth * 1.6;
   const anglePerCard = cardCount > 1 ? Math.min(20 / (cardCount - 1), 5) : 0;
   const totalAngle = anglePerCard * (cardCount - 1);
@@ -118,7 +113,8 @@ const Hand = ({
             card.type === 'status' ||
             usedTime + getEffectiveTimeCost(card, lastPlayedCard, player, player.jobId) > maxTime;
           const effectiveValues = getEffectiveCardValues(card, player, lastPlayedCard);
-          const isExpanded = expandedCardId === card.id && draggedCardId !== card.id;
+          const isExpanded = expandedCardId === card.id;
+          const isDraggingCard = draggedCardId === card.id;
           const current = layout[cardIndex];
           const style: CSSProperties = {
             left: `${current?.x ?? 0}px`,
@@ -126,11 +122,15 @@ const Hand = ({
             '--hand-card-width': `${current?.width ?? 82}px`,
             '--hand-card-height': `${current?.height ?? 114}px`,
             '--card-angle': `${current?.angle ?? 0}deg`,
-            transform: isExpanded
-              ? `rotate(0deg) translateY(-50px) scale(1.15)`
-              : `rotate(${current?.angle ?? 0}deg)`,
-            zIndex: isExpanded ? 100 : cardIndex + 1,
-            transition: 'transform 0.2s ease-out',
+            transform: isDraggingCard
+              ? 'rotate(0deg) translateY(-50px) scale(1.15)'
+              : isExpanded
+                ? 'rotate(0deg) translateY(-50px) scale(1.15)'
+                : `rotate(${current?.angle ?? 0}deg)`,
+            zIndex: isDraggingCard ? 200 : isExpanded ? 100 : cardIndex + 1,
+            transition: isDraggingCard
+              ? 'none'
+              : 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
           } as CSSProperties;
 
           return (
@@ -143,12 +143,14 @@ const Hand = ({
             >
               <CardComponent
                 card={card}
+                jobId={player.jobId}
                 selected={selectedCardId === card.id || isExpanded}
                 disabled={placeDisabled}
                 locked={isLocked}
                 isSelling={sellingCardId === card.id}
                 isReturning={returningCardId === card.id}
                 isGhost={draggedCardId === card.id}
+                isDragging={isDraggingCard}
                 isDragUnavailable={placeDisabled}
                 effectiveValues={effectiveValues}
                 onSelect={() => onSelectCard(card.id)}

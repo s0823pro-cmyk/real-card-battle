@@ -13,54 +13,51 @@ const HomeScreen = ({ onStart }: HomeScreenProps) => {
   const modalTitles: Record<Exclude<ModalType, null>, string> = {
     howto: '遊び方',
     settings: '設定',
-    records: '実績・記録',
+    records: '実績',
     credits: 'クレジット',
   };
 
   return (
     <main className="home-screen">
-      <div className="home-bg-effect" />
+      <div className="home-bg" />
 
-      <section className="home-title-block">
+      <div className="home-title-block">
         <h1 className="home-title">リアルカードバトル</h1>
         <p className="home-subtitle">～職業カードで生き残れ～</p>
-      </section>
-
-      <div className="home-job-icons">
-        <span className="home-job-icon icon--carpenter">🔨</span>
-        <span className="home-job-icon icon--cook">🔪</span>
-        <span className="home-job-icon icon--unemployed">✊</span>
       </div>
 
-      <section className="home-buttons">
+      <div className="home-main-action">
         <button type="button" className="btn-start" onClick={onStart}>
           ゲームスタート
         </button>
+      </div>
 
-        <div className="btn-sub-grid">
-          <button type="button" className="btn-sub" onClick={() => setModal('howto')}>
-            遊び方
-          </button>
-          <button type="button" className="btn-sub" onClick={() => setModal('settings')}>
-            設定
-          </button>
-          <button type="button" className="btn-sub" onClick={() => setModal('records')}>
-            実績・記録
-          </button>
-          <button type="button" className="btn-sub" onClick={() => setModal('credits')}>
-            クレジット
-          </button>
-        </div>
-      </section>
+      <nav className="home-sub-nav">
+        <button type="button" className="btn-sub-text" onClick={() => setModal('howto')}>
+          遊び方
+        </button>
+        <span className="home-nav-divider">·</span>
+        <button type="button" className="btn-sub-text" onClick={() => setModal('settings')}>
+          設定
+        </button>
+        <span className="home-nav-divider">·</span>
+        <button type="button" className="btn-sub-text" onClick={() => setModal('records')}>
+          実績
+        </button>
+        <span className="home-nav-divider">·</span>
+        <button type="button" className="btn-sub-text" onClick={() => setModal('credits')}>
+          クレジット
+        </button>
+      </nav>
 
       <p className="home-version">ver 0.1.0</p>
 
       {modal && (
-        <div className="modal-overlay" onClick={() => setModal(null)}>
-          <div className="modal-box" onClick={(event) => event.stopPropagation()}>
+        <div className="home-modal-overlay" onClick={() => setModal(null)}>
+          <div className="home-modal-box" onClick={(event) => event.stopPropagation()}>
             <h2>{modalTitles[modal]}</h2>
             <p>準備中です。</p>
-            <button type="button" className="modal-close" onClick={() => setModal(null)}>
+            <button type="button" className="home-modal-close" onClick={() => setModal(null)}>
               閉じる
             </button>
           </div>

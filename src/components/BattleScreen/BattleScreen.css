@@ -8,7 +8,7 @@
   padding-bottom: env(safe-area-inset-bottom, 8px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
@@ -44,13 +44,14 @@
 }
 
 .enemy-placeholder {
-  flex: 1;
-  min-height: 0;
+  flex-shrink: 0;
+  min-height: 120px;
+  max-height: 180px;
   border-radius: 8px;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 8px 10px;
+  padding: 12px 16px 8px;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
   position: relative;
 }
@@ -88,13 +89,40 @@
 }
 
 .battle-spacer {
-  display: none;
+  flex: 1;
+  min-height: 0;
 }
 
 .player-area {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.battle-timebar-row {
+  flex-shrink: 0;
+  padding: 6px 12px;
+}
+
+.battle-status-row {
+  flex-shrink: 0;
+}
+
+.battle-hand-area {
+  flex-shrink: 0;
+  height: 220px;
+}
+
+.battle-hand-area .hand-area {
+  height: 220px;
+}
+
+.battle-reserve-area {
+  flex-shrink: 0;
+  padding: 4px 12px 16px;
+  min-height: 56px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 .battle-message {
@@ -137,9 +165,18 @@
   position: fixed;
   z-index: 9999;
   pointer-events: none;
-  transform: translate(-50%, -50%) scale(1.6) rotate(-2deg);
-  opacity: 0.88;
+  transform: translate(-50%, -50%) rotate(0deg) scale(1.15);
+  opacity: 1;
   transition: none;
+}
+
+.drag-floating-card .hand-card {
+  transform: rotate(0deg) scale(1.15) !important;
+  scale: none !important;
+  transition: none !important;
+  cursor: grabbing;
+  width: 105px;
+  height: 168px;
 }
 
 .drag-floating-card.invalid {

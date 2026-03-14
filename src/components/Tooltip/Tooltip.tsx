@@ -90,23 +90,28 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
     };
   }, [visible]);
 
-  const show = () => {
+  const showTooltip = () => {
     if (hideTimerRef.current !== null) {
       window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
     }
     setVisible(true);
   };
 
-  const hide = () => {
+  const hideTooltip = () => {
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
     setVisible(false);
   };
 
-  const onTouchStart = () => {
-    setVisible(true);
-  };
-
-  const onTouchEnd = () => {
-    setVisible(false);
+  const showTooltipWithTimeout = () => {
+    showTooltip();
+    hideTimerRef.current = window.setTimeout(() => {
+      setVisible(false);
+      hideTimerRef.current = null;
+    }, 2000);
   };
 
   if (!data) return <>{children}</>;
@@ -115,14 +120,15 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
     <div
       ref={wrapperRef}
       className="tooltip-wrapper"
-      onMouseEnter={show}
-      onMouseLeave={hide}
+      onMouseEnter={showTooltip}
+      onMouseLeave={hideTooltip}
       onTouchStart={(event) => {
         event.preventDefault();
-        onTouchStart();
+        showTooltipWithTimeout();
       }}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={hide}
+      onTouchEnd={hideTooltip}
+      onTouchCancel={hideTooltip}
+      onTouchMove={hideTooltip}
     >
       {children}
       <div

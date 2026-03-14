@@ -1,166 +1,123 @@
 .home-screen {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --accent-gold: #f0b429;
-  --accent-red: #e74c3c;
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
   position: relative;
   width: 100%;
   max-width: 430px;
-  min-height: 100dvh;
+  height: 100dvh;
   margin: 0 auto;
-  padding: 20px;
+  padding: 20px 16px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 0;
   overflow: hidden;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  isolation: isolate;
+  background: #0d1117;
+  color: #e6edf3;
 }
 
-.home-screen::before {
-  content: '';
+.home-bg {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 22px 22px;
-  pointer-events: none;
-}
-
-.home-bg-effect {
-  position: absolute;
-  inset: -25% -20%;
-  background:
-    radial-gradient(circle at 50% 8%, rgba(240, 180, 41, 0.3), transparent 46%),
-    radial-gradient(circle at 20% 0%, rgba(231, 76, 60, 0.2), transparent 42%);
-  animation: home-bg-drift 30s ease-in-out infinite alternate;
-  filter: blur(8px);
+  background: radial-gradient(
+    ellipse 60% 40% at 50% 20%,
+    rgba(192, 57, 43, 0.08) 0%,
+    transparent 70%
+  );
   pointer-events: none;
   z-index: -1;
 }
 
 .home-title-block {
   text-align: center;
-  animation: home-fade-in 0.5s ease-out both;
+  margin-bottom: 48px;
 }
 
 .home-title {
   margin: 0;
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--font-display);
   font-weight: 900;
-  color: var(--accent-gold);
-  font-size: clamp(30px, 8.2vw, 40px);
-  letter-spacing: 0.06em;
-  text-shadow:
-    0 0 8px rgba(240, 180, 41, 0.45),
-    0 0 24px rgba(240, 180, 41, 0.22);
+  color: #f0b429;
+  font-size: clamp(22px, 6vw, 32px);
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-shadow: 0 0 20px rgba(240, 180, 41, 0.3);
 }
 
 .home-subtitle {
   margin: 8px 0 0;
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: var(--font-ui);
   font-weight: 400;
-  color: var(--text-secondary);
-  font-size: 0.95rem;
+  color: #8b949e;
+  font-size: 12px;
+  letter-spacing: 0.1em;
 }
 
-.home-job-icons {
-  display: flex;
-  gap: 24px;
-  animation: home-fade-up 0.45s ease-out 0.1s both;
-}
-
-.home-job-icon {
-  font-size: 32px;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
-}
-
-.icon--carpenter {
-  animation: float 3.4s ease-in-out infinite;
-}
-
-.icon--cook {
-  animation: float 3.8s ease-in-out infinite 0.35s;
-}
-
-.icon--unemployed {
-  animation: float 3.2s ease-in-out infinite 0.8s;
-}
-
-.home-buttons {
-  width: 100%;
-  max-width: 320px;
-  display: grid;
-  gap: 12px;
-  justify-items: center;
-  animation: home-fade-up 0.45s ease-out 0.2s both;
+.home-main-action {
+  margin-bottom: 32px;
 }
 
 .btn-start {
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  background: #c0392b;
   color: #fff;
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: var(--font-ui);
   font-weight: 700;
-  font-size: 18px;
-  padding: 16px 48px;
+  font-size: 16px;
+  padding: 14px 56px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   letter-spacing: 0.1em;
-  box-shadow: 0 0 20px rgba(231, 76, 60, 0.4);
-  width: 80%;
-  animation: pulse-glow 2s ease-in-out infinite;
-  transition: transform 0.16s ease, filter 0.16s ease;
+  box-shadow: 0 2px 12px rgba(192, 57, 43, 0.4);
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 
 .btn-start:hover {
-  transform: scale(1.03);
-  filter: brightness(1.08);
+  background: #e74c3c;
 }
 
 .btn-start:active {
   transform: scale(0.97);
 }
 
-.btn-sub-grid {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+.home-sub-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
 }
 
-.btn-sub {
+.btn-sub-text {
   background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  font-family: 'Noto Sans JP', sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  padding: 12px 0;
-  border-radius: 4px;
+  color: #8b949e;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  padding: 4px;
   cursor: pointer;
-  transition: border-color 0.16s ease, color 0.16s ease;
+  transition: color 0.15s ease;
 }
 
-.btn-sub:hover {
-  border-color: rgba(255, 255, 255, 0.4);
+.btn-sub-text:hover {
   color: #e6edf3;
 }
 
-.home-version {
-  margin: 4px 0 0;
-  color: var(--text-secondary);
-  font-size: 0.72rem;
+.home-nav-divider {
+  color: #3d444d;
+  font-size: 12px;
+  user-select: none;
 }
 
-.modal-overlay {
+.home-version {
+  position: fixed;
+  bottom: 12px;
+  margin: 0;
+  color: #3d444d;
+  font-family: var(--font-ui);
+  font-size: 10px;
+}
+
+.home-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -170,77 +127,28 @@
   padding: 12px;
 }
 
-.modal-box {
+.home-modal-box {
   width: min(360px, 92vw);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: #161b22;
+  color: #e6edf3;
   padding: 14px;
   display: grid;
   gap: 10px;
 }
 
-.modal-box h2,
-.modal-box p {
+.home-modal-box h2,
+.home-modal-box p {
   margin: 0;
 }
 
-.modal-close {
+.home-modal-close {
   justify-self: end;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   min-width: 74px;
   min-height: 32px;
   background: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(231, 76, 60, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 35px rgba(231, 76, 60, 0.7);
-  }
-}
-
-@keyframes home-bg-drift {
-  0% {
-    transform: translate3d(-8px, -6px, 0);
-  }
-  100% {
-    transform: translate3d(8px, 6px, 0);
-  }
-}
-
-@keyframes home-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes home-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  color: #e6edf3;
 }

@@ -1,4 +1,4 @@
-import type { Card } from '../../types/game';
+import type { Card, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
@@ -7,48 +7,25 @@ import './ActionBar.css';
 
 interface Props {
   reserved: Card[];
-  gold: number;
-  turn: number;
-  drawPileCount: number;
-  discardPileCount: number;
-  phaseText: string;
+  jobId: JobId;
   isDragging: boolean;
   activeDropTarget: 'enemy' | 'field' | 'hand' | 'reserve' | 'sell' | null;
   reserveFull: boolean;
-  dragSellValue: number | null;
-  coinBurstIds: number[];
   reserveDropRef?: RefObject<HTMLDivElement | null>;
-  sellDropRef?: RefObject<HTMLDivElement | null>;
 }
 
 const ActionBar = ({
   reserved,
-  gold,
-  turn,
-  drawPileCount,
-  discardPileCount,
-  phaseText,
+  jobId,
   isDragging,
   activeDropTarget,
   reserveFull,
-  dragSellValue,
-  coinBurstIds,
   reserveDropRef,
-  sellDropRef,
 }: Props) => {
   const [previewCardId, setPreviewCardId] = useState<string | null>(null);
   const [previewAlign, setPreviewAlign] = useState<'center' | 'left' | 'right'>('center');
   const longPressTimerRef = useRef<number | null>(null);
 
-  const phaseLabelMap: Record<string, string> = {
-    battle_start: '戦闘開始',
-    player_turn: 'プレイヤー',
-    executing: '実行',
-    enemy_turn: '敵',
-    victory: '勝利',
-    defeat: '敗北',
-  };
-  const phaseLabel = phaseLabelMap[phaseText] ?? phaseText;
   const noop = () => {};
   const clearLongPress = () => {
     if (longPressTimerRef.current !== null) {
@@ -104,10 +81,6 @@ const ActionBar = ({
 
   return (
     <section className="action-bar bottom-area">
-      <p className="battle-meta">
-        Turn {turn} / {phaseLabel} / 山札 {drawPileCount} / 捨て札 {discardPileCount}
-      </p>
-
       <div className="deck-info">
         <div className="reserved-panel">
           <div
@@ -173,12 +146,14 @@ const ActionBar = ({
                         >
                           <CardComponent
                             card={card}
+                            jobId={jobId}
                             selected={false}
                             disabled={false}
                             locked={false}
                             isSelling={false}
                             isReturning={false}
                             isGhost={false}
+                            isDragging={false}
                             isDragUnavailable={false}
                             effectiveValues={getBaseEffectiveValues(card)}
                             onSelect={noop}
@@ -198,19 +173,6 @@ const ActionBar = ({
             })}
           </div>
           {reserved.length > 0 && <span className="reserve-penalty">次ターン -{reserved.length}秒</span>}
-        </div>
-        <div
-          className={`gold-panel drop-target sell-target ${activeDropTarget === 'sell' ? 'active' : ''}`}
-          ref={sellDropRef}
-        >
-          <span className="gold-amount">
-            💰 {gold}G {isDragging && activeDropTarget === 'sell' ? `(+${dragSellValue ?? 5}G)` : ''}
-          </span>
-          {coinBurstIds.map((id) => (
-            <span key={id} className="coin-burst">
-              +5
-            </span>
-          ))}
         </div>
       </div>
 

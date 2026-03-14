@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BranchPreview, GameProgress } from '../../types/run';
 import BranchSelectModal from './BranchSelectModal';
+import Tooltip from '../Tooltip/Tooltip';
 import './RunMapScreen.css';
 
 interface Props {
@@ -55,6 +56,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [pieceLanding, setPieceLanding] = useState(false);
   const [tooltip, setTooltip] = useState<TileTooltipState | null>(null);
+  const [relicsOpen, setRelicsOpen] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
   const prevTileIdRef = useRef(progress.currentTileId);
   const isSelecting = progress.currentScreen === 'branch_select' && progress.selectableTileIds.length > 0;
@@ -117,17 +119,53 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
     setTooltip((current) => (current?.tileId === tileId ? null : current));
   };
 
+  const getHpClass = (): 'hp-high' | 'hp-mid' | 'hp-low' => {
+    const ratio = progress.player.currentHp / Math.max(1, progress.player.maxHp);
+    if (ratio <= 0.3) return 'hp-low';
+    if (ratio <= 0.7) return 'hp-mid';
+    return 'hp-high';
+  };
+
   return (
     <main className="run-map-screen">
-      <header className="run-map-header">
-        <h2>エリア1: 商店街</h2>
-        <p>
-          ♥{progress.player.currentHp}/{progress.player.maxHp} 🧠{progress.player.mental} 💰{progress.player.gold}G
-        </p>
-        <p>お守り: {progress.omamoris.map((item) => item.icon).join(' ') || 'なし'}</p>
+      <header className="map-header">
+        <div className="map-header-row">
+          <span className="map-area-name">エリア{progress.currentArea}</span>
+          <div className="map-player-stats">
+            <span className={`map-stat map-stat--hp ${getHpClass()}`}>
+              ❤️ {progress.player.currentHp}/{progress.player.maxHp}
+            </span>
+            <span className="map-stat">🧠 {progress.player.mental}</span>
+            <span className="map-stat">💰 {progress.player.gold}G</span>
+          </div>
+        </div>
+        {progress.omamoris.length > 0 && (
+          <div className="map-relics-wrap">
+            <button
+              type="button"
+              className="map-relics-toggle"
+              onClick={() => setRelicsOpen((prev) => !prev)}
+            >
+              お守り {relicsOpen ? '▲' : '▼'}
+            </button>
+            {relicsOpen && (
+              <div className="map-relics">
+                {progress.omamoris.map((relic) => (
+                  <Tooltip
+                    key={relic.id}
+                    label={relic.name}
+                    description={relic.description}
+                  >
+                    <span className="map-relic-icon">{relic.icon}</span>
+                  </Tooltip>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </header>
 
-      <section className="board-wrapper" ref={boardRef}>
+      <section className="board-wrapper map-board-container" ref={boardRef}>
         <div className="board-canvas" style={{ width, height }}>
           <svg className="board-paths" viewBox={`0 0 ${width} ${height}`}>
             {(() => {
@@ -235,7 +273,6 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
                 }}
               >
                 <span>{tile.icon}</span>
-                {tile.isCurrentPosition && <span className="board-here-label">▲ HERE</span>}
                 {tooltip?.tileId === tile.id && (
                   <div
                     className={`tile-tooltip ${tooltip.placeBelow ? 'tile-tooltip--below' : ''} ${
@@ -272,7 +309,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
       <footer className="map-controls">
         <button
           type="button"
-          className="roll-btn"
+          className="btn-roulette"
           disabled={
             progress.currentScreen !== 'map' ||
             progress.board.find((tile) => tile.id === progress.currentTileId)?.type === 'area_boss'

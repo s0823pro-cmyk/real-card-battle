@@ -20,7 +20,7 @@ const Timeline = ({
 }: Props) => {
   const remainingRatio = Math.max(0, Math.min(1, remainingTime / Math.max(1, maxTime)));
   const fillPercent = remainingRatio * 100;
-  const dangerClass = remainingRatio <= 0.3 ? 'critical' : remainingRatio <= 0.6 ? 'warning' : 'safe';
+  const dangerClass = remainingRatio <= 0.25 ? 'critical' : remainingRatio <= 0.5 ? 'warning' : 'safe';
 
   return (
     <section className="timeline-section">
