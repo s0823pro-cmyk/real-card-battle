@@ -148,6 +148,9 @@ export const useBattleLogic = () => {
       if (effect.type === 'next_turn_no_block') {
         nextPlayer.nextTurnNoBlock = true;
       }
+      if (effect.type === 'next_turn_time_penalty') {
+        nextPlayer.nextTurnTimePenalty += effect.value;
+      }
       if (effect.type === 'mental_boost') {
         nextPlayer.mental = Math.min(10, nextPlayer.mental + effect.value);
       }

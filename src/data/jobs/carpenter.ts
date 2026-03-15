@@ -82,9 +82,9 @@ export const CARPENTER_COMMON_POOL: Card[] = [
     id: 'reinforced_wall',
     name: '補強壁',
     type: 'skill',
-    timeCost: 3,
+    timeCost: 2,
     block: 6,
-    description: '6ブロック',
+    description: '6ブロック。温存時：12ブロック',
     icon: '🧱',
     reserveBonus: {
       description: '温存時：12ブロック',

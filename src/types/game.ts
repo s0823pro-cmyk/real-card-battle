@@ -1,4 +1,4 @@
-export type CardType = 'attack' | 'skill' | 'power' | 'tool' | 'status';
+export type CardType = 'attack' | 'skill' | 'power' | 'tool' | 'status' | 'curse';
 export type JobId = 'carpenter' | 'cook' | 'unemployed';
 export type GamePhase =
   | 'battle_start'
@@ -32,6 +32,7 @@ export type EffectType =
   | 'next_attack_damage_boost'
   | 'damage_immunity_this_turn'
   | 'next_turn_no_block'
+  | 'next_turn_time_penalty'
   | 'mental_boost'
   | 'low_hp_damage_boost'
   | 'first_cooking_multiplier_boost';
@@ -131,6 +132,7 @@ export interface PlayerState {
   nextAttackDamageBoost: number;
   damageImmunityThisTurn: boolean;
   nextTurnNoBlock: boolean;
+  nextTurnTimePenalty: number;
   canBlock: boolean;
   lowHpDamageBoost: number;
   kitchenDemonActive: boolean;

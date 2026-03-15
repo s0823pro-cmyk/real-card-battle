@@ -61,8 +61,8 @@ export const RESERVE_BONUS_CARDS: Card[] = [
     name: '乾燥させた木材',
     type: 'attack',
     timeCost: 3,
-    damage: 8,
-    description: '8ダメージ',
+    damage: 10,
+    description: '10ダメージ。温存時：20ダメージ',
     icon: '🪵',
     reserveBonus: {
       description: '温存時：16ダメージ',
@@ -76,8 +76,8 @@ export const RESERVE_BONUS_CARDS: Card[] = [
     name: '研いだノコギリ',
     type: 'attack',
     timeCost: 2,
-    damage: 5,
-    description: '5ダメージ',
+    damage: 6,
+    description: '6ダメージ。温存時：12ダメージ+足場+1',
     icon: '🪚',
     reserveBonus: {
       description: '温存時：10ダメージ＋足場+1',
@@ -91,9 +91,9 @@ export const RESERVE_BONUS_CARDS: Card[] = [
     id: 'reinforced_wall',
     name: '補強壁',
     type: 'skill',
-    timeCost: 3,
+    timeCost: 2,
     block: 6,
-    description: '6ブロック',
+    description: '6ブロック。温存時：12ブロック',
     icon: '🧱',
     reserveBonus: {
       description: '温存時：12ブロック',

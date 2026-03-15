@@ -38,10 +38,23 @@ export const UNEMPLOYED_STARTER_DECK: Card[] = [
 ];
 
 export const UNEMPLOYED_COMMON_POOL: Card[] = [
-  { id: 'can', name: '空き缶投げ', type: 'attack', timeCost: 1, description: '3ダメージ', damage: 3, icon: '🥫', sellValue: 5, imageUrl: emptyCanImage },
+  { id: 'can', name: '空き缶投げ', type: 'attack', timeCost: 1, description: '4ダメージ', damage: 4, icon: '🥫', sellValue: 5, imageUrl: emptyCanImage },
   { id: 'newspaper', name: '新聞紙アーマー', type: 'skill', timeCost: 1, description: '3ブロック、カード1枚ドロー', block: 3, icon: '📰', sellValue: 5, effects: [{ type: 'draw', value: 1 }], imageUrl: newspaperArmorImage },
   { id: 'umbrella', name: '傘で突く', type: 'attack', timeCost: 2, description: '7ダメージ、2ブロック', damage: 7, block: 2, icon: '☂️', sellValue: 5, imageUrl: umbrellaStabImage },
-  { id: 'hello_work', name: 'ハローワークへ行く', type: 'skill', timeCost: 2, description: 'カード3枚ドロー', icon: '🏢', sellValue: 5, effects: [{ type: 'draw', value: 3 }], imageUrl: helloWorkImage },
+  {
+    id: 'hello_work',
+    name: 'ハローワークへ行く',
+    type: 'skill',
+    timeCost: 2,
+    description: 'カード3枚ドロー、次ターンタイムバー-2秒',
+    icon: '🏢',
+    sellValue: 5,
+    effects: [
+      { type: 'draw', value: 3 },
+      { type: 'next_turn_time_penalty', value: 2 },
+    ],
+    imageUrl: helloWorkImage,
+  },
   { id: 'vending_kick', name: '自販機キック', type: 'attack', timeCost: 1, description: '4ダメージ、50%で+10G', damage: 4, icon: '🥾', sellValue: 5, imageUrl: vendingKickImage },
   {
     id: 'defiance',
@@ -94,7 +107,7 @@ export const UNEMPLOYED_UNCOMMON_POOL: Card[] = [
 ];
 
 export const UNEMPLOYED_RARE_POOL: Card[] = [
-  { id: 'gamble', name: '一発逆転ギャンブル', type: 'skill', timeCost: 1, description: '50%で敵に25ダメージ、50%で自分に10ダメージ', icon: '🎰', rarity: 'rare', sellValue: 25, imageUrl: gambleImage },
+  { id: 'gamble', name: '一発逆転ギャンブル', type: 'skill', timeCost: 2, description: '50%で敵に25ダメージ、50%で自分に10ダメージ', icon: '🎰', rarity: 'rare', sellValue: 25, imageUrl: gambleImage },
   { id: 'revival', name: '七転び八起き', type: 'power', timeCost: 4, description: '戦闘不能時HP1で1回復活', icon: '🔄', rarity: 'rare', sellValue: 25, imageUrl: revivalImage },
   { id: 'death_wish', name: 'デスウィッシュ', type: 'power', timeCost: 3, description: 'HP回復を全て無効化。毎ターン全カード+4ダメージ', icon: '💀', rarity: 'rare', sellValue: 25, imageUrl: deathWishImage },
   { id: 'cliff_edge', name: '崖っぷちの底力', type: 'power', timeCost: 5, description: '覚醒中：毎ターンカード2枚追加ドロー＋タイムバー+1秒', icon: '⚡', rarity: 'rare', sellValue: 25, imageUrl: cliffEdgeImage },

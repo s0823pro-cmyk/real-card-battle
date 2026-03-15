@@ -110,6 +110,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   nextAttackDamageBoost: player.nextAttackDamageBoost ?? 0,
   damageImmunityThisTurn: player.damageImmunityThisTurn ?? false,
   nextTurnNoBlock: player.nextTurnNoBlock ?? false,
+  nextTurnTimePenalty: player.nextTurnTimePenalty ?? 0,
   canBlock: player.canBlock ?? true,
   lowHpDamageBoost: player.lowHpDamageBoost ?? 0,
   kitchenDemonActive: player.kitchenDemonActive ?? false,
@@ -149,6 +150,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     nextAttackDamageBoost: 0,
     damageImmunityThisTurn: false,
     nextTurnNoBlock: false,
+    nextTurnTimePenalty: 0,
     canBlock: true,
     lowHpDamageBoost: 0,
     kitchenDemonActive: false,
@@ -257,9 +259,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   useEffect(() => {
     if (gameState.phase !== 'player_turn') return;
-    if (pendingHandUpgradeCount > 0 && gameState.hand.some((card) => !card.upgraded && card.type !== 'status'))
+    if (
+      pendingHandUpgradeCount > 0 &&
+      gameState.hand.some((card) => !card.upgraded && card.type !== 'status' && card.type !== 'curse')
+    )
       return;
-    const noPlayableCard = gameState.hand.length > 0 && gameState.hand.every((card) => card.type === 'status');
+    const noPlayableCard =
+      gameState.hand.length > 0 &&
+      gameState.hand.every((card) => card.type === 'status' || card.type === 'curse');
     const shouldAutoEnd =
       gameState.maxTime - gameState.usedTime <= 0 || gameState.hand.length === 0 || noPlayableCard;
     if (!shouldAutoEnd) return;
@@ -333,6 +340,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     nextAttackDamageBoost: 0,
     damageImmunityThisTurn: false,
     nextTurnNoBlock: false,
+    nextTurnTimePenalty: 0,
     canBlock: true,
     lowHpDamageBoost: 0,
     kitchenDemonActive: false,
@@ -352,7 +360,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const remainingTime = gameState.maxTime - gameState.usedTime;
   const executingCardId = null;
   const canPlayCard = (card: Card): boolean => {
-    if (card.type === 'status') return false;
+    if (card.type === 'status' || card.type === 'curse') return false;
     return (
       gameState.usedTime + getEffectiveTimeCost(card, lastPlayedCard, gameState.player, gameState.player.jobId) <=
       gameState.maxTime
@@ -371,7 +379,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   const isDandoriReady = Boolean(lastPlayedCard?.tags?.includes('preparation'));
   const upgradeableHandCards = useMemo(
-    () => gameState.hand.filter((card) => !card.upgraded && card.type !== 'status'),
+    () => gameState.hand.filter((card) => !card.upgraded && card.type !== 'status' && card.type !== 'curse'),
     [gameState.hand],
   );
   const activePendingHandUpgradeCount =
@@ -698,7 +706,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setGameState((prev) => {
       if (prev.reserved.length >= MAX_RESERVED) return prev;
       const card = prev.hand.find((item) => item.id === cardId);
-      if (!card || card.type === 'status') return prev;
+      if (!card || card.type === 'status' || card.type === 'curse') return prev;
       changed = true;
       const reservedCard: Card = {
         ...card,
@@ -730,7 +738,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (gameState.phase !== 'player_turn') return false;
     if (activePendingHandUpgradeCount > 0) return false;
     const targetCard = gameState.hand.find((card) => card.id === cardId);
-    if (!targetCard || targetCard.type === 'status') return false;
+    if (!targetCard || targetCard.type === 'status' || targetCard.type === 'curse') return false;
     setSellingCardId(cardId);
     window.setTimeout(() => {
       setGameState((prev) => {
@@ -759,7 +767,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       getHungryState(state.player) === 'awakened';
     const cliffEdgeTimeBonus = cliffEdgeAwakened ? 1 : 0;
     const cliffEdgeDrawBonus = cliffEdgeAwakened ? 2 : 0;
-    const nextMaxTime = Math.max(1, getMaxTime(state.player.mental) + cliffEdgeTimeBonus);
+    const nextMaxTime = Math.max(
+      1,
+      getMaxTime(state.player.mental) + cliffEdgeTimeBonus - state.player.nextTurnTimePenalty,
+    );
     const scaffoldPerTurn = state.activePowers
       .flatMap((power) => power.effects ?? [])
       .filter((effect) => effect.type === 'scaffold_per_turn')
@@ -773,6 +784,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       scaffold: state.player.scaffold + scaffoldPerTurn,
       canBlock: !shouldDisableBlockThisTurn,
       nextTurnNoBlock: false,
+      nextTurnTimePenalty: 0,
       damageImmunityThisTurn: false,
       firstCookingUsedThisTurn: false,
     });
@@ -824,7 +836,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       discardPile: [...gameState.discardPile, ...gameState.hand],
     };
 
-    const anxietyCount = gameState.hand.filter((card) => card.type === 'status').length;
+    const anxietyCount = gameState.hand.filter((card) => card.type === 'status' || card.type === 'curse').length;
     if (anxietyCount > 0) {
       const consumed = anxietyCount;
       workingState.usedTime = Math.min(workingState.maxTime, workingState.usedTime + consumed);
@@ -1001,7 +1013,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     let upgraded = false;
     setGameState((prev) => {
       const target = prev.hand.find((card) => card.id === cardId);
-      if (!target || target.upgraded || target.type === 'status') return prev;
+      if (!target || target.upgraded || target.type === 'status' || target.type === 'curse') return prev;
       upgraded = true;
       return {
         ...prev,
