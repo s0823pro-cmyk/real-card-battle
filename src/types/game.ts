@@ -21,10 +21,20 @@ export type EffectType =
   | 'debuff_enemy_atk'
   | 'self_damage'
   | 'time_boost'
-  | 'next_turn_time_penalty'
   | 'double_next'
   | 'attack_buff'
-  | 'draw_per_turn';
+  | 'draw_per_turn'
+  | 'next_attack_time_reduce'
+  | 'scaffold_per_turn'
+  | 'block_persist'
+  | 'block_per_turn'
+  | 'upgrade_hand_card'
+  | 'next_attack_damage_boost'
+  | 'damage_immunity_this_turn'
+  | 'next_turn_no_block'
+  | 'mental_boost'
+  | 'low_hp_damage_boost'
+  | 'first_cooking_multiplier_boost';
 
 export type CardRarity = 'common' | 'uncommon' | 'rare';
 
@@ -54,6 +64,7 @@ export interface Card {
   wasReserved?: boolean;
   reservedThisTurn?: boolean;
   cookingMultiplier?: number;
+  preparationTimeCost?: number;
   upgraded?: boolean;
   lowHpBonus?: LowHpBonus;
 }
@@ -69,6 +80,7 @@ export interface CardEffect {
   type: EffectType;
   value: number;
   duration?: number;
+  threshold?: number;
 }
 
 export interface StatusEffect {
@@ -108,6 +120,21 @@ export interface PlayerState {
   cookingGauge: number;
   mental: number;
   statusEffects: StatusEffect[];
+  hasRevival: boolean;
+  revivalUsed: boolean;
+  deathWishActive: boolean;
+  ridgepoleActive: boolean;
+  templeCarpenterActive: boolean;
+  cliffEdgeActive: boolean;
+  nextAttackTimeReduce: number;
+  blockPersist: boolean;
+  nextAttackDamageBoost: number;
+  damageImmunityThisTurn: boolean;
+  nextTurnNoBlock: boolean;
+  canBlock: boolean;
+  lowHpDamageBoost: number;
+  kitchenDemonActive: boolean;
+  firstCookingUsedThisTurn: boolean;
 }
 
 export interface ToolSlot {
@@ -138,5 +165,4 @@ export interface GameState {
   enemies: Enemy[];
   executingIndex: number;
   toolSlots: ToolSlot[];
-  nextTurnTimeBonus: number;
 }

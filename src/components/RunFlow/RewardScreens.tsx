@@ -54,7 +54,7 @@ export const CardRewardScreen = ({ cards, jobId, onPick, onSkip }: CardRewardPro
       observer.disconnect();
       window.removeEventListener('resize', updateRewardCardWidth);
     };
-  }, []);
+  }, [cards.length]);
 
   return (
     <main className="flow-screen card-reward-screen">

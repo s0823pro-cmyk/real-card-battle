@@ -3,11 +3,12 @@ import './HomeScreen.css';
 
 interface HomeScreenProps {
   onStart: () => void;
+  onOpenZukan: () => void;
 }
 
 type ModalType = 'howto' | 'settings' | 'records' | 'credits' | null;
 
-const HomeScreen = ({ onStart }: HomeScreenProps) => {
+const HomeScreen = ({ onStart, onOpenZukan }: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
 
   const modalTitles: Record<Exclude<ModalType, null>, string> = {
@@ -35,6 +36,10 @@ const HomeScreen = ({ onStart }: HomeScreenProps) => {
       <nav className="home-sub-nav">
         <button type="button" className="btn-sub-text" onClick={() => setModal('howto')}>
           遊び方
+        </button>
+        <span className="home-nav-divider">·</span>
+        <button type="button" className="btn-sub-text" onClick={onOpenZukan}>
+          図鑑
         </button>
         <span className="home-nav-divider">·</span>
         <button type="button" className="btn-sub-text" onClick={() => setModal('settings')}>

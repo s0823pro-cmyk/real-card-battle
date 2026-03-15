@@ -64,7 +64,10 @@ export const getEffectiveCardValues = (
       damage = Math.floor(damage * card.reserveBonus.damageMultiplier);
     }
     if (lastPlayedCard?.tags?.includes('preparation')) {
-      damage = Math.floor(damage * 1.3);
+      damage = Math.floor(damage * (player.templeCarpenterActive ? 1.5 : 1.3));
+    }
+    if (player.deathWishActive && card.type === 'attack') {
+      damage += 4;
     }
     const strengthBonus = getStrengthBonus(player);
     if (strengthBonus > 0) {

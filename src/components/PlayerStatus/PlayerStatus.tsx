@@ -76,6 +76,26 @@ const PlayerStatus = ({
             <span className={unemployedClass}>{unemployedLabel}</span>
           </Tooltip>
         )}
+        {player.deathWishActive && (
+          <Tooltip label="💀 デスウィッシュ" description="HP回復無効。全アタック+4ダメージ">
+            <span className="status-death-wish">💀</span>
+          </Tooltip>
+        )}
+        {player.ridgepoleActive && (
+          <Tooltip label="🎌 棟上げ" description="足場5以上で毎ターン全敵10ダメージ">
+            <span className="status-ridgepole">🎌</span>
+          </Tooltip>
+        )}
+        {player.templeCarpenterActive && (
+          <Tooltip label="🏯 宮大工の技" description="段取りボーナスが+50%に強化">
+            <span className="status-temple">🏯</span>
+          </Tooltip>
+        )}
+        {player.cliffEdgeActive && (
+          <Tooltip label="⚡ 崖っぷちの底力" description="覚醒中：毎ターン2ドロー + タイムバー+1秒">
+            <span className="status-cliff-edge">⚡</span>
+          </Tooltip>
+        )}
         <div className="stat-items">
           {Array.from({ length: 3 }).map((_, idx) => {
             const item = battleItems[idx];

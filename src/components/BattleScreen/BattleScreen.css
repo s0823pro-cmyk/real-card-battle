@@ -155,6 +155,27 @@
     0 0 40px rgba(240, 180, 41, 0.5);
 }
 
+.revival-effect {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(240, 180, 41, 0.2);
+  z-index: 9999;
+  pointer-events: none;
+  animation: revival-flash 1s ease-out forwards;
+}
+
+.revival-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  color: #f0b429;
+  text-shadow: 0 0 30px rgba(240, 180, 41, 0.9);
+  animation: popup-appear 1s ease-out forwards;
+}
+
 .enemy-placeholder {
   flex-shrink: 0;
   min-height: 120px;
@@ -516,6 +537,36 @@
   pointer-events: none;
 }
 
+.battle-upgrade-guide {
+  padding: 10px 16px 0;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.battle-upgrade-card-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.battle-upgrade-card-button .hand-card {
+  pointer-events: none;
+}
+
+.battle-upgrade-preview {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: #8b949e;
+  text-align: center;
+  line-height: 1.2;
+}
+
 .battle-pile-empty {
   font-family: var(--font-ui);
   font-size: 12px;
@@ -672,6 +723,15 @@
   100% {
     opacity: 0;
     transform: translate(-50%, -60%) scale(0.9);
+  }
+}
+
+@keyframes revival-flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }
 

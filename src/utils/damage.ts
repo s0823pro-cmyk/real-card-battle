@@ -41,7 +41,9 @@ export const calculateCardDamage = (
   }
 
   if (player.jobId === 'cook' && card.tags?.includes('cooking') && card.cookingMultiplier) {
-    damage += player.cookingGauge * card.cookingMultiplier;
+    const cookingMultiplierBoost =
+      player.kitchenDemonActive && !player.firstCookingUsedThisTurn ? 2 : 0;
+    damage += player.cookingGauge * (card.cookingMultiplier + cookingMultiplierBoost);
   }
 
   if (player.jobId === 'unemployed') {
@@ -57,6 +59,10 @@ export const calculateCardDamage = (
     damage = Math.floor((player.maxHp - player.currentHp) * multiplier) + getHungryDamageBonus(hungryState);
   }
 
+  if (card.tags?.includes('scaffold_consume')) {
+    damage = player.scaffold * 10;
+  }
+
   if (card.tags?.includes('low_hp_bonus') && card.lowHpBonus) {
     const ratio = player.currentHp / Math.max(1, player.maxHp);
     if (ratio <= card.lowHpBonus.threshold) {
@@ -65,7 +71,22 @@ export const calculateCardDamage = (
   }
 
   if (prevCard?.tags?.includes('preparation')) {
-    damage = Math.floor(damage * 1.3);
+    damage = Math.floor(damage * (player.templeCarpenterActive ? 1.5 : 1.3));
+  }
+
+  if (player.deathWishActive && card.type === 'attack') {
+    damage += 4;
+  }
+
+  if (card.type === 'attack' && player.nextAttackDamageBoost > 0) {
+    damage += player.nextAttackDamageBoost;
+  }
+
+  if (card.type === 'attack' && player.lowHpDamageBoost > 0) {
+    const ratio = player.currentHp / Math.max(1, player.maxHp);
+    if (ratio <= 0.5) {
+      damage += player.lowHpDamageBoost;
+    }
   }
 
   if (card.name === '闇鍋') {
@@ -97,7 +118,17 @@ export const applyEnemyAttack = (
   enemy: Enemy,
   player: PlayerState,
 ): number => {
+  if (player.damageImmunityThisTurn) {
+    return 0;
+  }
+
   const damage = getEnemyAttackValue(intent, enemy);
+
+  if (!player.canBlock) {
+    player.block = 0;
+    player.currentHp = Math.max(0, player.currentHp - damage);
+    return damage;
+  }
 
   if (player.block >= damage) {
     player.block -= damage;
@@ -113,12 +144,13 @@ export const applyEnemyAttack = (
 export const getDandoriBonus = (
   timelineCards: Card[],
   index: number,
+  player?: PlayerState,
 ): { damageMultiplier: number; timeCostReduction: number } => {
   if (index === 0) return { damageMultiplier: 1, timeCostReduction: 0 };
 
   const prevCard = timelineCards[index - 1];
   if (prevCard?.tags?.includes('preparation')) {
-    return { damageMultiplier: 1.3, timeCostReduction: 1 };
+    return { damageMultiplier: player?.templeCarpenterActive ? 1.5 : 1.3, timeCostReduction: 1 };
   }
   return { damageMultiplier: 1, timeCostReduction: 0 };
 };

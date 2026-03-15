@@ -27,24 +27,34 @@ const RouletteOverlay = ({ rolling, value }: Props) => {
 
   useEffect(() => {
     if (rolling && value !== null) {
-      setIsSettled(false);
-      setIsSpinning(false);
-      setOffsetY(0);
-      const raf = window.requestAnimationFrame(() => {
-        setIsSpinning(true);
-        setOffsetY(-(numbers.length - 1) * ITEM_HEIGHT);
+      let raf2: number | null = null;
+      const raf1 = window.requestAnimationFrame(() => {
+        setIsSettled(false);
+        setIsSpinning(false);
+        setOffsetY(0);
+        raf2 = window.requestAnimationFrame(() => {
+          setIsSpinning(true);
+          setOffsetY(-(numbers.length - 1) * ITEM_HEIGHT);
+        });
       });
-      return () => window.cancelAnimationFrame(raf);
+      return () => {
+        window.cancelAnimationFrame(raf1);
+        if (raf2 !== null) window.cancelAnimationFrame(raf2);
+      };
     }
     return undefined;
   }, [rolling, value, numbers.length]);
 
   useEffect(() => {
     if (!rolling && value !== null) {
-      setIsSpinning(false);
-      setOffsetY(-(numbers.length - 1) * ITEM_HEIGHT);
-      setIsSettled(true);
+      const raf = window.requestAnimationFrame(() => {
+        setIsSpinning(false);
+        setOffsetY(-(numbers.length - 1) * ITEM_HEIGHT);
+        setIsSettled(true);
+      });
+      return () => window.cancelAnimationFrame(raf);
     }
+    return undefined;
   }, [rolling, value, numbers.length]);
 
   if (!rolling && value === null) return null;

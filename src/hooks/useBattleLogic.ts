@@ -49,8 +49,13 @@ export const useBattleLogic = () => {
   const applyToolEffects = (toolSlots: ToolSlot[], player: PlayerState): PlayerState => {
     const nextPlayer = { ...player };
     for (const tool of toolSlots) {
-      if (tool.card.block) {
+      if (tool.card.block && nextPlayer.canBlock) {
         nextPlayer.block += tool.card.block;
+      }
+      for (const effect of tool.card.effects ?? []) {
+        if (effect.type === 'block_per_turn' && nextPlayer.canBlock) {
+          nextPlayer.block += effect.value;
+        }
       }
     }
     return nextPlayer;
@@ -70,7 +75,7 @@ export const useBattleLogic = () => {
     }));
 
     const timelineCards = [prevCard, card].filter(Boolean) as Card[];
-    const bonus = getDandoriBonus(timelineCards, timelineCards.length - 1);
+    const bonus = getDandoriBonus(timelineCards, timelineCards.length - 1, player);
     const isDandoriActive = bonus.damageMultiplier > 1;
 
     let targetEnemyId: string | null = null;
@@ -81,21 +86,32 @@ export const useBattleLogic = () => {
     let equippedTool: Card | null = null;
 
     if (card.type === 'attack') {
-      const preferredIndex = preferredTargetEnemyId
-        ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
-        : -1;
-      const targetIndex = preferredIndex >= 0 ? preferredIndex : getAliveEnemyIndex(nextEnemies);
-      if (targetIndex >= 0) {
-        const rawDamage = calculateCardDamage(card, nextPlayer, prevCard);
-        const boostedDamage = isDandoriActive
-          ? Math.floor(rawDamage * bonus.damageMultiplier)
-          : rawDamage;
-        damage = applyDamageToEnemy(nextEnemies[targetIndex], boostedDamage);
-        targetEnemyId = nextEnemies[targetIndex].id;
+      const rawDamage = calculateCardDamage(card, nextPlayer, prevCard);
+      const boostedDamage = isDandoriActive ? Math.floor(rawDamage * bonus.damageMultiplier) : rawDamage;
+      if (card.tags?.includes('aoe')) {
+        for (const enemy of nextEnemies) {
+          if (enemy.currentHp <= 0) continue;
+          damage += applyDamageToEnemy(enemy, boostedDamage);
+        }
+      } else {
+        const preferredIndex = preferredTargetEnemyId
+          ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
+          : -1;
+        const targetIndex = preferredIndex >= 0 ? preferredIndex : getAliveEnemyIndex(nextEnemies);
+        if (targetIndex >= 0) {
+          damage = applyDamageToEnemy(nextEnemies[targetIndex], boostedDamage);
+          targetEnemyId = nextEnemies[targetIndex].id;
+        }
+      }
+      if (card.tags?.includes('scaffold_consume')) {
+        nextPlayer.scaffold = 0;
+      }
+      if (nextPlayer.nextAttackDamageBoost > 0) {
+        nextPlayer.nextAttackDamageBoost = 0;
       }
     }
 
-    if (card.block) {
+    if (card.block && nextPlayer.canBlock) {
       nextPlayer.block += card.block;
       blockGained += card.block;
     }
@@ -110,10 +126,36 @@ export const useBattleLogic = () => {
         cookingGaugeGained += effect.value;
       }
       if (effect.type === 'heal') {
-        nextPlayer.currentHp = Math.min(nextPlayer.maxHp, nextPlayer.currentHp + effect.value);
+        if (!nextPlayer.deathWishActive) {
+          nextPlayer.currentHp = Math.min(nextPlayer.maxHp, nextPlayer.currentHp + effect.value);
+        }
       }
       if (effect.type === 'self_damage') {
         nextPlayer.currentHp = Math.max(0, nextPlayer.currentHp - effect.value);
+      }
+      if (effect.type === 'next_attack_time_reduce') {
+        nextPlayer.nextAttackTimeReduce += effect.value;
+      }
+      if (effect.type === 'next_attack_damage_boost') {
+        nextPlayer.nextAttackDamageBoost += effect.value;
+      }
+      if (effect.type === 'block_persist') {
+        nextPlayer.blockPersist = true;
+      }
+      if (effect.type === 'damage_immunity_this_turn') {
+        nextPlayer.damageImmunityThisTurn = true;
+      }
+      if (effect.type === 'next_turn_no_block') {
+        nextPlayer.nextTurnNoBlock = true;
+      }
+      if (effect.type === 'mental_boost') {
+        nextPlayer.mental = Math.min(10, nextPlayer.mental + effect.value);
+      }
+      if (effect.type === 'low_hp_damage_boost') {
+        nextPlayer.lowHpDamageBoost = Math.max(nextPlayer.lowHpDamageBoost, effect.value);
+      }
+      if (effect.type === 'first_cooking_multiplier_boost') {
+        nextPlayer.kitchenDemonActive = true;
       }
       if (
         effect.type === 'vulnerable' ||
@@ -137,6 +179,10 @@ export const useBattleLogic = () => {
           upsertEnemyStatus(nextEnemies[targetIndex], statusType, effect.value);
         }
       }
+    }
+
+    if (card.tags?.includes('cooking') && nextPlayer.kitchenDemonActive && !nextPlayer.firstCookingUsedThisTurn) {
+      nextPlayer.firstCookingUsedThisTurn = true;
     }
 
     if (card.type === 'tool') {

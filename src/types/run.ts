@@ -13,6 +13,7 @@ export type TileType =
 export type GameScreen =
   | 'home'
   | 'title'
+  | 'zukan'
   | 'job_select'
   | 'map'
   | 'dice_rolling'
@@ -177,4 +178,5 @@ export interface GameProgress {
   lastTileType: TileType | null;
   cardUpgradeMode: 'upgrade' | 'remove' | null;
   returnScreenAfterUpgrade: Exclude<GameScreen, 'card_upgrade'> | null;
+  unlockedCardNames: Set<string>;
 }

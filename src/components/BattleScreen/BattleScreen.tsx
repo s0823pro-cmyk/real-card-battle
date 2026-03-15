@@ -54,6 +54,23 @@ interface BattleScreenProps {
 const DRAG_CARD_HEIGHT = 168;
 const DRAG_Y_OFFSET = -DRAG_CARD_HEIGHT * 0.65;
 const DRAG_PROBE_Y_RATIOS = [0, 0.5, 1] as const;
+const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
+  if ((card.damage ?? 0) > 0) return 'damage';
+  if ((card.block ?? 0) > 0) return 'block';
+  return 'time';
+};
+const getUpgradePreviewText = (card: Card): string => {
+  const type = getAutoUpgradeType(card);
+  if (type === 'damage') {
+    const before = card.damage ?? 0;
+    return `ダメージ ${before}→${before + 3}`;
+  }
+  if (type === 'block') {
+    const before = card.block ?? 0;
+    return `ブロック ${before}→${before + 3}`;
+  }
+  return `所要時間 ${card.timeCost}→${Math.max(1, card.timeCost - 1)}秒`;
+};
 
 const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) => {
   const noop = () => {};
@@ -78,12 +95,17 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     battleItems,
     hungryState,
     hungryFlash,
+    showRevivalEffect,
+    pendingHandUpgradeCount,
+    upgradeableHandCards,
     canPlayCard,
     selectCard,
     playCardInstant,
     reserveCardById,
     sellCardById,
     useBattleItem,
+    upgradeHandCardById,
+    skipHandUpgradeSelection,
     endTurn,
     retryBattle,
   } = useGameState({ setup, onBattleEnd, onConsumeItem });
@@ -121,6 +143,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       return damage >= 10;
     });
     if (!heavyPlayerHit) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setScreenShake(true);
     const timer = window.setTimeout(() => setScreenShake(false), 400);
     return () => window.clearTimeout(timer);
@@ -138,8 +161,6 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     clientX: number,
     clientY: number,
     card: Card,
-    _startX: number,
-    _startY: number,
   ): { target: DropTarget; index: number | null } => {
     const isInRect = (x: number, y: number, rect: DOMRect): boolean =>
       x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
@@ -177,10 +198,8 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const resolveDropTargetFromProbes = (
     probes: { x: number; y: number }[],
     card: Card,
-    startX: number,
-    startY: number,
   ) => {
-    const detections = probes.map((probe) => detectDropTarget(probe.x, probe.y, card, startX, startY));
+    const detections = probes.map((probe) => detectDropTarget(probe.x, probe.y, card));
     const priority: DropTarget[] = ['enemy', 'reserve', 'timebar', 'sell'];
     for (const target of priority) {
       const found = detections.find((detection) => detection.target === target);
@@ -246,6 +265,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     event: ReactPointerEvent,
   ) => {
     if (gameState.phase !== 'player_turn') return;
+    if (pendingHandUpgradeCount > 0) return;
     if (card.type === 'status') return;
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -264,6 +284,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const onHandCardPointerMove = (event: ReactPointerEvent) => {
     const start = dragStartRef.current;
     if (!start || gameState.phase !== 'player_turn') return;
+    if (pendingHandUpgradeCount > 0) return;
     if (event.pointerId !== start.pointerId) return;
     const dx = event.clientX - start.x;
     const dy = event.clientY - start.y;
@@ -274,7 +295,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     event.preventDefault();
     if (!canPlayCard(start.card)) {
       const probes = getDragProbePositions(event.clientX, event.clientY);
-      const detection = resolveDropTargetFromProbes(probes, start.card, start.x, start.y);
+      const detection = resolveDropTargetFromProbes(probes, start.card);
       const reserveOnlyTarget: DropTarget = detection.target === 'reserve' ? 'reserve' : null;
       setIsHoveringTimebar(false);
       setHoveredEnemyId(null);
@@ -290,7 +311,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       return;
     }
     const probes = getDragProbePositions(event.clientX, event.clientY);
-    const detection = resolveDropTargetFromProbes(probes, start.card, start.x, start.y);
+    const detection = resolveDropTargetFromProbes(probes, start.card);
     const enemyTargetCard = isEnemyTargetCard(start.card);
     const timebarRect = timebarRowRef.current?.getBoundingClientRect();
     const isOverTimebar = timebarRect
@@ -323,6 +344,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const onHandCardPointerUp = (event: ReactPointerEvent) => {
     const start = dragStartRef.current;
     if (!start || gameState.phase !== 'player_turn') return;
+    if (pendingHandUpgradeCount > 0) return;
     if (event.pointerId !== start.pointerId) return;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
     setExpandedCardId(null);
@@ -331,7 +353,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     if (handDrag.isDragging && handDrag.card) {
       if (!canPlayCard(handDrag.card)) {
         const probes = getDragProbePositions(event.clientX, event.clientY);
-        const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card, start.x, start.y);
+        const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card);
         if (finalDetection.target === 'reserve') {
           reserveCardById(handDrag.card.id);
         }
@@ -349,7 +371,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
         return;
       }
       const probes = getDragProbePositions(event.clientX, event.clientY);
-      const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card, start.x, start.y);
+      const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card);
       const finalTarget = finalDetection.target;
       const enemyTargetCard = isEnemyTargetCard(handDrag.card);
       if (finalTarget === 'enemy') {
@@ -540,6 +562,11 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       {hungryEffect && (
         <div className={`hungry-popup hungry-popup--${hungryEffect}`}>
           {hungryEffect === 'hungry' ? '🔥 ハングリー！' : '⚡ 覚醒！'}
+        </div>
+      )}
+      {showRevivalEffect && (
+        <div className="revival-effect">
+          <span className="revival-text">🔄 七転び八起き！</span>
         </div>
       )}
       <section
@@ -756,6 +783,62 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
                 </div>
               ))}
               {currentPileCards.length === 0 && <p className="battle-pile-empty">カードがありません</p>}
+            </div>
+          </div>
+        </div>
+      )}
+      {pendingHandUpgradeCount > 0 && (
+        <div className="battle-deck-overlay" onClick={skipHandUpgradeSelection}>
+          <div className="battle-deck-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="battle-deck-modal-header">
+              <h2 className="battle-deck-modal-title">リフォーム：強化するカードを選択</h2>
+              <button type="button" className="battle-btn-close" onClick={skipHandUpgradeSelection}>
+                ✕
+              </button>
+            </div>
+            <div className="battle-upgrade-guide">
+              残り {pendingHandUpgradeCount} 枚
+            </div>
+            <div className="battle-deck-card-grid card-display-grid">
+              {upgradeableHandCards.map((card, idx) => (
+                <button
+                  key={`${card.id}_${idx}`}
+                  type="button"
+                  className="battle-upgrade-card-button"
+                  onClick={() => {
+                    upgradeHandCardById(card.id);
+                  }}
+                  style={
+                    {
+                      '--hand-card-width': '90px',
+                      '--hand-card-height': '144px',
+                    } as CSSProperties
+                  }
+                >
+                  <CardComponent
+                    card={card}
+                    jobId={gameState.player.jobId}
+                    selected={false}
+                    disabled={false}
+                    locked={false}
+                    isSelling={false}
+                    isReturning={false}
+                    isGhost={false}
+                    isDragging={false}
+                    isDragUnavailable={false}
+                    effectiveValues={getBaseEffectiveValues(card)}
+                    onSelect={noop}
+                    onPointerDown={noop}
+                    onPointerMove={noop}
+                    onPointerUp={noop}
+                    onPointerCancel={noop}
+                    onMouseEnter={noop}
+                    onMouseLeave={noop}
+                  />
+                  <span className="battle-upgrade-preview">{getUpgradePreviewText(card)}</span>
+                </button>
+              ))}
+              {upgradeableHandCards.length === 0 && <p className="battle-pile-empty">強化できるカードがありません</p>}
             </div>
           </div>
         </div>

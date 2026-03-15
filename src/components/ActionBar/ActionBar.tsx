@@ -68,6 +68,7 @@ const ActionBar = ({
 
   useEffect(() => {
     if (!isDragging) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPreviewCardId(null);
     clearLongPress();
   }, [isDragging]);

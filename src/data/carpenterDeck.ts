@@ -1,13 +1,22 @@
 import type { Card } from '../types/game';
+import hammerStrikeImage from '../assets/cards/carpenter/hammer_strike.png';
+import nailDriveImage from '../assets/cards/carpenter/nail_drive.png';
+import sawGuardImage from '../assets/cards/carpenter/saw_guard.png';
+import scaffoldBuildImage from '../assets/cards/carpenter/scaffold_build.png';
+import workClothesImage from '../assets/cards/carpenter/work_clothes.png';
+import driedLumberImage from '../assets/cards/carpenter/dried_lumber.png';
+import sharpenedSawImage from '../assets/cards/carpenter/sharpened_saw.png';
+import anxietyImage from '../assets/cards/enemy/anxiety.png';
+import curseImage from '../assets/cards/enemy/curse.png';
 
 export const CARPENTER_STARTER_DECK: Card[] = [
-  { id: 'hammer_1', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨' },
-  { id: 'hammer_2', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨' },
-  { id: 'hammer_3', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨' },
-  { id: 'hammer_4', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨' },
-  { id: 'saw_guard_1', name: 'ノコギリガード', type: 'skill', timeCost: 2, description: '5ブロック', block: 5, sellValue: 5, icon: '🪚' },
-  { id: 'saw_guard_2', name: 'ノコギリガード', type: 'skill', timeCost: 2, description: '5ブロック', block: 5, sellValue: 5, icon: '🪚' },
-  { id: 'saw_guard_3', name: 'ノコギリガード', type: 'skill', timeCost: 2, description: '5ブロック', block: 5, sellValue: 5, icon: '🪚' },
+  { id: 'hammer_1', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨', imageUrl: hammerStrikeImage },
+  { id: 'hammer_2', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨', imageUrl: hammerStrikeImage },
+  { id: 'hammer_3', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨', imageUrl: hammerStrikeImage },
+  { id: 'hammer_4', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨', imageUrl: hammerStrikeImage },
+  { id: 'saw_guard_1', name: 'ノコギリガード', type: 'skill', timeCost: 2, description: '5ブロック', block: 5, sellValue: 5, icon: '🪚', imageUrl: sawGuardImage },
+  { id: 'saw_guard_2', name: 'ノコギリガード', type: 'skill', timeCost: 2, description: '5ブロック', block: 5, sellValue: 5, icon: '🪚', imageUrl: sawGuardImage },
+  { id: 'saw_guard_3', name: 'ノコギリガード', type: 'skill', timeCost: 2, description: '5ブロック', block: 5, sellValue: 5, icon: '🪚', imageUrl: sawGuardImage },
   {
     id: 'build_scaffold',
     name: '足場を組む',
@@ -19,6 +28,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     tags: ['preparation'],
     sellValue: 5,
     icon: '🏗️',
+    imageUrl: scaffoldBuildImage,
   },
   {
     id: 'nail_strike',
@@ -30,6 +40,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     tags: ['scaffold_bonus'],
     sellValue: 5,
     icon: '🔩',
+    imageUrl: nailDriveImage,
   },
   {
     id: 'work_clothes',
@@ -40,6 +51,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     block: 2,
     sellValue: 8,
     icon: '🦺',
+    imageUrl: workClothesImage,
   },
 ];
 
@@ -57,6 +69,7 @@ export const RESERVE_BONUS_CARDS: Card[] = [
       damageMultiplier: 2,
     },
     sellValue: 8,
+    imageUrl: driedLumberImage,
   },
   {
     id: 'sharpened_saw',
@@ -72,6 +85,7 @@ export const RESERVE_BONUS_CARDS: Card[] = [
       extraEffects: [{ type: 'scaffold', value: 1 }],
     },
     sellValue: 8,
+    imageUrl: sharpenedSawImage,
   },
   {
     id: 'reinforced_wall',
@@ -97,6 +111,18 @@ export const ANXIETY_CARD: Card = {
   description: '使用不可。1秒を無駄に消費する',
   icon: '😰',
   sellValue: 0,
+  imageUrl: anxietyImage,
+};
+
+export const CURSE_CARD: Card = {
+  id: 'curse',
+  name: '呪い',
+  type: 'curse',
+  timeCost: 1,
+  description: '使用不可。手札を圧迫する',
+  icon: '💀',
+  sellValue: 0,
+  imageUrl: curseImage,
 };
 
 let serial = 0;

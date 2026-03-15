@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import BattleScreen from './components/BattleScreen/BattleScreen';
 import HomeScreen from './components/HomeScreen/HomeScreen';
 import JobSelectScreen from './components/JobSelectScreen/JobSelectScreen';
+import { ZukanScreen } from './components/ZukanScreen/ZukanScreen';
 import RouletteOverlay from './components/RunMap/RouletteOverlay';
 import RunMapScreen from './components/RunMap/RunMapScreen';
 import EventScreen from './components/RunFlow/EventScreen';
@@ -42,7 +43,10 @@ function App() {
     pickCardReward,
     pickOmamoriReward,
     startRunFromHome,
+    openZukanFromHome,
     backToHomeFromJobSelect,
+    backToHomeFromZukan,
+    unlockAllCardsForDebug,
     startRunFromJobSelect,
     resetRun,
   } = useRunProgress();
@@ -67,7 +71,15 @@ function App() {
     switch (state.currentScreen) {
       case 'home':
       case 'title':
-        return <HomeScreen onStart={startRunFromHome} />;
+        return <HomeScreen onStart={startRunFromHome} onOpenZukan={openZukanFromHome} />;
+      case 'zukan':
+        return (
+          <ZukanScreen
+            onClose={backToHomeFromZukan}
+            unlockedCardNames={state.unlockedCardNames}
+            onUnlockAll={unlockAllCardsForDebug}
+          />
+        );
       case 'job_select':
         return (
           <JobSelectScreen

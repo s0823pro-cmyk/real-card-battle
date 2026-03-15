@@ -1,4 +1,13 @@
 import type { Card } from '../../types/game';
+import deepBreathImage from '../../assets/cards/neutral/deep_breath.png';
+import fullSprintImage from '../../assets/cards/neutral/full_sprint.png';
+import firstAidImage from '../../assets/cards/neutral/first_aid.png';
+import dodgeImage from '../../assets/cards/neutral/dodge.png';
+import focusImage from '../../assets/cards/neutral/focus.png';
+import gutsShowImage from '../../assets/cards/neutral/guts_show.png';
+import comebackImage from '../../assets/cards/neutral/comeback.png';
+import miracleImage from '../../assets/cards/neutral/miracle.png';
+import hiddenPowerImage from '../../assets/cards/neutral/hidden_power.png';
 
 export const NEUTRAL_CARD_POOL: Card[] = [
   {
@@ -12,6 +21,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     sellValue: 5,
     neutral: true,
     effects: [{ type: 'draw', value: 2 }],
+    imageUrl: deepBreathImage,
   },
   {
     id: 'full_sprint',
@@ -24,6 +34,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     rarity: 'common',
     sellValue: 5,
     neutral: true,
+    imageUrl: fullSprintImage,
   },
   {
     id: 'first_aid',
@@ -36,6 +47,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     sellValue: 5,
     neutral: true,
     effects: [{ type: 'heal', value: 8 }],
+    imageUrl: firstAidImage,
   },
   {
     id: 'dodge',
@@ -48,6 +60,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     rarity: 'common',
     sellValue: 5,
     neutral: true,
+    imageUrl: dodgeImage,
   },
   {
     id: 'focus',
@@ -60,6 +73,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     sellValue: 12,
     neutral: true,
     effects: [{ type: 'double_next', value: 1 }],
+    imageUrl: focusImage,
   },
   {
     id: 'guts',
@@ -75,6 +89,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
       { type: 'self_damage', value: 5 },
       { type: 'draw', value: 3 },
     ],
+    imageUrl: gutsShowImage,
   },
   {
     id: 'comeback',
@@ -89,6 +104,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     neutral: true,
     tags: ['low_hp_bonus'],
     lowHpBonus: { threshold: 0.3, damage: 25 },
+    imageUrl: comebackImage,
   },
   {
     id: 'miracle',
@@ -101,6 +117,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     rarity: 'rare',
     sellValue: 25,
     neutral: true,
+    imageUrl: miracleImage,
   },
   {
     id: 'hidden_power',
@@ -113,6 +130,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     sellValue: 25,
     neutral: true,
     effects: [{ type: 'draw_per_turn', value: 1 }],
+    imageUrl: hiddenPowerImage,
   },
 ];
 

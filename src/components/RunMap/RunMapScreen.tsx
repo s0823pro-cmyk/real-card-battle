@@ -78,6 +78,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
 
   useEffect(() => {
     if (prevTileIdRef.current !== progress.currentTileId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPieceLanding(true);
       const timer = window.setTimeout(() => setPieceLanding(false), 420);
       prevTileIdRef.current = progress.currentTileId;
@@ -87,10 +88,12 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
   }, [progress.currentTileId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTooltip(null);
   }, [progress.currentScreen]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isSelecting) setTooltip(null);
   }, [isSelecting]);
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef } from 'react';
-import { ANXIETY_CARD } from '../data/carpenterDeck';
+import { CURSE_CARD } from '../data/carpenterDeck';
 import { getJobConfig } from '../data/jobs';
 import {
   AREA1_BOSS,
@@ -36,6 +36,28 @@ import { upgradeCard } from '../utils/cardUpgrade';
 import type { UpgradeType } from '../utils/cardUpgrade';
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
+
+const loadUnlockedCardNames = (): Set<string> => {
+  try {
+    const raw = window.localStorage.getItem(UNLOCKED_CARD_NAMES_STORAGE_KEY);
+    if (!raw) return new Set<string>();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set<string>();
+    return new Set(parsed.filter((entry): entry is string => typeof entry === 'string'));
+  } catch {
+    return new Set<string>();
+  }
+};
+
+const saveUnlockedCardNames = (names: Set<string>) => {
+  try {
+    window.localStorage.setItem(UNLOCKED_CARD_NAMES_STORAGE_KEY, JSON.stringify([...names]));
+  } catch {
+    // localStorage が利用できない環境では保存をスキップ。
+  }
+};
+
 const rollRoulette = (): number => {
   const result = Math.floor(Math.random() * 3) + 1;
   console.log('ルーレット結果:', result);
@@ -61,6 +83,7 @@ type Action =
   | { type: 'set_player'; player: PlayerState }
   | { type: 'set_job'; jobId: JobId }
   | { type: 'set_deck'; deck: Card[] }
+  | { type: 'set_unlocked_card_names'; names: Set<string> }
   | { type: 'set_items'; items: RunItem[] }
   | { type: 'set_omamoris'; omamoris: Omamori[] }
   | { type: 'set_card_remove_count'; value: number }
@@ -77,10 +100,26 @@ const initialPlayer: PlayerState = {
   cookingGauge: 0,
   mental: 7,
   statusEffects: [],
+  hasRevival: false,
+  revivalUsed: false,
+  deathWishActive: false,
+  ridgepoleActive: false,
+  templeCarpenterActive: false,
+  cliffEdgeActive: false,
+  nextAttackTimeReduce: 0,
+  blockPersist: false,
+  nextAttackDamageBoost: 0,
+  damageImmunityThisTurn: false,
+  nextTurnNoBlock: false,
+  canBlock: true,
+  lowHpDamageBoost: 0,
+  kitchenDemonActive: false,
+  firstCookingUsedThisTurn: false,
 };
 
 const makeInitialProgress = (): GameProgress => {
   const board = generateBoard();
+  const unlockedCardNames = loadUnlockedCardNames();
   return {
     jobId: 'carpenter',
     currentScreen: 'home',
@@ -107,6 +146,7 @@ const makeInitialProgress = (): GameProgress => {
     lastTileType: null,
     cardUpgradeMode: null,
     returnScreenAfterUpgrade: null,
+    unlockedCardNames,
   };
 };
 
@@ -168,7 +208,19 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
     case 'set_job':
       return { ...state, jobId: action.jobId };
     case 'set_deck':
-      return { ...state, deck: action.deck };
+      return {
+        ...state,
+        deck: action.deck,
+        unlockedCardNames: new Set([
+          ...state.unlockedCardNames,
+          ...action.deck.map((card) => card.name),
+        ]),
+      };
+    case 'set_unlocked_card_names':
+      return {
+        ...state,
+        unlockedCardNames: new Set(action.names),
+      };
     case 'set_items':
       return { ...state, items: action.items };
     case 'set_omamoris':
@@ -194,9 +246,9 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
   }
 };
 
-const cloneAnxiety = (): Card => ({
-  ...ANXIETY_CARD,
-  id: `${ANXIETY_CARD.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+const cloneCurse = (): Card => ({
+  ...CURSE_CARD,
+  id: `${CURSE_CARD.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
 });
 
 const applyCardGain = (deck: Card[], jobId: JobId, count = 1): Card[] => {
@@ -235,7 +287,7 @@ const applySingleEffect = (
       next.deck = applyCardGain(next.deck, state.jobId, Math.max(1, effect.value));
       break;
     case 'curse':
-      next.deck.push(...Array.from({ length: effect.value }).map(() => cloneAnxiety()));
+      next.deck.push(...Array.from({ length: effect.value }).map(() => cloneCurse()));
       break;
     case 'omamori':
       break;
@@ -267,6 +319,10 @@ export const useRunProgress = () => {
     if (!state.dice.rolling && state.dice.value === null) return;
     dispatch({ type: 'set_dice', value: null, rolling: false });
   }, [state.currentScreen, state.dice.rolling, state.dice.value]);
+
+  useEffect(() => {
+    saveUnlockedCardNames(state.unlockedCardNames);
+  }, [state.unlockedCardNames]);
 
   const branchPreviews = useMemo(() => {
     if (state.selectableTileIds.length === 0) return [];
@@ -521,16 +577,18 @@ export const useRunProgress = () => {
     if (stateRef.current.player.gold < shop.price) return;
 
     const nextGold = stateRef.current.player.gold - shop.price;
-    let nextDeck = [...stateRef.current.deck];
-    let nextItems = [...stateRef.current.items];
-    let nextOmamoris = [...stateRef.current.omamoris];
-    if (shop.type === 'card' && shop.item) {
-      nextDeck.push(shop.item as Card);
-    } else if (shop.type === 'item' && shop.item && nextItems.length < 3) {
-      nextItems.push(shop.item as RunItem);
-    } else if (shop.type === 'omamori' && shop.item) {
-      nextOmamoris.push(shop.item as Omamori);
-    }
+    const nextDeck =
+      shop.type === 'card' && shop.item
+        ? [...stateRef.current.deck, shop.item as Card]
+        : [...stateRef.current.deck];
+    const nextItems =
+      shop.type === 'item' && shop.item && stateRef.current.items.length < 3
+        ? [...stateRef.current.items, shop.item as RunItem]
+        : [...stateRef.current.items];
+    const nextOmamoris =
+      shop.type === 'omamori' && shop.item
+        ? [...stateRef.current.omamoris, shop.item as Omamori]
+        : [...stateRef.current.omamoris];
     dispatch({ type: 'set_player', player: { ...stateRef.current.player, gold: nextGold } });
     dispatch({ type: 'set_deck', deck: nextDeck });
     dispatch({ type: 'set_items', items: nextItems });
@@ -635,6 +693,21 @@ export const useRunProgress = () => {
       cookingGauge: 0,
       mental: jobConfig.initialMental,
       statusEffects: [],
+      hasRevival: false,
+      revivalUsed: false,
+      deathWishActive: false,
+      ridgepoleActive: false,
+      templeCarpenterActive: false,
+      cliffEdgeActive: false,
+      nextAttackTimeReduce: 0,
+      blockPersist: false,
+      nextAttackDamageBoost: 0,
+      damageImmunityThisTurn: false,
+      nextTurnNoBlock: false,
+      canBlock: true,
+      lowHpDamageBoost: 0,
+      kitchenDemonActive: false,
+      firstCookingUsedThisTurn: false,
     };
     dispatch({ type: 'set_job', jobId: resetJobId });
     dispatch({ type: 'set_board', board: nextBoard });
@@ -662,8 +735,20 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_screen', screen: 'job_select' });
   };
 
+  const openZukanFromHome = () => {
+    dispatch({ type: 'set_screen', screen: 'zukan' });
+  };
+
   const backToHomeFromJobSelect = () => {
     dispatch({ type: 'set_screen', screen: 'home' });
+  };
+
+  const backToHomeFromZukan = () => {
+    dispatch({ type: 'set_screen', screen: 'home' });
+  };
+
+  const unlockAllCardsForDebug = (names: Set<string>) => {
+    dispatch({ type: 'set_unlocked_card_names', names: new Set(names) });
   };
 
   const startRunFromJobSelect = (jobId: JobId) => {
@@ -678,6 +763,21 @@ export const useRunProgress = () => {
       cookingGauge: 0,
       mental: jobConfig.initialMental,
       statusEffects: [],
+      hasRevival: false,
+      revivalUsed: false,
+      deathWishActive: false,
+      ridgepoleActive: false,
+      templeCarpenterActive: false,
+      cliffEdgeActive: false,
+      nextAttackTimeReduce: 0,
+      blockPersist: false,
+      nextAttackDamageBoost: 0,
+      damageImmunityThisTurn: false,
+      nextTurnNoBlock: false,
+      canBlock: true,
+      lowHpDamageBoost: 0,
+      kitchenDemonActive: false,
+      firstCookingUsedThisTurn: false,
     };
     dispatch({ type: 'set_job', jobId });
     dispatch({ type: 'set_player', player: nextPlayer });
@@ -721,7 +821,10 @@ export const useRunProgress = () => {
     pickCardReward,
     pickOmamoriReward,
     startRunFromHome,
+    openZukanFromHome,
     backToHomeFromJobSelect,
+    backToHomeFromZukan,
+    unlockAllCardsForDebug,
     startRunFromJobSelect,
     resetRun,
   };

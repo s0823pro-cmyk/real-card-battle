@@ -1,6 +1,7 @@
 import type { Card, JobId } from '../../types/game';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 
 interface Props {
@@ -44,6 +45,33 @@ const CardComponent = ({
   onMouseEnter,
   onMouseLeave,
 }: Props) => {
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const nameRef = useRef<HTMLSpanElement | null>(null);
+  const textBandRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setImageLoadFailed(false);
+  }, [card.id, card.imageUrl]);
+
+  useEffect(() => {
+    const nameEl = nameRef.current;
+    const bandEl = textBandRef.current;
+    if (!nameEl || !bandEl) return;
+    window.requestAnimationFrame(() => {
+      nameEl.style.fontSize = '11px';
+      nameEl.style.whiteSpace = 'nowrap';
+
+      const availableWidth = bandEl.clientWidth - 8;
+
+      let size = 11;
+      while (nameEl.scrollWidth > availableWidth && size > 5) {
+        size -= 0.5;
+        nameEl.style.fontSize = `${size}px`;
+      }
+    });
+  }, [card.name]);
+
   const JOB_COLORS = {
     carpenter: '#c0392b',
     cook: '#f9ca24',
@@ -128,41 +156,47 @@ const CardComponent = ({
         style={innerStyle}
       >
         {(rarity === 'uncommon' || rarity === 'rare') && <div className="card-particles" />}
-        <div className="card-header">
-          <div
-            className={`card-cost-badge ${
-              effectiveValues.isTimeBuffed
-                ? 'card-value--buffed'
-                : effectiveValues.isTimeDebuffed
-                  ? 'card-value--debuffed'
-                  : ''
-            }`}
-          >
-            <span className="card-cost-value">
-              {effectiveValues.effectiveTimeCost}
-              <span className="card-cost-unit">s</span>
-            </span>
-          </div>
-          <div className="card-name">{card.name}</div>
-        </div>
-
-        <div className="card-illustration">
-          {card.imageUrl ? (
-            <img className="card-illustration-img" src={card.imageUrl} alt={card.name} />
+        <div className="card-bg-illustration">
+          {card.imageUrl && !imageLoadFailed ? (
+            <img
+              className="card-bg-img"
+              src={card.imageUrl}
+              alt={card.name}
+              onError={() => setImageLoadFailed(true)}
+            />
           ) : (
-            <div className="card-illustration-emoji">{card.icon ?? '🃏'}</div>
+            <div className="card-bg-emoji">{card.icon ?? '🃏'}</div>
           )}
         </div>
 
         <div
-          className="card-type-badge"
-          style={{ background: typeColor.bg, color: typeColor.text }}
+          className={`card-cost-badge ${
+            effectiveValues.isTimeBuffed
+              ? 'card-value--buffed'
+              : effectiveValues.isTimeDebuffed
+                ? 'card-value--debuffed'
+                : ''
+          }`}
         >
-          {typeColor.label}
+          <span className="card-cost-value">
+            {effectiveValues.effectiveTimeCost}
+            <span className="card-cost-unit">s</span>
+          </span>
         </div>
 
-        <div className="card-description">{card.description}</div>
-        {card.reserveBonus && <p className="card-reserve-bonus">{card.reserveBonus.description}</p>}
+        <div className="card-text-band" ref={textBandRef}>
+          <span ref={nameRef} className="card-name">
+            {card.name}
+          </span>
+          <div
+            className="card-type-badge"
+            style={{ background: typeColor.bg, color: typeColor.text }}
+          >
+            {typeColor.label}
+          </div>
+          <div className="card-description">{card.description}</div>
+          {card.reserveBonus && <p className="card-reserve-bonus">{card.reserveBonus.description}</p>}
+        </div>
       </div>
       {isDragUnavailable && (
         <span className="time-shortage">{card.type === 'status' ? '使用不可' : '時間不足'}</span>

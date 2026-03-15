@@ -56,7 +56,7 @@ export const useEnemyAI = () => {
     let damage = 0;
     let mentalDamage = 0;
     let updatedEnemy: Enemy = { ...enemy, statusEffects: [...enemy.statusEffects] };
-    let updatedPlayer: PlayerState = { ...player, statusEffects: [...player.statusEffects] };
+    const updatedPlayer: PlayerState = { ...player, statusEffects: [...player.statusEffects] };
 
     if (intent.type === 'attack') {
       if (enemy.name === '野良猫') {

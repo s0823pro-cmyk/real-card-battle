@@ -45,6 +45,8 @@ export const cloneRewardCard = (card: Card): Card => {
 };
 
 const createFixedStarterDeck = (cards: Card[]): Card[] => cards.map(cloneStarterCard);
+const withRarity = (cards: Card[], rarity: 'common' | 'uncommon' | 'rare'): Card[] =>
+  cards.map((card) => ({ ...card, rarity: card.rarity ?? rarity }));
 
 export const CARPENTER_CONFIG: JobConfig = {
   id: 'carpenter',
@@ -76,21 +78,24 @@ export const getJobConfig = (jobId: JobId): JobConfig => {
 export const getCardPoolsByJob = (jobId: JobId): JobCardPools => {
   if (jobId === 'cook') {
     return {
-      common: [...COOK_COMMON_POOL, ...NEUTRAL_COMMON_POOL],
-      uncommon: [...COOK_UNCOMMON_POOL, ...NEUTRAL_UNCOMMON_POOL],
-      rare: [...COOK_RARE_POOL, ...NEUTRAL_RARE_POOL],
+      common: [...withRarity(COOK_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
+      uncommon: [...withRarity(COOK_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
+      rare: [...withRarity(COOK_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
     };
   }
   if (jobId === 'unemployed') {
     return {
-      common: [...UNEMPLOYED_COMMON_POOL, ...NEUTRAL_COMMON_POOL],
-      uncommon: [...UNEMPLOYED_UNCOMMON_POOL, ...NEUTRAL_UNCOMMON_POOL],
-      rare: [...UNEMPLOYED_RARE_POOL, ...NEUTRAL_RARE_POOL],
+      common: [...withRarity(UNEMPLOYED_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
+      uncommon: [
+        ...withRarity(UNEMPLOYED_UNCOMMON_POOL, 'uncommon'),
+        ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon'),
+      ],
+      rare: [...withRarity(UNEMPLOYED_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
     };
   }
   return {
-    common: [...CARPENTER_COMMON_POOL, ...NEUTRAL_COMMON_POOL],
-    uncommon: [...CARPENTER_UNCOMMON_POOL, ...NEUTRAL_UNCOMMON_POOL],
-    rare: [...CARPENTER_RARE_POOL, ...NEUTRAL_RARE_POOL],
+    common: [...withRarity(CARPENTER_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
+    uncommon: [...withRarity(CARPENTER_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
+    rare: [...withRarity(CARPENTER_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
   };
 };

@@ -8,8 +8,15 @@ export const getEffectiveTimeCost = (
   jobId?: JobId,
 ): number => {
   let cost = card.timeCost;
-  const reduction = prevCard?.tags?.includes('preparation') ? 1 : 0;
+  const usesPreparationCost = Boolean(card.preparationTimeCost && prevCard?.tags?.includes('preparation'));
+  if (usesPreparationCost && card.preparationTimeCost) {
+    cost = card.preparationTimeCost;
+  }
+  const reduction = prevCard?.tags?.includes('preparation') && !usesPreparationCost ? 1 : 0;
   cost -= reduction;
+  if (player && card.type === 'attack' && player.nextAttackTimeReduce > 0) {
+    cost -= player.nextAttackTimeReduce;
+  }
   const activeJobId = jobId ?? player?.jobId;
   if (activeJobId === 'unemployed' && player && getHungryState(player) === 'awakened') {
     cost -= 1;

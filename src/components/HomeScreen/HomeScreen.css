@@ -83,6 +83,8 @@
 .home-sub-nav {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 0;
 }

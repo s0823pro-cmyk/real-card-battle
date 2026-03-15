@@ -73,13 +73,8 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       setCalculated(true);
     };
 
-    if (!visible) {
-      setPosition({ top: -9999, left: -9999 });
-      setCalculated(false);
-      return;
-    }
+    if (!visible) return;
 
-    setCalculated(false);
     adjustPosition();
     window.addEventListener('resize', adjustPosition);
     window.addEventListener('scroll', adjustPosition, true);
@@ -95,6 +90,7 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       window.clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
     }
+    setCalculated(false);
     setVisible(true);
   };
 
@@ -103,6 +99,8 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       window.clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
     }
+    setPosition({ top: -9999, left: -9999 });
+    setCalculated(false);
     setVisible(false);
   };
 
