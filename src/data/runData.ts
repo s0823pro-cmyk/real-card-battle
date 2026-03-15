@@ -7,6 +7,9 @@ import type {
   RunItem,
 } from '../types/run';
 import type { Card, JobId } from '../types/game';
+import bikerLeaderImage from '../assets/enemies/biker_leader.png';
+import badRealtorImage from '../assets/enemies/bad_realtor.png';
+import monsterCustomerImage from '../assets/enemies/monster_customer.png';
 
 export const TILE_LABELS: Record<string, { icon: string; name: string }> = {
   start: { icon: '🏁', name: 'スタート' },
@@ -32,6 +35,7 @@ export const AREA1_ELITES: EnemyTemplateLike[] = [
     templateId: 'biker_leader',
     name: '暴走族リーダー',
     icon: '🏍️',
+    imageUrl: bikerLeaderImage,
     maxHp: 90,
     intents: [
       { type: 'attack', value: 20, description: '攻撃 20', icon: '⚔️' },
@@ -43,6 +47,7 @@ export const AREA1_ELITES: EnemyTemplateLike[] = [
     templateId: 'evil_realtor',
     name: '悪徳不動産屋',
     icon: '🏠',
+    imageUrl: badRealtorImage,
     maxHp: 75,
     intents: [
       { type: 'attack', value: 15, description: '攻撃 15', icon: '⚔️' },
@@ -56,6 +61,7 @@ export const AREA1_BOSS: EnemyTemplateLike = {
   templateId: 'monster_customer',
   name: 'モンスターカスタマー',
   icon: '👑',
+  imageUrl: monsterCustomerImage,
   maxHp: 200,
   intents: [
     { type: 'attack', value: 14, description: '攻撃 14', icon: '⚔️' },

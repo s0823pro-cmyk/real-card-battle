@@ -1,5 +1,10 @@
 import type { Enemy, EnemyIntent, EnemyIntentType } from '../types/game';
 import type { EnemyTemplateLike } from '../types/run';
+import claimerImage from '../assets/enemies/claimer.png';
+import drunkImage from '../assets/enemies/drunk.png';
+import strayCatImage from '../assets/enemies/stray_cat.png';
+import abandonedBikeImage from '../assets/enemies/abandoned_bike.png';
+import solicitorImage from '../assets/enemies/solicitor.png';
 
 interface EnemyTemplate {
   name: string;
@@ -9,7 +14,7 @@ interface EnemyTemplate {
   intents: EnemyIntent[];
 }
 
-type TemplateKey = 'claimer' | 'drunk' | 'wildCat';
+type TemplateKey = 'claimer' | 'drunk' | 'wildCat' | 'bicycle' | 'solicitor';
 export type BuiltInEnemyTemplateKey = TemplateKey;
 
 const intent = (
@@ -23,6 +28,7 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
   claimer: {
     name: 'クレーマー',
     icon: '😤',
+    imageUrl: claimerImage,
     maxHp: 30,
     intents: [
       intent('attack', 12, '攻撃 12', '⚔️'),
@@ -32,14 +38,33 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
   drunk: {
     name: '酔っぱらい',
     icon: '🍺',
+    imageUrl: drunkImage,
     maxHp: 35,
     intents: [intent('attack', 16, '攻撃 16', '⚔️'), intent('defend', 0, '千鳥足...', '💫')],
   },
   wildCat: {
     name: '野良猫',
     icon: '🐱',
+    imageUrl: strayCatImage,
     maxHp: 20,
     intents: [intent('attack', 5, '引っかく ×3', '🐱'), intent('attack', 5, '引っかく ×3', '🐱')],
+  },
+  bicycle: {
+    name: '放置自転車',
+    icon: '🚲',
+    imageUrl: abandonedBikeImage,
+    maxHp: 24,
+    intents: [intent('attack', 9, '転倒アタック 9', '💥'), intent('defend', 0, 'ガタガタ…', '🛞')],
+  },
+  solicitor: {
+    name: '勧誘員',
+    icon: '🧑‍💼',
+    imageUrl: solicitorImage,
+    maxHp: 28,
+    intents: [
+      intent('attack', 10, '押し売り 10', '📄'),
+      { type: 'mental_attack', value: 0, mentalDamage: 1, description: 'しつこい勧誘', icon: '🗣️' },
+    ],
   },
 };
 

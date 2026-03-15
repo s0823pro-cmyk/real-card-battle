@@ -1,4 +1,5 @@
 import type { Enemy, EnemyIntent } from '../../types/game';
+import { useState } from 'react';
 import EnemyIntentView from './EnemyIntent';
 import Tooltip from '../Tooltip/Tooltip';
 import './Enemy.css';
@@ -20,6 +21,8 @@ const EnemyDisplay = ({
   previewDamage = 0,
   previewHp = 0,
 }: Props) => {
+  const [failedImageEnemyIds, setFailedImageEnemyIds] = useState<Set<string>>(() => new Set());
+
   const getStatusValue = (enemy: Enemy, type: Enemy['statusEffects'][number]['type']): number =>
     enemy.statusEffects
       .filter((status) => status.type === type)
@@ -71,11 +74,24 @@ const EnemyDisplay = ({
             <div className="enemy-buffs">
               {strengthUp > 0 && <span className="enemy-buff--positive">⬆️+{strengthUp}</span>}
             </div>
-            {enemy.imageUrl ? (
-              <img src={enemy.imageUrl} alt={enemy.name} className="enemy-image" />
-            ) : (
-              <div className="enemy-icon">{enemy.icon ?? '👤'}</div>
-            )}
+            <div className="enemy-illustration">
+              {enemy.imageUrl && !failedImageEnemyIds.has(enemy.id) ? (
+                <img
+                  src={enemy.imageUrl}
+                  alt={enemy.name}
+                  className="enemy-illustration-img"
+                  onError={() => {
+                    setFailedImageEnemyIds((prev) => {
+                      const next = new Set(prev);
+                      next.add(enemy.id);
+                      return next;
+                    });
+                  }}
+                />
+              ) : (
+                <div className="enemy-icon">{enemy.icon ?? '👤'}</div>
+              )}
+            </div>
             <h3 className="enemy-name">{enemy.name}</h3>
             <div className="enemy-status-effects">
               {vulnerable > 0 && (

@@ -18,6 +18,7 @@ import './ZukanScreen.css';
 type JobTab = 'carpenter' | 'cook' | 'unemployed' | 'neutral';
 type RarityFilter = 'all' | CardRarity;
 type TypeFilter = 'all' | Extract<CardType, 'attack' | 'skill' | 'power' | 'tool'>;
+type FrameRarity = CardRarity | 'starter';
 
 const JOB_TABS: { id: JobTab; label: string; icon: string }[] = [
   { id: 'carpenter', label: '大工', icon: '🔨' },
@@ -70,6 +71,7 @@ const noop = () => {
 };
 
 const getCardRarity = (card: Card): CardRarity => card.rarity ?? 'common';
+const getFrameRarity = (card: Card): FrameRarity => card.rarity ?? 'starter';
 
 const deduplicateCards = (cards: Card[]): Card[] => {
   const seen = new Set<string>();
@@ -200,7 +202,9 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
               <button
                 key={rarity}
                 type="button"
-                className={`zukan-filter-btn ${rarityFilter === rarity ? 'zukan-filter-btn--active' : ''}`}
+                className={`zukan-filter-btn ${
+                  rarity !== 'all' ? `zukan-filter-btn--${rarity}` : ''
+                } ${rarityFilter === rarity ? 'zukan-filter-btn--active' : ''}`}
                 onClick={() => setRarityFilter(rarity)}
               >
                 {rarity === 'all' ? '全て' : rarity === 'common' ? 'C' : rarity === 'uncommon' ? 'U' : 'R'}
@@ -234,10 +238,13 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
         <div className="zukan-card-grid">
           {filteredCards.map((card, index) => {
             const isUnlocked = unlockedCardNames.has(card.name);
+            const frameRarity = getFrameRarity(card);
+            const zukanRarityClass =
+              frameRarity === 'starter' ? 'zukan-card-item--common' : `zukan-card-item--${frameRarity}`;
             return (
               <div
                 key={`${card.id}-${index}`}
-                className={`zukan-card-item ${isUnlocked ? '' : 'zukan-card-item--locked'}`}
+                className={`zukan-card-item ${zukanRarityClass} ${isUnlocked ? '' : 'zukan-card-item--locked'}`}
                 role="button"
                 tabIndex={0}
                 aria-label={`${card.name} の詳細を開く`}

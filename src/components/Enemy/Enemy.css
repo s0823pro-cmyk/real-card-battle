@@ -25,10 +25,20 @@
   font-size: 0.82rem;
 }
 
-.enemy-image {
-  width: 80px;
+.enemy-illustration {
+  width: 100%;
   height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.enemy-illustration-img {
+  width: auto;
+  height: 100%;
   object-fit: contain;
+  object-position: center bottom;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 

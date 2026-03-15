@@ -128,7 +128,42 @@
   transition: all 0.15s ease;
 }
 
-.zukan-filter-btn--active {
+.zukan-filter-btn--common {
+  border-color: #4a5568;
+  color: #4a5568;
+}
+
+.zukan-filter-btn--uncommon {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.zukan-filter-btn--rare {
+  border-color: #f0b429;
+  color: #f0b429;
+}
+
+.zukan-filter-btn--common.zukan-filter-btn--active {
+  background: #4a5568;
+  border-color: #4a5568;
+  color: #ffffff;
+}
+
+.zukan-filter-btn--uncommon.zukan-filter-btn--active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.zukan-filter-btn--rare.zukan-filter-btn--active {
+  background: #f0b429;
+  border-color: #f0b429;
+  color: #0d1117;
+}
+
+.zukan-filter-btn--active:not(.zukan-filter-btn--common):not(.zukan-filter-btn--uncommon):not(
+    .zukan-filter-btn--rare
+  ) {
   background: #f0b429;
   border-color: #f0b429;
   color: #0d1117;
@@ -159,6 +194,18 @@
   border-radius: 8px;
   border: 2px solid transparent;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.zukan-card-item--common {
+  border-color: #4a5568;
+}
+
+.zukan-card-item--uncommon {
+  border-color: #3b82f6;
+}
+
+.zukan-card-item--rare {
+  border-color: #f0b429;
 }
 
 .zukan-card-hitbox {

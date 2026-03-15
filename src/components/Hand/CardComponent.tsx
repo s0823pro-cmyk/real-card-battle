@@ -100,15 +100,28 @@ const CardComponent = ({
     return 'common';
   };
 
-  const RARITY_COLORS = {
-    common: '#8b949e',
-    uncommon: '#3b82f6',
-    rare: '#f0b429',
-    starter: '#8b949e',
+  const RARITY_STYLES = {
+    starter: {
+      borderColor: '#4a5568',
+      glowColor: 'rgba(74,85,104,0.3)',
+    },
+    common: {
+      borderColor: '#4a5568',
+      glowColor: 'rgba(74,85,104,0.3)',
+    },
+    uncommon: {
+      borderColor: '#3b82f6',
+      glowColor: 'rgba(59,130,246,0.4)',
+    },
+    rare: {
+      borderColor: '#f0b429',
+      glowColor: 'rgba(240,180,41,0.6)',
+    },
   } as const;
 
   const typeColor = TYPE_COLORS[card.type] ?? TYPE_COLORS.status;
   const rarity = getRarity(card);
+  const rarityStyle = RARITY_STYLES[rarity];
   const reserveBonusReady = Boolean(card.wasReserved && card.reserveBonus);
   const getJobColor = (targetCard: Card, targetJobId: JobId): string => {
     if (targetCard.neutral) return NEUTRAL_COLOR;
@@ -116,13 +129,8 @@ const CardComponent = ({
   };
   const innerStyle = {
     '--job-color': getJobColor(card, jobId),
-    '--border-color': RARITY_COLORS[rarity],
-    '--glow-color':
-      rarity === 'rare'
-        ? 'rgba(240,180,41,0.6)'
-        : rarity === 'uncommon'
-          ? 'rgba(59,130,246,0.4)'
-          : 'rgba(74,85,104,0.3)',
+    '--border-color': rarityStyle.borderColor,
+    '--glow-color': rarityStyle.glowColor,
   } as CSSProperties;
 
   return (
