@@ -54,6 +54,8 @@ interface BattleScreenProps {
 const DRAG_CARD_HEIGHT = 168;
 const DRAG_Y_OFFSET = -DRAG_CARD_HEIGHT * 0.65;
 const DRAG_PROBE_Y_RATIOS = [0, 0.5, 1] as const;
+const RESERVE_PADDING = -16;
+type ReserveConfirmState = { card: Card; visible: boolean } | null;
 const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
   if ((card.damage ?? 0) > 0) return 'damage';
   if ((card.block ?? 0) > 0) return 'block';
@@ -117,6 +119,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const reserveDropRef = useRef<HTMLDivElement | null>(null);
   const sellDropRef = useRef<HTMLDivElement | null>(null);
   const dragStartRef = useRef<DragStartState | null>(null);
+  const activeTouchPointerIdRef = useRef<number | null>(null);
   const [handDrag, setHandDrag] = useState<HandDragState>({
     isDragging: false,
     card: null,
@@ -131,6 +134,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const [hoveredEnemyId, setHoveredEnemyId] = useState<string | null>(null);
   const [isHoveringTimebar, setIsHoveringTimebar] = useState(false);
   const [showPile, setShowPile] = useState<PileView>(null);
+  const [reserveConfirm, setReserveConfirm] = useState<ReserveConfirmState>(null);
   const [attackEffect, setAttackEffect] = useState<{ x: number; y: number } | null>(null);
   const [skillEffect, setSkillEffect] = useState(false);
   const attackEffectTimerRef = useRef<number | null>(null);
@@ -162,8 +166,11 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     clientY: number,
     card: Card,
   ): { target: DropTarget; index: number | null } => {
-    const isInRect = (x: number, y: number, rect: DOMRect): boolean =>
-      x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    const isInRect = (x: number, y: number, rect: DOMRect, padding = 0): boolean =>
+      x >= rect.left - padding &&
+      x <= rect.right + padding &&
+      y >= rect.top - padding &&
+      y <= rect.bottom + padding;
 
     const enemyRect = enemyAreaRef.current?.getBoundingClientRect();
     if (enemyRect && isInRect(clientX, clientY, enemyRect)) {
@@ -171,7 +178,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     }
 
     const reserveRect = reserveAreaRef.current?.getBoundingClientRect();
-    if (reserveRect && isInRect(clientX, clientY, reserveRect)) {
+    if (reserveRect && isInRect(clientX, clientY, reserveRect, RESERVE_PADDING)) {
       return { target: 'reserve', index: null };
     }
 
@@ -267,6 +274,12 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     if (gameState.phase !== 'player_turn') return;
     if (pendingHandUpgradeCount > 0) return;
     if (card.type === 'status') return;
+    if (!event.isPrimary) return;
+    if (event.pointerType === 'touch') {
+      if (activeTouchPointerIdRef.current !== null) return;
+      activeTouchPointerIdRef.current = event.pointerId;
+      event.stopPropagation();
+    }
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     setExpandedCardId(card.id);
@@ -286,6 +299,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     if (!start || gameState.phase !== 'player_turn') return;
     if (pendingHandUpgradeCount > 0) return;
     if (event.pointerId !== start.pointerId) return;
+    if (event.pointerType === 'touch' && activeTouchPointerIdRef.current !== event.pointerId) return;
     const dx = event.clientX - start.x;
     const dy = event.clientY - start.y;
     const moved = Math.hypot(dx, dy) > 10;
@@ -293,6 +307,9 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     if (!handDrag.isDragging && !(moved || longPress)) return;
 
     event.preventDefault();
+    if (event.pointerType === 'touch') {
+      event.stopPropagation();
+    }
     if (!canPlayCard(start.card)) {
       const probes = getDragProbePositions(event.clientX, event.clientY);
       const detection = resolveDropTargetFromProbes(probes, start.card);
@@ -346,7 +363,12 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     if (!start || gameState.phase !== 'player_turn') return;
     if (pendingHandUpgradeCount > 0) return;
     if (event.pointerId !== start.pointerId) return;
+    if (event.pointerType === 'touch' && activeTouchPointerIdRef.current !== event.pointerId) return;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (event.pointerType === 'touch') {
+      event.stopPropagation();
+      activeTouchPointerIdRef.current = null;
+    }
     setExpandedCardId(null);
     setIsHoveringTimebar(false);
 
@@ -355,7 +377,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
         const probes = getDragProbePositions(event.clientX, event.clientY);
         const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card);
         if (finalDetection.target === 'reserve') {
-          reserveCardById(handDrag.card.id);
+          setReserveConfirm({ card: handDrag.card, visible: true });
         }
         dragStartRef.current = null;
         setHoveredEnemyId(null);
@@ -430,11 +452,11 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
           triggerSkillEffect();
         }
       } else if (finalTarget === 'reserve') {
-        reserveCardById(handDrag.card.id);
+        setReserveConfirm({ card: handDrag.card, visible: true });
       } else if (finalTarget === 'sell') {
         sellCardById(handDrag.card.id);
       }
-    } else {
+    } else if (event.pointerType !== 'touch') {
       // タップ時はプレビューの開閉のみ（配置はしない）
       setExpandedCardId((prev) => (prev === start.card.id ? null : start.card.id));
     }
@@ -454,6 +476,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
 
   const onHandCardPointerCancel = () => {
     dragStartRef.current = null;
+    activeTouchPointerIdRef.current = null;
     setExpandedCardId(null);
     setHoveredEnemyId(null);
     setIsHoveringTimebar(false);
@@ -467,6 +490,32 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       dropIndex: null,
     });
   };
+
+  useEffect(() => {
+    const resetTouchInteraction = () => {
+      activeTouchPointerIdRef.current = null;
+      dragStartRef.current = null;
+      setExpandedCardId(null);
+      setHoveredEnemyId(null);
+      setIsHoveringTimebar(false);
+      setHandDrag({
+        isDragging: false,
+        card: null,
+        sourceIndex: -1,
+        x: 0,
+        y: 0,
+        dropTarget: null,
+        dropIndex: null,
+      });
+    };
+
+    window.addEventListener('touchend', resetTouchInteraction, { passive: true });
+    window.addEventListener('touchcancel', resetTouchInteraction, { passive: true });
+    return () => {
+      window.removeEventListener('touchend', resetTouchInteraction);
+      window.removeEventListener('touchcancel', resetTouchInteraction);
+    };
+  }, []);
 
   const onCardHoverStart = (cardId: string) => {
     if (gameState.phase !== 'player_turn' || handDrag.isDragging) return;
@@ -839,6 +888,29 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
                 </button>
               ))}
               {upgradeableHandCards.length === 0 && <p className="battle-pile-empty">強化できるカードがありません</p>}
+            </div>
+          </div>
+        </div>
+      )}
+      {reserveConfirm?.visible && (
+        <div className="reserve-confirm-overlay">
+          <div className="reserve-confirm-dialog">
+            <p className="reserve-confirm-title">「{reserveConfirm.card.name}」を温存しますか？</p>
+            <p className="reserve-confirm-note">次ターン -{Math.ceil(reserveConfirm.card.timeCost * 0.5)}秒</p>
+            <div className="reserve-confirm-buttons">
+              <button type="button" className="btn-reserve-cancel" onClick={() => setReserveConfirm(null)}>
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="btn-reserve-ok"
+                onClick={() => {
+                  reserveCardById(reserveConfirm.card.id);
+                  setReserveConfirm(null);
+                }}
+              >
+                温存する
+              </button>
             </div>
           </div>
         </div>

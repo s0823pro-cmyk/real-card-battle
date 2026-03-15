@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { JobId } from '../../types/game';
+import carpenterSymbolImage from '../../assets/jobs/carpenter_symbol.png';
+import cookSymbolImage from '../../assets/jobs/cook_symbol.png';
+import unemployedSymbolImage from '../../assets/jobs/unemployed_symbol.png';
+import homeBackgroundImage from '../../assets/home_background.png';
 import './JobSelectScreen.css';
 
 interface Job {
@@ -8,6 +12,7 @@ interface Job {
   selectableJobId?: JobId;
   name: string;
   icon: string;
+  imageUrl?: string;
   catchcopy: string;
   mechanic: string;
   difficulty: string;
@@ -25,6 +30,7 @@ const JOBS: Job[] = [
     selectableJobId: 'carpenter',
     name: '大工',
     icon: '🔨',
+    imageUrl: carpenterSymbolImage,
     catchcopy: '足場を積んで大技を放つ',
     mechanic: '足場（スキルカードで蓄積、アタックで消費）',
     difficulty: '初心者向け',
@@ -40,6 +46,7 @@ const JOBS: Job[] = [
     selectableJobId: 'cook',
     name: '料理人',
     icon: '🔪',
+    imageUrl: cookSymbolImage,
     catchcopy: '食材を仕込んでバースト火力',
     mechanic: '調理ゲージ（食材カードで蓄積、調理カードで爆発）',
     difficulty: '中級者向け',
@@ -55,6 +62,7 @@ const JOBS: Job[] = [
     selectableJobId: 'unemployed',
     name: '無職',
     icon: '✊',
+    imageUrl: unemployedSymbolImage,
     catchcopy: 'ピンチほど強くなる',
     mechanic: 'ハングリー精神（低HPでダメージ上昇・時間短縮）',
     difficulty: '上級者向け',
@@ -116,125 +124,263 @@ interface JobSelectScreenProps {
 
 const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [imageLoadFailedJobs, setImageLoadFailedJobs] = useState<Set<string>>(() => new Set());
+  const iconAreaRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
+  const mouseStartX = useRef<number | null>(null);
   const activeJob = JOBS[activeIndex];
+
+  const goNext = () => {
+    setActiveIndex((prev) => (prev < JOBS.length - 1 ? prev + 1 : prev));
+  };
+
+  const goPrev = () => {
+    setActiveIndex((prev) => (prev > 0 ? prev - 1 : prev));
+  };
 
   const handleTouchStart = (event: React.TouchEvent) => {
     touchStartX.current = event.touches[0].clientX;
+    setIsSwiping(true);
+  };
+
+  const handleTouchMove = () => {
+    setIsSwiping(true);
   };
 
   const handleTouchEnd = (event: React.TouchEvent) => {
     const diff = touchStartX.current - event.changedTouches[0].clientX;
-    if (Math.abs(diff) < 30) return;
-    if (diff > 0 && activeIndex < JOBS.length - 1) {
-      setActiveIndex((prev) => prev + 1);
-    } else if (diff < 0 && activeIndex > 0) {
-      setActiveIndex((prev) => prev - 1);
+    if (Math.abs(diff) >= 30) {
+      if (diff > 0 && activeIndex < JOBS.length - 1) {
+        goNext();
+      } else if (diff < 0 && activeIndex > 0) {
+        goPrev();
+      }
     }
+    window.setTimeout(() => setIsSwiping(false), 120);
   };
 
+  const handleMouseDown = (event: React.MouseEvent) => {
+    mouseStartX.current = event.clientX;
+    setIsSwiping(true);
+    event.preventDefault();
+  };
+
+  const handleMouseMove = (event: React.MouseEvent) => {
+    if (mouseStartX.current === null) return;
+    event.preventDefault();
+  };
+
+  const handleMouseUp = (event: React.MouseEvent) => {
+    if (mouseStartX.current === null) return;
+    const diff = event.clientX - mouseStartX.current;
+    if (diff < -40) goNext();
+    else if (diff > 40) goPrev();
+    mouseStartX.current = null;
+    window.setTimeout(() => setIsSwiping(false), 120);
+  };
+
+  const getCardPositionClass = (index: number): string => {
+    const offset = index - activeIndex;
+    if (offset === 0) return 'job-card--active';
+    if (offset === -1) return 'job-card--prev';
+    if (offset === 1) return 'job-card--next';
+    if (offset < -1) return 'job-card--far-left';
+    return 'job-card--far-right';
+  };
+
+  const hpValue = typeof activeJob.hp === 'number' ? activeJob.hp : 0;
+  const timeValue = typeof activeJob.timeBar === 'number' ? activeJob.timeBar : 0;
+  const mentalValue = typeof activeJob.mental === 'number' ? activeJob.mental : 0;
+
   return (
-    <main className="job-select-screen">
-      <p className="job-select-heading">職業を選んでください</p>
-
-      <section
-        className="job-carousel"
-        aria-label="職業一覧"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        {JOBS.map((job, index) => {
-          const offset = index - activeIndex;
-          const isActive = offset === 0;
-          const absOffset = Math.abs(offset);
-          const translateX = offset * 130;
-          const scale = Math.max(0.76, 1 - absOffset * 0.2);
-          const opacity = Math.max(0.35, 1 - absOffset * 0.5);
-          const zIndex = 10 - absOffset;
-          return (
+    <main
+      className="job-select-screen"
+      style={{
+        backgroundImage: `url(${homeBackgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="job-select-overlay" />
+      <div className="job-select-content">
+        <p className="job-select-heading">職業を選んでください</p>
+        <div
+          className="job-icon-list"
+          ref={iconAreaRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          {JOBS.map((job, index) => (
             <button
-              key={job.id}
+              key={`icon-${job.id}`}
               type="button"
-              className={`job-carousel-item ${isActive ? 'job-carousel-item--active' : ''} ${
-                job.comingSoon ? 'job-carousel-item--coming-soon' : ''
+              className={`job-icon-item ${index === activeIndex ? 'job-icon-item--active' : ''} ${
+                job.comingSoon ? 'job-icon-item--coming-soon' : ''
               }`}
-              style={
-                {
-                  transform: `translateX(${translateX}px) scale(${scale})`,
-                  opacity,
-                  zIndex,
-                  '--job-accent': job.accentColor,
-                  '--job-accent-glow': job.accentGlow,
-                } as CSSProperties
-              }
-              onClick={() => setActiveIndex(index)}
-              aria-pressed={isActive}
+              onClick={() => {
+                if (!job.comingSoon) setActiveIndex(index);
+              }}
+              disabled={job.comingSoon}
+              aria-label={`${job.name}を選択`}
+              draggable={false}
             >
-              <span className="job-carousel-emoji">{job.icon}</span>
-              <span className="job-carousel-name">{job.name}</span>
-              {job.comingSoon && <span className="job-coming-soon-badge">COMING SOON</span>}
+              {job.imageUrl && !imageLoadFailedJobs.has(job.id) ? (
+                <img
+                  className="job-icon-img"
+                  src={job.imageUrl}
+                  alt={job.name}
+                  draggable={false}
+                  onError={() => {
+                    setImageLoadFailedJobs((prev) => {
+                      const next = new Set(prev);
+                      next.add(job.id);
+                      return next;
+                    });
+                  }}
+                />
+              ) : (
+                <span className="job-icon-emoji">{job.icon}</span>
+              )}
             </button>
-          );
-        })}
-      </section>
+          ))}
+        </div>
 
-      <div className="job-dots" aria-label="職業インジケーター">
-        {JOBS.map((job, index) => (
-          <button
-            key={`dot-${job.id}`}
-            type="button"
-            className={`job-dot ${index === activeIndex ? 'job-dot--active' : ''}`}
-            onClick={() => setActiveIndex(index)}
-            aria-label={`${job.name}を選択`}
-          />
-        ))}
-      </div>
-
-      <section className="job-detail-area">
-        <article
-          className={`job-detail-panel ${activeJob.comingSoon ? 'job-detail-panel--coming-soon' : ''}`}
-          key={activeJob.id}
+        <section
+          className={`job-carousel ${isSwiping ? 'job-carousel--swiping' : ''}`}
+          aria-label="職業一覧"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onDragStart={(event) => event.preventDefault()}
         >
-            <div className="job-detail-header">
-              <span className="job-detail-icon">{activeJob.icon}</span>
-              <span className="job-detail-name">{activeJob.name}</span>
-            </div>
-            <p className="job-detail-catchcopy">{activeJob.catchcopy}</p>
-            <div className="job-detail-divider" />
-            {activeJob.comingSoon ? (
-              <>
-                <p className="job-coming-soon-text">🔒 この職業は現在開発中です</p>
-                <p className="job-coming-soon-subtext">アップデートをお楽しみに！</p>
-              </>
-            ) : (
-              <>
-                <div className="job-detail-stats">
-                  <span>❤️ {activeJob.hp}</span>
-                  <span>🧠 {activeJob.mental}</span>
-                  <span>⏱ {activeJob.timeBar}s</span>
+          {JOBS.map((job, index) => {
+            const isActive = index === activeIndex;
+            return (
+              <button
+                key={job.id}
+                type="button"
+                className={`job-card ${getCardPositionClass(index)} ${job.comingSoon ? 'job-card--coming-soon' : ''} job-card--${job.id}`}
+                style={
+                  {
+                    '--job-accent': job.accentColor,
+                    '--job-accent-glow': job.accentGlow,
+                  } as CSSProperties
+                }
+                onClick={() => setActiveIndex(index)}
+                aria-pressed={isActive}
+              >
+                <div className="job-symbol">
+                  {job.imageUrl && !imageLoadFailedJobs.has(job.id) ? (
+                    <img
+                      className="job-symbol-img"
+                      src={job.imageUrl}
+                      alt={job.name}
+                    draggable={false}
+                      onError={() => {
+                        setImageLoadFailedJobs((prev) => {
+                          const next = new Set(prev);
+                          next.add(job.id);
+                          return next;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <span className="job-carousel-emoji">{job.icon}</span>
+                  )}
                 </div>
-                <p className="job-detail-mechanic">固有：{activeJob.mechanic}</p>
-                <p className="job-detail-difficulty">難易度：{activeJob.difficulty}</p>
-              </>
-            )}
-          </article>
-      </section>
+                {job.comingSoon && (
+                  <div className="job-coming-soon-overlay">
+                    <div className="job-coming-soon-badge">
+                      <span className="job-coming-soon-icon">🔒</span>
+                      <p className="job-coming-soon-text">COMING SOON</p>
+                      <p className="job-coming-soon-sub">近日公開予定</p>
+                    </div>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </section>
 
-      <footer className="job-select-buttons">
-        <button
-          type="button"
-          className="btn-confirm"
-          disabled={activeJob.comingSoon}
-          onClick={() => {
-            if (activeJob.selectableJobId) onSelect(activeJob.selectableJobId);
-          }}
-        >
-          {activeJob.comingSoon ? '🔒 Coming Soon' : 'この職業で始める'}
-        </button>
-        <button type="button" className="btn-back-text" onClick={onBack}>
-          戻る
-        </button>
-      </footer>
+        <div className="job-dots" aria-label="職業インジケーター">
+          {JOBS.map((job, index) => (
+            <button
+              key={`dot-${job.id}`}
+              type="button"
+              className={`job-dot ${index === activeIndex ? 'job-dot--active' : ''}`}
+              onClick={() => setActiveIndex(index)}
+              aria-label={`${job.name}を選択`}
+            />
+          ))}
+        </div>
+
+        <section className="job-info">
+          <div className="job-name-area">
+            <h2 className="job-name">{activeJob.name}</h2>
+          </div>
+          <p className="job-catch">{activeJob.catchcopy}</p>
+
+          {activeJob.comingSoon ? (
+            <p className="job-mechanic">この職業は現在開発中です。アップデートをお楽しみに！</p>
+          ) : (
+            <>
+              <div className="job-stats">
+                <div className="job-stat">
+                  <span className="job-stat-label">❤️ HP</span>
+                  <div className="job-stat-bar">
+                    <div className="job-stat-fill job-stat-fill--hp" style={{ width: `${(hpValue / 100) * 100}%` }} />
+                  </div>
+                  <span className="job-stat-value">{hpValue}</span>
+                </div>
+                <div className="job-stat">
+                  <span className="job-stat-label">⏱ タイム</span>
+                  <div className="job-stat-bar">
+                    <div className="job-stat-fill job-stat-fill--time" style={{ width: `${(timeValue / 12) * 100}%` }} />
+                  </div>
+                  <span className="job-stat-value">{timeValue}s</span>
+                </div>
+                <div className="job-stat">
+                  <span className="job-stat-label">🧠 メンタル</span>
+                  <div className="job-stat-bar">
+                    <div
+                      className="job-stat-fill job-stat-fill--mental"
+                      style={{ width: `${(mentalValue / 10) * 100}%` }}
+                    />
+                  </div>
+                  <span className="job-stat-value">{mentalValue}</span>
+                </div>
+              </div>
+              <p className="job-mechanic">固有：{activeJob.mechanic}</p>
+            </>
+          )}
+        </section>
+
+        <footer className="job-select-buttons">
+          <button
+            type="button"
+            className={`btn-job-select job-card--${activeJob.id}`}
+            disabled={activeJob.comingSoon}
+            onClick={() => {
+              if (activeJob.selectableJobId) onSelect(activeJob.selectableJobId);
+            }}
+          >
+            {activeJob.comingSoon ? '🔒 Coming Soon' : 'この職業で始める'}
+          </button>
+          <button type="button" className="btn-back-text" onClick={onBack}>
+            戻る
+          </button>
+        </footer>
+      </div>
     </main>
   );
 };

@@ -567,6 +567,73 @@
   line-height: 1.2;
 }
 
+.reserve-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.reserve-confirm-dialog {
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 20px 24px;
+  width: 80%;
+  max-width: 280px;
+  text-align: center;
+}
+
+.reserve-confirm-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e6edf3;
+  margin: 0 0 8px;
+}
+
+.reserve-confirm-note {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: #e74c3c;
+  margin: 0 0 16px;
+}
+
+.reserve-confirm-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn-reserve-cancel {
+  flex: 1;
+  background: #21262d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #8b949e;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.btn-reserve-ok {
+  flex: 1;
+  background: #f0b429;
+  border: none;
+  border-radius: 8px;
+  color: #0d1117;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
 .battle-pile-empty {
   font-family: var(--font-ui);
   font-size: 12px;

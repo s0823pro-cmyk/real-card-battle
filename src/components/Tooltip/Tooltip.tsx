@@ -21,6 +21,7 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const hideTimerRef = useRef<number | null>(null);
+  const touchIdentifierRef = useRef<number | null>(null);
   const data = tooltipKey
     ? STATUS_TOOLTIPS[tooltipKey as keyof typeof STATUS_TOOLTIPS] ??
       ENEMY_ACTION_TOOLTIPS[tooltipKey as keyof typeof ENEMY_ACTION_TOOLTIPS]
@@ -33,6 +34,10 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       if (hideTimerRef.current !== null) {
         window.clearTimeout(hideTimerRef.current);
       }
+      touchIdentifierRef.current = null;
+      setPosition({ top: -9999, left: -9999 });
+      setCalculated(false);
+      setVisible(false);
     },
     [],
   );
@@ -107,7 +112,7 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
   const showTooltipWithTimeout = () => {
     showTooltip();
     hideTimerRef.current = window.setTimeout(() => {
-      setVisible(false);
+      hideTooltip();
       hideTimerRef.current = null;
     }, 2000);
   };
@@ -121,12 +126,29 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
       onTouchStart={(event) => {
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+        touchIdentifierRef.current = touch.identifier;
         event.preventDefault();
+        event.stopPropagation();
         showTooltipWithTimeout();
       }}
-      onTouchEnd={hideTooltip}
-      onTouchCancel={hideTooltip}
-      onTouchMove={hideTooltip}
+      onTouchEnd={(event) => {
+        const touch = Array.from(event.changedTouches).find(
+          (item) => item.identifier === touchIdentifierRef.current,
+        );
+        if (!touch) return;
+        touchIdentifierRef.current = null;
+        hideTooltip();
+      }}
+      onTouchCancel={() => {
+        touchIdentifierRef.current = null;
+        hideTooltip();
+      }}
+      onTouchMove={() => {
+        touchIdentifierRef.current = null;
+        hideTooltip();
+      }}
     >
       {children}
       <div

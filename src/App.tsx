@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { JobId } from './types/game';
 import BattleScreen from './components/BattleScreen/BattleScreen';
 import HomeScreen from './components/HomeScreen/HomeScreen';
 import JobSelectScreen from './components/JobSelectScreen/JobSelectScreen';
+import { StoryScreen } from './components/StoryScreen/StoryScreen';
 import { ZukanScreen } from './components/ZukanScreen/ZukanScreen';
 import RouletteOverlay from './components/RunMap/RouletteOverlay';
 import RunMapScreen from './components/RunMap/RunMapScreen';
@@ -17,9 +19,12 @@ import {
   RunGameOverScreen,
 } from './components/RunFlow/RewardScreens';
 import { useRunProgress } from './hooks/useRunProgress';
+import { CARPENTER_STORY, hasSeenStory, markStorySeen } from './data/stories/carpenterStory';
 import './App.css';
 import './components/RunMap/RunMapScreen.css';
 import './components/RunFlow/RunFlow.css';
+
+type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 
 function App() {
   const {
@@ -50,6 +55,14 @@ function App() {
     startRunFromJobSelect,
     resetRun,
   } = useRunProgress();
+  const [screenTransition, setScreenTransition] = useState<{ phase: TransitionPhase; durationMs: number }>({
+    phase: 'idle',
+    durationMs: 0,
+  });
+  const [showStory, setShowStory] = useState(false);
+  const [pendingJobId, setPendingJobId] = useState<JobId | null>(null);
+  const transitionTimeoutRef = useRef<number | null>(null);
+  const transitionCleanupRef = useRef<number | null>(null);
 
   useEffect(() => {
     const allowMapScroll =
@@ -67,15 +80,62 @@ function App() {
     };
   }, [state.currentScreen]);
 
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current !== null) {
+        window.clearTimeout(transitionTimeoutRef.current);
+      }
+      if (transitionCleanupRef.current !== null) {
+        window.clearTimeout(transitionCleanupRef.current);
+      }
+    };
+  }, []);
+
+  const runScreenTransition = (action: () => void, fadeOutMs: number, fadeInMs: number) => {
+    if (screenTransition.phase !== 'idle') return;
+    setScreenTransition({ phase: 'fade-out', durationMs: fadeOutMs });
+    transitionTimeoutRef.current = window.setTimeout(() => {
+      action();
+      setScreenTransition({ phase: 'fade-in', durationMs: fadeInMs });
+      transitionCleanupRef.current = window.setTimeout(() => {
+        setScreenTransition({ phase: 'idle', durationMs: 0 });
+      }, fadeInMs);
+    }, fadeOutMs);
+  };
+
+  const handleJobSelect = (jobId: JobId) => {
+    runScreenTransition(() => {
+      if (jobId === 'carpenter' && !hasSeenStory('carpenter')) {
+        setPendingJobId(jobId);
+        setShowStory(true);
+        return;
+      }
+      startRunFromJobSelect(jobId);
+    }, 500, 500);
+  };
+
+  const handleStoryComplete = () => {
+    markStorySeen('carpenter');
+    setShowStory(false);
+    const nextJobId = pendingJobId ?? 'carpenter';
+    setPendingJobId(null);
+    startRunFromJobSelect(nextJobId);
+  };
+
   const renderScreen = () => {
     switch (state.currentScreen) {
       case 'home':
       case 'title':
-        return <HomeScreen onStart={startRunFromHome} onOpenZukan={openZukanFromHome} />;
+        return (
+          <HomeScreen
+            onStart={() => runScreenTransition(startRunFromHome, 1000, 1000)}
+            onOpenZukan={() => runScreenTransition(openZukanFromHome, 1000, 1000)}
+          />
+        );
       case 'zukan':
         return (
           <ZukanScreen
-            onClose={backToHomeFromZukan}
+            onClose={() => runScreenTransition(backToHomeFromZukan, 350, 350)}
             unlockedCardNames={state.unlockedCardNames}
             onUnlockAll={unlockAllCardsForDebug}
           />
@@ -84,9 +144,9 @@ function App() {
         return (
           <JobSelectScreen
             onSelect={(jobId) => {
-              startRunFromJobSelect(jobId);
+              handleJobSelect(jobId);
             }}
-            onBack={backToHomeFromJobSelect}
+            onBack={() => runScreenTransition(backToHomeFromJobSelect, 350, 350)}
           />
         );
       case 'battle':
@@ -153,9 +213,9 @@ function App() {
           />
         );
       case 'victory':
-        return <RunClearScreen onReset={resetRun} />;
+        return <RunClearScreen onReset={() => runScreenTransition(resetRun, 350, 350)} />;
       case 'game_over':
-        return <RunGameOverScreen onReset={resetRun} />;
+        return <RunGameOverScreen onReset={() => runScreenTransition(resetRun, 350, 350)} />;
       case 'map':
       case 'dice_rolling':
       case 'branch_select':
@@ -188,6 +248,19 @@ function App() {
       </div>
       {(state.currentScreen === 'dice_rolling' || state.dice.value !== null) && (
         <RouletteOverlay rolling={state.dice.rolling} value={state.dice.value} />
+      )}
+      {screenTransition.phase !== 'idle' && (
+        <div
+          className={`screen-transition-overlay ${
+            screenTransition.phase === 'fade-out'
+              ? 'screen-transition-overlay--fade-out'
+              : 'screen-transition-overlay--fade-in'
+          }`}
+          style={{ animationDuration: `${screenTransition.durationMs}ms` }}
+        />
+      )}
+      {showStory && state.currentScreen === 'job_select' && (
+        <StoryScreen scenes={CARPENTER_STORY} onComplete={handleStoryComplete} />
       )}
     </div>
   );

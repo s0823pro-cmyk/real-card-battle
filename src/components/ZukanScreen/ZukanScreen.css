@@ -32,7 +32,7 @@
 }
 
 .zukan-title {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 16px;
   font-weight: 700;
   color: #e6edf3;
@@ -65,7 +65,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
   color: #8b949e;
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 10px;
   padding: 3px 8px;
   cursor: pointer;
@@ -88,7 +88,7 @@
   flex: 1;
   background: none;
   border: none;
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 12px;
   color: #8b949e;
   padding: 10px 4px;
@@ -120,7 +120,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   color: #8b949e;
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 10px;
   font-weight: 700;
   padding: 3px 8px;
@@ -170,7 +170,7 @@
 }
 
 .zukan-count {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 11px;
   color: #8b949e;
   margin: 4px 12px;
@@ -192,20 +192,20 @@
   position: relative;
   cursor: pointer;
   border-radius: 8px;
-  border: 2px solid transparent;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  border: none;
+  transition: box-shadow 0.15s ease;
 }
 
 .zukan-card-item--common {
-  border-color: #4a5568;
+  box-shadow: 0 0 0 1px rgba(74, 85, 104, 0.28);
 }
 
 .zukan-card-item--uncommon {
-  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.34);
 }
 
 .zukan-card-item--rare {
-  border-color: #f0b429;
+  box-shadow: 0 0 0 1px rgba(240, 180, 41, 0.42);
 }
 
 .zukan-card-hitbox {
@@ -223,17 +223,37 @@
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
 }
 
-.zukan-card-item:not(.zukan-card-item--locked):hover {
-  border-color: rgba(240, 180, 41, 0.4);
+.zukan-card-item--common:not(.zukan-card-item--locked):hover {
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(74, 85, 104, 0.7);
+}
+
+.zukan-card-item--uncommon:not(.zukan-card-item--locked):hover {
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(59, 130, 246, 0.75),
+    0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.zukan-card-item--rare:not(.zukan-card-item--locked):hover {
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(240, 180, 41, 0.8),
+    0 0 12px rgba(240, 180, 41, 0.35);
 }
 
 .zukan-card-item--locked:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 .zukan-card-item:focus-visible {
   outline: none;
-  border-color: rgba(240, 180, 41, 0.7);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(240, 180, 41, 0.7);
 }
 
 .zukan-card-wrapper,
@@ -284,7 +304,7 @@
 }
 
 .zukan-empty {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 12px;
   color: #3d444d;
   text-align: center;
@@ -349,7 +369,7 @@
 }
 
 .zukan-detail-name {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 16px;
   font-weight: 700;
   color: #e6edf3;
@@ -357,21 +377,21 @@
 }
 
 .zukan-detail-desc {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 12px;
   color: #8b949e;
   margin: 0 0 6px;
 }
 
 .zukan-detail-rarity {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 11px;
   color: #f0b429;
   margin: 0;
 }
 
 .zukan-detail-index {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 11px;
   color: #3d444d;
   text-align: center;

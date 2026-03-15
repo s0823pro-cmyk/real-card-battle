@@ -8,3 +8,37 @@
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
+
+.screen-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: #000000;
+  pointer-events: none;
+}
+
+.screen-transition-overlay--fade-out {
+  animation: screen-fade-out ease forwards;
+}
+
+.screen-transition-overlay--fade-in {
+  animation: screen-fade-in ease forwards;
+}
+
+@keyframes screen-fade-out {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes screen-fade-in {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

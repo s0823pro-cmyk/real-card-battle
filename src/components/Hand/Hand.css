@@ -21,6 +21,7 @@
   overflow: hidden;
   flex-shrink: 0;
   touch-action: none;
+  transform: translateZ(0);
 }
 
 .hand-card-wrapper {
@@ -94,6 +95,9 @@
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .hand-card:active {
@@ -282,7 +286,7 @@
     rgba(255, 255, 255, 0.35) 55%,
     rgba(255, 255, 255, 0) 100%
   );
-  opacity: 0.75;
+  opacity: 0.9;
   z-index: 1;
   pointer-events: none;
 }
@@ -326,7 +330,7 @@
 }
 
 .card-name {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-weight: 700;
   color: #ffffff;
   line-height: 1.2;
@@ -357,7 +361,7 @@
 }
 
 .card-description {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 8px;
   color: rgba(255, 255, 255, 0.85);
   text-align: center;

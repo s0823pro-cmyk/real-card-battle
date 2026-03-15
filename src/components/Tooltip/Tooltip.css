@@ -17,7 +17,7 @@
 }
 
 .tooltip-label {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 13px;
   font-weight: 700;
   color: #f0b429;
@@ -25,7 +25,7 @@
 }
 
 .tooltip-description {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 11px;
   color: #8b949e;
   line-height: 1.5;

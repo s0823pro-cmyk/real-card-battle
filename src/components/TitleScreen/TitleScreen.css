@@ -91,7 +91,7 @@
 
 .title-sub {
   margin: 8px 0 0;
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-weight: 400;
   color: var(--text-secondary);
   font-size: 0.95rem;
@@ -108,7 +108,7 @@
 .btn-start {
   background: linear-gradient(135deg, #e74c3c, #c0392b);
   color: #fff;
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-weight: 700;
   font-size: 18px;
   padding: 16px 28px;
@@ -133,7 +133,7 @@
 .btn-secondary {
   background: transparent;
   color: var(--text-secondary);
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 14px;
   padding: 10px 24px;
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -146,7 +146,7 @@
   margin: 2px 0 0;
   font-size: 0.72rem;
   color: var(--text-secondary);
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
 }
 
 .howto-overlay {

@@ -24,7 +24,7 @@
   --color-dandori: #ffd700;
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-card: rgba(255, 255, 255, 0.1);
-  --font-ui: 'Noto Sans JP', sans-serif;
+  --font-ui: 'Noto Serif JP', serif;
   --font-display: 'Orbitron', sans-serif;
   font-family: var(--font-ui);
   font-synthesis: none;
@@ -79,7 +79,7 @@ body,
   align-items: center;
   justify-content: center;
   color: #e6edf3;
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Noto Serif JP', serif;
   font-size: 18px;
   gap: 16px;
 }
