@@ -4,7 +4,7 @@ import type { Card, JobId } from '../../types/game';
 import type { Omamori } from '../../types/run';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import CardComponent from '../Hand/CardComponent';
-import type { UpgradeType } from '../../utils/cardUpgrade';
+import { CARPENTER_UPGRADES } from '../../data/upgrades/carpenterUpgrades';
 
 interface CardRewardProps {
   cards: Card[];
@@ -139,34 +139,25 @@ interface CardUpgradeProps {
   mode: 'upgrade' | 'remove';
   cards: Card[];
   jobId: JobId;
-  onUpgrade: (cardId: string, type: UpgradeType) => void;
+  onUpgrade: (cardId: string) => void;
   onRemove: (cardId: string) => void;
   onSkip: () => void;
 }
 
+const getUpgradePreview = (card: Card, jobId: JobId): string => {
+  const upgradeMap = jobId === 'carpenter' ? CARPENTER_UPGRADES : {};
+  const def = upgradeMap[card.name];
+  if (def) return def.description;
+  return '強化後の効果が適用されます';
+};
+
 export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onSkip }: CardUpgradeProps) => {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
-  const [upgradeType, setUpgradeType] = useState<UpgradeType | null>(null);
-  const selectedCard = cards.find((card) => card.id === selectedCardId) ?? null;
+  const upgradableCards = cards.filter(
+    (card) => !card.upgraded && !card.name.endsWith('+') && card.type !== 'status',
+  );
+  const selectedCard = upgradableCards.find((card) => card.id === selectedCardId) ?? null;
   const noop = () => {};
-
-  const getUpgradeOptions = (card: Card): UpgradeType[] => {
-    const options: UpgradeType[] = [];
-    if ((card.damage ?? 0) > 0) options.push('damage');
-    if ((card.block ?? 0) > 0) options.push('block');
-    options.push('time');
-    return options;
-  };
-
-  const getPreviewText = (card: Card, type: UpgradeType): string => {
-    if (type === 'damage') {
-      return `ダメージ +3（${card.damage ?? 0} → ${(card.damage ?? 0) + 3}）`;
-    }
-    if (type === 'block') {
-      return `ブロック +3（${card.block ?? 0} → ${(card.block ?? 0) + 3}）`;
-    }
-    return `所要時間 -1秒（${card.timeCost}s → ${Math.max(1, card.timeCost - 1)}s）`;
-  };
 
   return (
     <main className="flow-screen">
@@ -174,25 +165,30 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
         <h2>{mode === 'upgrade' ? 'カードを強化' : 'カードを削除'}</h2>
         {mode === 'upgrade' ? (
           <>
+            {upgradableCards.length === 0 ? (
+              <div className="upgrade-empty">
+                <p className="upgrade-empty-text">強化できるカードがありません</p>
+                <button type="button" className="btn-upgrade-skip" onClick={onSkip}>
+                  次へ進む
+                </button>
+              </div>
+            ) : (
+            <>
             <p className="upgrade-heading">強化するカードを選んでください</p>
             <div className="upgrade-card-grid card-display-grid">
-              {cards.filter((card) => !card.upgraded).map((card, idx) => (
+              {upgradableCards.map((card, idx) => (
                 <div
                   key={`${card.id}_${idx}`}
                   className={`upgrade-card-item card-display-item ${
                     selectedCardId === card.id ? 'upgrade-card-item--selected card-display-item--selected' : ''
                   }`}
-                  onClick={() => {
-                    setSelectedCardId(card.id);
-                    setUpgradeType(null);
-                  }}
+                  onClick={() => setSelectedCardId(card.id)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
                       setSelectedCardId(card.id);
-                      setUpgradeType(null);
                     }
                   }}
                   style={
@@ -226,40 +222,30 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
               ))}
             </div>
             {selectedCard && (
-              <div className="upgrade-options">
-                {getUpgradeOptions(selectedCard).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    className={`btn-upgrade-type ${upgradeType === type ? 'btn-upgrade-type--selected' : ''}`}
-                    onClick={() => setUpgradeType(type)}
-                  >
-                    {getPreviewText(selectedCard, type)}
-                  </button>
-                ))}
+              <div className="upgrade-preview">
+                <span className="upgrade-preview-label">強化後：</span>
+                <span className="upgrade-preview-text">{getUpgradePreview(selectedCard, jobId)}</span>
               </div>
             )}
-            <div className="upgrade-selected-name">
-              <small>{selectedCard ? `選択中: ${selectedCard.name}` : 'カードを選択してください'}</small>
-            </div>
             <div className="upgrade-note">
               <small>※ 強化済み（+）カードは再強化できません</small>
             </div>
-            <div className="upgrade-buttons">
-              <button
-                type="button"
-                className="flow-btn ghost"
-                disabled={!selectedCard || !upgradeType}
-                onClick={() => {
-                  if (selectedCard && upgradeType) onUpgrade(selectedCard.id, upgradeType);
-                }}
-              >
-                強化する
-              </button>
-              <button type="button" className="btn-skip" onClick={onSkip}>
-                戻る
+            <div className="upgrade-actions">
+              {selectedCard && (
+                <button
+                  type="button"
+                  className="btn-upgrade-confirm"
+                  onClick={() => onUpgrade(selectedCard.id)}
+                >
+                  強化する
+                </button>
+              )}
+              <button type="button" className="btn-upgrade-skip" onClick={onSkip}>
+                スキップ
               </button>
             </div>
+            </>
+            )}
           </>
         ) : (
           <>

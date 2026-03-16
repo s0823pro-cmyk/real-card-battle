@@ -338,6 +338,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                 style={detailCardStyle}
               >
                 <CardComponent
+                  key={`zukan-detail-${selectedCard.id}-${activeSelectedIndex ?? 0}`}
                   card={selectedCard}
                   jobId={previewJobId}
                   selected={false}

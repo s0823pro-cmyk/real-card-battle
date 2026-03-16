@@ -208,6 +208,9 @@ const CardComponent = ({
         <div className="card-text-band">
           <span ref={nameRef} className="card-name">
             {card.name}
+            {card.upgraded && (
+              <span className="card-upgrade-badge">✦</span>
+            )}
           </span>
           <div
             className="card-type-badge"

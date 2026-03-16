@@ -207,7 +207,7 @@ function App() {
             mode={state.cardUpgradeMode ?? 'upgrade'}
             cards={state.deck.filter((card) => card.type !== 'status')}
             jobId={state.jobId}
-            onUpgrade={upgradeDeckCard}
+            onUpgrade={(cardId) => upgradeDeckCard(cardId)}
             onRemove={removeCardInUpgrade}
             onSkip={closeCardUpgrade}
           />

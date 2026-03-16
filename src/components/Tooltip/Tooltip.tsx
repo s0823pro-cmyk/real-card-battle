@@ -29,8 +29,15 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       ? { label, description }
       : null;
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // マウント時：残留タッチ状態を確実にリセット
+    touchIdentifierRef.current = null;
+    setVisible(false);
+    setPosition({ top: -9999, left: -9999 });
+    setCalculated(false);
+
+    return () => {
+      // アンマウント時：タイマーとタッチ状態をクリア
       if (hideTimerRef.current !== null) {
         window.clearTimeout(hideTimerRef.current);
       }
@@ -38,9 +45,8 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       setPosition({ top: -9999, left: -9999 });
       setCalculated(false);
       setVisible(false);
-    },
-    [],
-  );
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const adjustPosition = () => {
@@ -126,6 +132,8 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
       onTouchStart={(event) => {
+        // 既にタッチ追跡中の場合は無視（残留タッチの誤発火を防ぐ）
+        if (touchIdentifierRef.current !== null) return;
         const touch = event.changedTouches[0];
         if (!touch) return;
         touchIdentifierRef.current = touch.identifier;

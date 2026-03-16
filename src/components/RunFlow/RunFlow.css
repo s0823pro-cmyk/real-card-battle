@@ -266,49 +266,100 @@
   pointer-events: none;
 }
 
-.upgrade-options {
+.upgrade-preview {
   width: 100%;
+  background: rgba(240, 180, 41, 0.08);
+  border: 1px solid rgba(240, 180, 41, 0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 0;
+  gap: 2px;
   flex-shrink: 0;
 }
 
-.btn-upgrade-type {
-  width: 100%;
-  padding: 10px;
-  background: #161b22;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  color: #8b949e;
+.upgrade-preview-label {
+  font-size: 10px;
+  color: rgba(240, 180, 41, 0.7);
   font-family: var(--font-ui);
+}
+
+.upgrade-preview-text {
   font-size: 12px;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.btn-upgrade-type--selected {
-  border-color: #f0b429;
   color: #f0b429;
+  font-family: var(--font-ui);
+  line-height: 1.5;
 }
 
-.upgrade-buttons {
-  width: 100%;
+.upgrade-actions {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 8px 0 4px;
+  width: 100%;
   flex-shrink: 0;
 }
 
-.upgrade-note,
-.upgrade-selected-name {
+.btn-upgrade-confirm {
+  width: 100%;
+  background: linear-gradient(135deg, #c0392b, #e74c3c);
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 15px;
+  font-weight: 900;
+  padding: 14px 0;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  box-shadow: 0 4px 20px rgba(192, 57, 43, 0.4);
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.btn-upgrade-confirm:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+}
+
+.btn-upgrade-skip {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn-upgrade-skip:active {
+  opacity: 0.7;
+}
+
+.upgrade-note {
   width: 100%;
   font-size: 12px;
   color: #8b949e;
   text-align: center;
+}
+
+.upgrade-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 32px 16px;
+  flex: 1;
+}
+
+.upgrade-empty-text {
+  font-size: 14px;
+  color: #8b949e;
+  text-align: center;
+  font-family: var(--font-ui);
 }
 
 .shop-remove-section {

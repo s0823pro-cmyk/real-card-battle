@@ -35,7 +35,9 @@ export type EffectType =
   | 'next_turn_time_penalty'
   | 'mental_boost'
   | 'low_hp_damage_boost'
-  | 'first_cooking_multiplier_boost';
+  | 'first_cooking_multiplier_boost'
+  | 'ridgepole_threshold'
+  | 'ridgepole_damage';
 
 export type CardRarity = 'common' | 'uncommon' | 'rare';
 

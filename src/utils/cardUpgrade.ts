@@ -1,7 +1,35 @@
 import type { Card } from '../types/game';
+import type { CardUpgrade } from '../data/upgrades/carpenterUpgrades';
 
 export type UpgradeType = 'damage' | 'block' | 'time';
 
+/** カード名ベースの定義データで強化する（推奨） */
+export function upgradeCardByDefinition(
+  card: Card,
+  upgrades: Record<string, CardUpgrade>,
+): Card {
+  if (card.upgraded) return card;
+  const upgrade = upgrades[card.name];
+  if (!upgrade) return card;
+
+  return {
+    ...card,
+    name: upgrade.name,
+    damage: upgrade.damage ?? card.damage,
+    block: upgrade.block ?? card.block,
+    timeCost: upgrade.timeCost ?? card.timeCost,
+    description: upgrade.description,
+    effects: upgrade.effects ?? card.effects,
+    upgraded: true,
+  };
+}
+
+/** 強化済みカードの判定 */
+export function isUpgraded(card: Card): boolean {
+  return card.upgraded === true || card.name.endsWith('+');
+}
+
+/** 旧来のタイプ選択方式（後方互換用） */
 export const upgradeCard = (card: Card, upgradeType: UpgradeType): Card => {
   const upgraded: Card = {
     ...card,

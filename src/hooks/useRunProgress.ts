@@ -32,8 +32,9 @@ import {
   getTileById,
   movePlayerBySteps,
 } from '../utils/boardGenerator';
-import { upgradeCard } from '../utils/cardUpgrade';
+import { upgradeCard, upgradeCardByDefinition } from '../utils/cardUpgrade';
 import type { UpgradeType } from '../utils/cardUpgrade';
+import { CARPENTER_UPGRADES } from '../data/upgrades/carpenterUpgrades';
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
@@ -538,14 +539,20 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
-  const upgradeDeckCard = (cardId: string, upgradeType: UpgradeType) => {
+  const upgradeDeckCard = (cardId: string, upgradeType?: UpgradeType) => {
     const target = stateRef.current.deck.find((card) => card.id === cardId);
     if (!target) return;
     if (target.upgraded) return;
+    const jobId = stateRef.current.jobId;
+    const upgradeMap = jobId === 'carpenter' ? CARPENTER_UPGRADES : {};
+    const upgraded =
+      upgradeType != null
+        ? upgradeCard(target, upgradeType)
+        : upgradeCardByDefinition(target, upgradeMap);
     dispatch({
       type: 'set_deck',
       deck: stateRef.current.deck.map((card) =>
-        card.id === cardId ? upgradeCard(card, upgradeType) : card,
+        card.id === cardId ? upgraded : card,
       ),
     });
     dispatch({ type: 'close_card_upgrade' });
