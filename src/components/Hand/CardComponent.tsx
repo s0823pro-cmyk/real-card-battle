@@ -15,6 +15,7 @@ interface Props {
   isGhost: boolean;
   isDragging: boolean;
   isDragUnavailable: boolean;
+  zukanMode?: 'list' | 'detail';
   effectiveValues: EffectiveCardValues;
   onSelect: () => void;
   onPointerDown: (event: ReactPointerEvent) => void;
@@ -36,6 +37,7 @@ const CardComponent = ({
   isGhost,
   isDragging,
   isDragUnavailable,
+  zukanMode,
   effectiveValues,
   onSelect,
   onPointerDown,
@@ -47,7 +49,7 @@ const CardComponent = ({
 }: Props) => {
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const nameRef = useRef<HTMLSpanElement | null>(null);
-  const textBandRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -56,16 +58,24 @@ const CardComponent = ({
 
   useEffect(() => {
     const nameEl = nameRef.current;
-    const bandEl = textBandRef.current;
-    if (!nameEl || !bandEl) return;
+    const headerEl = headerRef.current;
+    if (!nameEl || !headerEl) return;
     window.requestAnimationFrame(() => {
-      nameEl.style.fontSize = '11px';
-      nameEl.style.whiteSpace = 'nowrap';
+      const badgeEl = headerEl.querySelector('.card-cost-badge') as HTMLElement | null;
+      const badgeWidth = badgeEl?.offsetWidth ?? 22;
+      const gap = 6;
+      const padding = 12;
+      const availableWidth = headerEl.clientWidth - badgeWidth - gap - padding;
+      const minSizeRaw = window.getComputedStyle(nameEl).getPropertyValue('--card-name-min-size').trim();
+      const minSize = Number.isFinite(Number.parseFloat(minSizeRaw))
+        ? Number.parseFloat(minSizeRaw)
+        : 6;
 
-      const availableWidth = bandEl.clientWidth - 8;
+      nameEl.style.whiteSpace = 'nowrap';
+      nameEl.style.fontSize = '11px';
 
       let size = 11;
-      while (nameEl.scrollWidth > availableWidth && size > 5) {
+      while (nameEl.scrollWidth > availableWidth && size > minSize) {
         size -= 0.5;
         nameEl.style.fontSize = `${size}px`;
       }
@@ -160,8 +170,11 @@ const CardComponent = ({
       }}
     >
       <div
-        className={`hand-card-inner card-frame card-frame--${rarity} ${reserveBonusReady ? 'card-frame--reserved' : ''}`}
+        className={`hand-card-inner card-frame card-frame--${rarity} ${
+          reserveBonusReady ? 'card-frame--reserved' : ''
+        } ${zukanMode === 'list' ? 'card-frame--no-animation' : ''}`}
         style={innerStyle}
+        ref={headerRef}
       >
         {(rarity === 'uncommon' || rarity === 'rare') && <div className="card-particles" />}
         <div className="card-bg-illustration">
@@ -192,7 +205,7 @@ const CardComponent = ({
           </span>
         </div>
 
-        <div className="card-text-band" ref={textBandRef}>
+        <div className="card-text-band">
           <span ref={nameRef} className="card-name">
             {card.name}
           </span>

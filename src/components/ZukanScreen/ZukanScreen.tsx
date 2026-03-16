@@ -27,21 +27,29 @@ const JOB_TABS: { id: JobTab; label: string; icon: string }[] = [
   { id: 'neutral', label: '無色', icon: '⬜' },
 ];
 
+const withRarity = (cards: Card[], rarity: CardRarity): Card[] =>
+  cards.map((card) => ({ ...card, rarity: card.rarity ?? rarity }));
+
 const ALL_CARDS: Record<JobTab, Card[]> = {
   carpenter: [
     ...CARPENTER_STARTER_DECK,
-    ...CARPENTER_COMMON_POOL,
-    ...CARPENTER_UNCOMMON_POOL,
-    ...CARPENTER_RARE_POOL,
+    ...withRarity(CARPENTER_COMMON_POOL, 'common'),
+    ...withRarity(CARPENTER_UNCOMMON_POOL, 'uncommon'),
+    ...withRarity(CARPENTER_RARE_POOL, 'rare'),
   ],
-  cook: [...COOK_STARTER_DECK, ...COOK_COMMON_POOL, ...COOK_UNCOMMON_POOL, ...COOK_RARE_POOL],
+  cook: [
+    ...COOK_STARTER_DECK,
+    ...withRarity(COOK_COMMON_POOL, 'common'),
+    ...withRarity(COOK_UNCOMMON_POOL, 'uncommon'),
+    ...withRarity(COOK_RARE_POOL, 'rare'),
+  ],
   unemployed: [
     ...UNEMPLOYED_STARTER_DECK,
-    ...UNEMPLOYED_COMMON_POOL,
-    ...UNEMPLOYED_UNCOMMON_POOL,
-    ...UNEMPLOYED_RARE_POOL,
+    ...withRarity(UNEMPLOYED_COMMON_POOL, 'common'),
+    ...withRarity(UNEMPLOYED_UNCOMMON_POOL, 'uncommon'),
+    ...withRarity(UNEMPLOYED_RARE_POOL, 'rare'),
   ],
-  neutral: [...NEUTRAL_CARD_POOL],
+  neutral: withRarity(NEUTRAL_CARD_POOL, 'common'),
 };
 
 const STATIC_EFFECTIVE_VALUES: EffectiveCardValues = {
@@ -59,6 +67,7 @@ const STATIC_EFFECTIVE_VALUES: EffectiveCardValues = {
 type CardSizeStyle = CSSProperties & {
   '--hand-card-width': string;
   '--hand-card-height': string;
+  '--card-name-min-size'?: string;
 };
 
 const noopPointer = (event: ReactPointerEvent) => {
@@ -119,13 +128,14 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   });
 
   const cardStyle: CardSizeStyle = {
-    width: '80px',
-    height: '128px',
+    width: '96px',
+    height: '154px',
     position: 'relative',
     transform: 'none',
     transition: 'none',
-    '--hand-card-width': '80px',
-    '--hand-card-height': '128px',
+    '--hand-card-width': '96px',
+    '--hand-card-height': '154px',
+    '--card-name-min-size': '10px',
   };
 
   const detailCardStyle: CardSizeStyle = {
@@ -136,6 +146,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
     transition: 'none',
     '--hand-card-width': '180px',
     '--hand-card-height': '288px',
+    '--card-name-min-size': '11px',
   };
 
   const openCardDetail = (index: number) => {
@@ -280,6 +291,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     isGhost={false}
                     isDragging={false}
                     isDragUnavailable={false}
+                    zukanMode="list"
                     effectiveValues={getPreviewValues(card)}
                     onSelect={noop}
                     onPointerDown={noopPointer}
@@ -336,6 +348,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                   isGhost={false}
                   isDragging={false}
                   isDragUnavailable={false}
+                  zukanMode="detail"
                   effectiveValues={getPreviewValues(selectedCard)}
                   onSelect={noop}
                   onPointerDown={noopPointer}
@@ -362,30 +375,6 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
               >
                 ›
               </button>
-
-              <div className="zukan-card-detail-info">
-                {selectedCardUnlocked ? (
-                  <>
-                    <p className="zukan-detail-name">{selectedCard.name}</p>
-                    <p className="zukan-detail-desc">{selectedCard.description}</p>
-                    <p className="zukan-detail-rarity">
-                      {getCardRarity(selectedCard) === 'common'
-                        ? 'コモン'
-                        : getCardRarity(selectedCard) === 'uncommon'
-                          ? 'アンコモン'
-                          : 'レア'}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="zukan-detail-name">？？？</p>
-                    <p className="zukan-detail-desc">まだ入手していないカードです</p>
-                  </>
-                )}
-                <p className="zukan-detail-index">
-                  {(activeSelectedIndex ?? 0) + 1} / {filteredCards.length}
-                </p>
-              </div>
 
               <button
                 type="button"

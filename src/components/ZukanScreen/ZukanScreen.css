@@ -134,8 +134,8 @@
 }
 
 .zukan-filter-btn--uncommon {
-  border-color: #3b82f6;
-  color: #3b82f6;
+  border-color: #2a5282;
+  color: #4299e1;
 }
 
 .zukan-filter-btn--rare {
@@ -150,9 +150,9 @@
 }
 
 .zukan-filter-btn--uncommon.zukan-filter-btn--active {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: #ffffff;
+  background: #1e3a5f;
+  border-color: #2a5282;
+  color: #bee3f8;
 }
 
 .zukan-filter-btn--rare.zukan-filter-btn--active {
@@ -178,34 +178,28 @@
 }
 
 .zukan-card-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 8px 12px 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px 10px 16px;
   overflow-y: auto;
   flex: 1;
   -webkit-overflow-scrolling: touch;
   align-content: flex-start;
+  justify-items: center;
 }
 
 .zukan-card-item {
   position: relative;
+  flex: 0 0 auto;
   cursor: pointer;
   border-radius: 8px;
   border: none;
-  transition: box-shadow 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
-.zukan-card-item--common {
-  box-shadow: 0 0 0 1px rgba(74, 85, 104, 0.28);
-}
-
-.zukan-card-item--uncommon {
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.34);
-}
-
-.zukan-card-item--rare {
-  box-shadow: 0 0 0 1px rgba(240, 180, 41, 0.42);
+.zukan-card-item:active {
+  transform: scale(0.97);
 }
 
 .zukan-card-hitbox {
@@ -220,27 +214,7 @@
 }
 
 .zukan-card-item:hover {
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
-}
-
-.zukan-card-item--common:not(.zukan-card-item--locked):hover {
-  box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(74, 85, 104, 0.7);
-}
-
-.zukan-card-item--uncommon:not(.zukan-card-item--locked):hover {
-  box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(59, 130, 246, 0.75),
-    0 0 10px rgba(59, 130, 246, 0.3);
-}
-
-.zukan-card-item--rare:not(.zukan-card-item--locked):hover {
-  box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(240, 180, 41, 0.8),
-    0 0 12px rgba(240, 180, 41, 0.35);
+  transform: translateY(-2px);
 }
 
 .zukan-card-item--locked:hover {
@@ -304,6 +278,7 @@
 }
 
 .zukan-empty {
+  grid-column: 1 / -1;
   font-family: 'Noto Serif JP', serif;
   font-size: 12px;
   color: #3d444d;
