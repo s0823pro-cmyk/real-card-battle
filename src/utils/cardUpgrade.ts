@@ -1,9 +1,18 @@
 import type { Card } from '../types/game';
 import type { CardUpgrade } from '../data/upgrades/carpenterUpgrades';
+import { getUpgradeForCard } from '../data/upgrades';
 
 export type UpgradeType = 'damage' | 'block' | 'time';
 
-/** カード名ベースの定義データで強化する（推奨） */
+/** カード名ベースの定義データで強化する（ジョブID指定） */
+export function upgradeCardByJobId(card: Card, jobId: string): Card {
+  if (card.upgraded) return card;
+  const upgrade = getUpgradeForCard(card, jobId);
+  if (!upgrade) return card;
+  return applyUpgrade(card, upgrade);
+}
+
+/** カード名ベースの定義データで強化する（マップ直接指定・後方互換） */
 export function upgradeCardByDefinition(
   card: Card,
   upgrades: Record<string, CardUpgrade>,
@@ -11,7 +20,10 @@ export function upgradeCardByDefinition(
   if (card.upgraded) return card;
   const upgrade = upgrades[card.name];
   if (!upgrade) return card;
+  return applyUpgrade(card, upgrade);
+}
 
+function applyUpgrade(card: Card, upgrade: CardUpgrade): Card {
   return {
     ...card,
     name: upgrade.name,

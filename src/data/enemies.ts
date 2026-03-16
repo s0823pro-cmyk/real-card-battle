@@ -31,7 +31,7 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
     imageUrl: claimerImage,
     maxHp: 30,
     intents: [
-      intent('attack', 12, '攻撃 12', '⚔️'),
+      intent('attack', 8, '攻撃 8', '⚔️'),
       { type: 'mental_attack', value: 0, mentalDamage: 1, description: '文句を言う', icon: '😤' },
     ],
   },
@@ -40,21 +40,21 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
     icon: '🍺',
     imageUrl: drunkImage,
     maxHp: 35,
-    intents: [intent('attack', 16, '攻撃 16', '⚔️'), intent('defend', 0, '千鳥足...', '💫')],
+    intents: [intent('attack', 11, '攻撃 11', '⚔️'), intent('defend', 0, '千鳥足...', '💫')],
   },
   wildCat: {
     name: '野良猫',
     icon: '🐱',
     imageUrl: strayCatImage,
     maxHp: 20,
-    intents: [intent('attack', 5, '引っかく ×3', '🐱'), intent('attack', 5, '引っかく ×3', '🐱')],
+    intents: [intent('attack', 3, '引っかく ×3', '🐱'), intent('attack', 3, '引っかく ×3', '🐱')],
   },
   bicycle: {
     name: '放置自転車',
     icon: '🚲',
     imageUrl: abandonedBikeImage,
     maxHp: 24,
-    intents: [intent('attack', 9, '転倒アタック 9', '💥'), intent('defend', 0, 'ガタガタ…', '🛞')],
+    intents: [intent('attack', 6, '転倒アタック 6', '💥'), intent('defend', 0, 'ガタガタ…', '🛞')],
   },
   solicitor: {
     name: '勧誘員',
@@ -62,7 +62,7 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
     imageUrl: solicitorImage,
     maxHp: 28,
     intents: [
-      intent('attack', 10, '押し売り 10', '📄'),
+      intent('attack', 7, '押し売り 7', '📄'),
       { type: 'mental_attack', value: 0, mentalDamage: 1, description: 'しつこい勧誘', icon: '🗣️' },
     ],
   },

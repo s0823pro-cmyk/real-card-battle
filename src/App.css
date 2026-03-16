@@ -42,3 +42,29 @@
     opacity: 0;
   }
 }
+
+.preload-progress {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 9999;
+  padding: 8px 16px 12px;
+}
+
+.preload-progress-bar {
+  height: 3px;
+  background: #f0b429;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  margin-bottom: 4px;
+}
+
+.preload-progress-text {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  text-align: center;
+}

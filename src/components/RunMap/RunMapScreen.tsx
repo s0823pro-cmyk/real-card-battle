@@ -3,7 +3,6 @@ import type { CSSProperties } from 'react';
 import type { BranchPreview, GameProgress } from '../../types/run';
 import type { Card } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
-import BranchSelectModal from './BranchSelectModal';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
 import './RunMapScreen.css';
@@ -356,25 +355,43 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
       </section>
 
       <footer className="map-controls">
-        <button
-          type="button"
-          className="btn-roulette"
-          disabled={
-            progress.currentScreen !== 'map' ||
-            progress.board.find((tile) => tile.id === progress.currentTileId)?.type === 'area_boss'
-          }
-          onClick={onRollDice}
-        >
-          🎰 ルーレットを回す
-        </button>
+        {isSelecting ? (
+          <div className="map-branch-inline">
+            <p className="map-branch-inline-label">ルートを選んでください</p>
+            <div className="map-branch-inline-btns">
+              {branchPreviews.map((item, i) => {
+                const first = item.previewTiles[0];
+                return (
+                  <button
+                    key={item.nextTileId}
+                    type="button"
+                    className={`map-branch-btn ${i === 0 ? 'map-branch-btn--left' : 'map-branch-btn--right'}`}
+                    onClick={() => onSelectTile?.(item.nextTileId)}
+                  >
+                    <span className="map-branch-icon">{first?.icon ?? '❓'}</span>
+                    <span className="map-branch-name">{first?.name ?? '？'}</span>
+                    <span className="map-branch-route">
+                      {item.previewTiles.map((t) => t.icon).join(' → ')}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn-roulette"
+            disabled={
+              progress.currentScreen !== 'map' ||
+              progress.board.find((tile) => tile.id === progress.currentTileId)?.type === 'area_boss'
+            }
+            onClick={onRollDice}
+          >
+            🎰 ルーレットを回す
+          </button>
+        )}
       </footer>
-      {progress.currentScreen === 'branch_select' && (
-        <BranchSelectModal
-          previews={branchPreviews}
-          currentTileId={progress.currentTileId}
-          onSelect={(tileId) => onSelectTile?.(tileId)}
-        />
-      )}
       {showDeck && (
         <div className="deck-overlay" onClick={() => setShowDeck(false)}>
           <div className="deck-modal" onClick={(event) => event.stopPropagation()}>

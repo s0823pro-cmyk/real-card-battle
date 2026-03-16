@@ -679,6 +679,63 @@
   color: #e6edf3;
 }
 
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.settings-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-item-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e6edf3;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.settings-item-desc {
+  margin: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-ui, sans-serif);
+  line-height: 1.5;
+}
+
+.settings-toggle {
+  flex-shrink: 0;
+  min-width: 52px;
+  height: 30px;
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.settings-toggle--on {
+  background: #f0b429;
+  border-color: #f0b429;
+  color: #0d1117;
+}
+
 .home-return-transition-overlay {
   position: fixed;
   inset: 0;

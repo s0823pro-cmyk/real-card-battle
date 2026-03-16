@@ -37,7 +37,13 @@ export type EffectType =
   | 'low_hp_damage_boost'
   | 'first_cooking_multiplier_boost'
   | 'ridgepole_threshold'
-  | 'ridgepole_damage';
+  | 'ridgepole_damage'
+  | 'next_ingredient_bonus'
+  | 'hit_count'
+  | 'next_turn_block_half'
+  | 'block_per_turn_awakened'
+  | 'lighter_chance'
+  | 'next_attack_boost';
 
 export type CardRarity = 'common' | 'uncommon' | 'rare';
 
@@ -85,6 +91,9 @@ export interface CardEffect {
   value: number;
   duration?: number;
   threshold?: number;
+  normalValue?: number;
+  count?: number;
+  burnValue?: number;
 }
 
 export interface StatusEffect {

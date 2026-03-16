@@ -80,8 +80,26 @@ body,
   justify-content: center;
   color: #e6edf3;
   font-family: 'Noto Serif JP', serif;
-  font-size: 18px;
+  font-size: 16px;
   gap: 16px;
+  text-align: center;
+  padding: 24px;
+}
+
+.rotate-warning-icon {
+  font-size: 48px;
+  display: block;
+  animation: rotate-phone 2s ease-in-out infinite;
+}
+
+@keyframes rotate-phone {
+  0%, 100% { transform: rotate(0deg); }
+  50%       { transform: rotate(-90deg); }
+}
+
+.rotate-warning p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 @media screen and (orientation: landscape) and (max-width: 1024px) {

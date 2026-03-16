@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { JobId } from './types/game';
 import BattleScreen from './components/BattleScreen/BattleScreen';
 import HomeScreen from './components/HomeScreen/HomeScreen';
@@ -20,6 +20,7 @@ import {
 } from './components/RunFlow/RewardScreens';
 import { useRunProgress } from './hooks/useRunProgress';
 import { CARPENTER_STORY, hasSeenStory, markStorySeen } from './data/stories/carpenterStory';
+import { preloadAllImages } from './utils/preloadImages';
 import './App.css';
 import './components/RunMap/RunMapScreen.css';
 import './components/RunFlow/RunFlow.css';
@@ -63,6 +64,11 @@ function App() {
   const [pendingJobId, setPendingJobId] = useState<JobId | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
   const transitionCleanupRef = useRef<number | null>(null);
+  const [preloadEnabled, setPreloadEnabled] = useState<boolean>(
+    () => localStorage.getItem('preload_images') === 'true',
+  );
+  const [preloadProgress, setPreloadProgress] = useState<{ loaded: number; total: number } | null>(null);
+  const preloadDoneRef = useRef(false);
 
   useEffect(() => {
     const allowMapScroll =
@@ -89,6 +95,25 @@ function App() {
         window.clearTimeout(transitionCleanupRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (!preloadEnabled || preloadDoneRef.current) return;
+    preloadDoneRef.current = true;
+    preloadAllImages((loaded, total) => {
+      setPreloadProgress({ loaded, total });
+      if (loaded >= total) {
+        window.setTimeout(() => setPreloadProgress(null), 1200);
+      }
+    });
+  }, [preloadEnabled]);
+
+  const togglePreload = useCallback(() => {
+    setPreloadEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem('preload_images', String(next));
+      return next;
+    });
   }, []);
 
   const runScreenTransition = (action: () => void, fadeOutMs: number, fadeInMs: number) => {
@@ -130,6 +155,8 @@ function App() {
           <HomeScreen
             onStart={() => runScreenTransition(startRunFromHome, 1000, 1000)}
             onOpenZukan={() => runScreenTransition(openZukanFromHome, 1000, 1000)}
+            preloadEnabled={preloadEnabled}
+            onTogglePreload={togglePreload}
           />
         );
       case 'zukan':
@@ -243,8 +270,8 @@ function App() {
     >
       {renderScreen()}
       <div className="rotate-warning">
-        <span style={{ fontSize: 48 }}>📱</span>
-        <span>縦向きでプレイしてください</span>
+        <span className="rotate-warning-icon">📱</span>
+        <p>縦向きでプレイしてください</p>
       </div>
       {(state.currentScreen === 'dice_rolling' || state.dice.value !== null) && (
         <RouletteOverlay rolling={state.dice.rolling} value={state.dice.value} />
@@ -261,6 +288,17 @@ function App() {
       )}
       {showStory && state.currentScreen === 'job_select' && (
         <StoryScreen scenes={CARPENTER_STORY} onComplete={handleStoryComplete} />
+      )}
+      {preloadProgress && (
+        <div className="preload-progress">
+          <div
+            className="preload-progress-bar"
+            style={{ width: `${(preloadProgress.loaded / Math.max(1, preloadProgress.total)) * 100}%` }}
+          />
+          <p className="preload-progress-text">
+            画像を読み込み中… {preloadProgress.loaded}/{preloadProgress.total}
+          </p>
+        </div>
       )}
     </div>
   );

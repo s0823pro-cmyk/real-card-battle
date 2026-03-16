@@ -22,6 +22,8 @@ import './HomeScreen.css';
 interface HomeScreenProps {
   onStart: () => void;
   onOpenZukan: () => void;
+  preloadEnabled?: boolean;
+  onTogglePreload?: () => void;
 }
 
 type ModalType = 'howto' | 'settings' | 'records' | 'credits' | null;
@@ -229,7 +231,7 @@ const Fireflies = () => {
   return <canvas ref={canvasRef} className="fireflies-canvas" aria-hidden />;
 };
 
-const HomeScreen = ({ onStart, onOpenZukan }: HomeScreenProps) => {
+const HomeScreen = ({ onStart, onOpenZukan, preloadEnabled = false, onTogglePreload }: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
   const [activeHowtoTab, setActiveHowtoTab] = useState<HowtoTab>('glossary');
   const [openedHowtoEntry, setOpenedHowtoEntry] = useState<string | null>(null);
@@ -611,6 +613,24 @@ const HomeScreen = ({ onStart, onOpenZukan }: HomeScreenProps) => {
                     </div>
                   </div>
                 )}
+              </div>
+            ) : modal === 'settings' ? (
+              <div className="settings-list">
+                <div className="settings-item">
+                  <div className="settings-item-info">
+                    <p className="settings-item-title">カード画像を事前読み込み</p>
+                    <p className="settings-item-desc">
+                      起動時に全カード画像を読み込みます。通信量が増えますが表示が速くなります。
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`settings-toggle ${preloadEnabled ? 'settings-toggle--on' : ''}`}
+                    onClick={onTogglePreload}
+                  >
+                    {preloadEnabled ? 'ON' : 'OFF'}
+                  </button>
+                </div>
               </div>
             ) : (
               <p>準備中です。</p>

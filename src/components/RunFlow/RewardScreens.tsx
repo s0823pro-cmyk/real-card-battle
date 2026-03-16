@@ -4,7 +4,7 @@ import type { Card, JobId } from '../../types/game';
 import type { Omamori } from '../../types/run';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import CardComponent from '../Hand/CardComponent';
-import { CARPENTER_UPGRADES } from '../../data/upgrades/carpenterUpgrades';
+import { getUpgradeForCard } from '../../data/upgrades';
 
 interface CardRewardProps {
   cards: Card[];
@@ -145,10 +145,8 @@ interface CardUpgradeProps {
 }
 
 const getUpgradePreview = (card: Card, jobId: JobId): string => {
-  const upgradeMap = jobId === 'carpenter' ? CARPENTER_UPGRADES : {};
-  const def = upgradeMap[card.name];
-  if (def) return def.description;
-  return '強化後の効果が適用されます';
+  const def = getUpgradeForCard(card, jobId);
+  return def?.description ?? '強化後の効果が適用されます';
 };
 
 export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onSkip }: CardUpgradeProps) => {
