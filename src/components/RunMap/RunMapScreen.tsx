@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import type { BranchPreview, GameProgress } from '../../types/run';
 import type { Card } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
+import { getMapBackground } from '../../data/mapBackgrounds';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
 import './RunMapScreen.css';
@@ -66,6 +67,8 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
   const touchStartYRef = useRef(0);
   const touchMovedRef = useRef(false);
   const prevTileIdRef = useRef(progress.currentTileId);
+  const prevAreaRef = useRef(progress.currentArea);
+  const [isAreaFading, setIsAreaFading] = useState(true);
   const isSelecting = progress.currentScreen === 'branch_select' && progress.selectableTileIds.length > 0;
 
   useEffect(() => {
@@ -85,6 +88,16 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
     }
     return undefined;
   }, [progress.currentTileId]);
+
+  useEffect(() => {
+    if (prevAreaRef.current !== progress.currentArea) {
+      setIsAreaFading(true);
+      prevAreaRef.current = progress.currentArea;
+      const timer = window.setTimeout(() => setIsAreaFading(false), 800);
+      return () => window.clearTimeout(timer);
+    }
+    return undefined;
+  }, [progress.currentArea]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -150,9 +163,25 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
 
   const noop = () => {};
   const sortedDeck = [...progress.deck].sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
+  const bgUrl = progress.jobId === 'carpenter' ? getMapBackground(progress.currentArea) : null;
 
   return (
-    <main className="run-map-screen">
+    <main
+      className={`run-map-screen ${bgUrl && isAreaFading ? 'run-map-screen--bg-fadein' : ''}`}
+      style={
+        bgUrl
+          ? {
+              backgroundImage: `url(${bgUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }
+          : {
+              background: '#0d1117',
+            }
+      }
+    >
+      {bgUrl && <div className="map-bg-overlay" />}
       <header className="map-header">
         <div className="map-header-row">
           <span className="map-area-name">エリア{progress.currentArea}</span>

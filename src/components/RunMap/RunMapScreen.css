@@ -1,7 +1,9 @@
 .run-map-screen {
+  position: relative;
   width: 100%;
   max-width: 430px;
   height: 100dvh;
+  min-height: 100vh;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -11,10 +13,22 @@
   overflow: hidden;
 }
 
+.run-map-screen--bg-fadein {
+  animation: map-bg-fadein 0.8s ease forwards;
+}
+
+.map-bg-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1;
+  pointer-events: none;
+}
+
 .map-header {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 2;
   background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -104,6 +118,7 @@
 
 .board-wrapper {
   position: relative;
+  z-index: 2;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -341,7 +356,7 @@
 .map-controls {
   position: sticky;
   bottom: 0;
-  z-index: 10;
+  z-index: 2;
   background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(8px);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -698,5 +713,14 @@
   100% {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes map-bg-fadein {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }
