@@ -111,7 +111,8 @@ interface UseGameStateOptions {
   onConsumeItem?: (itemId: string) => void;
 }
 
-const getMaxTime = (mental: number): number => Number((5 + mental * 0.3).toFixed(1));
+const getMaxTime = (mental: number, timeBonusPerTurn = 0): number =>
+  Number((5 + mental * 0.3 + timeBonusPerTurn).toFixed(1));
 
 const createAnxietyCards = (count: number): Card[] =>
   Array.from({ length: count }).map((_, idx) => ({
@@ -146,6 +147,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   nextIngredientBonus: player.nextIngredientBonus ?? 0,
   threeStarActive: player.threeStarActive ?? false,
   firstIngredientUsedThisTurn: player.firstIngredientUsedThisTurn ?? false,
+  timeBonusPerTurn: player.timeBonusPerTurn ?? 0,
 });
 
 const createInitialGameState = (setup?: BattleSetup | null): GameState => {
@@ -193,14 +195,15 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     nextIngredientBonus: 0,
     threeStarActive: false,
     firstIngredientUsedThisTurn: false,
-      nextAttackBoostValue: 0,
-      nextAttackBoostCount: 0,
+    nextAttackBoostValue: 0,
+    nextAttackBoostCount: 0,
+    timeBonusPerTurn: 0,
   };
 
   return {
     phase: 'battle_start',
     turn: 1,
-    maxTime: getMaxTime(basePlayer.mental),
+    maxTime: getMaxTime(basePlayer.mental, basePlayer.timeBonusPerTurn ?? 0),
     usedTime: 0,
     shuffleAnimation: false,
     hand: drawResult.drawn,
@@ -550,7 +553,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       .reduce((sum, effect) => sum + effect.value, 0);
     const mentalTimeDelta = Number(
       (
-        getMaxTime(playerAfterCard.mental) - getMaxTime(gameState.player.mental)
+        getMaxTime(playerAfterCard.mental, playerAfterCard.timeBonusPerTurn) -
+        getMaxTime(gameState.player.mental, gameState.player.timeBonusPerTurn)
       ).toFixed(1),
     );
     const drawResult =
@@ -747,6 +751,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           rewardGold: reward,
           mentalRecovery: nextMental - playerAfterCard.mental,
           kind: options?.setup?.kind ?? 'battle',
+          battleTurns: gameState.turn,
         });
       }, 500);
     }
@@ -867,7 +872,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const cliffEdgeDrawBonus = cliffEdgeAwakened ? 2 : 0;
     const nextMaxTime = Math.max(
       1,
-      getMaxTime(state.player.mental) + cliffEdgeTimeBonus - state.player.nextTurnTimePenalty,
+      getMaxTime(state.player.mental, state.player.timeBonusPerTurn) +
+        cliffEdgeTimeBonus -
+        state.player.nextTurnTimePenalty,
     );
     const scaffoldPerTurn = state.activePowers
       .flatMap((power) => power.effects ?? [])
@@ -1009,6 +1016,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         rewardGold: reward,
         mentalRecovery: nextMental - workingState.player.mental,
         kind: options?.setup?.kind ?? 'battle',
+        battleTurns: workingState.turn,
       });
       return;
     }
@@ -1071,6 +1079,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           rewardGold: reward,
           mentalRecovery: nextMental - workingState.player.mental,
           kind: options?.setup?.kind ?? 'battle',
+          battleTurns: workingState.turn,
         });
         return;
       }
@@ -1080,6 +1089,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setBattleMessage('敵の行動');
     await wait(380);
 
+    let lastAttackerName = '';
     for (let ei = 0; ei < workingState.enemies.length; ei += 1) {
       const enemy = workingState.enemies[ei];
       if (enemy.currentHp <= 0) continue;
@@ -1088,7 +1098,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       workingState = {
         ...workingState,
         player: revivalOutcome.player,
-        maxTime: getMaxTime(revivalOutcome.player.mental),
+        maxTime: getMaxTime(revivalOutcome.player.mental, revivalOutcome.player.timeBonusPerTurn),
         enemies: workingState.enemies.map((item) => (item.id === enemy.id ? result.enemy : item)),
       };
       if (revivalOutcome.revived) {
@@ -1096,6 +1106,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         triggerRevivalEffect();
       }
       if (result.damageToPlayer > 0) {
+        lastAttackerName = enemy.name;
         workingState = {
           ...workingState,
           player: {
@@ -1161,6 +1172,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         rewardGold: 0,
         mentalRecovery: 0,
         kind: options?.setup?.kind ?? 'battle',
+        battleTurns: workingState.turn,
+        defeatedBy: lastAttackerName || '敵',
       });
       return;
     }
@@ -1197,6 +1210,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         rewardGold: 0,
         mentalRecovery: 0,
         kind: options?.setup?.kind ?? 'battle',
+        battleTurns: next.turn,
+        defeatedBy: '火傷',
       });
       return;
     }
@@ -1289,6 +1304,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       rewardGold: 0,
       mentalRecovery: 0,
       kind: options?.setup?.kind ?? 'battle',
+      battleTurns: gameState.turn,
+      defeatedBy: '撤退',
     });
   };
 

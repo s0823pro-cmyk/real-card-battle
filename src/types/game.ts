@@ -168,6 +168,7 @@ export interface PlayerState {
   firstIngredientUsedThisTurn: boolean;
   nextAttackBoostValue: number;
   nextAttackBoostCount: number;
+  timeBonusPerTurn: number;
 }
 
 export interface ToolSlot {

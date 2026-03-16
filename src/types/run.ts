@@ -141,6 +141,8 @@ export interface BattleResult {
   rewardGold: number;
   mentalRecovery: number;
   kind: BattleKind;
+  battleTurns?: number;
+  defeatedBy?: string;
 }
 
 export interface EnemyTemplateLike {
@@ -179,4 +181,7 @@ export interface GameProgress {
   cardUpgradeMode: 'upgrade' | 'remove' | null;
   returnScreenAfterUpgrade: Exclude<GameScreen, 'card_upgrade'> | null;
   unlockedCardNames: Set<string>;
+  totalTurns: number;
+  cardsAcquired: number;
+  lastDefeatedBy: string;
 }

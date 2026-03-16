@@ -1,0 +1,149 @@
+.victory-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.victory-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, #0d1117 0%, #1a1f2e 50%, #0d1117 100%);
+}
+
+.victory-confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.victory-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 430px;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.victory-title-area {
+  text-align: center;
+}
+
+.victory-job {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  letter-spacing: 0.15em;
+}
+
+.victory-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 48px;
+  font-weight: 900;
+  color: #f0b429;
+  margin: 0 0 8px;
+  text-shadow:
+    0 0 30px rgba(240, 180, 41, 0.6),
+    0 0 60px rgba(240, 180, 41, 0.3);
+  animation: victory-title-appear 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes victory-title-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.victory-sub {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  letter-spacing: 0.1em;
+}
+
+.victory-stats {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: stats-appear 0.5s ease forwards;
+}
+
+@keyframes stats-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.victory-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.victory-stat-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.victory-stat-info {
+  flex: 1;
+}
+
+.victory-stat-label {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 2px;
+}
+
+.victory-stat-value {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #e6edf3;
+  margin: 0;
+}
+
+.btn-victory-home {
+  width: 100%;
+  background: linear-gradient(135deg, #f0b429, #d4a017);
+  border: none;
+  border-radius: 12px;
+  color: #0d1117;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 16px;
+  font-weight: 900;
+  padding: 16px 0;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  box-shadow: 0 4px 20px rgba(240, 180, 41, 0.4);
+  animation: stats-appear 0.5s ease 0.2s both;
+}

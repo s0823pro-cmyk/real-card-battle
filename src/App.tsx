@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { JobId } from './types/game';
+import type { Card, JobId } from './types/game';
 import BattleScreen from './components/BattleScreen/BattleScreen';
+import { DefeatScreen } from './components/DefeatScreen/DefeatScreen';
 import HomeScreen from './components/HomeScreen/HomeScreen';
 import JobSelectScreen from './components/JobSelectScreen/JobSelectScreen';
 import { StoryScreen } from './components/StoryScreen/StoryScreen';
+import { VictoryScreen } from './components/VictoryScreen/VictoryScreen';
+import { BossRewardScreen } from './components/BossRewardScreen/BossRewardScreen';
 import { ZukanScreen } from './components/ZukanScreen/ZukanScreen';
 import RouletteOverlay from './components/RunMap/RouletteOverlay';
 import RunMapScreen from './components/RunMap/RunMapScreen';
@@ -15,8 +18,6 @@ import {
   CardRewardScreen,
   CardUpgradeScreen,
   OmamoriRewardScreen,
-  RunClearScreen,
-  RunGameOverScreen,
 } from './components/RunFlow/RewardScreens';
 import { useRunProgress } from './hooks/useRunProgress';
 import {
@@ -27,6 +28,7 @@ import {
   hasSeenStory,
   markStorySeen,
 } from './data/stories/carpenterStory';
+import type { BossReward } from './data/bossRewards';
 import type { StoryScene } from './data/stories/carpenterStory';
 import { preloadAllImages } from './utils/preloadImages';
 import './App.css';
@@ -56,6 +58,8 @@ function App() {
     onBattleEnd,
     pickCardReward,
     pickOmamoriReward,
+    applyBossReward,
+    advanceAfterAreaBoss,
     startRunFromHome,
     openZukanFromHome,
     backToHomeFromJobSelect,
@@ -73,6 +77,8 @@ function App() {
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
   const [currentStoryScenes, setCurrentStoryScenes] = useState<StoryScene[] | null>(null);
   const pendingAreaTransitionRef = useRef<(() => void) | null>(null);
+  const [showBossReward, setShowBossReward] = useState(false);
+  const [bossRewardArea, setBossRewardArea] = useState<number | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
   const transitionCleanupRef = useRef<number | null>(null);
   const [preloadEnabled, setPreloadEnabled] = useState<boolean>(
@@ -158,17 +164,13 @@ function App() {
     startRunFromJobSelect(nextJobId);
   };
 
-  const triggerAreaStory = (area: number, onDone: () => void): boolean => {
-    if (state.jobId !== 'carpenter') return false;
+  const showAreaStory = (area: 1 | 2 | 3, onDone: () => void) => {
     const storyId = `carpenter_e${area}`;
-    if (hasSeenStory(storyId)) return false;
-    const scenes =
-      area === 1 ? CARPENTER_E1_STORY : area === 2 ? CARPENTER_E2_STORY : CARPENTER_E3_STORY;
+    const scenes = area === 1 ? CARPENTER_E1_STORY : area === 2 ? CARPENTER_E2_STORY : CARPENTER_E3_STORY;
     pendingAreaTransitionRef.current = onDone;
     setCurrentStoryId(storyId);
     setCurrentStoryScenes(scenes);
     setShowStory(true);
-    return true;
   };
 
   const handleAreaStoryComplete = () => {
@@ -179,34 +181,72 @@ function App() {
     if (storyId) markStorySeen(storyId);
     const transition = pendingAreaTransitionRef.current;
     pendingAreaTransitionRef.current = null;
-    if (storyId === 'carpenter_e3') {
-      transition?.();
-    } else {
-      transition?.();
+    transition?.();
+  };
+
+  const startPostAreaBossFlow = (area: number) => {
+    if (area >= 3) {
+      if (state.jobId === 'carpenter') {
+        showAreaStory(3, () => {
+          advanceAfterAreaBoss();
+        });
+      } else {
+        advanceAfterAreaBoss();
+      }
+      return;
     }
+
+    const openBossReward = () => {
+      setBossRewardArea(area);
+      setShowBossReward(true);
+    };
+
+    if (state.jobId === 'carpenter') {
+      const storyId = `carpenter_e${area}`;
+      if (!hasSeenStory(storyId)) {
+        showAreaStory(area as 1 | 2, openBossReward);
+        return;
+      }
+    }
+    openBossReward();
   };
 
   const handlePickCardReward = (cardId: string | null) => {
     const isAreaBoss = state.lastTileType === 'area_boss';
     const area = state.currentArea;
-    if (isAreaBoss) {
-      const triggered = triggerAreaStory(area, () => pickCardReward(cardId));
-      if (triggered) return;
+    if (!isAreaBoss) {
+      pickCardReward(cardId);
+      return;
     }
-    pickCardReward(cardId);
+    const hasOmamoriChoices = (state.omamoriRewardChoices?.length ?? 0) > 0;
+    pickCardReward(cardId, { deferBossTransition: true });
+    if (!hasOmamoriChoices) {
+      startPostAreaBossFlow(area);
+    }
   };
 
   const handlePickOmamoriReward = (omamoriId: string) => {
     const isAreaBoss = state.lastTileType === 'area_boss';
     const area = state.currentArea;
-    if (isAreaBoss) {
-      const triggered = triggerAreaStory(area, () => pickOmamoriReward(omamoriId));
-      if (triggered) return;
+    if (!isAreaBoss) {
+      pickOmamoriReward(omamoriId);
+      return;
     }
-    pickOmamoriReward(omamoriId);
+    pickOmamoriReward(omamoriId, { deferBossTransition: true });
+    startPostAreaBossFlow(area);
+  };
+
+  const handleBossRewardComplete = (reward: BossReward, selectedCard?: Card) => {
+    applyBossReward(reward.type, selectedCard);
+    setShowBossReward(false);
+    setBossRewardArea(null);
+    advanceAfterAreaBoss();
   };
 
   const renderScreen = () => {
+    const currentTile = state.board.find((tile) => tile.id === state.currentTileId);
+    const floor = currentTile?.index ?? 1;
+    const totalFloors = Math.max(1, ...state.board.map((tile) => tile.index));
     switch (state.currentScreen) {
       case 'home':
       case 'title':
@@ -299,9 +339,32 @@ function App() {
           />
         );
       case 'victory':
-        return <RunClearScreen onReset={() => runScreenTransition(resetRun, 350, 350)} />;
+        return (
+          <VictoryScreen
+            jobId={state.jobId}
+            area={state.currentArea}
+            turnCount={state.totalTurns}
+            cardsAcquired={state.cardsAcquired}
+            onHome={() => runScreenTransition(resetRun, 350, 350)}
+          />
+        );
       case 'game_over':
-        return <RunGameOverScreen onReset={() => runScreenTransition(resetRun, 350, 350)} />;
+        return (
+          <DefeatScreen
+            jobId={state.jobId}
+            area={state.currentArea}
+            floor={floor}
+            totalFloors={totalFloors}
+            defeatedBy={state.lastDefeatedBy}
+            onHome={() => runScreenTransition(resetRun, 350, 350)}
+            onRetry={() =>
+              runScreenTransition(() => {
+                resetRun();
+                startRunFromHome();
+              }, 350, 350)
+            }
+          />
+        );
       case 'map':
       case 'dice_rolling':
       case 'branch_select':
@@ -354,6 +417,14 @@ function App() {
           scenes={currentStoryScenes}
           onComplete={handleAreaStoryComplete}
           showStartButton={false}
+        />
+      )}
+      {showBossReward && bossRewardArea !== null && (
+        <BossRewardScreen
+          area={bossRewardArea}
+          jobId={state.jobId}
+          player={state.player}
+          onComplete={handleBossRewardComplete}
         />
       )}
       {preloadProgress && (

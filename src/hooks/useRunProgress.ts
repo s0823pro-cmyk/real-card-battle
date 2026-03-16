@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef } from 'react';
+import type { BossRewardType } from '../data/bossRewards';
 import { CURSE_CARD } from '../data/carpenterDeck';
 import { getJobConfig } from '../data/jobs';
 import {
@@ -93,9 +94,14 @@ type Action =
   | { type: 'set_items'; items: RunItem[] }
   | { type: 'set_omamoris'; omamoris: Omamori[] }
   | { type: 'set_card_remove_count'; value: number }
+  | { type: 'set_run_stats'; totalTurns?: number; cardsAcquired?: number; lastDefeatedBy?: string }
   | { type: 'set_current_area'; area: number }
   | { type: 'open_card_upgrade'; mode: 'upgrade' | 'remove'; returnScreen: Exclude<GameScreen, 'card_upgrade'> }
   | { type: 'close_card_upgrade' };
+
+interface PickRewardOptions {
+  deferBossTransition?: boolean;
+}
 
 const initialPlayer: PlayerState = {
   jobId: 'carpenter',
@@ -130,8 +136,9 @@ const initialPlayer: PlayerState = {
   nextIngredientBonus: 0,
   threeStarActive: false,
   firstIngredientUsedThisTurn: false,
-      nextAttackBoostValue: 0,
-      nextAttackBoostCount: 0,
+  nextAttackBoostValue: 0,
+  nextAttackBoostCount: 0,
+  timeBonusPerTurn: 0,
 };
 
 const makeInitialProgress = (): GameProgress => {
@@ -164,6 +171,9 @@ const makeInitialProgress = (): GameProgress => {
     cardUpgradeMode: null,
     returnScreenAfterUpgrade: null,
     unlockedCardNames,
+    totalTurns: 0,
+    cardsAcquired: 0,
+    lastDefeatedBy: '',
   };
 };
 
@@ -225,6 +235,8 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
     case 'set_job':
       return { ...state, jobId: action.jobId };
     case 'set_deck':
+      {
+        const gained = Math.max(0, action.deck.length - state.deck.length);
       return {
         ...state,
         deck: action.deck,
@@ -232,7 +244,9 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
           ...state.unlockedCardNames,
           ...action.deck.map((card) => card.name),
         ]),
+        cardsAcquired: state.cardsAcquired + gained,
       };
+      }
     case 'set_unlocked_card_names':
       return {
         ...state,
@@ -244,6 +258,13 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       return { ...state, omamoris: action.omamoris };
     case 'set_card_remove_count':
       return { ...state, cardRemoveCount: action.value };
+    case 'set_run_stats':
+      return {
+        ...state,
+        totalTurns: action.totalTurns ?? state.totalTurns,
+        cardsAcquired: action.cardsAcquired ?? state.cardsAcquired,
+        lastDefeatedBy: action.lastDefeatedBy ?? state.lastDefeatedBy,
+      };
     case 'set_current_area':
       return { ...state, currentArea: action.area };
     case 'open_card_upgrade':
@@ -283,6 +304,22 @@ const getSellPrice = (card: Card): number => {
 };
 
 const getRemoveCost = (removeCount: number): number => 50 + removeCount * 25;
+
+const advanceAfterAreaBossCore = (
+  dispatchFn: (action: Action) => void,
+  currentArea: number,
+) => {
+  if (currentArea >= 3) {
+    console.log('[run-check] area3 boss -> victory');
+    dispatchFn({ type: 'set_screen', screen: 'victory' });
+    return;
+  }
+  console.log(`[run-check] area${currentArea} boss -> area${currentArea + 1} map`);
+  dispatchFn({ type: 'set_current_area', area: currentArea + 1 });
+  dispatchFn({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
+  dispatchFn({ type: 'set_current_tile', tileId: 1 });
+  dispatchFn({ type: 'set_screen', screen: 'map' });
+};
 
 const applySingleEffect = (
   state: GameProgress,
@@ -725,12 +762,17 @@ export const useRunProgress = () => {
     nextIngredientBonus: 0,
     threeStarActive: false,
     firstIngredientUsedThisTurn: false,
-      nextAttackBoostValue: 0,
-      nextAttackBoostCount: 0,
+    nextAttackBoostValue: 0,
+    nextAttackBoostCount: 0,
   });
 
   const onBattleEnd = (result: BattleResult) => {
     console.log(`[run-check] battle-end outcome:${result.outcome} kind:${result.kind}`);
+    dispatch({
+      type: 'set_run_stats',
+      totalTurns: stateRef.current.totalTurns + (result.battleTurns ?? 0),
+      lastDefeatedBy: result.defeatedBy ?? stateRef.current.lastDefeatedBy,
+    });
     dispatch({ type: 'set_player', player: sanitizePlayerAfterBattle(result.player) });
     dispatch({ type: 'set_deck', deck: result.deck });
     dispatch({ type: 'set_items', items: result.items });
@@ -751,7 +793,7 @@ export const useRunProgress = () => {
     console.log('[run-check] battle-victory -> card_reward');
   };
 
-  const pickCardReward = (cardId: string | null) => {
+  const pickCardReward = (cardId: string | null, options?: PickRewardOptions) => {
     if (cardId) {
       const card = stateRef.current.cardReward?.cards.find((item) => item.id === cardId);
       if (card) dispatch({ type: 'set_deck', deck: [...stateRef.current.deck, card] });
@@ -763,44 +805,63 @@ export const useRunProgress = () => {
       return;
     }
     if (stateRef.current.lastTileType === 'area_boss') {
-      const clearedArea = stateRef.current.currentArea;
-      if (clearedArea >= 3) {
-        console.log('[run-check] area3 boss card_reward -> victory');
-        dispatch({ type: 'set_screen', screen: 'victory' });
-      } else {
-        console.log(`[run-check] area${clearedArea} boss card_reward -> area${clearedArea + 1} map`);
-        dispatch({ type: 'set_current_area', area: clearedArea + 1 });
-        dispatch({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
-        dispatch({ type: 'set_current_tile', tileId: 1 });
+      if (options?.deferBossTransition) {
         dispatch({ type: 'set_screen', screen: 'map' });
+        return;
       }
+      advanceAfterAreaBossCore(dispatch, stateRef.current.currentArea);
       return;
     }
     console.log('[run-check] card_reward -> map');
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
-  const pickOmamoriReward = (omamoriId: string) => {
+  const pickOmamoriReward = (omamoriId: string, options?: PickRewardOptions) => {
     const omamori = stateRef.current.omamoriRewardChoices?.find((item) => item.id === omamoriId);
     if (omamori) dispatch({ type: 'set_omamoris', omamoris: [...stateRef.current.omamoris, omamori] });
     const source = stateRef.current.omamoriRewardSource;
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
     if (source === 'battle' && stateRef.current.lastTileType === 'area_boss') {
-      const clearedArea = stateRef.current.currentArea;
-      if (clearedArea >= 3) {
-        console.log('[run-check] area3 boss omamori_reward -> victory');
-        dispatch({ type: 'set_screen', screen: 'victory' });
-      } else {
-        console.log(`[run-check] area${clearedArea} boss omamori_reward -> area${clearedArea + 1} map`);
-        dispatch({ type: 'set_current_area', area: clearedArea + 1 });
-        dispatch({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
-        dispatch({ type: 'set_current_tile', tileId: 1 });
+      if (options?.deferBossTransition) {
         dispatch({ type: 'set_screen', screen: 'map' });
+        return;
       }
-    } else {
-      console.log('[run-check] omamori_reward -> map');
-      dispatch({ type: 'set_screen', screen: 'map' });
+      advanceAfterAreaBossCore(dispatch, stateRef.current.currentArea);
+      return;
     }
+    console.log('[run-check] omamori_reward -> map');
+    dispatch({ type: 'set_screen', screen: 'map' });
+  };
+
+  const applyBossReward = (rewardType: BossRewardType, selectedCard?: Card) => {
+    if (rewardType === 'max_hp_up') {
+      dispatch({
+        type: 'set_player',
+        player: {
+          ...stateRef.current.player,
+          maxHp: stateRef.current.player.maxHp + 10,
+          currentHp: stateRef.current.player.currentHp + 10,
+        },
+      });
+      return;
+    }
+    if (rewardType === 'time_up') {
+      dispatch({
+        type: 'set_player',
+        player: {
+          ...stateRef.current.player,
+          timeBonusPerTurn: stateRef.current.player.timeBonusPerTurn + 1,
+        },
+      });
+      return;
+    }
+    if (rewardType === 'rare_card' && selectedCard) {
+      dispatch({ type: 'set_deck', deck: [...stateRef.current.deck, selectedCard] });
+    }
+  };
+
+  const advanceAfterAreaBoss = () => {
+    advanceAfterAreaBossCore(dispatch, stateRef.current.currentArea);
   };
 
   const resetRun = () => {
@@ -843,6 +904,7 @@ export const useRunProgress = () => {
       firstIngredientUsedThisTurn: false,
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
+      timeBonusPerTurn: 0,
     };
     dispatch({ type: 'set_job', jobId: resetJobId });
     dispatch({ type: 'set_board', board: nextBoard });
@@ -852,6 +914,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_items', items: [] });
     dispatch({ type: 'set_omamoris', omamoris: [] });
     dispatch({ type: 'set_card_remove_count', value: 0 });
+    dispatch({ type: 'set_run_stats', totalTurns: 0, cardsAcquired: 0, lastDefeatedBy: '' });
     dispatch({ type: 'set_current_area', area: 1 });
     dispatch({ type: 'set_card_reward', cards: null });
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
@@ -924,6 +987,7 @@ export const useRunProgress = () => {
       firstIngredientUsedThisTurn: false,
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
+      timeBonusPerTurn: 0,
     };
     dispatch({ type: 'set_job', jobId });
     dispatch({ type: 'set_player', player: nextPlayer });
@@ -942,6 +1006,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_pending_steps', steps: 0 });
     dispatch({ type: 'set_dice', value: null, rolling: false });
     dispatch({ type: 'set_card_remove_count', value: 0 });
+    dispatch({ type: 'set_run_stats', totalTurns: 0, cardsAcquired: 0, lastDefeatedBy: '' });
     dispatch({ type: 'set_current_area', area: 1 });
     dispatch({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
     dispatch({ type: 'set_current_tile', tileId: 1 });
@@ -968,6 +1033,8 @@ export const useRunProgress = () => {
     onBattleEnd,
     pickCardReward,
     pickOmamoriReward,
+    applyBossReward,
+    advanceAfterAreaBoss,
     startRunFromHome,
     openZukanFromHome,
     backToHomeFromJobSelect,
