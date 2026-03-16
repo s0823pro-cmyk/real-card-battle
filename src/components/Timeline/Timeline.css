@@ -1,3 +1,9 @@
+@property --clock-consumed-deg {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
 .timeline-section {
   padding: 0;
   margin: 0;
@@ -14,6 +20,301 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+}
+
+.timeline-clock {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 5px 12px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 10px rgba(233, 220, 170, 0.12));
+}
+
+.timeline-clock::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 40%),
+    linear-gradient(145deg, rgba(244, 249, 255, 0.42), rgba(120, 133, 153, 0.28) 45%, rgba(40, 48, 62, 0.55));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(228, 216, 170, 0.2);
+  pointer-events: none;
+}
+
+.timeline-clock::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from -90deg,
+    rgba(230, 237, 243, 0.34) 0deg 1.4deg,
+    rgba(230, 237, 243, 0) 1.4deg 30deg
+  );
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 1;
+  animation: clock-dial-glimmer 6s linear infinite;
+}
+
+.timeline-clock-start-marker {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 3px;
+  height: 10px;
+  border-radius: 0;
+  clip-path: polygon(0 0, 100% 0, 75% 100%, 25% 100%);
+  background: linear-gradient(180deg, #fffdfa 0%, #f2e2c1 45%, #c89f63 100%);
+  transform: translateX(-50%);
+  box-shadow:
+    0 0 0 1px rgba(69, 52, 26, 0.35),
+    0 1px 0 rgba(255, 245, 220, 0.62) inset;
+  z-index: 5;
+  opacity: 0.94;
+}
+
+.timeline-clock-start-marker::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 8px;
+  height: 3px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, rgba(255, 238, 202, 0), rgba(255, 238, 202, 0.48), rgba(255, 238, 202, 0));
+  opacity: 0.36;
+  pointer-events: none;
+}
+
+.timeline-clock-ring {
+  --clock-color: #2ecc71;
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -90deg,
+    rgba(255, 255, 255, 0.12) 0deg var(--clock-consumed-deg),
+    var(--clock-color) var(--clock-consumed-deg) 360deg
+  );
+  transform: rotate(90deg);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.2),
+    inset 0 0 0 4px rgba(12, 17, 28, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: --clock-consumed-deg 0.1s linear, box-shadow 0.2s ease, filter 0.2s ease;
+  z-index: 2;
+}
+
+.timeline-clock-ring::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 55%);
+  pointer-events: none;
+}
+
+.timeline-clock-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -90deg,
+    rgba(255, 255, 255, 0.35) 0deg,
+    rgba(255, 255, 255, 0) 36deg,
+    rgba(255, 255, 255, 0) 318deg,
+    rgba(255, 255, 255, 0.28) 360deg
+  );
+  mix-blend-mode: screen;
+  opacity: 0.5;
+  pointer-events: none;
+  animation: clock-ring-sheen 5.4s ease-in-out infinite;
+}
+
+.timeline-clock--warning .timeline-clock-ring {
+  --clock-color: #fbbf24;
+}
+
+.timeline-clock--critical .timeline-clock-ring {
+  --clock-color: #ff4757;
+}
+
+.timeline-clock-hand {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f5f9ff 0%, #cfd8e8 75%, #9aa7bb 100%);
+  transform-origin: center bottom;
+  transition: transform 0.1s linear, box-shadow 0.2s ease;
+  box-shadow:
+    0 0 8px rgba(230, 237, 243, 0.42),
+    0 1px 0 rgba(255, 255, 255, 0.4) inset;
+  z-index: 3;
+}
+
+.timeline-clock--previewing .timeline-clock-hand:not(.timeline-clock-hand--preview) {
+  background: linear-gradient(180deg, #ffe3e3 0%, #ff9a9a 62%, #dd5a5a 100%);
+  box-shadow:
+    0 0 10px rgba(255, 130, 130, 0.62),
+    0 1px 0 rgba(255, 232, 232, 0.56) inset;
+}
+
+.timeline-clock-hand--preview {
+  width: 2px;
+  height: 16px;
+  background: #ff6d6d;
+  box-shadow: 0 0 8px rgba(255, 120, 120, 0.55);
+  opacity: 0;
+  animation: none;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.2s ease,
+    opacity 0.12s linear;
+  will-change: transform;
+}
+
+.timeline-clock-hand--preview.is-visible {
+  opacity: 1;
+  animation: timeline-preview-pulse 0.8s ease-in-out infinite;
+}
+
+.timeline-clock-center-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff 0%, #dde6f3 40%, #a2b0c4 100%);
+  box-shadow:
+    0 0 6px rgba(230, 237, 243, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.18);
+  transform: translate(-50%, -50%);
+  z-index: 4;
+}
+
+.timeline-clock-center-dot::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 230, 160, 0.35);
+}
+
+.timeline-clock-time {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: 50%;
+  border: 1px solid rgba(220, 230, 244, 0.32);
+  background: radial-gradient(circle at 35% 30%, rgba(35, 44, 58, 0.96), rgba(12, 17, 28, 0.96));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 2px 6px rgba(0, 0, 0, 0.55);
+  font-family: var(--font-display);
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: #e6edf3;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.8),
+    0 0 4px rgba(230, 237, 243, 0.25);
+  pointer-events: none;
+}
+
+.timeline-clock-time.danger {
+  color: #ff9b9b;
+}
+
+.timeline-clock-time.previewing {
+  color: #ff8d8d;
+}
+
+.timeline-clock-time.previewing .timeline-clock-time-value {
+  animation: clock-time-preview-pulse 1.5s ease-in-out infinite;
+}
+
+.timeline-clock-time-value {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  line-height: 1;
+}
+
+.timeline-clock-time-int {
+  font-size: 1em;
+}
+
+.timeline-clock-time-decimal {
+  font-size: 0.72em;
+  opacity: 0.95;
+  transform: translateY(-0.2px);
+}
+
+.timeline-clock--drop-active .timeline-clock-ring {
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 226, 160, 0.72),
+    inset 0 0 0 4px rgba(79, 58, 22, 0.5),
+    0 0 10px rgba(255, 208, 122, 0.38),
+    0 0 18px rgba(255, 177, 80, 0.3);
+  filter: brightness(1.08) saturate(1.08);
+  animation: clock-target-aura 1.25s ease-in-out infinite;
+}
+
+.timeline-clock--drop-active .timeline-clock-hand--preview {
+  background: #ff6d6d;
+  box-shadow: 0 0 10px rgba(255, 130, 130, 0.7);
+  animation: timeline-preview-pulse 0.8s ease-in-out infinite;
+}
+
+.timeline-clock--drop-active .timeline-clock-hand:not(.timeline-clock-hand--preview) {
+  background: linear-gradient(180deg, #ffe3e3 0%, #ff9a9a 62%, #dd5a5a 100%);
+  box-shadow:
+    0 0 10px rgba(255, 130, 130, 0.7),
+    0 1px 0 rgba(255, 232, 232, 0.58) inset;
+  animation: clock-target-hand 1.25s ease-in-out infinite;
+}
+
+.timeline-clock--drop-active::before {
+  box-shadow:
+    0 0 0 1px rgba(255, 234, 188, 0.28) inset,
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(228, 216, 170, 0.28),
+    0 0 12px rgba(255, 196, 97, 0.22);
+}
+
+.timeline-clock--drop-active::after {
+  opacity: 0.72;
+  filter: brightness(1.12);
+}
+
+.timeline-clock--recovering .timeline-clock-ring {
+  transition: --clock-consumed-deg 0.62s ease-out, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.timeline-clock--recovering .timeline-clock-hand {
+  transition: transform 0.62s ease-out, box-shadow 0.2s ease;
 }
 
 .timebar-container {
@@ -74,6 +375,21 @@
   animation: time-critical-pulse 1s ease-in-out infinite;
 }
 
+.timeline-preview-loss {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 107, 107, 0.95),
+    rgba(255, 107, 107, 0.95) 4px,
+    rgba(255, 140, 140, 0.95) 4px,
+    rgba(255, 140, 140, 0.95) 8px
+  );
+  border-radius: 2px;
+  animation: timeline-preview-pulse 0.8s ease-in-out infinite;
+}
+
 .timeline-inline-remaining {
   margin-left: 6px;
   font-size: 0.82rem;
@@ -87,18 +403,32 @@
   color: #ff8989;
 }
 
+.timeline-inline-preview {
+  margin-left: 6px;
+  font-size: 0.72rem;
+  font-family: var(--font-display);
+  color: #ff9b9b;
+  white-space: nowrap;
+  text-shadow: 0 0 8px rgba(255, 120, 120, 0.35);
+}
+
+.timeline-inline-preview.danger {
+  color: #ff6262;
+}
+
 .btn-turn-end {
   flex-shrink: 0;
   white-space: nowrap;
   pointer-events: auto;
-  min-width: 54px;
-  height: 32px;
+  min-width: 46px;
+  height: 28px;
+  padding: 0 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  border-radius: 999px;
   background: #1c2128;
   color: #8b949e;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -129,6 +459,77 @@
   }
   100% {
     transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes timeline-preview-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes clock-target-aura {
+  0%,
+  100% {
+    filter: brightness(1.05) saturate(1.04);
+  }
+  50% {
+    filter: brightness(1.14) saturate(1.14);
+  }
+}
+
+@keyframes clock-target-hand {
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px rgba(255, 214, 143, 0.45),
+      0 1px 0 rgba(255, 245, 220, 0.45) inset;
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(255, 220, 158, 0.75),
+      0 1px 0 rgba(255, 250, 232, 0.65) inset;
+  }
+}
+
+@keyframes clock-ring-sheen {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: rotate(0deg);
+  }
+  50% {
+    opacity: 0.72;
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes clock-dial-glimmer {
+  0% {
+    opacity: 0.35;
+    filter: brightness(0.95);
+  }
+  45% {
+    opacity: 0.6;
+    filter: brightness(1.08);
+  }
+  100% {
+    opacity: 0.35;
+    filter: brightness(0.95);
+  }
+}
+
+@keyframes clock-time-preview-pulse {
+  0%,
+  100% {
+    opacity: 0.62;
+  }
+  50% {
     opacity: 1;
   }
 }

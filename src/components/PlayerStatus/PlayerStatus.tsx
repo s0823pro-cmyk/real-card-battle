@@ -11,6 +11,8 @@ interface Props {
   battleItems: RunItem[];
   canUseItems: boolean;
   onUseItem: (itemId: string) => void;
+  onEndTurn: () => void;
+  isTurnEnding: boolean;
   drawPileCount: number;
   discardPileCount: number;
   isPlayerHit: boolean;
@@ -26,6 +28,8 @@ const PlayerStatus = ({
   battleItems,
   canUseItems,
   onUseItem,
+  onEndTurn,
+  isTurnEnding,
   drawPileCount,
   discardPileCount,
   isPlayerHit,
@@ -47,6 +51,31 @@ const PlayerStatus = ({
         ? 'hungry-state'
         : 'normal-awake-state';
   const blockClass = player.block > 0 ? 'status-block--active' : 'status-block--zero';
+  const itemSlots = (
+    <div className="stat-items">
+      {Array.from({ length: 3 }).map((_, idx) => {
+        const item = battleItems[idx];
+        return (
+          <Tooltip
+            key={`item-${idx}`}
+            label={item?.name ?? 'アイテム'}
+            description={item?.description ?? '戦闘で使えるアイテム'}
+          >
+            <button
+              type="button"
+              className={`item-slot ${item ? 'filled' : ''}`}
+              disabled={!item || !canUseItems}
+              onClick={() => {
+                if (item && canUseItems) onUseItem(item.id);
+              }}
+            >
+              {item ? item.icon : ''}
+            </button>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
 
   return (
     <section className={`player-status ${isPlayerHit ? 'player-hit' : ''}`}>
@@ -96,32 +125,10 @@ const PlayerStatus = ({
             <span className="status-cliff-edge">⚡</span>
           </Tooltip>
         )}
-        <div className="stat-items">
-          {Array.from({ length: 3 }).map((_, idx) => {
-            const item = battleItems[idx];
-            return (
-              <Tooltip
-                key={`item-${idx}`}
-                label={item?.name ?? 'アイテム'}
-                description={item?.description ?? '戦闘で使えるアイテム'}
-              >
-                <button
-                  type="button"
-                  className={`item-slot ${item ? 'filled' : ''}`}
-                  disabled={!item || !canUseItems}
-                  onClick={() => {
-                    if (item && canUseItems) onUseItem(item.id);
-                  }}
-                >
-                  {item ? item.icon : ''}
-                </button>
-              </Tooltip>
-            );
-          })}
-        </div>
+        <ToolSlots toolSlots={toolSlots} />
       </div>
       <div className="player-row player-row--sub">
-        <ToolSlots toolSlots={toolSlots} />
+        {itemSlots}
         <div className="stat-preparation">
           {isPreparationActive && (
             <Tooltip
@@ -138,6 +145,17 @@ const PlayerStatus = ({
           </button>
           <button type="button" className="btn-pile" onClick={onOpenDiscardPile}>
             捨:{discardPileCount}
+          </button>
+          <button
+            type="button"
+            className="btn-turn-end-inline"
+            disabled={isTurnEnding}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEndTurn();
+            }}
+          >
+            終了
           </button>
         </div>
       </div>

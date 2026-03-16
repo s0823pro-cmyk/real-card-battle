@@ -142,8 +142,9 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   'リフォーム': {
     name: 'リフォーム+',
-    description: '手札のカード2枚を強化版に変換',
-    effects: [{ type: 'upgrade_hand_card', value: 2 }],
+    timeCost: 1,
+    description: '手札のカード2枚をランダムで強化。使用後除外',
+    effects: [{ type: 'upgrade_random_hand_card', value: 2 }],
   },
   '匠の一撃': {
     name: '匠の一撃+',

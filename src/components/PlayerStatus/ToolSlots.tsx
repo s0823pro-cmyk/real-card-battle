@@ -8,7 +8,6 @@ interface Props {
 const ToolSlots = ({ toolSlots }: Props) => {
   return (
     <div className="tool-slots-inline">
-      <span className="tool-inline-label">道具:</span>
       {Array.from({ length: 3 }).map((_, idx) => {
         const slot = toolSlots[idx];
         return (
@@ -19,8 +18,13 @@ const ToolSlots = ({ toolSlots }: Props) => {
               slot ? slot.card.description : '装備カード。最大3枠。毎ターン自動で効果が発動する。'
             }
           >
-            <span className={`tool-slot-inline ${slot ? 'filled' : ''}`}>
-              {slot ? (slot.card.icon ?? '🔧') : ''}
+            <span className={`tool-slot-inline ${slot ? 'filled' : 'empty'} ${slot?.card.type ?? ''}`}>
+              {slot ? (
+                <>
+                  <span className="tool-slot-inline-icon">{slot.card.icon ?? '🔧'}</span>
+                  <span className="tool-slot-inline-name">{slot.card.name}</span>
+                </>
+              ) : null}
             </span>
           </Tooltip>
         );

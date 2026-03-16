@@ -29,6 +29,7 @@ export type EffectType =
   | 'block_persist'
   | 'block_per_turn'
   | 'upgrade_hand_card'
+  | 'upgrade_random_hand_card'
   | 'next_attack_damage_boost'
   | 'damage_immunity_this_turn'
   | 'next_turn_no_block'

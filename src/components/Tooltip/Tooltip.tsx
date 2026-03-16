@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { STATUS_TOOLTIPS } from './statusTooltips';
 import { ENEMY_ACTION_TOOLTIPS } from './statusTooltips';
 import type { TooltipKey } from './statusTooltips';
@@ -159,23 +160,26 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       }}
     >
       {children}
-      <div
-        ref={tooltipRef}
-        className="tooltip-box"
-        style={{
-          position: 'fixed',
-          top: `${position.top}px`,
-          left: `${position.left}px`,
-          zIndex: 9999,
-          visibility: visible && calculated ? 'visible' : 'hidden',
-          opacity: visible && calculated ? 1 : 0,
-          transition: calculated ? 'opacity 0.15s ease' : 'none',
-          pointerEvents: 'none',
-        }}
-      >
-        <div className="tooltip-label">{data.label}</div>
-        <div className="tooltip-description">{data.description}</div>
-      </div>
+      {createPortal(
+        <div
+          ref={tooltipRef}
+          className="tooltip-box"
+          style={{
+            position: 'fixed',
+            top: `${position.top}px`,
+            left: `${position.left}px`,
+            zIndex: 9999,
+            visibility: visible && calculated ? 'visible' : 'hidden',
+            opacity: visible && calculated ? 1 : 0,
+            transition: calculated ? 'opacity 0.15s ease' : 'none',
+            pointerEvents: 'none',
+          }}
+        >
+          <div className="tooltip-label">{data.label}</div>
+          <div className="tooltip-description">{data.description}</div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 };

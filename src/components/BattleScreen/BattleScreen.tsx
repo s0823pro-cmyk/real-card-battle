@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import ActionBar from '../ActionBar/ActionBar';
 import DamagePopup from '../Effects/DamagePopup';
@@ -25,6 +25,7 @@ import './BattleScreen.css';
 
 type DropTarget = 'enemy' | 'field' | 'timebar' | 'hand' | 'reserve' | 'sell' | null;
 type PileView = 'draw' | 'discard' | 'exhaust' | null;
+type TimelineGaugeStyle = 'clock' | 'bar';
 
 interface HandDragState {
   isDragging: boolean;
@@ -52,9 +53,12 @@ interface BattleScreenProps {
 }
 
 const DRAG_CARD_HEIGHT = 168;
-const DRAG_Y_OFFSET = -DRAG_CARD_HEIGHT * 0.65;
-const DRAG_PROBE_Y_RATIOS = [0, 0.5, 1] as const;
-const RESERVE_PADDING = -16;
+const DRAG_CARD_WIDTH = 105;
+const TIMELINE_GAUGE_STYLE_STORAGE_KEY = 'real-card-battle:timeline-gauge-style';
+// 表示オフセット：指の位置がカード下部になるよう上にずらす
+const DRAG_DISPLAY_Y_OFFSET = -(DRAG_CARD_HEIGHT - 40);
+// 判定オフセット：カード上端基準（複数プローブで使用）
+const DRAG_JUDGE_Y_OFFSET = DRAG_DISPLAY_Y_OFFSET;
 type ReserveConfirmState = { card: Card; visible: boolean } | null;
 const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
   if ((card.damage ?? 0) > 0) return 'damage';
@@ -65,13 +69,13 @@ const getUpgradePreviewText = (card: Card): string => {
   const type = getAutoUpgradeType(card);
   if (type === 'damage') {
     const before = card.damage ?? 0;
-    return `ダメージ ${before}→${before + 3}`;
+    return `ダメージ ${before}ↁE{before + 3}`;
   }
   if (type === 'block') {
     const before = card.block ?? 0;
-    return `ブロック ${before}→${before + 3}`;
+    return `ブロチE�� ${before}ↁE{before + 3}`;
   }
-  return `所要時間 ${card.timeCost}→${Math.max(1, card.timeCost - 1)}秒`;
+  return `所要時閁E${card.timeCost}ↁE{Math.max(1, card.timeCost - 1)}秒`;
 };
 
 const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) => {
@@ -109,6 +113,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     upgradeHandCardById,
     skipHandUpgradeSelection,
     endTurn,
+    concedeBattle,
     retryBattle,
   } = useGameState({ setup, onBattleEnd, onConsumeItem });
 
@@ -135,6 +140,15 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const [isHoveringTimebar, setIsHoveringTimebar] = useState(false);
   const [showPile, setShowPile] = useState<PileView>(null);
   const [reserveConfirm, setReserveConfirm] = useState<ReserveConfirmState>(null);
+  const [showBattleSettings, setShowBattleSettings] = useState(false);
+  const [timelineGaugeStyle, setTimelineGaugeStyle] = useState<TimelineGaugeStyle>(() => {
+    try {
+      const saved = window.localStorage.getItem(TIMELINE_GAUGE_STYLE_STORAGE_KEY);
+      return saved === 'bar' ? 'bar' : 'clock';
+    } catch {
+      return 'clock';
+    }
+  });
   const [attackEffect, setAttackEffect] = useState<{ x: number; y: number } | null>(null);
   const [skillEffect, setSkillEffect] = useState(false);
   const attackEffectTimerRef = useRef<number | null>(null);
@@ -161,6 +175,20 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     [],
   );
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(TIMELINE_GAUGE_STYLE_STORAGE_KEY, timelineGaugeStyle);
+    } catch {
+      // localStorage が使えない場合は保存をスキップ。
+    }
+  }, [timelineGaugeStyle]);
+
+  useEffect(() => {
+    if (gameState.phase === 'victory' || gameState.phase === 'defeat') {
+      setShowBattleSettings(false);
+    }
+  }, [gameState.phase]);
+
   const detectDropTarget = (
     clientX: number,
     clientY: number,
@@ -173,50 +201,94 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       y <= rect.bottom + padding;
 
     const enemyRect = enemyAreaRef.current?.getBoundingClientRect();
-    if (enemyRect && isInRect(clientX, clientY, enemyRect)) {
-      return { target: 'enemy', index: null };
+    if (enemyRect && isInRect(clientX, clientY, enemyRect, 8)) {
+      if (isEnemyTargetCard(card)) return { target: 'enemy', index: null };
     }
 
-    const reserveRect = reserveAreaRef.current?.getBoundingClientRect();
-    if (reserveRect && isInRect(clientX, clientY, reserveRect, RESERVE_PADDING)) {
-      return { target: 'reserve', index: null };
-    }
-
+    // タイムバーを温存より先に判定（重なり部分での誤反応を防ぐ）
     const timebarRect = timebarRowRef.current?.getBoundingClientRect();
-    if (timebarRect && isInRect(clientX, clientY, timebarRect)) {
-      return { target: isEnemyTargetCard(card) ? null : 'timebar', index: null };
+    if (timebarRect && isInRect(clientX, clientY, timebarRect, 4)) {
+      if (!isEnemyTargetCard(card)) return { target: 'timebar', index: null };
     }
 
     const sellRect = canSellInBattle ? sellDropRef.current?.getBoundingClientRect() : null;
     if (sellRect && isInRect(clientX, clientY, sellRect)) {
       return { target: 'sell', index: null };
-    };
+    }
+
     return { target: 'field', index: null };
   };
 
+  // 判定点：カード全面を細かいメッシュで判定
   const getDragProbePositions = (clientX: number, clientY: number) => {
-    const cardTopY = clientY + DRAG_Y_OFFSET;
-    return DRAG_PROBE_Y_RATIOS.map((ratio) => ({
-      x: clientX,
-      y: cardTopY + DRAG_CARD_HEIGHT * ratio,
-    }));
+    const PROBE_STEP_X = 10;
+    const PROBE_STEP_Y = 12;
+    const EDGE_PADDING_X = 4;
+    const EDGE_PADDING_Y = 4;
+    const leftX = clientX - DRAG_CARD_WIDTH / 2 + EDGE_PADDING_X;
+    const rightX = clientX + DRAG_CARD_WIDTH / 2 - EDGE_PADDING_X;
+    const topY = clientY + DRAG_JUDGE_Y_OFFSET;
+    const bottomY = topY + DRAG_CARD_HEIGHT - EDGE_PADDING_Y;
+    const probes: { x: number; y: number }[] = [];
+
+    for (let y = topY + EDGE_PADDING_Y; y <= bottomY; y += PROBE_STEP_Y) {
+      for (let x = leftX; x <= rightX; x += PROBE_STEP_X) {
+        probes.push({ x, y });
+      }
+      probes.push({ x: rightX, y });
+    }
+
+    for (let x = leftX; x <= rightX; x += PROBE_STEP_X) {
+      probes.push({ x, y: bottomY });
+    }
+    probes.push({ x: rightX, y: bottomY });
+
+    return probes;
   };
 
   const resolveDropTargetFromProbes = (
     probes: { x: number; y: number }[],
     card: Card,
-  ) => {
+    clientX: number,
+    clientY: number,
+  ): { target: DropTarget; index: number | null } => {
     const detections = probes.map((probe) => detectDropTarget(probe.x, probe.y, card));
-    const priority: DropTarget[] = ['enemy', 'reserve', 'timebar', 'sell'];
-    for (const target of priority) {
-      const found = detections.find((detection) => detection.target === target);
-      if (found) return found;
+
+    const enemyFound = detections.find((detection) => detection.target === 'enemy');
+    if (enemyFound) return enemyFound;
+
+    // 温存：タイムバー下エリアを左右に分割し、左側のみ反応
+    // 判定はカード上部（上中央）がゾーン内に入った場合のみ
+    const timebarRect = timebarRowRef.current?.getBoundingClientRect();
+    const reserveRect = reserveAreaRef.current?.getBoundingClientRect();
+    if (timebarRect && reserveRect) {
+      const cardTop = clientY + DRAG_DISPLAY_Y_OFFSET;
+      const anchorX = clientX; // カード上中央
+      const anchorY = cardTop + 10;
+      const zoneTop = Math.max(timebarRect.bottom + 4, reserveRect.top + 4);
+      const zoneBottom = reserveRect.bottom - 6;
+      const zoneLeft = reserveRect.left + 10;
+      const zoneRight = reserveRect.left + reserveRect.width / 2 - 8; // 下エリア左半分
+      const inReserveLeftZone =
+        anchorX >= zoneLeft &&
+        anchorX <= zoneRight &&
+        anchorY >= zoneTop &&
+        anchorY <= zoneBottom;
+      if (inReserveLeftZone) {
+        return { target: 'reserve' as const, index: null };
+      }
     }
+
+    const timebarFound = detections.find((detection) => detection.target === 'timebar');
+    if (timebarFound) return timebarFound;
+
+    const sellFound = detections.find((detection) => detection.target === 'sell');
+    if (sellFound) return sellFound;
+
     const nullFound = detections.find((detection) => detection.target === null);
     if (nullFound) return nullFound;
     return { target: 'field' as const, index: null };
   };
-
   const detectHoveredEnemyId = (clientX: number, clientY: number): string | null => {
     const enemyNodes = enemyAreaRef.current?.querySelectorAll<HTMLElement>('.enemy-card[data-enemy-id]');
     if (!enemyNodes?.length) return null;
@@ -312,7 +384,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     }
     if (!canPlayCard(start.card)) {
       const probes = getDragProbePositions(event.clientX, event.clientY);
-      const detection = resolveDropTargetFromProbes(probes, start.card);
+      const detection = resolveDropTargetFromProbes(probes, start.card, event.clientX, event.clientY);
       const reserveOnlyTarget: DropTarget = detection.target === 'reserve' ? 'reserve' : null;
       setIsHoveringTimebar(false);
       setHoveredEnemyId(null);
@@ -328,7 +400,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       return;
     }
     const probes = getDragProbePositions(event.clientX, event.clientY);
-    const detection = resolveDropTargetFromProbes(probes, start.card);
+    const detection = resolveDropTargetFromProbes(probes, start.card, event.clientX, event.clientY);
     const enemyTargetCard = isEnemyTargetCard(start.card);
     const timebarRect = timebarRowRef.current?.getBoundingClientRect();
     const isOverTimebar = timebarRect
@@ -358,123 +430,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     });
   };
 
-  const onHandCardPointerUp = (event: ReactPointerEvent) => {
-    const start = dragStartRef.current;
-    if (!start || gameState.phase !== 'player_turn') return;
-    if (pendingHandUpgradeCount > 0) return;
-    if (event.pointerId !== start.pointerId) return;
-    if (event.pointerType === 'touch' && activeTouchPointerIdRef.current !== event.pointerId) return;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-    if (event.pointerType === 'touch') {
-      event.stopPropagation();
-      activeTouchPointerIdRef.current = null;
-    }
-    setExpandedCardId(null);
-    setIsHoveringTimebar(false);
-
-    if (handDrag.isDragging && handDrag.card) {
-      if (!canPlayCard(handDrag.card)) {
-        const probes = getDragProbePositions(event.clientX, event.clientY);
-        const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card);
-        if (finalDetection.target === 'reserve') {
-          setReserveConfirm({ card: handDrag.card, visible: true });
-        }
-        dragStartRef.current = null;
-        setHoveredEnemyId(null);
-        setHandDrag({
-          isDragging: false,
-          card: null,
-          sourceIndex: -1,
-          x: 0,
-          y: 0,
-          dropTarget: null,
-          dropIndex: null,
-        });
-        return;
-      }
-      const probes = getDragProbePositions(event.clientX, event.clientY);
-      const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card);
-      const finalTarget = finalDetection.target;
-      const enemyTargetCard = isEnemyTargetCard(handDrag.card);
-      if (finalTarget === 'enemy') {
-        if (!enemyTargetCard) {
-          dragStartRef.current = null;
-          setHandDrag({
-            isDragging: false,
-            card: null,
-            sourceIndex: -1,
-            x: 0,
-            y: 0,
-            dropTarget: null,
-            dropIndex: null,
-          });
-          return;
-        }
-        const aliveEnemies = gameState.enemies.filter((enemy) => enemy.currentHp > 0);
-        const finalHoveredEnemyId =
-          probes
-            .map((probe) => detectHoveredEnemyId(probe.x, probe.y))
-            .find((enemyId) => enemyId !== null) ?? null;
-        const preferred = finalHoveredEnemyId ?? hoveredEnemyId ?? aliveEnemies[0]?.id ?? null;
-        const played = playCardInstant(handDrag.card.id, { type: 'enemy', enemyId: preferred });
-        if (played && handDrag.card.type === 'attack') {
-          triggerAttackEffect(preferred);
-        }
-      } else if (finalTarget === 'field') {
-        // フィールド全体は発動しない（静かに手札へ戻す）
-        dragStartRef.current = null;
-        setHandDrag({
-          isDragging: false,
-          card: null,
-          sourceIndex: -1,
-          x: 0,
-          y: 0,
-          dropTarget: null,
-          dropIndex: null,
-        });
-        return;
-      } else if (finalTarget === 'timebar') {
-        if (enemyTargetCard) {
-          dragStartRef.current = null;
-          setHandDrag({
-            isDragging: false,
-            card: null,
-            sourceIndex: -1,
-            x: 0,
-            y: 0,
-            dropTarget: null,
-            dropIndex: null,
-          });
-          return;
-        }
-        const played = playCardInstant(handDrag.card.id, { type: 'field' });
-        if (played && handDrag.card.type === 'skill') {
-          triggerSkillEffect();
-        }
-      } else if (finalTarget === 'reserve') {
-        setReserveConfirm({ card: handDrag.card, visible: true });
-      } else if (finalTarget === 'sell') {
-        sellCardById(handDrag.card.id);
-      }
-    } else if (event.pointerType !== 'touch') {
-      // タップ時はプレビューの開閉のみ（配置はしない）
-      setExpandedCardId((prev) => (prev === start.card.id ? null : start.card.id));
-    }
-
-    dragStartRef.current = null;
-    setHoveredEnemyId(null);
-    setHandDrag({
-      isDragging: false,
-      card: null,
-      sourceIndex: -1,
-      x: 0,
-      y: 0,
-      dropTarget: null,
-      dropIndex: null,
-    });
-  };
-
-  const onHandCardPointerCancel = () => {
+  const resetDragInteraction = useCallback(() => {
     dragStartRef.current = null;
     activeTouchPointerIdRef.current = null;
     setExpandedCardId(null);
@@ -489,33 +445,108 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       dropTarget: null,
       dropIndex: null,
     });
+  }, []);
+
+  const onHandCardPointerUp = (event: ReactPointerEvent) => {
+    const start = dragStartRef.current;
+    if (!start) {
+      if (handDrag.isDragging) resetDragInteraction();
+      return;
+    }
+    if (event.pointerId !== start.pointerId) return;
+    if (event.pointerType === 'touch' && activeTouchPointerIdRef.current !== event.pointerId) return;
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (event.pointerType === 'touch') {
+      event.stopPropagation();
+      activeTouchPointerIdRef.current = null;
+    }
+
+    if (gameState.phase !== 'player_turn' || pendingHandUpgradeCount > 0) {
+      resetDragInteraction();
+      return;
+    }
+
+    setExpandedCardId(null);
+    setIsHoveringTimebar(false);
+
+    if (handDrag.isDragging && handDrag.card) {
+      if (!canPlayCard(handDrag.card)) {
+        const probes = getDragProbePositions(event.clientX, event.clientY);
+        const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card, event.clientX, event.clientY);
+        if (finalDetection.target === 'reserve') {
+          setReserveConfirm({ card: handDrag.card, visible: true });
+        }
+        resetDragInteraction();
+        return;
+      }
+
+      const probes = getDragProbePositions(event.clientX, event.clientY);
+      const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card, event.clientX, event.clientY);
+      const finalTarget = finalDetection.target;
+      const enemyTargetCard = isEnemyTargetCard(handDrag.card);
+
+      if (finalTarget === 'enemy') {
+        if (!enemyTargetCard) {
+          resetDragInteraction();
+          return;
+        }
+        const aliveEnemies = gameState.enemies.filter((enemy) => enemy.currentHp > 0);
+        const finalHoveredEnemyId =
+          probes
+            .map((probe) => detectHoveredEnemyId(probe.x, probe.y))
+            .find((enemyId) => enemyId !== null) ?? null;
+        const preferred = finalHoveredEnemyId ?? hoveredEnemyId ?? aliveEnemies[0]?.id ?? null;
+        const played = playCardInstant(handDrag.card.id, { type: 'enemy', enemyId: preferred });
+        if (played && handDrag.card.type === 'attack') {
+          triggerAttackEffect(preferred);
+        }
+      } else if (finalTarget === 'field') {
+        // フィールド全体は発動しない（静かに手札へ戻す）
+        resetDragInteraction();
+        return;
+      } else if (finalTarget === 'timebar') {
+        if (enemyTargetCard) {
+          resetDragInteraction();
+          return;
+        }
+        const played = playCardInstant(handDrag.card.id, { type: 'field' });
+        if (played && handDrag.card.type === 'skill') {
+          triggerSkillEffect();
+        }
+      } else if (finalTarget === 'reserve') {
+        setReserveConfirm({ card: handDrag.card, visible: true });
+      } else if (finalTarget === 'sell') {
+        sellCardById(handDrag.card.id);
+      }
+    } else if (event.pointerType !== 'touch') {
+      // タップ時はプレビューの開閉のみ（設置はしない）
+      setExpandedCardId((prev) => (prev === start.card.id ? null : start.card.id));
+    }
+
+    resetDragInteraction();
+  };
+
+  const onHandCardPointerCancel = () => {
+    resetDragInteraction();
   };
 
   useEffect(() => {
     const resetTouchInteraction = () => {
-      activeTouchPointerIdRef.current = null;
-      dragStartRef.current = null;
-      setExpandedCardId(null);
-      setHoveredEnemyId(null);
-      setIsHoveringTimebar(false);
-      setHandDrag({
-        isDragging: false,
-        card: null,
-        sourceIndex: -1,
-        x: 0,
-        y: 0,
-        dropTarget: null,
-        dropIndex: null,
-      });
+      resetDragInteraction();
     };
 
     window.addEventListener('touchend', resetTouchInteraction, { passive: true });
     window.addEventListener('touchcancel', resetTouchInteraction, { passive: true });
+    window.addEventListener('pointerup', resetTouchInteraction, { passive: true });
+    window.addEventListener('pointercancel', resetTouchInteraction, { passive: true });
     return () => {
       window.removeEventListener('touchend', resetTouchInteraction);
       window.removeEventListener('touchcancel', resetTouchInteraction);
+      window.removeEventListener('pointerup', resetTouchInteraction);
+      window.removeEventListener('pointercancel', resetTouchInteraction);
     };
-  }, []);
+  }, [resetDragInteraction]);
 
   const onCardHoverStart = (cardId: string) => {
     if (gameState.phase !== 'player_turn' || handDrag.isDragging) return;
@@ -557,6 +588,17 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     };
   }, [gameState.enemies, gameState.player, handDrag.card, hoveredEnemyId, isEnemyPreviewActive, lastPlayedCard]);
 
+  const timeUsagePreview = useMemo(() => {
+    if (!handDrag.isDragging || !handDrag.card) return null;
+    if (!canPlayCard(handDrag.card)) return null;
+    const isPlayableTarget = handDrag.dropTarget === 'enemy' || handDrag.dropTarget === 'timebar';
+    if (!isPlayableTarget) return null;
+    const effective = getEffectiveCardValues(handDrag.card, gameState.player, lastPlayedCard).effectiveTimeCost;
+    const previewCost = Math.max(0, effective);
+    const previewRemaining = Math.max(0, remainingTime - previewCost);
+    return { previewCost, previewRemaining };
+  }, [canPlayCard, gameState.player, handDrag.card, handDrag.dropTarget, handDrag.isDragging, lastPlayedCard, remainingTime]);
+
   const reserveFull = gameState.reserved.length >= 2;
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
     damage: card.damage ?? null,
@@ -576,7 +618,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     return [];
   }, [showPile, gameState.drawPile, gameState.discardPile, gameState.exhaustedCards]);
   const startTitle = useMemo(
-    () => `── ${gameState.enemies.map((enemy) => enemy.name).join(' / ')} 現る ──`,
+    () => `── ${gameState.enemies.map((enemy) => enemy.name).join(' / ')} 現めE──`,
     [gameState.enemies],
   );
   const jobId = gameState.player.jobId;
@@ -585,6 +627,13 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const isUnemployedBattle = gameState.player.jobId === 'unemployed';
   const hungryVisualState = isUnemployedBattle ? hungryState : 'normal';
   const hungryEffect = isUnemployedBattle ? hungryFlash : null;
+  const canOpenBattleSettings = gameState.phase === 'battle_start' || gameState.phase === 'player_turn';
+  const handleConcedeBattle = () => {
+    const confirmed = window.confirm('このバトルをあきらめますか？');
+    if (!confirmed) return;
+    setShowBattleSettings(false);
+    concedeBattle();
+  };
 
   return (
     <main
@@ -610,13 +659,23 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       <div className={isMentalHit ? 'mental-hit-flash' : ''} />
       {hungryEffect && (
         <div className={`hungry-popup hungry-popup--${hungryEffect}`}>
-          {hungryEffect === 'hungry' ? '🔥 ハングリー！' : '⚡ 覚醒！'}
+          {hungryEffect === 'hungry' ? '🔥 ハングリー' : '⚡ 覚醒'}
         </div>
       )}
       {showRevivalEffect && (
         <div className="revival-effect">
           <span className="revival-text">🔄 七転び八起き！</span>
         </div>
+      )}
+      {canOpenBattleSettings && (
+        <button
+          type="button"
+          className="battle-settings-trigger"
+          onClick={() => setShowBattleSettings(true)}
+          aria-label="バトル設定を開く"
+        >
+          設定
+        </button>
       )}
       <section
         className={`enemy-placeholder battle-enemy-area ${
@@ -637,7 +696,11 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       <div className="battle-spacer" />
 
       <section className="player-area">
-        <div className="battle-hand-area">
+        <div
+          className={`battle-hand-area ${timelineGaugeStyle === 'clock' ? 'battle-hand-area--clock-align' : ''} ${
+            timelineGaugeStyle === 'bar' ? 'battle-hand-area--bar-align' : ''
+          }`}
+        >
           <Hand
             hand={gameState.hand}
             player={gameState.player}
@@ -661,20 +724,30 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
         </div>
 
         <div
-          className={`battle-timebar-row ${isHoveringTimebar ? 'timebar-row--active' : ''}`}
+          className={`battle-timebar-row ${isHoveringTimebar ? 'timebar-row--active' : ''} ${
+            timelineGaugeStyle === 'clock' ? 'battle-timebar-row--clock' : ''
+          }`}
           ref={timebarRowRef}
         >
           <Timeline
             maxTime={gameState.maxTime}
             remainingTime={remainingTime}
-            isDropActive={false}
-            isEnding={gameState.phase !== 'player_turn'}
-            onEndTurn={endTurn}
+            isDropActive={Boolean(timeUsagePreview)}
+            previewRemainingTime={timeUsagePreview?.previewRemaining ?? null}
+            previewCost={timeUsagePreview?.previewCost ?? null}
+            gaugeStyle={timelineGaugeStyle}
             timelineBarRef={timelineBarRef}
           />
         </div>
 
-        <div className="battle-reserve-area" ref={reserveAreaRef}>
+        <div
+          className={`battle-reserve-area ${
+            timelineGaugeStyle === 'clock' ? 'battle-reserve-area--align-turn-end' : ''
+          } ${
+            timelineGaugeStyle === 'bar' ? 'battle-reserve-area--gauge-expand' : ''
+          }`}
+          ref={reserveAreaRef}
+        >
           <ActionBar
             reserved={gameState.reserved}
             jobId={gameState.player.jobId}
@@ -685,13 +758,19 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
           />
         </div>
 
-        <div className="battle-status-row">
+        <div
+          className={`battle-status-row ${
+            timelineGaugeStyle === 'clock' ? 'battle-status-row--extend-up' : ''
+          }`}
+        >
           <PlayerStatus
             player={gameState.player}
             toolSlots={gameState.toolSlots}
             battleItems={battleItems}
             canUseItems={gameState.phase === 'player_turn'}
             onUseItem={useBattleItem}
+            onEndTurn={endTurn}
+            isTurnEnding={gameState.phase !== 'player_turn'}
             drawPileCount={gameState.drawPile.length}
             discardPileCount={gameState.discardPile.length}
             isPlayerHit={isPlayerHit}
@@ -714,12 +793,15 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
         {skillEffect && <div className="effect-skill" />}
       </div>
 
-      {gameState.shuffleAnimation && <div className="shuffle-popup">🔀 シャッフル！</div>}
+      {gameState.shuffleAnimation && <div className="shuffle-popup">🔀 シャッフル中</div>}
 
       {handDrag.isDragging && handDrag.card && (
         <div
           className={`drag-floating-card ${!canPlayCard(handDrag.card) ? 'invalid' : ''}`}
-          style={{ left: handDrag.x, top: handDrag.y + DRAG_Y_OFFSET }}
+          style={{
+            left: handDrag.x - DRAG_CARD_WIDTH / 2,
+            top: handDrag.y + DRAG_DISPLAY_Y_OFFSET,
+          }}
         >
           <CardComponent
             card={handDrag.card}
@@ -765,14 +847,13 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
             <div className="battle-deck-modal-header">
               <h2 className="battle-deck-modal-title">
                 {showPile === 'draw'
-                  ? `山札 (${gameState.drawPile.length}枚)`
+                  ? `山札 (${gameState.drawPile.length}极E`
                   : showPile === 'discard'
-                    ? `捨て札 (${gameState.discardPile.length}枚)`
-                    : `除外 (${gameState.exhaustedCards.length}枚)`}
+                    ? `捨て札 (${gameState.discardPile.length}极E`
+                    : `除夁E(${gameState.exhaustedCards.length}极E`}
               </h2>
               <button type="button" className="battle-btn-close" onClick={() => setShowPile(null)}>
-                ✕
-              </button>
+                ×</button>
             </div>
             <div className="battle-pile-tabs">
               <button
@@ -794,7 +875,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
                 className={`battle-pile-tab ${showPile === 'exhaust' ? 'battle-pile-tab--active' : ''}`}
                 onClick={() => setShowPile('exhaust')}
               >
-                除外 ({gameState.exhaustedCards.length})
+                除夁E({gameState.exhaustedCards.length})
               </button>
             </div>
             <div className="battle-deck-card-grid card-display-grid">
@@ -840,14 +921,12 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
         <div className="battle-deck-overlay" onClick={skipHandUpgradeSelection}>
           <div className="battle-deck-modal" onClick={(event) => event.stopPropagation()}>
             <div className="battle-deck-modal-header">
-              <h2 className="battle-deck-modal-title">リフォーム：強化するカードを選択</h2>
+              <h2 className="battle-deck-modal-title">リフォーム: 強化するカードを選択</h2>
               <button type="button" className="battle-btn-close" onClick={skipHandUpgradeSelection}>
-                ✕
-              </button>
+                ×</button>
             </div>
             <div className="battle-upgrade-guide">
-              残り {pendingHandUpgradeCount} 枚
-            </div>
+              残り {pendingHandUpgradeCount} 枚</div>
             <div className="battle-deck-card-grid card-display-grid">
               {upgradeableHandCards.map((card, idx) => (
                 <button
@@ -892,6 +971,40 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
           </div>
         </div>
       )}
+      {showBattleSettings && (
+        <div className="battle-settings-overlay" onClick={() => setShowBattleSettings(false)}>
+          <div className="battle-settings-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="battle-settings-header">
+              <h2 className="battle-settings-title">バトル設定</h2>
+              <button type="button" className="battle-btn-close" onClick={() => setShowBattleSettings(false)}>
+                ×
+              </button>
+            </div>
+            <div className="battle-settings-content">
+              <p className="battle-settings-label">タイムゲージスタイル</p>
+              <div className="battle-settings-gauge-options">
+                <button
+                  type="button"
+                  className={`battle-settings-option ${timelineGaugeStyle === 'clock' ? 'battle-settings-option--active' : ''}`}
+                  onClick={() => setTimelineGaugeStyle('clock')}
+                >
+                  時計型
+                </button>
+                <button
+                  type="button"
+                  className={`battle-settings-option ${timelineGaugeStyle === 'bar' ? 'battle-settings-option--active' : ''}`}
+                  onClick={() => setTimelineGaugeStyle('bar')}
+                >
+                  ゲージ型
+                </button>
+              </div>
+              <button type="button" className="battle-settings-surrender" onClick={handleConcedeBattle}>
+                あきらめる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {reserveConfirm?.visible && (
         <div className="reserve-confirm-overlay">
           <div className="reserve-confirm-dialog">
@@ -909,8 +1022,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
                   setReserveConfirm(null);
                 }}
               >
-                温存する
-              </button>
+                温存すめE              </button>
             </div>
           </div>
         </div>
@@ -920,3 +1032,4 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
 };
 
 export default BattleScreen;
+

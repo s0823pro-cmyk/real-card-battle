@@ -635,9 +635,40 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
+  const sanitizePlayerAfterBattle = (player: PlayerState): PlayerState => ({
+    ...player,
+    block: 0,
+    scaffold: 0,
+    cookingGauge: 0,
+    statusEffects: [],
+    hasRevival: false,
+    revivalUsed: false,
+    deathWishActive: false,
+    ridgepoleActive: false,
+    templeCarpenterActive: false,
+    cliffEdgeActive: false,
+    nextAttackTimeReduce: 0,
+    blockPersist: false,
+    nextAttackDamageBoost: 0,
+    damageImmunityThisTurn: false,
+    nextTurnNoBlock: false,
+    nextTurnTimePenalty: 0,
+    canBlock: true,
+    lowHpDamageBoost: 0,
+    kitchenDemonActive: false,
+    firstCookingUsedThisTurn: false,
+    lastTurnDamageTaken: 0,
+    currentTurnDamageTaken: 0,
+    recipeStudyActive: false,
+    recipeStudyBonus: 0,
+    nextIngredientBonus: 0,
+    threeStarActive: false,
+    firstIngredientUsedThisTurn: false,
+  });
+
   const onBattleEnd = (result: BattleResult) => {
     console.log(`[run-check] battle-end outcome:${result.outcome} kind:${result.kind}`);
-    dispatch({ type: 'set_player', player: { ...result.player, cookingGauge: 0 } });
+    dispatch({ type: 'set_player', player: sanitizePlayerAfterBattle(result.player) });
     dispatch({ type: 'set_deck', deck: result.deck });
     dispatch({ type: 'set_items', items: result.items });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: stateRef.current.lastTileType });

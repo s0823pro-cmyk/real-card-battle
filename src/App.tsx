@@ -136,7 +136,7 @@ function App() {
         return;
       }
       startRunFromJobSelect(jobId);
-    }, 500, 500);
+    }, 0, 500);
   };
 
   const handleStoryComplete = () => {

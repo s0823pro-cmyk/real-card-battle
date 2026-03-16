@@ -50,6 +50,7 @@ const EnemyDisplay = ({
             } ${previewTargetEnemyId === enemy.id ? 'enemy-card--targeted' : ''}`}
             data-enemy-id={enemy.id}
           >
+            <h3 className="enemy-name">{enemy.name}</h3>
             <div className="enemy-hp-top">
               <div className="enemy-hp-bar-container">
                 <span className={`enemy-hp-bar-fill ${hpClass}`} style={{ width: `${hpPercent}%` }} />
@@ -70,7 +71,6 @@ const EnemyDisplay = ({
                 {isPreviewTarget && <span className="enemy-hp-preview-text">→ {previewHp}</span>}
               </div>
             </div>
-            {intent && enemy.currentHp > 0 && <EnemyIntentView enemy={enemy} intent={intent} />}
             <div className="enemy-buffs">
               {strengthUp > 0 && <span className="enemy-buff--positive">⬆️+{strengthUp}</span>}
             </div>
@@ -92,7 +92,7 @@ const EnemyDisplay = ({
                 <div className="enemy-icon">{enemy.icon ?? '👤'}</div>
               )}
             </div>
-            <h3 className="enemy-name">{enemy.name}</h3>
+            {intent && enemy.currentHp > 0 && <EnemyIntentView enemy={enemy} intent={intent} />}
             <div className="enemy-status-effects">
               {vulnerable > 0 && (
                 <Tooltip label="脆弱" description={`受けるダメージ+50%。残り${vulnerable}ターン`}>

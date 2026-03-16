@@ -216,6 +216,102 @@
   color: var(--text-secondary);
 }
 
+.battle-settings-trigger {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 30;
+  min-width: 56px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(13, 17, 23, 0.9);
+  color: #e6edf3;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.battle-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.battle-settings-modal {
+  width: min(320px, calc(100vw - 32px));
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.battle-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.battle-settings-title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: #e6edf3;
+}
+
+.battle-settings-content {
+  padding: 14px;
+}
+
+.battle-settings-label {
+  margin: 0 0 8px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.battle-settings-gauge-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.battle-settings-option {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #21262d;
+  color: #c9d1d9;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.battle-settings-option--active {
+  border-color: #f0b429;
+  color: #f0b429;
+  box-shadow: 0 0 0 1px rgba(240, 180, 41, 0.3) inset;
+}
+
+.battle-settings-surrender {
+  width: 100%;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 71, 87, 0.45);
+  background: rgba(255, 71, 87, 0.15);
+  color: #ff9aa5;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .enemy-placeholder.drop-active {
   border-color: var(--color-attack);
   box-shadow: 0 0 16px rgba(255, 71, 87, 0.35);
@@ -239,10 +335,13 @@
   align-items: center;
   gap: 8px;
   padding: 0 12px;
-  margin-bottom: -4px;
+  margin-bottom: 2px;
+  transform: translateY(-6px);
   width: 100%;
   box-sizing: border-box;
   pointer-events: none;
+  position: relative;
+  z-index: 120;
 }
 
 .battle-timebar-row.timebar-row--active .timeline-bar {
@@ -256,18 +355,56 @@
   transition: filter 0.15s ease;
 }
 
+.battle-timebar-row--clock {
+  position: relative;
+}
+
+.battle-timebar-row--clock .timebar-row {
+  justify-content: flex-end;
+  align-items: flex-start;
+  position: relative;
+  min-height: 30px;
+}
+
+.battle-timebar-row--clock .timeline-clock {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: auto;
+  transform: translateX(-50%) scale(2);
+  transform-origin: top center;
+  z-index: 25;
+}
+
 .battle-status-row {
   flex-shrink: 0;
   padding-top: 2px;
   margin-top: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.battle-status-row--extend-up {
+  margin-top: 0;
+  padding-top: 2px;
+  transform: none;
 }
 
 .battle-hand-area {
   height: 220px;
   flex-shrink: 0;
   margin-top: 0;
+  transform: translateY(-6px);
   position: relative;
   z-index: 10;
+}
+
+.battle-hand-area--clock-align {
+  transform: translateY(-2px);
+}
+
+.battle-hand-area--bar-align {
+  transform: translateY(-10px);
 }
 
 .battle-hand-area .hand-area {
@@ -289,6 +426,32 @@
   padding-top: 0;
   min-height: 44px;
   padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(-6px);
+  position: relative;
+  z-index: 80;
+}
+
+.battle-reserve-area--align-turn-end {
+  transform: translateY(2px);
+}
+
+.battle-reserve-area--gauge-expand .reserved-cards,
+.battle-reserve-area--align-turn-end .reserved-cards {
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 10px;
+}
+
+.battle-reserve-area--gauge-expand {
+  transform: translateY(2px);
+}
+
+.battle-reserve-area--gauge-expand .reserved-card-mini,
+.battle-reserve-area--align-turn-end .reserved-card-mini {
+  width: 36px;
+  height: 48px;
+  transform: scale(1.16);
+  transform-origin: center bottom;
 }
 
 .battle-message {
@@ -331,13 +494,15 @@
   position: fixed;
   z-index: 9999;
   pointer-events: none;
-  transform: translate(-50%, 0) rotate(0deg) scale(1.15);
+  transform: scale(1.08);
+  transform-origin: bottom center;
   opacity: 1;
   transition: none;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
 }
 
 .drag-floating-card .hand-card {
-  transform: rotate(0deg) scale(1.15) !important;
+  transform: none !important;
   scale: none !important;
   transition: none !important;
   cursor: grabbing;
@@ -346,7 +511,7 @@
 }
 
 .drag-floating-card.invalid {
-  filter: grayscale(0.9);
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6)) grayscale(0.9);
   opacity: 0.65;
 }
 

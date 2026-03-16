@@ -78,6 +78,7 @@ export interface UseGameStateResult {
   upgradeHandCardById: (cardId: string) => boolean;
   skipHandUpgradeSelection: () => void;
   endTurn: () => Promise<void>;
+  concedeBattle: () => void;
   retryBattle: () => void;
 }
 
@@ -342,7 +343,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   const clearBattleFlags = (player: PlayerState): PlayerState => ({
     ...player,
+    block: 0,
     scaffold: 0,
+    cookingGauge: 0,
+    statusEffects: [],
     hasRevival: false,
     revivalUsed: false,
     deathWishActive: false,
@@ -532,19 +536,44 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const gainedDoubleNext = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'double_next')
       .reduce((sum, effect) => sum + effect.value, 0);
+    const shouldExhaust = Boolean(playedCard.tags?.includes('exhaust'));
     const activePowers =
-      playedCard.type === 'power' ? [...gameState.activePowers, { ...playedCard }] : gameState.activePowers;
-    const handAfterPlay = [...gameState.hand.filter((item) => item.id !== cardId), ...drawResult.drawn];
-    const upgradeHandCardCount = (playedCard.effects ?? [])
-      .filter((effect) => effect.type === 'upgrade_hand_card')
+      playedCard.type === 'power' && !shouldExhaust
+        ? [...gameState.activePowers, { ...playedCard }]
+        : gameState.activePowers;
+    const upgradeRandomHandCardCount = (playedCard.effects ?? [])
+      .filter((effect) => effect.type === 'upgrade_random_hand_card')
       .reduce((sum, effect) => sum + effect.value, 0);
+    let handAfterPlay = [...gameState.hand.filter((item) => item.id !== cardId), ...drawResult.drawn];
+    if (upgradeRandomHandCardCount > 0) {
+      const upgradableCards = handAfterPlay.filter((entry) => !entry.upgraded && entry.type !== 'status' && entry.type !== 'curse');
+      if (upgradableCards.length === 0) {
+        pushPopup('強化できるカードがありません', 'player', 'buff');
+      } else {
+        const targetCards = shuffle(upgradableCards).slice(
+          0,
+          Math.min(upgradeRandomHandCardCount, upgradableCards.length),
+        );
+        const targetIds = new Set(targetCards.map((entry) => entry.id));
+        handAfterPlay = handAfterPlay.map((entry) =>
+          targetIds.has(entry.id) ? upgradeCard(entry, getAutoUpgradeType(entry)) : entry,
+        );
+        targetCards.forEach((entry) => {
+          const upgradedName = handAfterPlay.find((cardInHand) => cardInHand.id === entry.id)?.name ?? `${entry.name}+`;
+          pushPopup(`🔧 ${entry.name} → ${upgradedName}`, 'player', 'buff');
+        });
+      }
+    }
+    const exhaustedCards = shouldExhaust ? [...gameState.exhaustedCards, playedCard] : gameState.exhaustedCards;
+    const discardPile =
+      playedCard.type === 'tool' || playedCard.type === 'power' || shouldExhaust
+        ? drawResult.discardPile
+        : [...drawResult.discardPile, playedCard];
     const postCardState: GameState = {
       ...gameState,
-      discardPile:
-        playedCard.type === 'tool' || playedCard.type === 'power'
-          ? drawResult.discardPile
-          : [...drawResult.discardPile, playedCard],
+      discardPile,
       drawPile: drawResult.drawPile,
+      exhaustedCards,
       player: playerAfterCard,
       enemies: result.enemies,
       activePowers,
@@ -558,11 +587,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setGameState((prev) => ({
       ...prev,
       hand: handAfterPlay,
-      discardPile:
-        playedCard.type === 'tool' || playedCard.type === 'power'
-          ? drawResult.discardPile
-          : [...drawResult.discardPile, playedCard],
+      discardPile,
       drawPile: drawResult.drawPile,
+      exhaustedCards,
       player: playerAfterCard,
       enemies: result.enemies,
       activePowers,
@@ -618,10 +645,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     }
     if (drawAmount > 0) {
       pushPopup(`+${drawAmount}ドロー`, 'player', 'buff');
-    }
-    if (upgradeHandCardCount > 0) {
-      setPendingHandUpgradeCount((prev) => prev + upgradeHandCardCount);
-      pushPopup('🔧 強化カードを選択', 'player', 'buff');
     }
     if (timeBoost > 0) {
       pushPopup(`+${timeBoost.toFixed(1)}s`, 'player', 'buff');
@@ -685,6 +708,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             ...postCardState.discardPile,
             ...postCardState.hand,
             ...postCardState.reserved,
+            ...postCardState.exhaustedCards,
             ...postCardState.activePowers,
             ...postCardState.toolSlots.map((slot) => slot.card),
           ],
@@ -918,6 +942,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           ...workingState.discardPile,
           ...workingState.hand,
           ...workingState.reserved,
+          ...workingState.exhaustedCards,
           ...workingState.activePowers,
           ...workingState.toolSlots.map((slot) => slot.card),
         ],
@@ -973,6 +998,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             ...workingState.discardPile,
             ...workingState.hand,
             ...workingState.reserved,
+            ...workingState.exhaustedCards,
             ...workingState.activePowers,
             ...workingState.toolSlots.map((slot) => slot.card),
           ],
@@ -1038,6 +1064,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           ...workingState.discardPile,
           ...workingState.hand,
           ...workingState.reserved,
+          ...workingState.exhaustedCards,
           ...workingState.activePowers,
           ...workingState.toolSlots.map((slot) => slot.card),
         ],
@@ -1110,6 +1137,38 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     prevHungryStateRef.current = 'normal';
   };
 
+  const concedeBattle = (): void => {
+    if (!['battle_start', 'player_turn', 'enemy_turn', 'executing'].includes(gameState.phase)) return;
+    const clearedPlayer = clearBattleFlags(gameState.player);
+    const deck = [
+      ...gameState.drawPile,
+      ...gameState.discardPile,
+      ...gameState.hand,
+      ...gameState.reserved,
+      ...gameState.exhaustedCards,
+      ...gameState.activePowers,
+      ...gameState.toolSlots.map((slot) => slot.card),
+    ];
+    setSelectedCardId(null);
+    setGameState((prev) => ({
+      ...prev,
+      phase: 'defeat',
+      timeline: [],
+      player: clearedPlayer,
+    }));
+    setBattleMessage('敗北...');
+    options?.onBattleEnd?.({
+      outcome: 'defeat',
+      player: clearedPlayer,
+      deck,
+      items: battleItems,
+      defeatedEnemies: gameState.enemies,
+      rewardGold: 0,
+      mentalRecovery: 0,
+      kind: options?.setup?.kind ?? 'battle',
+    });
+  };
+
   return {
     gameState,
     selectedCardId,
@@ -1147,6 +1206,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     upgradeHandCardById,
     skipHandUpgradeSelection,
     endTurn,
+    concedeBattle,
     retryBattle,
   };
 };
