@@ -95,6 +95,22 @@
   color: var(--color-block);
 }
 
+.enemy-action--debuff {
+  color: #e67e22;
+}
+
+.enemy-action--steal {
+  color: #f1c40f;
+}
+
+.enemy-action--regen {
+  color: #2ecc71;
+}
+
+.enemy-action--curse {
+  color: #9b59b6;
+}
+
 .enemy-buffs,
 .enemy-debuffs {
   min-height: 14px;
@@ -109,6 +125,10 @@
 
 .enemy-buff--positive {
   color: #2ecc71;
+}
+
+.enemy-buff--block {
+  color: #74b9ff;
 }
 
 .enemy-status-effects {

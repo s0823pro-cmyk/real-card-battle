@@ -20,13 +20,25 @@ const getIntentValueText = (intent: EnemyIntent, enemy: Enemy): string => {
     return `🧠 -${intent.mentalDamage ?? 0}`;
   }
   if (intent.type === 'defend') {
-    return `🛡 ${intent.value}`;
+    return intent.value > 0 ? `🛡 ${intent.value}` : '🛡';
   }
   if (intent.type === 'buff') {
     return `⬆️ 強化+${intent.value}`;
   }
   if (intent.type === 'debuff') {
-    return '💀 呪い付与';
+    return intent.description;
+  }
+  if (intent.type === 'steal_gold') {
+    return `💰 -${intent.value}G`;
+  }
+  if (intent.type === 'regen') {
+    return `💚 +${intent.value}HP`;
+  }
+  if (intent.type === 'random_debuff') {
+    return '🎲 ランダムデバフ';
+  }
+  if (intent.type === 'add_curse') {
+    return '🌑 呪いカード追加';
   }
   return '💤 休み';
 };
@@ -53,7 +65,11 @@ const EnemyIntentView = ({ enemy, intent }: Props) => {
     intent.type === 'mental_attack' ||
     intent.type === 'defend' ||
     intent.type === 'buff' ||
-    intent.type === 'debuff'
+    intent.type === 'debuff' ||
+    intent.type === 'steal_gold' ||
+    intent.type === 'regen' ||
+    intent.type === 'random_debuff' ||
+    intent.type === 'add_curse'
       ? intent.type
       : 'idle';
 
@@ -66,7 +82,15 @@ const EnemyIntentView = ({ enemy, intent }: Props) => {
           ? 'enemy-action--buff'
           : intent.type === 'defend'
             ? 'enemy-action--defend'
-            : '';
+            : intent.type === 'debuff' || intent.type === 'random_debuff'
+              ? 'enemy-action--debuff'
+              : intent.type === 'steal_gold'
+                ? 'enemy-action--steal'
+                : intent.type === 'regen'
+                  ? 'enemy-action--regen'
+                  : intent.type === 'add_curse'
+                    ? 'enemy-action--curse'
+                    : '';
 
   return (
     <Tooltip tooltipKey={tooltipKey}>

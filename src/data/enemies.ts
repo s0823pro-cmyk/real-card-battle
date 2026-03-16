@@ -94,6 +94,7 @@ const createEnemy = (
     name: template.name,
     maxHp: template.maxHp,
     currentHp: template.maxHp,
+    block: 0,
     icon: template.icon,
     imageUrl: template.imageUrl,
     intentHistory: template.intents,

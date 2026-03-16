@@ -1,11 +1,13 @@
 import type { Enemy, EnemyIntent, PlayerState, StatusEffect } from '../types/game';
-import { applyEnemyAttack, getEnemyAttackValue } from '../utils/damage';
+import { applyEnemyAttack } from '../utils/damage';
 
-interface EnemyTurnResult {
+export interface EnemyTurnResult {
   enemy: Enemy;
   player: PlayerState;
   damageToPlayer: number;
   mentalDamageToPlayer: number;
+  goldStolen: number;
+  addCurse: boolean;
   log: string;
 }
 
@@ -17,25 +19,30 @@ const upsertStatus = (statuses: StatusEffect[], next: StatusEffect): StatusEffec
       ? {
           ...status,
           value: status.value + next.value,
+          duration: status.duration + next.duration,
         }
       : status,
   );
 };
 
 export const useEnemyAI = () => {
-  const getBossPhaseIntents = (enemy: Enemy): EnemyIntent[] => {
-    if (enemy.currentHp > 130) {
-      return enemy.intentHistory.slice(0, 2);
-    }
-    if (enemy.currentHp > 60) {
-      return enemy.intentHistory.slice(2, 5);
-    }
-    return enemy.intentHistory.slice(5, 8);
-  };
-
   const getAvailableIntents = (enemy: Enemy): EnemyIntent[] => {
+    // エリア1ボス：monster_customer (HP200) フェーズ切り替え
     if (enemy.templateId === 'monster_customer' && enemy.intentHistory.length >= 8) {
-      return getBossPhaseIntents(enemy);
+      if (enemy.currentHp > 130) return enemy.intentHistory.slice(0, 2);
+      if (enemy.currentHp > 60) return enemy.intentHistory.slice(2, 5);
+      return enemy.intentHistory.slice(5, 8);
+    }
+    // エリア2ボス：evil_ceo (HP280) フェーズ切り替え
+    if (enemy.templateId === 'evil_ceo' && enemy.intentHistory.length >= 6) {
+      if (enemy.currentHp > 140) return enemy.intentHistory.slice(0, 3);
+      return enemy.intentHistory.slice(3, 6);
+    }
+    // エリア3ボス：world_tree_warden (HP350) フェーズ切り替え
+    if (enemy.templateId === 'world_tree_warden' && enemy.intentHistory.length >= 9) {
+      if (enemy.currentHp > 220) return enemy.intentHistory.slice(0, 3);
+      if (enemy.currentHp > 100) return enemy.intentHistory.slice(3, 6);
+      return enemy.intentHistory.slice(6, 9);
     }
     return enemy.intentHistory;
   };
@@ -53,7 +60,10 @@ export const useEnemyAI = () => {
     const intent = getEnemyIntent(enemy);
     let damage = 0;
     let mentalDamage = 0;
-    let updatedEnemy: Enemy = { ...enemy, statusEffects: [...enemy.statusEffects] };
+    let goldStolen = 0;
+    let addCurse = false;
+    // ターン開始時に前ターンのブロックをリセット
+    let updatedEnemy: Enemy = { ...enemy, block: 0, statusEffects: [...enemy.statusEffects] };
     const updatedPlayer: PlayerState = { ...player, statusEffects: [...player.statusEffects] };
 
     if (intent.type === 'attack') {
@@ -76,6 +86,36 @@ export const useEnemyAI = () => {
     } else if (intent.type === 'mental_attack') {
       mentalDamage = intent.mentalDamage ?? 0;
       updatedPlayer.mental = Math.max(0, updatedPlayer.mental - mentalDamage);
+    } else if (intent.type === 'steal_gold') {
+      goldStolen = Math.min(updatedPlayer.gold, intent.value);
+      updatedPlayer.gold = Math.max(0, updatedPlayer.gold - intent.value);
+    } else if (intent.type === 'regen') {
+      updatedEnemy = {
+        ...updatedEnemy,
+        currentHp: Math.min(updatedEnemy.maxHp, updatedEnemy.currentHp + intent.value),
+      };
+    } else if (intent.type === 'random_debuff') {
+      const debuffTypes: Array<'vulnerable' | 'weak' | 'burn'> = ['vulnerable', 'weak', 'burn'];
+      const picked = debuffTypes[Math.floor(Math.random() * debuffTypes.length)];
+      updatedPlayer.statusEffects = upsertStatus(updatedPlayer.statusEffects, {
+        type: picked,
+        duration: intent.value,
+        value: intent.value,
+      });
+    } else if (intent.type === 'add_curse') {
+      addCurse = true;
+    } else if (intent.type === 'defend') {
+      updatedEnemy = {
+        ...updatedEnemy,
+        block: updatedEnemy.block + intent.value,
+      };
+    } else if (intent.type === 'debuff') {
+      const statusType = intent.debuffType ?? 'vulnerable';
+      updatedPlayer.statusEffects = upsertStatus(updatedPlayer.statusEffects, {
+        type: statusType,
+        duration: intent.value,
+        value: intent.value,
+      });
     }
 
     // 行動後に状態異常を更新。火傷は行動後ダメージを与えて消去。
@@ -119,10 +159,12 @@ export const useEnemyAI = () => {
       player: updatedPlayer,
       damageToPlayer: damage,
       mentalDamageToPlayer: mentalDamage,
+      goldStolen,
+      addCurse,
       log:
         intent.type === 'attack'
-          ? `${updatedEnemy.name}：攻撃 ${getEnemyAttackValue(intent, updatedEnemy)}`
-          : `${updatedEnemy.name}：${intent.description}`,
+          ? `${enemy.name}：攻撃 ${damage}`
+          : `${enemy.name}：${intent.description}`,
     };
   };
 

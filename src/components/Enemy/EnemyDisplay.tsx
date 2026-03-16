@@ -73,6 +73,7 @@ const EnemyDisplay = ({
             </div>
             <div className="enemy-buffs">
               {strengthUp > 0 && <span className="enemy-buff--positive">⬆️+{strengthUp}</span>}
+              {enemy.block > 0 && <span className="enemy-buff--block">🛡️{enemy.block}</span>}
             </div>
             <div className="enemy-illustration">
               {enemy.imageUrl && !failedImageEnemyIds.has(enemy.id) ? (

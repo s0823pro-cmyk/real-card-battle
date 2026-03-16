@@ -122,7 +122,7 @@ export const COOK_RARE_POOL: Card[] = [
     sellValue: 25,
     imageUrl: fullCourseImage,
   },
-  { id: 'secret_soup', name: '秘伝のスープ', type: 'skill', timeCost: 3, description: 'HP10回復、調理+3', icon: '🥣', effects: [{ type: 'heal', value: 10 }, { type: 'cooking_gauge', value: 3 }], rarity: 'rare', sellValue: 25, imageUrl: secretSoupImage },
+  { id: 'secret_soup', name: '秘伝のスープ', type: 'skill', timeCost: 3, description: 'HP10回復、調理+3', icon: '🥣', tags: ['ingredient'], effects: [{ type: 'heal', value: 10 }, { type: 'cooking_gauge', value: 3 }], rarity: 'rare', sellValue: 25, imageUrl: secretSoupImage },
   { id: 'three_star', name: '三ツ星の極意', type: 'power', timeCost: 5, description: '毎ターン最初の食材カードの所要時間0秒', icon: '⭐', rarity: 'rare', sellValue: 25, imageUrl: threeStarImage },
   { id: 'mystery_pot', name: '闇鍋', type: 'attack', timeCost: 3, description: 'ランダムで15〜30ダメージ', damage: 0, icon: '🫕', tags: ['cooking'], rarity: 'rare', sellValue: 25, imageUrl: mysteryPotImage },
   {

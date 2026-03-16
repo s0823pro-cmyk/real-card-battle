@@ -3,6 +3,8 @@ import { CURSE_CARD } from '../data/carpenterDeck';
 import { getJobConfig } from '../data/jobs';
 import {
   AREA1_BOSS,
+  AREA2_BOSS,
+  AREA3_BOSS,
   generateCardRewardChoices,
   generateOmamoriChoices,
   generateShopCards,
@@ -10,6 +12,10 @@ import {
   getCardPrice,
   pickArea1Elite,
   pickArea1EncounterTemplateIds,
+  pickArea2Encounter,
+  pickArea2Elite,
+  pickArea3Encounter,
+  pickArea3Elite,
   pickEvent,
 } from '../data/runData';
 import { createEncounterFromTemplateIds, createEncounterFromTemplates } from '../data/enemies';
@@ -87,6 +93,7 @@ type Action =
   | { type: 'set_items'; items: RunItem[] }
   | { type: 'set_omamoris'; omamoris: Omamori[] }
   | { type: 'set_card_remove_count'; value: number }
+  | { type: 'set_current_area'; area: number }
   | { type: 'open_card_upgrade'; mode: 'upgrade' | 'remove'; returnScreen: Exclude<GameScreen, 'card_upgrade'> }
   | { type: 'close_card_upgrade' };
 
@@ -123,6 +130,8 @@ const initialPlayer: PlayerState = {
   nextIngredientBonus: 0,
   threeStarActive: false,
   firstIngredientUsedThisTurn: false,
+      nextAttackBoostValue: 0,
+      nextAttackBoostCount: 0,
 };
 
 const makeInitialProgress = (): GameProgress => {
@@ -235,6 +244,8 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       return { ...state, omamoris: action.omamoris };
     case 'set_card_remove_count':
       return { ...state, cardRemoveCount: action.value };
+    case 'set_current_area':
+      return { ...state, currentArea: action.area };
     case 'open_card_upgrade':
       return {
         ...state,
@@ -342,10 +353,19 @@ export const useRunProgress = () => {
 
   const openTileScreen = (tile: BoardTile) => {
     if (tile.type === 'enemy') {
+      const area = stateRef.current.currentArea;
+      let enemies;
+      if (area === 2) {
+        enemies = createEncounterFromTemplates(pickArea2Encounter());
+      } else if (area === 3) {
+        enemies = createEncounterFromTemplates(pickArea3Encounter());
+      } else {
+        enemies = createEncounterFromTemplateIds(pickArea1EncounterTemplateIds());
+      }
       const setup: BattleSetup = {
         jobId: stateRef.current.jobId,
         kind: 'battle',
-        enemies: createEncounterFromTemplateIds(pickArea1EncounterTemplateIds()),
+        enemies,
         deck: stateRef.current.deck,
         player: stateRef.current.player,
         omamoris: stateRef.current.omamoris,
@@ -356,10 +376,19 @@ export const useRunProgress = () => {
       return;
     }
     if (tile.type === 'unique_boss') {
+      const area = stateRef.current.currentArea;
+      let eliteTemplate;
+      if (area === 2) {
+        eliteTemplate = pickArea2Elite();
+      } else if (area === 3) {
+        eliteTemplate = pickArea3Elite();
+      } else {
+        eliteTemplate = pickArea1Elite();
+      }
       const setup: BattleSetup = {
         jobId: stateRef.current.jobId,
         kind: 'elite',
-        enemies: createEncounterFromTemplates([pickArea1Elite()]),
+        enemies: createEncounterFromTemplates([eliteTemplate]),
         deck: stateRef.current.deck,
         player: stateRef.current.player,
         omamoris: stateRef.current.omamoris,
@@ -370,10 +399,19 @@ export const useRunProgress = () => {
       return;
     }
     if (tile.type === 'area_boss') {
+      const area = stateRef.current.currentArea;
+      let bossTemplate;
+      if (area === 2) {
+        bossTemplate = AREA2_BOSS;
+      } else if (area === 3) {
+        bossTemplate = AREA3_BOSS;
+      } else {
+        bossTemplate = AREA1_BOSS;
+      }
       const setup: BattleSetup = {
         jobId: stateRef.current.jobId,
         kind: 'boss',
-        enemies: createEncounterFromTemplates([AREA1_BOSS]),
+        enemies: createEncounterFromTemplates([bossTemplate]),
         deck: stateRef.current.deck,
         player: stateRef.current.player,
         omamoris: stateRef.current.omamoris,
@@ -396,7 +434,7 @@ export const useRunProgress = () => {
     if (tile.type === 'pawnshop') {
       const discount =
         stateRef.current.omamoris.find((omamori) => omamori.effect.stat === 'shop_discount')?.effect.value ?? 0;
-      const cards = generateShopCards(5).map((card, idx) => {
+      const cards = generateShopCards(5, stateRef.current.jobId).map((card, idx) => {
         const base = getCardPrice(card);
         const discounted = Math.floor(base * (1 - discount));
         return {
@@ -495,9 +533,19 @@ export const useRunProgress = () => {
   const chooseEventChoice = (choiceIndex: number) => {
     const event = stateRef.current.activeEvent;
     if (!event) return;
+
+    // trainingイベント：受講する（choiceIndex=0）でカード強化画面へ
+    if (event.id === 'training' && choiceIndex === 0) {
+      dispatch({ type: 'set_event', event: null });
+      dispatch({ type: 'open_card_upgrade', mode: 'upgrade', returnScreen: 'map' });
+      return;
+    }
+
     let nextState = stateRef.current;
     for (const effect of event.choices[choiceIndex]?.effects ?? []) {
       if (event.id === 'vending_machine' && effect.type === 'gold' && effect.value === -10) {
+        // -10G消費を先に適用してからランダム効果を付与
+        nextState = applySingleEffect(nextState, effect);
         const randomSet = [
           { type: 'heal', value: 20 },
           { type: 'damage', value: 5 },
@@ -677,6 +725,8 @@ export const useRunProgress = () => {
     nextIngredientBonus: 0,
     threeStarActive: false,
     firstIngredientUsedThisTurn: false,
+      nextAttackBoostValue: 0,
+      nextAttackBoostCount: 0,
   });
 
   const onBattleEnd = (result: BattleResult) => {
@@ -713,8 +763,17 @@ export const useRunProgress = () => {
       return;
     }
     if (stateRef.current.lastTileType === 'area_boss') {
-      console.log('[run-check] boss card_reward -> victory');
-      dispatch({ type: 'set_screen', screen: 'victory' });
+      const clearedArea = stateRef.current.currentArea;
+      if (clearedArea >= 3) {
+        console.log('[run-check] area3 boss card_reward -> victory');
+        dispatch({ type: 'set_screen', screen: 'victory' });
+      } else {
+        console.log(`[run-check] area${clearedArea} boss card_reward -> area${clearedArea + 1} map`);
+        dispatch({ type: 'set_current_area', area: clearedArea + 1 });
+        dispatch({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
+        dispatch({ type: 'set_current_tile', tileId: 1 });
+        dispatch({ type: 'set_screen', screen: 'map' });
+      }
       return;
     }
     console.log('[run-check] card_reward -> map');
@@ -727,8 +786,17 @@ export const useRunProgress = () => {
     const source = stateRef.current.omamoriRewardSource;
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
     if (source === 'battle' && stateRef.current.lastTileType === 'area_boss') {
-      console.log('[run-check] boss omamori_reward -> victory');
-      dispatch({ type: 'set_screen', screen: 'victory' });
+      const clearedArea = stateRef.current.currentArea;
+      if (clearedArea >= 3) {
+        console.log('[run-check] area3 boss omamori_reward -> victory');
+        dispatch({ type: 'set_screen', screen: 'victory' });
+      } else {
+        console.log(`[run-check] area${clearedArea} boss omamori_reward -> area${clearedArea + 1} map`);
+        dispatch({ type: 'set_current_area', area: clearedArea + 1 });
+        dispatch({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
+        dispatch({ type: 'set_current_tile', tileId: 1 });
+        dispatch({ type: 'set_screen', screen: 'map' });
+      }
     } else {
       console.log('[run-check] omamori_reward -> map');
       dispatch({ type: 'set_screen', screen: 'map' });
@@ -773,6 +841,8 @@ export const useRunProgress = () => {
       nextIngredientBonus: 0,
       threeStarActive: false,
       firstIngredientUsedThisTurn: false,
+      nextAttackBoostValue: 0,
+      nextAttackBoostCount: 0,
     };
     dispatch({ type: 'set_job', jobId: resetJobId });
     dispatch({ type: 'set_board', board: nextBoard });
@@ -782,6 +852,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_items', items: [] });
     dispatch({ type: 'set_omamoris', omamoris: [] });
     dispatch({ type: 'set_card_remove_count', value: 0 });
+    dispatch({ type: 'set_current_area', area: 1 });
     dispatch({ type: 'set_card_reward', cards: null });
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
     dispatch({ type: 'set_shop', shopItems: [] });
@@ -851,6 +922,8 @@ export const useRunProgress = () => {
       nextIngredientBonus: 0,
       threeStarActive: false,
       firstIngredientUsedThisTurn: false,
+      nextAttackBoostValue: 0,
+      nextAttackBoostCount: 0,
     };
     dispatch({ type: 'set_job', jobId });
     dispatch({ type: 'set_player', player: nextPlayer });
@@ -869,6 +942,8 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_pending_steps', steps: 0 });
     dispatch({ type: 'set_dice', value: null, rolling: false });
     dispatch({ type: 'set_card_remove_count', value: 0 });
+    dispatch({ type: 'set_current_area', area: 1 });
+    dispatch({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
     dispatch({ type: 'set_current_tile', tileId: 1 });
     dispatch({ type: 'set_screen', screen: 'map' });
   };

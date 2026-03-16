@@ -65,7 +65,7 @@ export const RESERVE_BONUS_CARDS: Card[] = [
     description: '10ダメージ。温存時：20ダメージ',
     icon: '🪵',
     reserveBonus: {
-      description: '温存時：16ダメージ',
+      description: '温存時：20ダメージ',
       damageMultiplier: 2,
     },
     sellValue: 8,
@@ -80,7 +80,7 @@ export const RESERVE_BONUS_CARDS: Card[] = [
     description: '6ダメージ。温存時：12ダメージ+足場+1',
     icon: '🪚',
     reserveBonus: {
-      description: '温存時：10ダメージ＋足場+1',
+      description: '温存時：12ダメージ＋足場+1',
       damageMultiplier: 2,
       extraEffects: [{ type: 'scaffold', value: 1 }],
     },

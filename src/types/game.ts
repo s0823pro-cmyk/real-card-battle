@@ -11,7 +11,6 @@ export type GamePhase =
 export type EffectType =
   | 'scaffold'
   | 'draw'
-  | 'buff_attack'
   | 'debuff_enemy'
   | 'weak'
   | 'heal'
@@ -28,7 +27,6 @@ export type EffectType =
   | 'scaffold_per_turn'
   | 'block_persist'
   | 'block_per_turn'
-  | 'upgrade_hand_card'
   | 'upgrade_random_hand_card'
   | 'next_attack_damage_boost'
   | 'damage_immunity_this_turn'
@@ -53,7 +51,16 @@ export interface LowHpBonus {
   damage: number;
 }
 export type StatusEffectType = 'weak' | 'vulnerable' | 'strength_up' | 'burn' | 'attack_down';
-export type EnemyIntentType = 'attack' | 'defend' | 'buff' | 'debuff' | 'mental_attack';
+export type EnemyIntentType =
+  | 'attack'
+  | 'defend'
+  | 'buff'
+  | 'debuff'
+  | 'mental_attack'
+  | 'steal_gold'
+  | 'regen'
+  | 'random_debuff'
+  | 'add_curse';
 
 export interface Card {
   id: string;
@@ -107,6 +114,7 @@ export interface EnemyIntent {
   type: EnemyIntentType;
   value: number;
   mentalDamage?: number;
+  debuffType?: 'vulnerable' | 'weak' | 'burn';
   description: string;
   icon: string;
 }
@@ -117,6 +125,7 @@ export interface Enemy {
   name: string;
   maxHp: number;
   currentHp: number;
+  block: number;
   imageUrl?: string;
   icon?: string;
   intentHistory: EnemyIntent[];
@@ -157,6 +166,8 @@ export interface PlayerState {
   nextIngredientBonus: number;
   threeStarActive: boolean;
   firstIngredientUsedThisTurn: boolean;
+  nextAttackBoostValue: number;
+  nextAttackBoostCount: number;
 }
 
 export interface ToolSlot {

@@ -69,13 +69,13 @@ const getUpgradePreviewText = (card: Card): string => {
   const type = getAutoUpgradeType(card);
   if (type === 'damage') {
     const before = card.damage ?? 0;
-    return `ダメージ ${before}ↁE{before + 3}`;
+    return `ダメージ ${before} → ${before + 3}`;
   }
   if (type === 'block') {
     const before = card.block ?? 0;
-    return `ブロチE�� ${before}ↁE{before + 3}`;
+    return `ブロック ${before} → ${before + 3}`;
   }
-  return `所要時閁E${card.timeCost}ↁE{Math.max(1, card.timeCost - 1)}秒`;
+  return `所要時間 ${card.timeCost} → ${Math.max(1, card.timeCost - 1)}秒`;
 };
 
 const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) => {
@@ -578,7 +578,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       if (vulnerable) {
         previewDamage = Math.floor(previewDamage * 1.5);
       }
-      const enemyBlock = (enemy as unknown as { block?: number }).block ?? 0;
+      const enemyBlock = enemy.block;
       previewDamage = Math.max(0, previewDamage - enemyBlock);
     }
     return {
@@ -618,7 +618,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     return [];
   }, [showPile, gameState.drawPile, gameState.discardPile, gameState.exhaustedCards]);
   const startTitle = useMemo(
-    () => `── ${gameState.enemies.map((enemy) => enemy.name).join(' / ')} 現めE──`,
+    () => `── ${gameState.enemies.map((enemy) => enemy.name).join(' / ')} 現れ──`,
     [gameState.enemies],
   );
   const jobId = gameState.player.jobId;
@@ -847,10 +847,10 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
             <div className="battle-deck-modal-header">
               <h2 className="battle-deck-modal-title">
                 {showPile === 'draw'
-                  ? `山札 (${gameState.drawPile.length}极E`
+                  ? `山札 (${gameState.drawPile.length}枚)`
                   : showPile === 'discard'
-                    ? `捨て札 (${gameState.discardPile.length}极E`
-                    : `除夁E(${gameState.exhaustedCards.length}极E`}
+                    ? `捨て札 (${gameState.discardPile.length}枚)`
+                    : `除外 (${gameState.exhaustedCards.length}枚)`}
               </h2>
               <button type="button" className="battle-btn-close" onClick={() => setShowPile(null)}>
                 ×</button>
@@ -875,7 +875,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
                 className={`battle-pile-tab ${showPile === 'exhaust' ? 'battle-pile-tab--active' : ''}`}
                 onClick={() => setShowPile('exhaust')}
               >
-                除夁E({gameState.exhaustedCards.length})
+                除外 ({gameState.exhaustedCards.length})
               </button>
             </div>
             <div className="battle-deck-card-grid card-display-grid">
@@ -1022,7 +1022,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
                   setReserveConfirm(null);
                 }}
               >
-                温存すめE              </button>
+                温存する              </button>
             </div>
           </div>
         </div>

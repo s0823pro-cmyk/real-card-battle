@@ -14,6 +14,7 @@ export interface CardResolveResult {
   isDandoriActive: boolean;
   goldGained: number;
   lighterBurnApplied: boolean;
+  attackBuff: { value: number; charges: number } | null;
 }
 
 export const useBattleLogic = () => {
@@ -68,9 +69,15 @@ export const useBattleLogic = () => {
     for (const tool of toolSlots) {
       if (tool.card.id === 'cardboard_house') {
         if (nextPlayer.canBlock) {
-          nextPlayer.block += hungryState === 'awakened' ? 8 : 3;
+          // アップグレード済みはblock_per_turn_awakenedエフェクトで処理するためスキップ
+          const hasAwakeningEffect = tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened');
+          if (!hasAwakeningEffect) {
+            nextPlayer.block += hungryState === 'awakened' ? 8 : 3;
+          }
         }
-        continue;
+        if (!tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened')) {
+          continue;
+        }
       }
       if (tool.card.block && nextPlayer.canBlock) {
         nextPlayer.block += tool.card.block;
@@ -78,6 +85,10 @@ export const useBattleLogic = () => {
       for (const effect of tool.card.effects ?? []) {
         if (effect.type === 'block_per_turn' && nextPlayer.canBlock) {
           nextPlayer.block += effect.value;
+        }
+        if (effect.type === 'block_per_turn_awakened' && nextPlayer.canBlock) {
+          const blockAmount = hungryState === 'awakened' ? effect.value : (effect.normalValue ?? effect.value);
+          nextPlayer.block += blockAmount;
         }
       }
     }
@@ -110,12 +121,23 @@ export const useBattleLogic = () => {
     let equippedTool: Card | null = null;
     let goldGained = 0;
     let lighterBurnApplied = false;
+    let attackBuff: { value: number; charges: number } | null = null;
 
     if (card.type === 'attack') {
-      const rawDamage = calculateCardDamage(card, nextPlayer, prevCard, toolSlots);
+      let rawDamage = calculateCardDamage(card, nextPlayer, prevCard, toolSlots);
+      // next_attack_boost（根性+）のボーナスを適用
+      if (nextPlayer.nextAttackBoostCount > 0) {
+        rawDamage += nextPlayer.nextAttackBoostValue;
+        nextPlayer.nextAttackBoostCount -= 1;
+        if (nextPlayer.nextAttackBoostCount <= 0) {
+          nextPlayer.nextAttackBoostValue = 0;
+        }
+      }
       const boostedDamage = isDandoriActive ? Math.floor(rawDamage * bonus.damageMultiplier) : rawDamage;
-      if (card.tags?.includes('multi_hit') && (card.hitCount ?? 0) > 0) {
-        for (let hit = 0; hit < (card.hitCount ?? 0); hit += 1) {
+      const hitCountEffect = card.effects?.find((e) => e.type === 'hit_count');
+      const effectiveHitCount = hitCountEffect?.value ?? card.hitCount ?? 0;
+      if (card.tags?.includes('multi_hit') && effectiveHitCount > 0) {
+        for (let hit = 0; hit < effectiveHitCount; hit += 1) {
           const aliveEnemies = nextEnemies.filter((enemy) => enemy.currentHp > 0);
           if (aliveEnemies.length === 0) break;
           const randomEnemy = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
@@ -194,6 +216,13 @@ export const useBattleLogic = () => {
       if (effect.type === 'first_cooking_multiplier_boost') {
         nextPlayer.kitchenDemonActive = true;
       }
+      if (effect.type === 'attack_buff') {
+        attackBuff = { value: effect.value, charges: effect.duration ?? 2 };
+      }
+      if (effect.type === 'next_attack_boost') {
+        nextPlayer.nextAttackBoostValue = effect.value;
+        nextPlayer.nextAttackBoostCount = effect.count ?? 2;
+      }
       if (
         effect.type === 'vulnerable' ||
         effect.type === 'debuff_enemy' ||
@@ -269,12 +298,18 @@ export const useBattleLogic = () => {
       }
     }
 
-    if (card.type === 'attack' && toolSlots.some((slot) => slot.card.id === 'lighter')) {
-      if (Math.random() < 0.2) {
-        const aliveIdx = getAliveEnemyIndex(nextEnemies);
-        if (aliveIdx >= 0) {
-          upsertEnemyStatus(nextEnemies[aliveIdx], 'burn', 2, 1);
-          lighterBurnApplied = true;
+    if (card.type === 'attack') {
+      const lighterSlot = toolSlots.find((slot) => slot.card.id === 'lighter');
+      if (lighterSlot) {
+        const chanceEffect = lighterSlot.card.effects?.find((e) => e.type === 'lighter_chance');
+        const chance = chanceEffect?.value ?? 0.2;
+        const burnValue = chanceEffect?.burnValue ?? 2;
+        if (Math.random() < chance) {
+          const aliveIdx = getAliveEnemyIndex(nextEnemies);
+          if (aliveIdx >= 0) {
+            upsertEnemyStatus(nextEnemies[aliveIdx], 'burn', burnValue, 1);
+            lighterBurnApplied = true;
+          }
         }
       }
     }
@@ -295,6 +330,7 @@ export const useBattleLogic = () => {
       isDandoriActive,
       goldGained,
       lighterBurnApplied,
+      attackBuff,
     };
   };
 

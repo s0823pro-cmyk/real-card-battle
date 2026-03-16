@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ANXIETY_CARD } from '../data/carpenterDeck';
+import { ANXIETY_CARD, CURSE_CARD } from '../data/carpenterDeck';
 import { getJobConfig } from '../data/jobs';
 import { createRandomEncounter } from '../data/enemies';
 import { useBattleLogic } from './useBattleLogic';
@@ -20,9 +20,33 @@ const MAX_MENTAL = 10;
 const INITIAL_MENTAL = 7;
 const CARPENTER_CAN_SELL_IN_BATTLE = false;
 const ENEMY_GOLD_REWARDS: Record<string, number> = {
+  // エリア1
   claimer: 10,
   drunk: 8,
   wildCat: 5,
+  bicycle: 6,
+  solicitor: 9,
+  biker_leader: 25,
+  evil_realtor: 22,
+  monster_customer: 60,
+  // エリア2
+  collector: 12,
+  sloppy_worker: 10,
+  yakuza_minion: 14,
+  evil_sales: 10,
+  rogue_dump: 16,
+  evil_supervisor: 30,
+  land_shark: 28,
+  evil_ceo: 70,
+  // エリア3
+  world_tree_root: 14,
+  lost_soul: 12,
+  stone_soldier: 18,
+  light_guardian: 14,
+  cursed_tree: 18,
+  world_tree_guardian: 35,
+  ancient_ghost: 32,
+  world_tree_warden: 80,
 };
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -45,7 +69,6 @@ export interface UseGameStateResult {
   lastPlayedCard: Card | null;
   remainingTime: number;
   canPlayCard: (card: Card) => boolean;
-  executingCardId: string | null;
   sellingCardId: string | null;
   returningCardId: string | null;
   isPlayerHit: boolean;
@@ -170,6 +193,8 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     nextIngredientBonus: 0,
     threeStarActive: false,
     firstIngredientUsedThisTurn: false,
+      nextAttackBoostValue: 0,
+      nextAttackBoostCount: 0,
   };
 
   return {
@@ -370,6 +395,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     nextIngredientBonus: 0,
     threeStarActive: false,
     firstIngredientUsedThisTurn: false,
+    nextAttackBoostValue: 0,
+    nextAttackBoostCount: 0,
   });
 
   const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
@@ -383,7 +410,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     [gameState.hand, selectedCardId],
   );
   const remainingTime = gameState.maxTime - gameState.usedTime;
-  const executingCardId = null;
   const canPlayCard = (card: Card): boolean => {
     if (card.type === 'status' || card.type === 'curse') return false;
     return (
@@ -664,6 +690,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       );
       pushPopup(`+${attackItemBuff.value}💪`, 'player', 'buff');
     }
+    if (result.attackBuff) {
+      setAttackItemBuff(result.attackBuff);
+      pushPopup(`次${result.attackBuff.charges}回 +${result.attackBuff.value}💪`, 'player', 'buff');
+    }
 
     const newlyDefeated = result.enemies.filter((enemy) => {
       const before = enemiesBefore.find((item) => item.id === enemy.id);
@@ -845,8 +875,33 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       .reduce((sum, effect) => sum + effect.value, 0);
     const keepBlock = state.player.blockPersist;
     const shouldDisableBlockThisTurn = state.player.nextTurnNoBlock;
+
+    // プレイヤーのburn（火傷）ダメージ処理
+    let playerHpAfterBurn = state.player.currentHp;
+    let burnDamageTotal = 0;
+    for (const status of state.player.statusEffects) {
+      if (status.type === 'burn' && status.duration > 0 && status.value > 0) {
+        burnDamageTotal += status.value;
+        playerHpAfterBurn = Math.max(0, playerHpAfterBurn - status.value);
+      }
+    }
+
+    // プレイヤーの状態異常ターン経過処理
+    const tickedPlayerStatuses = state.player.statusEffects
+      .map((status) => {
+        if (status.type === 'vulnerable' || status.type === 'weak') {
+          return { ...status, duration: status.duration - 1, value: status.value - 1 };
+        }
+        if (status.type === 'burn') {
+          return { ...status, duration: status.duration - 1 };
+        }
+        return status;
+      })
+      .filter((status) => status.duration > 0 && status.value > 0);
+
     const playerAfterReset = applyToolEffects(state.toolSlots, {
       ...state.player,
+      currentHp: playerHpAfterBurn,
       block: shouldDisableBlockThisTurn ? 0 : keepBlock ? state.player.block : 0,
       blockPersist: false,
       scaffold: state.player.scaffold + scaffoldPerTurn,
@@ -858,6 +913,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       lastTurnDamageTaken: state.player.currentTurnDamageTaken,
       currentTurnDamageTaken: 0,
       firstIngredientUsedThisTurn: false,
+      nextAttackBoostValue: 0,
+      nextAttackBoostCount: 0,
+      statusEffects: tickedPlayerStatuses,
     });
     const anxietyCount = playerAfterReset.mental <= 0 ? 2 : playerAfterReset.mental <= 2 ? 1 : 0;
     const anxietyCards = anxietyCount > 0 ? createAnxietyCards(anxietyCount) : [];
@@ -955,14 +1013,20 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return;
     }
 
-    if (workingState.player.ridgepoleActive && workingState.player.scaffold >= 5) {
+    const ridgepolePower = workingState.activePowers.find((p) => p.id === 'ridgepole');
+    const ridgepoleThreshold =
+      ridgepolePower?.effects?.find((e) => e.type === 'ridgepole_threshold')?.value ?? 5;
+    const ridgepoleDamage =
+      ridgepolePower?.effects?.find((e) => e.type === 'ridgepole_damage')?.value ?? 10;
+
+    if (workingState.player.ridgepoleActive && workingState.player.scaffold >= ridgepoleThreshold) {
       let dealt = false;
       const nextEnemies = workingState.enemies.map((enemy) => {
         if (enemy.currentHp <= 0) return enemy;
         dealt = true;
-        const nextHp = Math.max(0, enemy.currentHp - 10);
+        const nextHp = Math.max(0, enemy.currentHp - ridgepoleDamage);
         if (enemy.currentHp - nextHp > 0) {
-          pushPopup('-10', enemy.id, 'damage');
+          pushPopup(`-${ridgepoleDamage}`, enemy.id, 'damage');
         }
         return { ...enemy, currentHp: nextHp };
       });
@@ -1016,7 +1080,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setBattleMessage('敵の行動');
     await wait(380);
 
-    for (const enemy of workingState.enemies) {
+    for (let ei = 0; ei < workingState.enemies.length; ei += 1) {
+      const enemy = workingState.enemies[ei];
       if (enemy.currentHp <= 0) continue;
       const result = executeEnemyTurn(enemy, workingState.player);
       const revivalOutcome = applyRevivalIfNeeded(result.player);
@@ -1031,7 +1096,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         triggerRevivalEffect();
       }
       if (result.damageToPlayer > 0) {
-        workingState.player.currentTurnDamageTaken += result.damageToPlayer;
+        workingState = {
+          ...workingState,
+          player: {
+            ...workingState.player,
+            currentTurnDamageTaken: workingState.player.currentTurnDamageTaken + result.damageToPlayer,
+          },
+        };
         setIsPlayerHit(true);
         pushPopup(`-${result.damageToPlayer}`, 'player', 'damage');
       } else {
@@ -1040,6 +1111,23 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       if (result.mentalDamageToPlayer > 0) {
         setIsMentalHit(true);
         pushPopup(`🧠-${result.mentalDamageToPlayer}`, 'player', 'buff');
+      }
+      if (result.goldStolen > 0) {
+        pushPopup(`💰-${result.goldStolen}G 盗まれた！`, 'player', 'damage');
+      }
+      if (result.addCurse) {
+        const curseCard: Card = {
+          ...CURSE_CARD,
+          id: `${CURSE_CARD.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+        };
+        workingState = {
+          ...workingState,
+          discardPile: [...workingState.discardPile, curseCard],
+        };
+        pushPopup('🌑 呪いカード追加！', 'player', 'damage');
+      }
+      if (result.enemy.currentHp > enemy.currentHp) {
+        pushPopup(`💚+${result.enemy.currentHp - enemy.currentHp}HP`, enemy.id, 'buff');
       }
       setBattleMessage(result.log);
       setGameState({ ...workingState });
@@ -1077,7 +1165,42 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return;
     }
 
+    // burnダメージのポップアップ通知（moveToNextTurn適用前に表示）
+    const burnTotal = workingState.player.statusEffects
+      .filter((s) => s.type === 'burn' && s.duration > 0 && s.value > 0)
+      .reduce((sum, s) => sum + s.value, 0);
+    if (burnTotal > 0) {
+      pushPopup(`🔥-${burnTotal}`, 'player', 'damage');
+      await wait(400);
+    }
+
     const next = moveToNextTurn(workingState);
+
+    // burnダメージによる敗北判定
+    if (next.player.currentHp <= 0) {
+      setGameState({ ...next, phase: 'defeat', player: clearBattleFlags(next.player) });
+      setBattleMessage('敗北...');
+      options?.onBattleEnd?.({
+        outcome: 'defeat',
+        player: clearBattleFlags(next.player),
+        deck: [
+          ...next.drawPile,
+          ...next.discardPile,
+          ...next.hand,
+          ...next.reserved,
+          ...next.exhaustedCards,
+          ...next.activePowers,
+          ...next.toolSlots.map((slot) => slot.card),
+        ],
+        items: battleItems,
+        defeatedEnemies: next.enemies,
+        rewardGold: 0,
+        mentalRecovery: 0,
+        kind: options?.setup?.kind ?? 'battle',
+      });
+      return;
+    }
+
     setGameState(next);
     setLastPlayedCard(null);
     setBattleMessage('次のターン');
@@ -1176,7 +1299,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     lastPlayedCard,
     remainingTime,
     canPlayCard,
-    executingCardId,
     sellingCardId,
     returningCardId,
     isPlayerHit,

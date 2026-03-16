@@ -51,8 +51,24 @@ export const ENEMY_ACTION_TOOLTIPS = {
     description: '敵自身を強化する。攻撃力が上昇する。',
   },
   debuff: {
-    label: '💀 呪い付与',
-    description: 'プレイヤーのデッキに呪いカードを混入させる。使用不可で邪魔になる。',
+    label: '💢 デバフ付与',
+    description: 'プレイヤーに状態異常（脆弱・弱体・炎上など）を付与する。',
+  },
+  steal_gold: {
+    label: '💰 ゴールド盗取',
+    description: 'プレイヤーのゴールドを奪う。',
+  },
+  regen: {
+    label: '💚 再生',
+    description: '敵自身のHPを回復する。',
+  },
+  random_debuff: {
+    label: '🎲 ランダムデバフ',
+    description: 'プレイヤーにランダムな状態異常（脆弱・弱体・炎上のいずれか）を付与する。',
+  },
+  add_curse: {
+    label: '🌑 呪いカード追加',
+    description: 'プレイヤーの捨て札に呪いカードを混入させる。使用不可で邪魔になる。',
   },
   idle: {
     label: '💤 休み',

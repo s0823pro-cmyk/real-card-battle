@@ -95,7 +95,7 @@ export const calculateCardDamage = (
     }
   }
 
-  if (card.name === '闇鍋') {
+  if (card.id === 'mystery_pot') {
     damage = 15 + Math.floor(Math.random() * 16);
   }
 
@@ -118,6 +118,14 @@ export const calculateCardDamage = (
     damage = Math.max(1, damage);
   }
 
+  // プレイヤーの弱体状態：与えるダメージ-25%
+  if (card.type === 'attack') {
+    const playerWeak = findStatus(player.statusEffects, 'weak');
+    if (playerWeak) {
+      damage = Math.floor(damage * 0.75);
+    }
+  }
+
   return damage;
 };
 
@@ -129,6 +137,15 @@ export const applyDamageToEnemy = (enemy: Enemy, baseDamage: number): number => 
   }
   if (baseDamage > 0) {
     damage = Math.max(1, damage);
+  }
+  // 敵のブロックでダメージを軽減
+  if (enemy.block > 0) {
+    if (enemy.block >= damage) {
+      enemy.block -= damage;
+      return 0;
+    }
+    damage -= enemy.block;
+    enemy.block = 0;
   }
   enemy.currentHp = Math.max(0, enemy.currentHp - damage);
   return damage;
@@ -143,7 +160,13 @@ export const applyEnemyAttack = (
     return 0;
   }
 
-  const damage = getEnemyAttackValue(intent, enemy);
+  let damage = getEnemyAttackValue(intent, enemy);
+
+  // プレイヤーの脆弱状態：受けるダメージ+50%
+  const playerVulnerable = findStatus(player.statusEffects, 'vulnerable');
+  if (playerVulnerable) {
+    damage = Math.floor(damage * 1.5);
+  }
 
   if (!player.canBlock) {
     player.block = 0;

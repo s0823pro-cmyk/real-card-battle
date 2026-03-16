@@ -28,6 +28,10 @@ export const AREA1_ENCOUNTER_TEMPLATE_IDS: string[][] = [
   ['wildCat', 'wildCat'],
   ['claimer', 'drunk'],
   ['wildCat', 'claimer'],
+  ['bicycle'],
+  ['solicitor'],
+  ['bicycle', 'drunk'],
+  ['solicitor', 'claimer'],
 ];
 
 export const AREA1_ELITES: EnemyTemplateLike[] = [
@@ -333,3 +337,234 @@ export const pickArea1Elite = (): EnemyTemplateLike =>
 
 export const pickEvent = (): GameEvent =>
   AREA1_EVENTS[Math.floor(Math.random() * AREA1_EVENTS.length)];
+
+// ===== AREA 2 =====
+
+export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
+  {
+    templateId: 'collector',
+    name: '取り立て屋',
+    icon: '💼',
+    maxHp: 45,
+    intents: [
+      { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
+      { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
+      { type: 'steal_gold', value: 5, description: 'ゴールド盗取 -5', icon: '💰' },
+    ],
+  },
+  {
+    templateId: 'sloppy_worker',
+    name: '手抜き職人',
+    icon: '🔧',
+    maxHp: 40,
+    intents: [
+      { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
+      { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
+    ],
+  },
+  {
+    templateId: 'yakuza_minion',
+    name: 'ヤクザの子分',
+    icon: '🐉',
+    maxHp: 55,
+    intents: [
+      { type: 'attack', value: 10, description: '攻撃 10', icon: '⚔️' },
+      { type: 'debuff', value: 2, debuffType: 'vulnerable', description: '脆弱付与', icon: '💢' },
+      { type: 'attack', value: 10, description: '攻撃 10', icon: '⚔️' },
+    ],
+  },
+  {
+    templateId: 'evil_sales',
+    name: '悪徳セールス',
+    icon: '📋',
+    maxHp: 38,
+    intents: [
+      { type: 'attack', value: 6, description: '攻撃 6', icon: '⚔️' },
+      { type: 'add_curse', value: 1, description: '呪いカード追加', icon: '🌑' },
+      { type: 'attack', value: 6, description: '攻撃 6', icon: '⚔️' },
+    ],
+  },
+  {
+    templateId: 'rogue_dump',
+    name: '暴走ダンプ',
+    icon: '🚛',
+    maxHp: 65,
+    intents: [
+      { type: 'attack', value: 12, description: '攻撃 12', icon: '⚔️' },
+      { type: 'attack', value: 12, description: '攻撃 12', icon: '⚔️' },
+      { type: 'buff', value: 1, description: '攻撃力+1', icon: '⬆️' },
+    ],
+  },
+];
+
+export const AREA2_ELITES: EnemyTemplateLike[] = [
+  {
+    templateId: 'evil_supervisor',
+    name: '悪徳監督',
+    icon: '👷',
+    maxHp: 110,
+    intents: [
+      { type: 'attack', value: 14, description: '攻撃 14', icon: '⚔️' },
+      { type: 'buff', value: 2, description: '部下を呼ぶ', icon: '📢' },
+      { type: 'attack', value: 14, description: '攻撃 14', icon: '⚔️' },
+      { type: 'defend', value: 12, description: '防御 12', icon: '🛡️' },
+    ],
+  },
+  {
+    templateId: 'land_shark',
+    name: '地上げ屋の親分',
+    icon: '🏚️',
+    maxHp: 95,
+    intents: [
+      { type: 'attack', value: 16, description: '攻撃 16', icon: '⚔️' },
+      { type: 'debuff', value: 3, debuffType: 'burn', description: '炎上付与', icon: '🔥' },
+      { type: 'debuff', value: 2, debuffType: 'weak', description: '弱体付与', icon: '💢' },
+      { type: 'attack', value: 16, description: '攻撃 16', icon: '⚔️' },
+    ],
+  },
+];
+
+export const AREA2_BOSS: EnemyTemplateLike = {
+  templateId: 'evil_ceo',
+  name: '悪徳ゼネコン社長',
+  icon: '👔',
+  maxHp: 280,
+  intents: [
+    { type: 'defend', value: 20, description: '防御 20', icon: '🛡️' },
+    { type: 'attack', value: 12, description: '攻撃 12', icon: '⚔️' },
+    { type: 'debuff', value: 2, debuffType: 'weak', description: '弱体付与', icon: '💢' },
+    { type: 'attack', value: 20, description: '猛攻撃 20', icon: '💥' },
+    { type: 'attack', value: 20, description: '猛攻撃 20', icon: '💥' },
+    { type: 'debuff', value: 3, debuffType: 'vulnerable', description: '脆弱付与', icon: '💢' },
+  ],
+};
+
+export const pickArea2Encounter = (): EnemyTemplateLike[] => {
+  const patterns = [
+    [0], [1], [2], [3], [4],
+    [0, 1], [2, 3], [1, 4],
+  ];
+  const pick = patterns[Math.floor(Math.random() * patterns.length)];
+  return pick.map((i) => AREA2_NORMAL_ENEMIES[i]);
+};
+
+export const pickArea2Elite = (): EnemyTemplateLike =>
+  AREA2_ELITES[Math.floor(Math.random() * AREA2_ELITES.length)];
+
+// ===== AREA 3 =====
+
+export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
+  {
+    templateId: 'world_tree_root',
+    name: '世界樹の根',
+    icon: '🌿',
+    maxHp: 60,
+    intents: [
+      { type: 'attack', value: 9, description: '攻撃 9', icon: '⚔️' },
+      { type: 'regen', value: 5, description: '再生 +5HP', icon: '💚' },
+      { type: 'attack', value: 9, description: '攻撃 9', icon: '⚔️' },
+    ],
+  },
+  {
+    templateId: 'lost_soul',
+    name: '迷い魂',
+    icon: '👻',
+    maxHp: 45,
+    intents: [
+      { type: 'attack', value: 11, description: '攻撃 11', icon: '⚔️' },
+      { type: 'random_debuff', value: 2, description: 'ランダムデバフ', icon: '🎲' },
+      { type: 'attack', value: 11, description: '攻撃 11', icon: '⚔️' },
+    ],
+  },
+  {
+    templateId: 'stone_soldier',
+    name: '石化した兵士',
+    icon: '🗿',
+    maxHp: 75,
+    intents: [
+      { type: 'defend', value: 15, description: '防御 15', icon: '🛡️' },
+      { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
+      { type: 'defend', value: 15, description: '防御 15', icon: '🛡️' },
+      { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
+    ],
+  },
+  {
+    templateId: 'light_guardian',
+    name: '光の番兵',
+    icon: '⚔️',
+    maxHp: 50,
+    intents: [
+      { type: 'attack', value: 13, description: '攻撃 13', icon: '⚔️' },
+      { type: 'buff', value: 2, description: '攻撃力+2', icon: '⬆️' },
+      { type: 'attack', value: 13, description: '攻撃 13', icon: '⚔️' },
+    ],
+  },
+  {
+    templateId: 'cursed_tree',
+    name: '呪われた大木',
+    icon: '🌳',
+    maxHp: 80,
+    intents: [
+      { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
+      { type: 'add_curse', value: 1, description: '呪いカード追加', icon: '🌑' },
+      { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
+      { type: 'defend', value: 10, description: '防御 10', icon: '🛡️' },
+    ],
+  },
+];
+
+export const AREA3_ELITES: EnemyTemplateLike[] = [
+  {
+    templateId: 'world_tree_guardian',
+    name: '世界樹の守護者',
+    icon: '🛡️',
+    maxHp: 130,
+    intents: [
+      { type: 'defend', value: 20, description: '防御 20', icon: '🛡️' },
+      { type: 'attack', value: 15, description: '攻撃 15', icon: '⚔️' },
+      { type: 'defend', value: 20, description: '防御 20', icon: '🛡️' },
+      { type: 'attack', value: 15, description: '攻撃 15', icon: '⚔️' },
+    ],
+  },
+  {
+    templateId: 'ancient_ghost',
+    name: '古代の亡霊',
+    icon: '💀',
+    maxHp: 115,
+    intents: [
+      { type: 'attack', value: 18, description: '攻撃 18', icon: '⚔️' },
+      { type: 'debuff', value: 2, debuffType: 'vulnerable', description: '脆弱付与', icon: '💢' },
+      { type: 'attack', value: 18, description: '攻撃 18', icon: '⚔️' },
+    ],
+  },
+];
+
+export const AREA3_BOSS: EnemyTemplateLike = {
+  templateId: 'world_tree_warden',
+  name: '世界樹の番人',
+  icon: '🌲',
+  maxHp: 350,
+  intents: [
+    { type: 'defend', value: 25, description: '防御 25', icon: '🛡️' },
+    { type: 'attack', value: 15, description: '攻撃 15', icon: '⚔️' },
+    { type: 'debuff', value: 2, debuffType: 'weak', description: '弱体付与', icon: '💢' },
+    { type: 'attack', value: 20, description: '攻撃 20', icon: '⚔️' },
+    { type: 'random_debuff', value: 3, description: 'ランダムデバフ', icon: '🎲' },
+    { type: 'debuff', value: 3, debuffType: 'vulnerable', description: '脆弱付与', icon: '💢' },
+    { type: 'attack', value: 25, description: '猛攻撃 25', icon: '💥' },
+    { type: 'attack', value: 25, description: '猛攻撃 25', icon: '💥' },
+    { type: 'attack', value: 25, description: '猛攻撃 25', icon: '💥' },
+  ],
+};
+
+export const pickArea3Encounter = (): EnemyTemplateLike[] => {
+  const patterns = [
+    [0], [1], [2], [3], [4],
+    [0, 1], [2, 3], [1, 4],
+  ];
+  const pick = patterns[Math.floor(Math.random() * patterns.length)];
+  return pick.map((i) => AREA3_NORMAL_ENEMIES[i]);
+};
+
+export const pickArea3Elite = (): EnemyTemplateLike =>
+  AREA3_ELITES[Math.floor(Math.random() * AREA3_ELITES.length)];

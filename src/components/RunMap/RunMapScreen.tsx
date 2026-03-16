@@ -206,7 +206,6 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
             <span className={`map-stat map-stat--hp ${getHpClass()}`}>
               ❤️ {progress.player.currentHp}/{progress.player.maxHp}
             </span>
-            <span className="map-stat">🧠 {progress.player.mental}</span>
             <span className="map-stat">💰 {progress.player.gold}G</span>
           </div>
           <div className="map-header-right">
