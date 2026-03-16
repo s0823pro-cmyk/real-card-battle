@@ -1,4 +1,4 @@
-import type { Card, Enemy, EnemyIntent, PlayerState, StatusEffect } from '../types/game';
+import type { Card, Enemy, EnemyIntent, PlayerState, StatusEffect, ToolSlot } from '../types/game';
 import { getHungryDamageBonus, getHungryState } from './hungrySystem';
 
 const findStatus = (list: StatusEffect[], type: StatusEffect['type']) =>
@@ -32,6 +32,7 @@ export const calculateCardDamage = (
   card: Card,
   player: PlayerState,
   prevCard: Card | null,
+  toolSlots?: ToolSlot[],
 ): number => {
   let damage = card.damage ?? 0;
   const hungryState = getHungryState(player);
@@ -57,6 +58,11 @@ export const calculateCardDamage = (
   if (card.tags?.includes('missing_hp_damage_scaled')) {
     const multiplier = hungryState === 'awakened' ? 0.8 : 0.5;
     damage = Math.floor((player.maxHp - player.currentHp) * multiplier) + getHungryDamageBonus(hungryState);
+  }
+
+  if (card.tags?.includes('revenge_damage')) {
+    const baseDamage = player.lastTurnDamageTaken;
+    damage = hungryState === 'awakened' ? Math.floor(baseDamage * 1.5) : baseDamage;
   }
 
   if (card.tags?.includes('scaffold_consume')) {
@@ -91,6 +97,21 @@ export const calculateCardDamage = (
 
   if (card.name === '闇鍋') {
     damage = 15 + Math.floor(Math.random() * 16);
+  }
+
+  if (card.type === 'attack') {
+    if (player.recipeStudyBonus > 0) {
+      damage += player.recipeStudyBonus;
+    }
+    if (player.nextIngredientBonus > 0 && card.tags?.includes('ingredient')) {
+      damage += player.nextIngredientBonus;
+    }
+    if (toolSlots) {
+      const knifeSetCount = toolSlots.filter((slot) => slot.card.id === 'knife_set').length;
+      if (knifeSetCount > 0) {
+        damage += knifeSetCount * 2;
+      }
+    }
   }
 
   if ((card.damage ?? 0) > 0 || card.tags?.includes('missing_hp_damage') || card.tags?.includes('missing_hp_damage_scaled')) {

@@ -116,6 +116,13 @@ const initialPlayer: PlayerState = {
   lowHpDamageBoost: 0,
   kitchenDemonActive: false,
   firstCookingUsedThisTurn: false,
+  lastTurnDamageTaken: 0,
+  currentTurnDamageTaken: 0,
+  recipeStudyActive: false,
+  recipeStudyBonus: 0,
+  nextIngredientBonus: 0,
+  threeStarActive: false,
+  firstIngredientUsedThisTurn: false,
 };
 
 const makeInitialProgress = (): GameProgress => {
@@ -710,6 +717,13 @@ export const useRunProgress = () => {
       lowHpDamageBoost: 0,
       kitchenDemonActive: false,
       firstCookingUsedThisTurn: false,
+      lastTurnDamageTaken: 0,
+      currentTurnDamageTaken: 0,
+      recipeStudyActive: false,
+      recipeStudyBonus: 0,
+      nextIngredientBonus: 0,
+      threeStarActive: false,
+      firstIngredientUsedThisTurn: false,
     };
     dispatch({ type: 'set_job', jobId: resetJobId });
     dispatch({ type: 'set_board', board: nextBoard });
@@ -781,6 +795,13 @@ export const useRunProgress = () => {
       lowHpDamageBoost: 0,
       kitchenDemonActive: false,
       firstCookingUsedThisTurn: false,
+      lastTurnDamageTaken: 0,
+      currentTurnDamageTaken: 0,
+      recipeStudyActive: false,
+      recipeStudyBonus: 0,
+      nextIngredientBonus: 0,
+      threeStarActive: false,
+      firstIngredientUsedThisTurn: false,
     };
     dispatch({ type: 'set_job', jobId });
     dispatch({ type: 'set_player', player: nextPlayer });

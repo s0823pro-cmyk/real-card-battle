@@ -115,6 +115,13 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   lowHpDamageBoost: player.lowHpDamageBoost ?? 0,
   kitchenDemonActive: player.kitchenDemonActive ?? false,
   firstCookingUsedThisTurn: player.firstCookingUsedThisTurn ?? false,
+  lastTurnDamageTaken: player.lastTurnDamageTaken ?? 0,
+  currentTurnDamageTaken: player.currentTurnDamageTaken ?? 0,
+  recipeStudyActive: player.recipeStudyActive ?? false,
+  recipeStudyBonus: player.recipeStudyBonus ?? 0,
+  nextIngredientBonus: player.nextIngredientBonus ?? 0,
+  threeStarActive: player.threeStarActive ?? false,
+  firstIngredientUsedThisTurn: player.firstIngredientUsedThisTurn ?? false,
 });
 
 const createInitialGameState = (setup?: BattleSetup | null): GameState => {
@@ -155,6 +162,13 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     lowHpDamageBoost: 0,
     kitchenDemonActive: false,
     firstCookingUsedThisTurn: false,
+    lastTurnDamageTaken: 0,
+    currentTurnDamageTaken: 0,
+    recipeStudyActive: false,
+    recipeStudyBonus: 0,
+    nextIngredientBonus: 0,
+    threeStarActive: false,
+    firstIngredientUsedThisTurn: false,
   };
 
   return {
@@ -345,6 +359,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     lowHpDamageBoost: 0,
     kitchenDemonActive: false,
     firstCookingUsedThisTurn: false,
+    lastTurnDamageTaken: 0,
+    currentTurnDamageTaken: 0,
+    recipeStudyActive: false,
+    recipeStudyBonus: 0,
+    nextIngredientBonus: 0,
+    threeStarActive: false,
+    firstIngredientUsedThisTurn: false,
   });
 
   const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
@@ -451,6 +472,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       gameState.player,
       gameState.enemies,
       target.type === 'enemy' ? target.enemyId : null,
+      gameState.toolSlots,
     );
     const playerAfterPowerFlags: PlayerState = (() => {
       if (playedCard.type !== 'power') return result.player;
@@ -468,6 +490,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       }
       if (playedCard.id === 'cliff_edge') {
         return { ...result.player, cliffEdgeActive: true };
+      }
+      if (playedCard.id === 'recipe_study') {
+        return { ...result.player, recipeStudyActive: true };
+      }
+      if (playedCard.id === 'three_star') {
+        return { ...result.player, threeStarActive: true };
       }
       return result.player;
     })();
@@ -565,6 +593,22 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       setShieldEffect(true);
       pushPopup(`+${result.blockGained}🛡`, 'player', 'block');
       window.setTimeout(() => setShieldEffect(false), 260);
+    }
+    if (playedCard.id === 'gamble') {
+      if (result.damage > 0) {
+        pushPopup('🎰 大当たり！ 25ダメージ！', 'player', 'buff');
+      } else {
+        setIsPlayerHit(true);
+        pushPopup('🎰 ハズレ… 10ダメージ', 'player', 'damage');
+        window.setTimeout(() => setIsPlayerHit(false), 260);
+      }
+    }
+    if (result.goldGained > 0) {
+      pushPopup(`💰 +${result.goldGained}G ゲット！`, 'player', 'buff');
+      spawnCoinBurst();
+    }
+    if (result.lighterBurnApplied) {
+      pushPopup('🔥 火傷2付与！', result.targetEnemyId ?? 'player', 'buff');
     }
     if (result.scaffoldGained > 0) {
       pushPopup(`+${result.scaffoldGained}足場`, 'player', 'buff');
@@ -787,6 +831,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       nextTurnTimePenalty: 0,
       damageImmunityThisTurn: false,
       firstCookingUsedThisTurn: false,
+      lastTurnDamageTaken: state.player.currentTurnDamageTaken,
+      currentTurnDamageTaken: 0,
+      firstIngredientUsedThisTurn: false,
     });
     const anxietyCount = playerAfterReset.mental <= 0 ? 2 : playerAfterReset.mental <= 2 ? 1 : 0;
     const anxietyCards = anxietyCount > 0 ? createAnxietyCards(anxietyCount) : [];
@@ -958,6 +1005,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         triggerRevivalEffect();
       }
       if (result.damageToPlayer > 0) {
+        workingState.player.currentTurnDamageTaken += result.damageToPlayer;
         setIsPlayerHit(true);
         pushPopup(`-${result.damageToPlayer}`, 'player', 'damage');
       } else {

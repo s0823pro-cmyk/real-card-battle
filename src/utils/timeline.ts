@@ -21,6 +21,13 @@ export const getEffectiveTimeCost = (
   if (activeJobId === 'unemployed' && player && getHungryState(player) === 'awakened') {
     cost -= 1;
   }
+  if (
+    player?.threeStarActive &&
+    card.tags?.includes('ingredient') &&
+    !player.firstIngredientUsedThisTurn
+  ) {
+    return 0;
+  }
   return Math.max(1, cost);
 };
 

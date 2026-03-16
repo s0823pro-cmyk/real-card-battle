@@ -68,6 +68,7 @@ export interface Card {
   preparationTimeCost?: number;
   upgraded?: boolean;
   lowHpBonus?: LowHpBonus;
+  hitCount?: number;
 }
 
 export interface ReserveBonus {
@@ -137,6 +138,13 @@ export interface PlayerState {
   lowHpDamageBoost: number;
   kitchenDemonActive: boolean;
   firstCookingUsedThisTurn: boolean;
+  lastTurnDamageTaken: number;
+  currentTurnDamageTaken: number;
+  recipeStudyActive: boolean;
+  recipeStudyBonus: number;
+  nextIngredientBonus: number;
+  threeStarActive: boolean;
+  firstIngredientUsedThisTurn: boolean;
 }
 
 export interface ToolSlot {

@@ -1,5 +1,6 @@
 import type { Card, Enemy, PlayerState, ToolSlot } from '../types/game';
 import { applyDamageToEnemy, calculateCardDamage, getDandoriBonus } from '../utils/damage';
+import { getHungryState } from '../utils/hungrySystem';
 
 export interface CardResolveResult {
   player: PlayerState;
@@ -11,23 +12,38 @@ export interface CardResolveResult {
   cookingGaugeGained: number;
   equippedTool: Card | null;
   isDandoriActive: boolean;
+  goldGained: number;
+  lighterBurnApplied: boolean;
 }
 
 export const useBattleLogic = () => {
-  const upsertEnemyStatus = (enemy: Enemy, type: Enemy['statusEffects'][number]['type'], value: number): void => {
+  const upsertEnemyStatus = (
+    enemy: Enemy,
+    type: Enemy['statusEffects'][number]['type'],
+    value: number,
+    durationTurns = 1,
+  ): void => {
     const idx = enemy.statusEffects.findIndex((status) => status.type === type);
     if (idx < 0) {
-      const baseDuration = type === 'vulnerable' || type === 'weak' ? value : 1;
+      const baseDuration = Math.max(1, durationTurns);
       enemy.statusEffects.push({ type, value, duration: baseDuration });
       return;
     }
     const current = enemy.statusEffects[idx];
     if (type === 'vulnerable' || type === 'weak') {
-      const turns = Math.max(1, value);
+      const turns = Math.max(1, durationTurns);
       enemy.statusEffects[idx] = {
         ...current,
         value: current.value + turns,
         duration: current.duration + turns,
+      };
+      return;
+    }
+    if (type === 'attack_down') {
+      enemy.statusEffects[idx] = {
+        ...current,
+        value: current.value + value,
+        duration: Math.max(current.duration, Math.max(1, durationTurns)),
       };
       return;
     }
@@ -48,7 +64,14 @@ export const useBattleLogic = () => {
 
   const applyToolEffects = (toolSlots: ToolSlot[], player: PlayerState): PlayerState => {
     const nextPlayer = { ...player };
+    const hungryState = getHungryState(nextPlayer);
     for (const tool of toolSlots) {
+      if (tool.card.id === 'cardboard_house') {
+        if (nextPlayer.canBlock) {
+          nextPlayer.block += hungryState === 'awakened' ? 8 : 3;
+        }
+        continue;
+      }
       if (tool.card.block && nextPlayer.canBlock) {
         nextPlayer.block += tool.card.block;
       }
@@ -67,6 +90,7 @@ export const useBattleLogic = () => {
     player: PlayerState,
     enemies: Enemy[],
     preferredTargetEnemyId: string | null = null,
+    toolSlots: ToolSlot[] = [],
   ): CardResolveResult => {
     const nextPlayer: PlayerState = { ...player };
     const nextEnemies: Enemy[] = enemies.map((enemy) => ({
@@ -84,11 +108,21 @@ export const useBattleLogic = () => {
     let scaffoldGained = 0;
     let cookingGaugeGained = 0;
     let equippedTool: Card | null = null;
+    let goldGained = 0;
+    let lighterBurnApplied = false;
 
     if (card.type === 'attack') {
-      const rawDamage = calculateCardDamage(card, nextPlayer, prevCard);
+      const rawDamage = calculateCardDamage(card, nextPlayer, prevCard, toolSlots);
       const boostedDamage = isDandoriActive ? Math.floor(rawDamage * bonus.damageMultiplier) : rawDamage;
-      if (card.tags?.includes('aoe')) {
+      if (card.tags?.includes('multi_hit') && (card.hitCount ?? 0) > 0) {
+        for (let hit = 0; hit < (card.hitCount ?? 0); hit += 1) {
+          const aliveEnemies = nextEnemies.filter((enemy) => enemy.currentHp > 0);
+          if (aliveEnemies.length === 0) break;
+          const randomEnemy = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+          damage += applyDamageToEnemy(randomEnemy, boostedDamage);
+          targetEnemyId = randomEnemy.id;
+        }
+      } else if (card.tags?.includes('aoe')) {
         for (const enemy of nextEnemies) {
           if (enemy.currentHp <= 0) continue;
           damage += applyDamageToEnemy(enemy, boostedDamage);
@@ -179,13 +213,70 @@ export const useBattleLogic = () => {
                 : effect.type === 'debuff_enemy_atk'
                   ? 'attack_down'
                   : 'weak';
-          upsertEnemyStatus(nextEnemies[targetIndex], statusType, effect.value);
+          const statusDuration =
+            effect.type === 'vulnerable' || effect.type === 'weak'
+              ? effect.duration ?? effect.value
+              : effect.duration ?? 1;
+          upsertEnemyStatus(nextEnemies[targetIndex], statusType, effect.value, statusDuration);
         }
       }
     }
 
+    if (card.id === 'gamble') {
+      const isWin = Math.random() < 0.5;
+      if (isWin) {
+        const preferredIndex = preferredTargetEnemyId
+          ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
+          : -1;
+        const targetIndex = preferredIndex >= 0 ? preferredIndex : getAliveEnemyIndex(nextEnemies);
+        if (targetIndex >= 0) {
+          damage += applyDamageToEnemy(nextEnemies[targetIndex], 25);
+          targetEnemyId = nextEnemies[targetIndex].id;
+        }
+      } else {
+        nextPlayer.currentHp = Math.max(0, nextPlayer.currentHp - 10);
+      }
+    }
+
+    if (card.tags?.includes('cooking_consume')) {
+      nextPlayer.cookingGauge = 0;
+    }
+
     if (card.tags?.includes('cooking') && nextPlayer.kitchenDemonActive && !nextPlayer.firstCookingUsedThisTurn) {
       nextPlayer.firstCookingUsedThisTurn = true;
+    }
+
+    if (card.tags?.includes('ingredient')) {
+      if (nextPlayer.recipeStudyActive) {
+        nextPlayer.recipeStudyBonus += 2;
+      }
+      if (nextPlayer.nextIngredientBonus > 0) {
+        nextPlayer.nextIngredientBonus = 0;
+      }
+      if (nextPlayer.threeStarActive && !nextPlayer.firstIngredientUsedThisTurn) {
+        nextPlayer.firstIngredientUsedThisTurn = true;
+      }
+    }
+
+    if (card.id === 'cutting_board') {
+      nextPlayer.nextIngredientBonus += 3;
+    }
+
+    if (card.id === 'vending_kick') {
+      if (Math.random() < 0.5) {
+        nextPlayer.gold += 10;
+        goldGained = 10;
+      }
+    }
+
+    if (card.type === 'attack' && toolSlots.some((slot) => slot.card.id === 'lighter')) {
+      if (Math.random() < 0.2) {
+        const aliveIdx = getAliveEnemyIndex(nextEnemies);
+        if (aliveIdx >= 0) {
+          upsertEnemyStatus(nextEnemies[aliveIdx], 'burn', 2, 1);
+          lighterBurnApplied = true;
+        }
+      }
     }
 
     if (card.type === 'tool') {
@@ -202,6 +293,8 @@ export const useBattleLogic = () => {
       cookingGaugeGained,
       equippedTool,
       isDandoriActive,
+      goldGained,
+      lighterBurnApplied,
     };
   };
 

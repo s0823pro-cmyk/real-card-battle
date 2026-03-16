@@ -22,8 +22,6 @@ const upsertStatus = (statuses: StatusEffect[], next: StatusEffect): StatusEffec
   );
 };
 
-const TURN_DEBUFF_TYPES: StatusEffect['type'][] = ['attack_down', 'vulnerable', 'burn', 'weak'];
-
 export const useEnemyAI = () => {
   const getBossPhaseIntents = (enemy: Enemy): EnemyIntent[] => {
     if (enemy.currentHp > 130) {
@@ -80,27 +78,33 @@ export const useEnemyAI = () => {
       updatedPlayer.mental = Math.max(0, updatedPlayer.mental - mentalDamage);
     }
 
-    // 1ターン系効果の解決。火傷は行動後にダメージを与えて消去。
-    const burnDamage = updatedEnemy.statusEffects
-      .filter((status) => status.type === 'burn')
-      .reduce((total, status) => total + status.value, 0);
-    if (burnDamage > 0) {
-      updatedEnemy.currentHp = Math.max(0, updatedEnemy.currentHp - burnDamage);
+    // 行動後に状態異常を更新。火傷は行動後ダメージを与えて消去。
+    const nextStatuses: StatusEffect[] = [];
+    for (const status of updatedEnemy.statusEffects) {
+      if (status.type === 'burn') {
+        updatedEnemy.currentHp = Math.max(0, updatedEnemy.currentHp - status.value);
+        continue;
+      }
+      if (status.type === 'vulnerable' || status.type === 'weak') {
+        const nextDuration = Math.max(0, status.duration - 1);
+        const nextValue = Math.max(0, status.value - 1);
+        if (nextDuration > 0 && nextValue > 0) {
+          nextStatuses.push({ ...status, duration: nextDuration, value: nextValue });
+        }
+        continue;
+      }
+      if (status.type === 'attack_down') {
+        const nextDuration = Math.max(0, status.duration - 1);
+        if (nextDuration > 0 && status.value > 0) {
+          nextStatuses.push({ ...status, duration: nextDuration });
+        }
+        continue;
+      }
+      nextStatuses.push(status);
     }
     updatedEnemy = {
       ...updatedEnemy,
-      statusEffects: updatedEnemy.statusEffects
-        .filter((status) => !TURN_DEBUFF_TYPES.includes(status.type))
-        .concat(
-          updatedEnemy.statusEffects
-            .filter((status) => status.type === 'vulnerable' || status.type === 'weak')
-            .map((status) => ({
-              ...status,
-              duration: Math.max(0, status.duration - 1),
-              value: Math.max(0, status.value - 1),
-            }))
-            .filter((status) => status.duration > 0 && status.value > 0),
-        ),
+      statusEffects: nextStatuses,
     };
 
     const nextAvailable = getAvailableIntents(updatedEnemy);
