@@ -69,7 +69,6 @@ const NODE_SPACING_SCALE_Y = 1.08;
 
 const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
   const boardRef = useRef<HTMLDivElement | null>(null);
-  const [pieceLanding, setPieceLanding] = useState(false);
   const [tooltip, setTooltip] = useState<TileTooltipState | null>(null);
   const [relicsOpen, setRelicsOpen] = useState(false);
   const [showDeck, setShowDeck] = useState(false);
@@ -82,7 +81,6 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
   const touchStartXRef = useRef(0);
   const touchStartYRef = useRef(0);
   const touchMovedRef = useRef(false);
-  const prevTileIdRef = useRef(progress.currentTileId);
   const prevAreaRef = useRef(progress.currentArea);
   const [isAreaFading, setIsAreaFading] = useState(true);
   const isSelecting = progress.currentScreen === 'branch_select' && progress.selectableTileIds.length > 0;
@@ -92,17 +90,6 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
       `[data-tile-id="${progress.currentTileId}"]`,
     );
     currentEl?.scrollIntoView({ block: 'center', behavior: 'smooth', inline: 'center' });
-  }, [progress.currentTileId]);
-
-  useEffect(() => {
-    if (prevTileIdRef.current !== progress.currentTileId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPieceLanding(true);
-      const timer = window.setTimeout(() => setPieceLanding(false), 420);
-      prevTileIdRef.current = progress.currentTileId;
-      return () => window.clearTimeout(timer);
-    }
-    return undefined;
   }, [progress.currentTileId]);
 
   useEffect(() => {
@@ -429,18 +416,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
             );
           })}
 
-          {(() => {
-            const tile = progress.board.find((entry) => entry.id === progress.currentTileId);
-            if (!tile) return null;
-            return (
-              <div
-                className={`player-piece ${pieceLanding ? 'player-piece--landing' : ''}`}
-                style={{ left: `${toCanvasX(tile.x) - 14}px`, top: `${toCanvasY(tile.y) - 14}px` }}
-              >
-                🧑
-              </div>
-            );
-          })()}
+          {null}
         </div>
       </section>
 

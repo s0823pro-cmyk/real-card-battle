@@ -230,7 +230,7 @@
 .map-node--current {
   border: 3px solid #f0b429 !important;
   box-shadow: 0 0 12px rgba(240, 180, 41, 0.6);
-  animation: current-node-pulse 2s ease-in-out infinite;
+  animation: none;
   z-index: 10;
 }
 
@@ -285,19 +285,6 @@
   stroke: #69a9ff;
   stroke-width: 4;
   stroke-dasharray: 6 4;
-}
-
-.map-node--branch::before {
-  content: '↗↗';
-  position: absolute;
-  right: -8px;
-  top: -10px;
-  font-size: 9px;
-  padding: 1px 4px;
-  border-radius: 8px;
-  background: rgba(79, 140, 255, 0.2);
-  border: 1px solid rgba(79, 140, 255, 0.6);
-  color: #cfe0ff;
 }
 
 .map-node--selectable {

@@ -474,9 +474,22 @@ export const useRunProgress = () => {
   };
 
   const chooseBranch = (nextTileId: number) => {
+    const current = stateRef.current;
+    if (current.currentScreen !== 'branch_select') return;
+    const currentTile = getTileById(current.board, current.currentTileId);
+    if (!currentTile || !currentTile.nextTiles.includes(nextTileId)) return;
+
     dispatch({ type: 'set_selectable_tiles', tileIds: [] });
+    dispatch({ type: 'set_branch', tileId: null });
+    dispatch({ type: 'set_pending_steps', steps: 0 });
+    dispatch({ type: 'add_traveled_edge', from: current.currentTileId, to: nextTileId });
+    dispatch({ type: 'set_current_tile', tileId: nextTileId });
     dispatch({ type: 'set_screen', screen: 'map' });
-    dispatch({ type: 'set_branch', tileId: nextTileId });
+
+    const landed = getTileById(stateRef.current.board, nextTileId);
+    if (landed) {
+      window.setTimeout(() => openTileScreen(landed), 120);
+    }
   };
 
   const chooseEventChoice = (choiceIndex: number) => {
