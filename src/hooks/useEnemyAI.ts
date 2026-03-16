@@ -48,6 +48,9 @@ export const useEnemyAI = () => {
   };
 
   const getEnemyIntent = (enemy: Enemy): EnemyIntent => {
+    if (enemy.templateId === 'lost_soul' && enemy.intentHistory.length >= 3) {
+      return enemy.intentHistory[enemy.currentIntentIndex % 3];
+    }
     const available = getAvailableIntents(enemy);
     if (available.length === 0) return enemy.intentHistory[0];
     return available[enemy.currentIntentIndex % available.length];
@@ -148,7 +151,12 @@ export const useEnemyAI = () => {
     };
 
     const nextAvailable = getAvailableIntents(updatedEnemy);
-    const nextRandomIndex = nextAvailable.length > 0 ? Math.floor(Math.random() * 1000000) : 0;
+    const nextRandomIndex =
+      updatedEnemy.templateId === 'lost_soul'
+        ? (updatedEnemy.currentIntentIndex + 1) % 3
+        : nextAvailable.length > 0
+          ? Math.floor(Math.random() * 1000000)
+          : 0;
     updatedEnemy = {
       ...updatedEnemy,
       currentIntentIndex: nextRandomIndex,

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Card, JobId } from './types/game';
+import type { BattleResult } from './types/run';
 import BattleScreen from './components/BattleScreen/BattleScreen';
 import { DefeatScreen } from './components/DefeatScreen/DefeatScreen';
 import HomeScreen from './components/HomeScreen/HomeScreen';
@@ -186,13 +187,7 @@ function App() {
 
   const startPostAreaBossFlow = (area: number) => {
     if (area >= 3) {
-      if (state.jobId === 'carpenter') {
-        showAreaStory(3, () => {
-          advanceAfterAreaBoss();
-        });
-      } else {
-        advanceAfterAreaBoss();
-      }
+      advanceAfterAreaBoss();
       return;
     }
 
@@ -200,15 +195,22 @@ function App() {
       setBossRewardArea(area);
       setShowBossReward(true);
     };
-
-    if (state.jobId === 'carpenter') {
-      const storyId = `carpenter_e${area}`;
-      if (!hasSeenStory(storyId)) {
-        showAreaStory(area as 1 | 2, openBossReward);
-        return;
-      }
-    }
     openBossReward();
+  };
+
+  const handleBattleResult = (result: BattleResult) => {
+    const isBossVictory = result.outcome === 'victory' && result.kind === 'boss';
+    const area = state.currentArea;
+    onBattleEnd(result);
+    if (!isBossVictory || state.jobId !== 'carpenter') return;
+    if (area >= 3) {
+      showAreaStory(3, () => {});
+      return;
+    }
+    const storyId = `carpenter_e${area}`;
+    if (!hasSeenStory(storyId)) {
+      showAreaStory(area as 1 | 2, () => {});
+    }
   };
 
   const handlePickCardReward = (cardId: string | null) => {
@@ -279,7 +281,7 @@ function App() {
         return (
           <BattleScreen
             setup={state.battleSetup}
-            onBattleEnd={onBattleEnd}
+            onBattleEnd={handleBattleResult}
           />
         );
       case 'event':

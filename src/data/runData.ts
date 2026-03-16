@@ -483,7 +483,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     name: '世界樹の根',
     icon: '🌿',
     imageUrl: worldTreeRootImage,
-    maxHp: 60,
+    maxHp: 55,
     intents: [
       { type: 'attack', value: 9, description: '攻撃 9', icon: '⚔️' },
       { type: 'regen', value: 5, description: '再生 +5HP', icon: '💚' },
@@ -498,8 +498,8 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     maxHp: 45,
     intents: [
       { type: 'attack', value: 11, description: '攻撃 11', icon: '⚔️' },
-      { type: 'random_debuff', value: 2, description: 'ランダムデバフ', icon: '🎲' },
       { type: 'attack', value: 11, description: '攻撃 11', icon: '⚔️' },
+      { type: 'random_debuff', value: 2, description: 'ランダムデバフ', icon: '🎲' },
     ],
   },
   {
@@ -507,7 +507,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     name: '石化した兵士',
     icon: '🗿',
     imageUrl: stoneSoldierImage,
-    maxHp: 75,
+    maxHp: 68,
     intents: [
       { type: 'defend', value: 15, description: '防御 15', icon: '🛡️' },
       { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
@@ -532,7 +532,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     name: '呪われた大木',
     icon: '🌳',
     imageUrl: cursedTreeImage,
-    maxHp: 80,
+    maxHp: 72,
     intents: [
       { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
       { type: 'add_curse', value: 1, description: '呪いカード追加', icon: '🌑' },
@@ -577,7 +577,7 @@ export const AREA3_BOSS: EnemyTemplateLike = {
   imageUrl: worldTreeWardenImage,
   maxHp: 350,
   intents: [
-    { type: 'defend', value: 25, description: '防御 25', icon: '🛡️' },
+    { type: 'defend', value: 18, description: '防御 18', icon: '🛡️' },
     { type: 'attack', value: 15, description: '攻撃 15', icon: '⚔️' },
     { type: 'debuff', value: 2, debuffType: 'weak', description: '弱体付与', icon: '💢' },
     { type: 'attack', value: 20, description: '攻撃 20', icon: '⚔️' },

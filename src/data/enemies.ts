@@ -98,7 +98,7 @@ const createEnemy = (
     icon: template.icon,
     imageUrl: template.imageUrl,
     intentHistory: template.intents,
-    currentIntentIndex: Math.floor(Math.random() * 1000000),
+    currentIntentIndex: templateId === 'lost_soul' ? 0 : Math.floor(Math.random() * 1000000),
     statusEffects: [],
   };
 };

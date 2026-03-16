@@ -5,7 +5,7 @@ import { createRandomEncounter } from '../data/enemies';
 import { useBattleLogic } from './useBattleLogic';
 import { useEnemyAI } from './useEnemyAI';
 import type { Card, EnemyIntent, GameState, JobId, PlayerState } from '../types/game';
-import type { BattleResult, BattleSetup, RunItem } from '../types/run';
+import type { BattleResult, BattleSetup, Omamori, RunItem } from '../types/run';
 import { drawCards } from '../utils/deckManager';
 import { getHungryState } from '../utils/hungrySystem';
 import { shuffle } from '../utils/shuffle';
@@ -122,6 +122,15 @@ const createAnxietyCards = (count: number): Card[] =>
 
 const getEnemyReward = (templateId: string): number => ENEMY_GOLD_REWARDS[templateId] ?? 5;
 
+const getOmamoriBonus = (
+  omamoris: Omamori[],
+  effectType: Omamori['effect']['type'],
+  stat: string,
+): number =>
+  omamoris
+    .filter((omamori) => omamori.effect.type === effectType && omamori.effect.stat === stat)
+    .reduce((sum, omamori) => sum + (omamori.effect.value ?? 0), 0);
+
 const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   ...player,
   hasRevival: player.hasRevival ?? false,
@@ -161,7 +170,10 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
       reservedThisTurn: false,
     })),
   );
-  const drawResult = drawCards(deck, [], DRAW_COUNT);
+  const startDrawBonus = getOmamoriBonus(setup?.omamoris ?? [], 'start_of_battle', 'draw');
+  const startBlockBonus = getOmamoriBonus(setup?.omamoris ?? [], 'start_of_battle', 'block');
+  const startTimeBonus = getOmamoriBonus(setup?.omamoris ?? [], 'start_of_battle', 'time');
+  const drawResult = drawCards(deck, [], DRAW_COUNT + Math.max(0, startDrawBonus));
   const basePlayer = setup?.player ?? {
     jobId: initialJobId,
     maxHp: fallbackConfig.initialHp,
@@ -203,7 +215,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
   return {
     phase: 'battle_start',
     turn: 1,
-    maxTime: getMaxTime(basePlayer.mental, basePlayer.timeBonusPerTurn ?? 0),
+    maxTime: getMaxTime(basePlayer.mental, basePlayer.timeBonusPerTurn ?? 0) + Math.max(0, startTimeBonus),
     usedTime: 0,
     shuffleAnimation: false,
     hand: drawResult.drawn,
@@ -215,6 +227,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     activePowers: [],
     player: withBattleFlagDefaults({
       ...basePlayer,
+      block: (basePlayer.block ?? 0) + Math.max(0, startBlockBonus),
       cookingGauge: 0,
       statusEffects: [...basePlayer.statusEffects],
     }),
@@ -249,6 +262,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const [hungryFlash, setHungryFlash] = useState<'hungry' | 'awakened' | null>(null);
   const [showRevivalEffect, setShowRevivalEffect] = useState(false);
   const [pendingHandUpgradeCount, setPendingHandUpgradeCount] = useState(0);
+  const battleOmamoris = options?.setup?.omamoris ?? [];
   const prevHungryStateRef = useRef<'normal' | 'hungry' | 'awakened'>('normal');
   const endTurnRef = useRef<() => Promise<void>>(async () => {});
   const pushPopupRef = useRef<(text: string, target: 'player' | string, kind: BattlePopup['kind']) => void>(
@@ -562,6 +576,25 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         ? drawCards(gameState.drawPile, gameState.discardPile, drawAmount)
         : { drawn: [] as Card[], drawPile: gameState.drawPile, discardPile: gameState.discardPile, shuffled: false };
 
+    const newlyDefeated = result.enemies.filter((enemy) => {
+      const before = enemiesBefore.find((item) => item.id === enemy.id);
+      return Boolean(before && before.hp > 0 && enemy.currentHp <= 0);
+    });
+    const onKillHeal = getOmamoriBonus(battleOmamoris, 'on_kill', 'heal');
+    const onKillGold = getOmamoriBonus(battleOmamoris, 'on_kill', 'gold');
+    const onKillHealTotal = newlyDefeated.length * onKillHeal;
+    const onKillGoldTotal = newlyDefeated.length * onKillGold;
+    const playerAfterKill: PlayerState =
+      onKillHealTotal > 0 || onKillGoldTotal > 0
+        ? {
+            ...playerAfterCard,
+            currentHp:
+              onKillHealTotal > 0
+                ? Math.min(playerAfterCard.maxHp, playerAfterCard.currentHp + onKillHealTotal)
+                : playerAfterCard.currentHp,
+            gold: playerAfterCard.gold + onKillGoldTotal,
+          }
+        : playerAfterCard;
     const allEnemiesDead = result.enemies.every((enemy) => enemy.currentHp <= 0);
     const gainedDoubleNext = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'double_next')
@@ -604,7 +637,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       discardPile,
       drawPile: drawResult.drawPile,
       exhaustedCards,
-      player: playerAfterCard,
+      player: playerAfterKill,
       enemies: result.enemies,
       activePowers,
       toolSlots: result.equippedTool ? equipTool(result.equippedTool, gameState.toolSlots) : gameState.toolSlots,
@@ -620,7 +653,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       discardPile,
       drawPile: drawResult.drawPile,
       exhaustedCards,
-      player: playerAfterCard,
+      player: playerAfterKill,
       enemies: result.enemies,
       activePowers,
       toolSlots: result.equippedTool ? equipTool(result.equippedTool, prev.toolSlots) : prev.toolSlots,
@@ -699,12 +732,15 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       pushPopup(`次${result.attackBuff.charges}回 +${result.attackBuff.value}💪`, 'player', 'buff');
     }
 
-    const newlyDefeated = result.enemies.filter((enemy) => {
-      const before = enemiesBefore.find((item) => item.id === enemy.id);
-      return Boolean(before && before.hp > 0 && enemy.currentHp <= 0);
-    });
     for (const enemy of newlyDefeated) {
       pushPopup(`+${getEnemyReward(enemy.templateId)}G`, enemy.id, 'buff');
+    }
+    if (onKillHealTotal > 0) {
+      pushPopup(`💚+${onKillHealTotal}HP`, 'player', 'buff');
+    }
+    if (onKillGoldTotal > 0) {
+      pushPopup(`💰+${onKillGoldTotal}G`, 'player', 'buff');
+      spawnCoinBurst();
     }
     if (revivalOutcome.revived) {
       pushPopup('🔄 七転び八起き！', 'player', 'buff');
@@ -716,7 +752,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       setGameState((prev) => ({ ...prev, phase: 'executing' }));
       window.setTimeout(() => {
         const reward = result.enemies.reduce((sum, enemy) => sum + getEnemyReward(enemy.templateId), 0);
-        const nextMental = Math.min(MAX_MENTAL, playerAfterCard.mental + 1);
+        const nextMental = Math.min(MAX_MENTAL, playerAfterKill.mental + 1);
         setVictoryRewardGold(reward);
         setVictoryMentalRecovery(nextMental - playerAfterCard.mental);
         setGameState({
@@ -724,8 +760,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           phase: 'victory',
           timeline: [],
           player: {
-            ...clearBattleFlags(playerAfterCard),
-            gold: playerAfterCard.gold + reward,
+            ...clearBattleFlags(playerAfterKill),
+            gold: playerAfterKill.gold + reward,
             mental: nextMental,
           },
         });
@@ -733,8 +769,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         options?.onBattleEnd?.({
           outcome: 'victory',
           player: {
-            ...clearBattleFlags(playerAfterCard),
-            gold: playerAfterCard.gold + reward,
+            ...clearBattleFlags(playerAfterKill),
+            gold: playerAfterKill.gold + reward,
             mental: nextMental,
           },
           deck: [
@@ -749,7 +785,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           items: battleItems,
           defeatedEnemies: result.enemies,
           rewardGold: reward,
-          mentalRecovery: nextMental - playerAfterCard.mental,
+          mentalRecovery: nextMental - playerAfterKill.mental,
           kind: options?.setup?.kind ?? 'battle',
           battleTurns: gameState.turn,
         });
@@ -870,6 +906,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       getHungryState(state.player) === 'awakened';
     const cliffEdgeTimeBonus = cliffEdgeAwakened ? 1 : 0;
     const cliffEdgeDrawBonus = cliffEdgeAwakened ? 2 : 0;
+    const onTurnStartDrawBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'draw');
+    const onTurnStartBlockBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'block');
     const nextMaxTime = Math.max(
       1,
       getMaxTime(state.player.mental, state.player.timeBonusPerTurn) +
@@ -909,7 +947,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const playerAfterReset = applyToolEffects(state.toolSlots, {
       ...state.player,
       currentHp: playerHpAfterBurn,
-      block: shouldDisableBlockThisTurn ? 0 : keepBlock ? state.player.block : 0,
+      block:
+        shouldDisableBlockThisTurn
+          ? 0
+          : (keepBlock ? state.player.block : 0) + Math.max(0, onTurnStartBlockBonus),
       blockPersist: false,
       scaffold: state.player.scaffold + scaffoldPerTurn,
       canBlock: !shouldDisableBlockThisTurn,
@@ -933,7 +974,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const drawResult = drawCards(
       shuffle([...state.drawPile, ...anxietyCards]),
       state.discardPile,
-      DRAW_COUNT + powerDrawPerTurn + cliffEdgeDrawBonus,
+      DRAW_COUNT + powerDrawPerTurn + cliffEdgeDrawBonus + Math.max(0, onTurnStartDrawBonus),
     );
     const reservedToHand = state.reserved.map((card) => ({
       ...card,
@@ -1127,15 +1168,22 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         pushPopup(`💰-${result.goldStolen}G 盗まれた！`, 'player', 'damage');
       }
       if (result.addCurse) {
-        const curseCard: Card = {
-          ...CURSE_CARD,
-          id: `${CURSE_CARD.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-        };
-        workingState = {
-          ...workingState,
-          discardPile: [...workingState.discardPile, curseCard],
-        };
-        pushPopup('🌑 呪いカード追加！', 'player', 'damage');
+        const hasCurseImmunity = battleOmamoris.some(
+          (omamori) => omamori.effect.type === 'passive' && omamori.effect.stat === 'curse_immunity',
+        );
+        if (hasCurseImmunity) {
+          pushPopup('🧧 呪いを無効化', 'player', 'buff');
+        } else {
+          const curseCard: Card = {
+            ...CURSE_CARD,
+            id: `${CURSE_CARD.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+          };
+          workingState = {
+            ...workingState,
+            discardPile: [...workingState.discardPile, curseCard],
+          };
+          pushPopup('🌑 呪いカード追加！', 'player', 'damage');
+        }
       }
       if (result.enemy.currentHp > enemy.currentHp) {
         pushPopup(`💚+${result.enemy.currentHp - enemy.currentHp}HP`, enemy.id, 'buff');
