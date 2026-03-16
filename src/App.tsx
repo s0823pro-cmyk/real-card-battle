@@ -19,7 +19,15 @@ import {
   RunGameOverScreen,
 } from './components/RunFlow/RewardScreens';
 import { useRunProgress } from './hooks/useRunProgress';
-import { CARPENTER_STORY, hasSeenStory, markStorySeen } from './data/stories/carpenterStory';
+import {
+  CARPENTER_STORY,
+  CARPENTER_E1_STORY,
+  CARPENTER_E2_STORY,
+  CARPENTER_E3_STORY,
+  hasSeenStory,
+  markStorySeen,
+} from './data/stories/carpenterStory';
+import type { StoryScene } from './data/stories/carpenterStory';
 import { preloadAllImages } from './utils/preloadImages';
 import './App.css';
 import './components/RunMap/RunMapScreen.css';
@@ -62,6 +70,9 @@ function App() {
   });
   const [showStory, setShowStory] = useState(false);
   const [pendingJobId, setPendingJobId] = useState<JobId | null>(null);
+  const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
+  const [currentStoryScenes, setCurrentStoryScenes] = useState<StoryScene[] | null>(null);
+  const pendingAreaTransitionRef = useRef<(() => void) | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
   const transitionCleanupRef = useRef<number | null>(null);
   const [preloadEnabled, setPreloadEnabled] = useState<boolean>(
@@ -147,6 +158,54 @@ function App() {
     startRunFromJobSelect(nextJobId);
   };
 
+  const triggerAreaStory = (area: number, onDone: () => void): boolean => {
+    if (state.jobId !== 'carpenter') return false;
+    const storyId = `carpenter_e${area}`;
+    if (hasSeenStory(storyId)) return false;
+    const scenes =
+      area === 1 ? CARPENTER_E1_STORY : area === 2 ? CARPENTER_E2_STORY : CARPENTER_E3_STORY;
+    pendingAreaTransitionRef.current = onDone;
+    setCurrentStoryId(storyId);
+    setCurrentStoryScenes(scenes);
+    setShowStory(true);
+    return true;
+  };
+
+  const handleAreaStoryComplete = () => {
+    const storyId = currentStoryId;
+    setShowStory(false);
+    setCurrentStoryId(null);
+    setCurrentStoryScenes(null);
+    if (storyId) markStorySeen(storyId);
+    const transition = pendingAreaTransitionRef.current;
+    pendingAreaTransitionRef.current = null;
+    if (storyId === 'carpenter_e3') {
+      transition?.();
+    } else {
+      transition?.();
+    }
+  };
+
+  const handlePickCardReward = (cardId: string | null) => {
+    const isAreaBoss = state.lastTileType === 'area_boss';
+    const area = state.currentArea;
+    if (isAreaBoss) {
+      const triggered = triggerAreaStory(area, () => pickCardReward(cardId));
+      if (triggered) return;
+    }
+    pickCardReward(cardId);
+  };
+
+  const handlePickOmamoriReward = (omamoriId: string) => {
+    const isAreaBoss = state.lastTileType === 'area_boss';
+    const area = state.currentArea;
+    if (isAreaBoss) {
+      const triggered = triggerAreaStory(area, () => pickOmamoriReward(omamoriId));
+      if (triggered) return;
+    }
+    pickOmamoriReward(omamoriId);
+  };
+
   const renderScreen = () => {
     switch (state.currentScreen) {
       case 'home':
@@ -217,15 +276,15 @@ function App() {
           <CardRewardScreen
             cards={state.cardReward?.cards ?? []}
             jobId={state.player.jobId}
-            onPick={pickCardReward}
-            onSkip={() => pickCardReward(null)}
+            onPick={handlePickCardReward}
+            onSkip={() => handlePickCardReward(null)}
           />
         );
       case 'omamori_reward':
         return (
           <OmamoriRewardScreen
             omamoris={state.omamoriRewardChoices ?? []}
-            onPick={pickOmamoriReward}
+            onPick={handlePickOmamoriReward}
           />
         );
       case 'card_upgrade':
@@ -287,8 +346,15 @@ function App() {
           style={{ animationDuration: `${screenTransition.durationMs}ms` }}
         />
       )}
-      {showStory && state.currentScreen === 'job_select' && (
+      {showStory && state.currentScreen === 'job_select' && !currentStoryId && (
         <StoryScreen scenes={CARPENTER_STORY} onComplete={handleStoryComplete} />
+      )}
+      {showStory && currentStoryId && currentStoryScenes && (
+        <StoryScreen
+          scenes={currentStoryScenes}
+          onComplete={handleAreaStoryComplete}
+          showStartButton={false}
+        />
       )}
       {preloadProgress && (
         <div className="preload-progress">

@@ -10,6 +10,22 @@ import type { Card, JobId } from '../types/game';
 import bikerLeaderImage from '../assets/enemies/biker_leader.png';
 import badRealtorImage from '../assets/enemies/bad_realtor.png';
 import monsterCustomerImage from '../assets/enemies/monster_customer.png';
+import collectorImage from '../assets/enemies/collector.png';
+import sloppyWorkerImage from '../assets/enemies/sloppy_worker.png';
+import yakuzaMinionImage from '../assets/enemies/yakuza_minion.png';
+import evilSalesImage from '../assets/enemies/evil_sales.png';
+import rogueDumpImage from '../assets/enemies/rogue_dump.png';
+import evilSupervisorImage from '../assets/enemies/evil_supervisor.png';
+import landSharkImage from '../assets/enemies/land_shark.png';
+import evilCeoImage from '../assets/enemies/evil_ceo.png';
+import worldTreeRootImage from '../assets/enemies/world_tree_root.png';
+import lostSoulImage from '../assets/enemies/lost_soul.png';
+import stoneSoldierImage from '../assets/enemies/stone_soldier.png';
+import lightGuardianImage from '../assets/enemies/light_guardian.png';
+import cursedTreeImage from '../assets/enemies/cursed_tree.png';
+import worldTreeGuardianImage from '../assets/enemies/world_tree_guardian.png';
+import ancientGhostImage from '../assets/enemies/ancient_ghost.png';
+import worldTreeWardenImage from '../assets/enemies/world_tree_warden.png';
 
 export const TILE_LABELS: Record<string, { icon: string; name: string }> = {
   start: { icon: '🏁', name: 'スタート' },
@@ -345,6 +361,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'collector',
     name: '取り立て屋',
     icon: '💼',
+    imageUrl: collectorImage,
     maxHp: 45,
     intents: [
       { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
@@ -356,6 +373,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'sloppy_worker',
     name: '手抜き職人',
     icon: '🔧',
+    imageUrl: sloppyWorkerImage,
     maxHp: 40,
     intents: [
       { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
@@ -366,6 +384,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'yakuza_minion',
     name: 'ヤクザの子分',
     icon: '🐉',
+    imageUrl: yakuzaMinionImage,
     maxHp: 55,
     intents: [
       { type: 'attack', value: 10, description: '攻撃 10', icon: '⚔️' },
@@ -377,6 +396,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'evil_sales',
     name: '悪徳セールス',
     icon: '📋',
+    imageUrl: evilSalesImage,
     maxHp: 38,
     intents: [
       { type: 'attack', value: 6, description: '攻撃 6', icon: '⚔️' },
@@ -388,6 +408,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'rogue_dump',
     name: '暴走ダンプ',
     icon: '🚛',
+    imageUrl: rogueDumpImage,
     maxHp: 65,
     intents: [
       { type: 'attack', value: 12, description: '攻撃 12', icon: '⚔️' },
@@ -402,6 +423,7 @@ export const AREA2_ELITES: EnemyTemplateLike[] = [
     templateId: 'evil_supervisor',
     name: '悪徳監督',
     icon: '👷',
+    imageUrl: evilSupervisorImage,
     maxHp: 110,
     intents: [
       { type: 'attack', value: 14, description: '攻撃 14', icon: '⚔️' },
@@ -414,6 +436,7 @@ export const AREA2_ELITES: EnemyTemplateLike[] = [
     templateId: 'land_shark',
     name: '地上げ屋の親分',
     icon: '🏚️',
+    imageUrl: landSharkImage,
     maxHp: 95,
     intents: [
       { type: 'attack', value: 16, description: '攻撃 16', icon: '⚔️' },
@@ -428,6 +451,7 @@ export const AREA2_BOSS: EnemyTemplateLike = {
   templateId: 'evil_ceo',
   name: '悪徳ゼネコン社長',
   icon: '👔',
+  imageUrl: evilCeoImage,
   maxHp: 280,
   intents: [
     { type: 'defend', value: 20, description: '防御 20', icon: '🛡️' },
@@ -458,6 +482,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'world_tree_root',
     name: '世界樹の根',
     icon: '🌿',
+    imageUrl: worldTreeRootImage,
     maxHp: 60,
     intents: [
       { type: 'attack', value: 9, description: '攻撃 9', icon: '⚔️' },
@@ -469,6 +494,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'lost_soul',
     name: '迷い魂',
     icon: '👻',
+    imageUrl: lostSoulImage,
     maxHp: 45,
     intents: [
       { type: 'attack', value: 11, description: '攻撃 11', icon: '⚔️' },
@@ -480,6 +506,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'stone_soldier',
     name: '石化した兵士',
     icon: '🗿',
+    imageUrl: stoneSoldierImage,
     maxHp: 75,
     intents: [
       { type: 'defend', value: 15, description: '防御 15', icon: '🛡️' },
@@ -492,6 +519,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'light_guardian',
     name: '光の番兵',
     icon: '⚔️',
+    imageUrl: lightGuardianImage,
     maxHp: 50,
     intents: [
       { type: 'attack', value: 13, description: '攻撃 13', icon: '⚔️' },
@@ -503,6 +531,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     templateId: 'cursed_tree',
     name: '呪われた大木',
     icon: '🌳',
+    imageUrl: cursedTreeImage,
     maxHp: 80,
     intents: [
       { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
@@ -518,6 +547,7 @@ export const AREA3_ELITES: EnemyTemplateLike[] = [
     templateId: 'world_tree_guardian',
     name: '世界樹の守護者',
     icon: '🛡️',
+    imageUrl: worldTreeGuardianImage,
     maxHp: 130,
     intents: [
       { type: 'defend', value: 20, description: '防御 20', icon: '🛡️' },
@@ -530,6 +560,7 @@ export const AREA3_ELITES: EnemyTemplateLike[] = [
     templateId: 'ancient_ghost',
     name: '古代の亡霊',
     icon: '💀',
+    imageUrl: ancientGhostImage,
     maxHp: 115,
     intents: [
       { type: 'attack', value: 18, description: '攻撃 18', icon: '⚔️' },
@@ -543,6 +574,7 @@ export const AREA3_BOSS: EnemyTemplateLike = {
   templateId: 'world_tree_warden',
   name: '世界樹の番人',
   icon: '🌲',
+  imageUrl: worldTreeWardenImage,
   maxHp: 350,
   intents: [
     { type: 'defend', value: 25, description: '防御 25', icon: '🛡️' },

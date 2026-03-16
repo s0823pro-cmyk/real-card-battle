@@ -377,3 +377,79 @@
   top: -20px;
   right: -20px;
 }
+
+/* メインタブ（カード / ストーリー） */
+.zukan-main-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0d1117;
+  flex-shrink: 0;
+}
+
+.zukan-main-tab {
+  flex: 1;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s, border-bottom 0.15s;
+  border-bottom: 2px solid transparent;
+}
+
+.zukan-main-tab--active {
+  color: #e6edf3;
+  border-bottom: 2px solid #f0b429;
+}
+
+/* ストーリーリスト */
+.zukan-story-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.zukan-story-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #e6edf3;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.zukan-story-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(240, 180, 41, 0.4);
+}
+
+.zukan-story-item--locked {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.zukan-story-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.zukan-story-name {
+  flex: 1;
+}
+
+.zukan-story-lock {
+  font-size: 14px;
+  opacity: 0.6;
+}
