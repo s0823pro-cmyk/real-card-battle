@@ -253,6 +253,7 @@ function App() {
             branchPreviews={branchPreviews}
             onRollDice={rollDiceAndMove}
             onSelectTile={chooseBranch}
+            onGiveUp={() => runScreenTransition(resetRun, 350, 350)}
           />
         );
     }

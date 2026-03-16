@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { BranchPreview, GameProgress } from '../../types/run';
+import type { BranchPreview, GameProgress, TileType } from '../../types/run';
 import type { Card } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { getMapBackground } from '../../data/mapBackgrounds';
+import { getNodeImage } from '../../data/mapNodeImages';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
 import './RunMapScreen.css';
@@ -13,6 +14,7 @@ interface Props {
   branchPreviews: BranchPreview[];
   onRollDice: () => void;
   onSelectTile?: (tileId: number) => void;
+  onGiveUp: () => void;
 }
 
 type TooltipAlign = 'center' | 'left' | 'right';
@@ -56,12 +58,26 @@ const getTilePreview = (type: GameProgress['board'][number]['type']): TilePrevie
   }
 };
 
-const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Props) => {
+const getNodeSize = (type: TileType): number => {
+  if (type === 'area_boss') return 70;
+  if (type === 'unique_boss') return 65;
+  return 60;
+};
+
+const NODE_SPACING_SCALE_X = 1.08;
+const NODE_SPACING_SCALE_Y = 1.08;
+
+const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [pieceLanding, setPieceLanding] = useState(false);
   const [tooltip, setTooltip] = useState<TileTooltipState | null>(null);
   const [relicsOpen, setRelicsOpen] = useState(false);
   const [showDeck, setShowDeck] = useState(false);
+  const [showMapSettings, setShowMapSettings] = useState(false);
+  const [showGiveUpConfirm, setShowGiveUpConfirm] = useState(false);
+  const [bgmEnabled, setBgmEnabled] = useState(true);
+  const [seEnabled, setSeEnabled] = useState(true);
+  const [failedNodeImages, setFailedNodeImages] = useState<Set<TileType>>(new Set());
   const longPressTimerRef = useRef<number | null>(null);
   const touchStartXRef = useRef(0);
   const touchStartYRef = useRef(0);
@@ -118,10 +134,22 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
     [],
   );
 
-  const maxX = Math.max(...progress.board.map((tile) => tile.x)) + 72;
-  const maxY = Math.max(...progress.board.map((tile) => tile.y)) + 90;
-  const width = Math.max(320, maxX);
-  const height = Math.max(460, maxY);
+  const minX = Math.min(...progress.board.map((tile) => tile.x));
+  const maxX = Math.max(...progress.board.map((tile) => tile.x));
+  const minY = Math.min(...progress.board.map((tile) => tile.y));
+  const maxY = Math.max(...progress.board.map((tile) => tile.y));
+  const paddingX = 40;
+  const paddingY = 44;
+  const scaledWidth = (maxX - minX) * NODE_SPACING_SCALE_X;
+  const scaledHeight = (maxY - minY) * NODE_SPACING_SCALE_Y;
+  const baseWidth = scaledWidth + paddingX * 2;
+  const baseHeight = scaledHeight + paddingY * 2;
+  const width = Math.max(320, baseWidth);
+  const height = Math.max(460, baseHeight);
+  const offsetX = paddingX + (width - baseWidth) / 2;
+  const offsetY = paddingY + (height - baseHeight) / 2;
+  const toCanvasX = (x: number) => (x - minX) * NODE_SPACING_SCALE_X + offsetX;
+  const toCanvasY = (y: number) => (y - minY) * NODE_SPACING_SCALE_Y + offsetY;
 
   const clearLongPress = () => {
     if (longPressTimerRef.current !== null) {
@@ -131,10 +159,12 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
   };
 
   const showTooltip = (tile: GameProgress['board'][number]) => {
-    const placeBelow = tile.y < 86;
+    const canvasY = toCanvasY(tile.y);
+    const placeBelow = canvasY < 86;
     let align: TooltipAlign = 'center';
-    if (tile.x < 90) align = 'left';
-    if (tile.x > width - 90) align = 'right';
+    const canvasX = toCanvasX(tile.x);
+    if (canvasX < 90) align = 'left';
+    if (canvasX > width - 90) align = 'right';
     setTooltip({ tileId: tile.id, placeBelow, align });
   };
 
@@ -191,8 +221,18 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
             </span>
             <span className="map-stat">🧠 {progress.player.mental}</span>
             <span className="map-stat">💰 {progress.player.gold}G</span>
+          </div>
+          <div className="map-header-right">
             <button type="button" className="btn-deck-icon" onClick={() => setShowDeck(true)}>
               🃏 {progress.deck.length}
+            </button>
+            <button
+              type="button"
+              className="btn-map-settings"
+              onClick={() => setShowMapSettings(true)}
+              aria-label="マップ設定"
+            >
+              ⚙️
             </button>
           </div>
         </div>
@@ -237,10 +277,10 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
                   return (
                     <line
                       key={`edge_${key}`}
-                      x1={tile.x}
-                      y1={tile.y}
-                      x2={next.x}
-                      y2={next.y}
+                      x1={toCanvasX(tile.x)}
+                      y1={toCanvasY(tile.y)}
+                      x2={toCanvasX(next.x)}
+                      y2={toCanvasY(next.y)}
                       className="board-path"
                     />
                   );
@@ -254,10 +294,10 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
               return (
                 <line
                   key={`traveled_${edge.from}_${edge.to}_${idx}`}
-                  x1={from.x}
-                  y1={from.y}
-                  x2={to.x}
-                  y2={to.y}
+                  x1={toCanvasX(from.x)}
+                  y1={toCanvasY(from.y)}
+                  x2={toCanvasX(to.x)}
+                  y2={toCanvasY(to.y)}
                   className="board-path board-path--visited"
                 />
               );
@@ -269,10 +309,10 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
                 if (!from || !to) return null;
                 return (
                   <line
-                    x1={from.x}
-                    y1={from.y}
-                    x2={to.x}
-                    y2={to.y}
+                    x1={toCanvasX(from.x)}
+                    y1={toCanvasY(from.y)}
+                    x2={toCanvasX(to.x)}
+                    y2={toCanvasY(to.y)}
                     className="board-path board-path--selecting"
                   />
                 );
@@ -281,23 +321,28 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
 
           {progress.board.map((tile) => {
             const preview = getTilePreview(tile.type);
+            const nodeImage = failedNodeImages.has(tile.type) ? null : getNodeImage(tile.type);
+            const nodeSize = getNodeSize(tile.type);
             return (
               <button
                 key={tile.id}
                 type="button"
                 data-tile-id={tile.id}
-                className={`board-tile board-tile--${tile.type} ${tile.visited ? 'board-tile--visited' : ''} ${
-                  tile.isCurrentPosition ? 'board-tile--current' : ''
-                } ${tile.isBranch ? 'board-tile--branch' : ''} ${
-                  progress.selectableTileIds.includes(tile.id) ? 'board-tile--selectable' : ''
+                className={`map-node map-node--${tile.type} ${tile.visited ? 'map-node--visited' : ''} ${
+                  tile.isCurrentPosition ? 'map-node--current' : ''
+                } ${tile.isBranch ? 'map-node--branch' : ''} ${
+                  progress.selectableTileIds.includes(tile.id) ? 'map-node--selectable' : ''
                 } ${
                   progress.currentScreen === 'branch_select' &&
                   progress.selectableTileIds.length > 0 &&
                   !progress.selectableTileIds.includes(tile.id)
-                    ? 'board-tile--non-selectable'
+                    ? 'map-node--non-selectable'
                     : ''
                 }`}
-                style={{ left: `${tile.x - 26}px`, top: `${tile.y - 26}px` }}
+                style={{
+                  left: `${toCanvasX(tile.x) - nodeSize / 2}px`,
+                  top: `${toCanvasY(tile.y) - nodeSize / 2}px`,
+                }}
                 onClick={() => {
                   if (touchMovedRef.current) {
                     touchMovedRef.current = false;
@@ -349,7 +394,23 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
                   hideTooltip(tile.id);
                 }}
               >
-                <span>{tile.icon}</span>
+                {nodeImage ? (
+                  <img
+                    className="map-node-img"
+                    src={nodeImage}
+                    alt={tile.name}
+                    draggable={false}
+                    onError={() =>
+                      setFailedNodeImages((prev) => {
+                        const next = new Set(prev);
+                        next.add(tile.type);
+                        return next;
+                      })
+                    }
+                  />
+                ) : (
+                  <span className="map-node-icon">{tile.icon}</span>
+                )}
                 {tooltip?.tileId === tile.id && (
                   <div
                     className={`tile-tooltip ${tooltip.placeBelow ? 'tile-tooltip--below' : ''} ${
@@ -374,7 +435,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
             return (
               <div
                 className={`player-piece ${pieceLanding ? 'player-piece--landing' : ''}`}
-              style={{ left: `${tile.x - 14}px`, top: `${tile.y - 14}px` }}
+                style={{ left: `${toCanvasX(tile.x) - 14}px`, top: `${toCanvasY(tile.y) - 14}px` }}
               >
                 🧑
               </div>
@@ -421,6 +482,78 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile }: Pr
           </button>
         )}
       </footer>
+      {showMapSettings && (
+        <div className="map-settings-overlay" onClick={() => setShowMapSettings(false)}>
+          <div className="map-settings-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="map-settings-title">設定</h3>
+            <div className="map-settings-items">
+              <div className="map-settings-item">
+                <span className="map-settings-label">BGM</span>
+                <button
+                  type="button"
+                  className="settings-toggle"
+                  onClick={() => setBgmEnabled((prev) => !prev)}
+                >
+                  {bgmEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className="map-settings-item">
+                <span className="map-settings-label">SE</span>
+                <button
+                  type="button"
+                  className="settings-toggle"
+                  onClick={() => setSeEnabled((prev) => !prev)}
+                >
+                  {seEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+            </div>
+            <div className="map-settings-divider" />
+            <button
+              type="button"
+              className="btn-give-up"
+              onClick={() => setShowGiveUpConfirm(true)}
+            >
+              このランを諦める
+            </button>
+            <button
+              type="button"
+              className="btn-map-settings-close"
+              onClick={() => setShowMapSettings(false)}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+      {showGiveUpConfirm && (
+        <div className="map-settings-overlay" onClick={() => setShowGiveUpConfirm(false)}>
+          <div className="map-settings-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="map-settings-title">本当に諦めますか？</h3>
+            <p className="give-up-desc">進行状況は失われます。</p>
+            <div className="give-up-buttons">
+              <button
+                type="button"
+                className="btn-give-up-cancel"
+                onClick={() => setShowGiveUpConfirm(false)}
+              >
+                やめておく
+              </button>
+              <button
+                type="button"
+                className="btn-give-up-confirm"
+                onClick={() => {
+                  setShowGiveUpConfirm(false);
+                  setShowMapSettings(false);
+                  onGiveUp();
+                }}
+              >
+                諦める
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showDeck && (
         <div className="deck-overlay" onClick={() => setShowDeck(false)}>
           <div className="deck-modal" onClick={(event) => event.stopPropagation()}>
