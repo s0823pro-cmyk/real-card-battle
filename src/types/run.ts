@@ -67,6 +67,12 @@ export interface RunItem {
   effect: RunItemEffect;
 }
 
+export interface PendingItemReplacement {
+  source: 'shop' | 'hotel';
+  incomingItem: RunItem;
+  shopId?: string;
+}
+
 export interface OmamoriEffect {
   type: 'start_of_battle' | 'passive' | 'on_kill' | 'on_turn_start';
   stat?: string;
@@ -187,4 +193,5 @@ export interface GameProgress {
   totalTurns: number;
   cardsAcquired: number;
   lastDefeatedBy: string;
+  pendingItemReplacement: PendingItemReplacement | null;
 }

@@ -33,6 +33,7 @@ export const calculateCardDamage = (
   player: PlayerState,
   toolSlots?: ToolSlot[],
 ): number => {
+  const safeToolSlots: ToolSlot[] = Array.isArray(toolSlots) ? toolSlots : [];
   let damage = card.damage ?? 0;
   const hungryState = getHungryState(player);
 
@@ -101,11 +102,9 @@ export const calculateCardDamage = (
     if (player.nextIngredientBonus > 0 && card.tags?.includes('ingredient')) {
       damage += player.nextIngredientBonus;
     }
-    if (toolSlots) {
-      const knifeSetCount = toolSlots.filter((slot) => slot.card.id === 'knife_set').length;
-      if (knifeSetCount > 0) {
-        damage += knifeSetCount * 2;
-      }
+    const knifeSetCount = safeToolSlots.filter((slot) => slot.card.id === 'knife_set').length;
+    if (knifeSetCount > 0) {
+      damage += knifeSetCount * 2;
     }
   }
 

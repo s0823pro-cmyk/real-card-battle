@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef } from 'react';
 import type { BossRewardType } from '../data/bossRewards';
 import { CURSE_CARD } from '../data/carpenterDeck';
 import { getJobConfig } from '../data/jobs';
@@ -30,6 +30,7 @@ import type {
   GameProgress,
   GameScreen,
   Omamori,
+  PendingItemReplacement,
   RunItem,
   ShopItem,
   TileType,
@@ -60,12 +61,6 @@ export type DevDestination =
   | 'card_reward'
   | 'boss_reward'
   | 'story';
-
-export interface PendingItemReplacement {
-  source: 'shop' | 'hotel';
-  incomingItem: RunItem;
-  shopId?: string;
-}
 
 type SerializedProgress = Omit<GameProgress, 'unlockedCardNames'> & { unlockedCardNames: string[] };
 
@@ -106,6 +101,7 @@ export const loadSavedProgress = (): GameProgress | null => {
     return {
       ...parsed,
       unlockedCardNames: new Set(parsed.unlockedCardNames ?? []),
+      pendingItemReplacement: null,
       // バトル中状態はリセット（マップ画面に戻す）
       battleSetup: null,
       currentScreen: normalizedScreen,
@@ -178,6 +174,7 @@ type Action =
   | { type: 'set_card_remove_count'; value: number }
   | { type: 'set_run_stats'; totalTurns?: number; cardsAcquired?: number; lastDefeatedBy?: string }
   | { type: 'set_current_area'; area: number }
+  | { type: 'set_pending_item_replacement'; value: PendingItemReplacement | null }
   | { type: 'open_card_upgrade'; mode: 'upgrade' | 'remove'; returnScreen: Exclude<GameScreen, 'card_upgrade'> }
   | { type: 'close_card_upgrade' };
 
@@ -259,6 +256,7 @@ const makeInitialProgress = (): GameProgress => {
     totalTurns: 0,
     cardsAcquired: 0,
     lastDefeatedBy: '',
+    pendingItemReplacement: null,
   };
 };
 
@@ -384,6 +382,8 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       };
     case 'set_current_area':
       return { ...state, currentArea: action.area };
+    case 'set_pending_item_replacement':
+      return { ...state, pendingItemReplacement: action.value };
     case 'open_card_upgrade':
       return {
         ...state,
@@ -483,7 +483,6 @@ const applySingleEffect = (
 
 export const useRunProgress = () => {
   const [state, dispatch] = useReducer(reducer, undefined, makeInitialProgress);
-  const [pendingItemReplacement, setPendingItemReplacement] = useState<PendingItemReplacement | null>(null);
   const stateRef = useRef(state);
   const prevScreenRef = useRef(state.currentScreen);
   useEffect(() => {
@@ -795,9 +794,9 @@ export const useRunProgress = () => {
       return;
     }
     if (stateRef.current.items.length >= 3) {
-      setPendingItemReplacement({
-        source: 'hotel',
-        incomingItem: randomItem,
+      dispatch({
+        type: 'set_pending_item_replacement',
+        value: { source: 'hotel', incomingItem: randomItem },
       });
       return;
     }
@@ -866,10 +865,9 @@ export const useRunProgress = () => {
     if (shop.type === 'item' && shop.item) {
       const incomingItem = shop.item as RunItem;
       if (nextItems.length >= 3) {
-        setPendingItemReplacement({
-          source: 'shop',
-          incomingItem,
-          shopId,
+        dispatch({
+          type: 'set_pending_item_replacement',
+          value: { source: 'shop', incomingItem, shopId },
         });
         return;
       }
@@ -892,10 +890,10 @@ export const useRunProgress = () => {
   };
 
   const resolvePendingItemReplacement = (discardIndex: number | null) => {
-    const pending = pendingItemReplacement;
+    const pending = stateRef.current.pendingItemReplacement;
     if (!pending) return;
     if (discardIndex === null) {
-      setPendingItemReplacement(null);
+      dispatch({ type: 'set_pending_item_replacement', value: null });
       return;
     }
     const currentItems = [...stateRef.current.items];
@@ -905,23 +903,23 @@ export const useRunProgress = () => {
     if (pending.source === 'hotel') {
       dispatch({ type: 'set_items', items: replacedItems });
       dispatch({ type: 'set_hotel_item_received', used: true });
+      dispatch({ type: 'set_pending_item_replacement', value: null });
       dispatch({ type: 'set_screen', screen: 'map' });
-      setPendingItemReplacement(null);
       return;
     }
 
     const shopId = pending.shopId;
     if (!shopId) {
-      setPendingItemReplacement(null);
+      dispatch({ type: 'set_pending_item_replacement', value: null });
       return;
     }
     const shop = stateRef.current.activeShopItems.find((item) => item.id === shopId && !item.purchased);
     if (!shop || shop.type !== 'item' || !shop.item) {
-      setPendingItemReplacement(null);
+      dispatch({ type: 'set_pending_item_replacement', value: null });
       return;
     }
     if (stateRef.current.player.gold < shop.price) {
-      setPendingItemReplacement(null);
+      dispatch({ type: 'set_pending_item_replacement', value: null });
       return;
     }
 
@@ -936,7 +934,7 @@ export const useRunProgress = () => {
         item.id === shopId ? { ...item, purchased: true } : item,
       ),
     });
-    setPendingItemReplacement(null);
+    dispatch({ type: 'set_pending_item_replacement', value: null });
   };
 
   const sellPawnshopCard = (cardId: string) => {
@@ -1094,7 +1092,6 @@ export const useRunProgress = () => {
   };
 
   const resetRun = () => {
-    setPendingItemReplacement(null);
     const resetJobId = stateRef.current.jobId;
     const jobConfig = getJobConfig(resetJobId);
     const nextBoard = updateBoardPosition(generateBoard(), 1);
@@ -1168,7 +1165,6 @@ export const useRunProgress = () => {
   };
 
   const continueFromSave = (saved: GameProgress) => {
-    setPendingItemReplacement(null);
     dispatch({ type: 'set_job', jobId: saved.jobId });
     dispatch({ type: 'set_player', player: saved.player });
     dispatch({ type: 'set_deck', deck: saved.deck });
@@ -1210,7 +1206,6 @@ export const useRunProgress = () => {
   };
 
   const startDevNavigation = (destination: Exclude<DevDestination, 'boss_reward' | 'story'>) => {
-    setPendingItemReplacement(null);
     const jobId: JobId = 'carpenter';
     const jobConfig = getJobConfig(jobId);
     const area = destination === 'battle_boss_2' ? 2 : destination === 'battle_boss_3' ? 3 : 1;
@@ -1355,7 +1350,6 @@ export const useRunProgress = () => {
   };
 
   const startRunFromJobSelect = (jobId: JobId) => {
-    setPendingItemReplacement(null);
     const jobConfig = getJobConfig(jobId);
     const nextPlayer: PlayerState = {
       ...stateRef.current.player,
@@ -1423,7 +1417,7 @@ export const useRunProgress = () => {
 
   return {
     state,
-    pendingItemReplacement,
+    pendingItemReplacement: state.pendingItemReplacement,
     branchPreviews,
     rollDiceAndMove,
     chooseBranch,
