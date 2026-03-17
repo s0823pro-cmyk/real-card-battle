@@ -277,7 +277,7 @@ function App() {
             onStart={() => runScreenTransition(startRunFromHome, 1000, 1000)}
             onOpenZukan={() => runScreenTransition(openZukanFromHome, 1000, 1000)}
             onContinue={(saved) => {
-              clearSavedProgress();
+              clearAllSaveData();
               runScreenTransition(() => continueFromSave(saved), 1000, 1000);
             }}
 
@@ -377,7 +377,7 @@ function App() {
             turnCount={state.totalTurns}
             cardsAcquired={state.cardsAcquired}
             onHome={() => {
-              clearSavedProgress();
+              clearAllSaveData();
               runScreenTransition(resetRun, 350, 350);
             }}
           />
@@ -391,12 +391,12 @@ function App() {
             totalFloors={totalFloors}
             defeatedBy={state.lastDefeatedBy}
             onHome={() => {
-              clearSavedProgress();
+              clearAllSaveData();
               runScreenTransition(resetRun, 350, 350);
             }}
             onRetry={() =>
               runScreenTransition(() => {
-                clearSavedProgress();
+                clearAllSaveData();
                 resetRun();
                 startRunFromHome();
               }, 350, 350)
@@ -414,7 +414,7 @@ function App() {
             onRollDice={rollDiceAndMove}
             onSelectTile={chooseBranch}
             onGiveUp={() => {
-              clearSavedProgress();
+              clearAllSaveData();
               runScreenTransition(resetRun, 350, 350);
             }}
           />
@@ -522,8 +522,7 @@ function App() {
                 type="button"
                 className="btn-restore-abandon"
                 onClick={() => {
-                  clearBattleState();
-                  clearSavedProgress();
+                  clearAllSaveData();
                   setBattleSave(null);
                   setShowBattleRestorePrompt(false);
                 }}
