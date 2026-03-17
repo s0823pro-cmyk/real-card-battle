@@ -12,6 +12,7 @@ import { shuffle } from '../utils/shuffle';
 import { isEnemyTargetCard } from '../utils/cardTarget';
 import { getEffectiveTimeCost } from '../utils/timeline';
 import { upgradeCard } from '../utils/cardUpgrade';
+import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord';
 
 const MAX_RESERVED = 2;
 const DRAW_COUNT = 5;
@@ -161,6 +162,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
 
 const createInitialGameState = (setup?: BattleSetup | null): GameState => {
   const encounter = setup?.enemies ?? createRandomEncounter();
+  encounter.forEach((enemy) => recordEnemyEncounter(enemy.templateId));
   const initialJobId: JobId = setup?.jobId ?? 'carpenter';
   const fallbackConfig = getJobConfig(initialJobId);
   const deck = shuffle(
@@ -740,6 +742,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     }
 
     for (const enemy of newlyDefeated) {
+      recordEnemyDefeated(enemy.templateId);
       pushPopup(`+${getEnemyReward(enemy.templateId)}G`, enemy.id, 'buff');
     }
     if (onKillHealTotal > 0) {
@@ -1092,10 +1095,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
     if (workingState.player.ridgepoleActive && workingState.player.scaffold >= ridgepoleThreshold) {
       let dealt = false;
+      const defeatedByRidgepole: string[] = [];
       const nextEnemies = workingState.enemies.map((enemy) => {
         if (enemy.currentHp <= 0) return enemy;
         dealt = true;
         const nextHp = Math.max(0, enemy.currentHp - ridgepoleDamage);
+        if (enemy.currentHp > 0 && nextHp <= 0) {
+          defeatedByRidgepole.push(enemy.templateId);
+        }
         if (enemy.currentHp - nextHp > 0) {
           pushPopup(`-${ridgepoleDamage}`, enemy.id, 'damage');
         }
@@ -1104,6 +1111,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       if (dealt) {
         workingState = { ...workingState, enemies: nextEnemies };
         pushPopup('🎌 棟上げ発動！', 'player', 'buff');
+        defeatedByRidgepole.forEach((templateId) => recordEnemyDefeated(templateId));
       }
       if (workingState.enemies.every((enemy) => enemy.currentHp <= 0)) {
         const reward = workingState.enemies.reduce((sum, enemy) => sum + getEnemyReward(enemy.templateId), 0);

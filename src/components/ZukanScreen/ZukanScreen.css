@@ -453,3 +453,200 @@
   font-size: 14px;
   opacity: 0.6;
 }
+
+.zukan-enemy-list {
+  overflow-y: auto;
+  padding: 12px;
+  flex: 1;
+}
+
+.zukan-enemy-filters {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.zukan-enemy-area {
+  margin-bottom: 24px;
+}
+
+.zukan-enemy-area-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f0b429;
+  margin: 0 0 10px;
+  letter-spacing: 0.1em;
+}
+
+.zukan-enemy-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.zukan-enemy-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  position: relative;
+}
+
+.zukan-enemy-item--none {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.zukan-enemy-img {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #161b22;
+}
+
+.zukan-enemy-img--silhouette {
+  filter: brightness(0) invert(0.2);
+}
+
+.zukan-enemy-unknown {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  background: #161b22;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zukan-enemy-unknown-icon {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.2);
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 700;
+}
+
+.zukan-enemy-name {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.zukan-enemy-defeat-count {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 8px;
+  color: rgba(240, 180, 41, 0.85);
+  line-height: 1;
+}
+
+.zukan-enemy-boss-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 7px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.zukan-enemy-elite-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: #9b59b6;
+  color: #fff;
+  font-size: 7px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.zukan-enemy-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.zukan-enemy-modal {
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  width: 80%;
+  max-width: 300px;
+  overflow: hidden;
+  position: relative;
+}
+
+.zukan-enemy-modal-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  object-position: top;
+}
+
+.zukan-enemy-modal-info {
+  padding: 16px;
+}
+
+.zukan-enemy-modal-name {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 18px;
+  font-weight: 900;
+  color: #e6edf3;
+  margin: 0 0 8px;
+}
+
+.zukan-enemy-modal-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.zukan-enemy-modal-stats span {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.zukan-enemy-modal-desc {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.zukan-enemy-modal-desc--unknown {
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+}
+
+.zukan-enemy-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+}

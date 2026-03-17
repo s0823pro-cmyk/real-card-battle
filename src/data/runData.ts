@@ -138,6 +138,20 @@ export const RELICS: Omamori[] = [
     description: '毎ターン+2ブロック',
     effect: { type: 'on_turn_start', stat: 'block', value: 2 },
   },
+  {
+    id: 'victory_charm',
+    name: '勝利のお守り',
+    icon: '✨',
+    description: '敵を倒すたびHPを2回復',
+    effect: { type: 'on_kill', stat: 'heal', value: 2 },
+  },
+  {
+    id: 'fortune_cat',
+    name: '招き猫のお守り',
+    icon: '🐱',
+    description: '敵を倒すたび+4G',
+    effect: { type: 'on_kill', stat: 'gold', value: 4 },
+  },
 ];
 
 export const ITEMS: RunItem[] = [

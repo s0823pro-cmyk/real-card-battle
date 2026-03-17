@@ -228,6 +228,36 @@ const updateBoardPosition = (board: BoardTile[], tileId: number): BoardTile[] =>
     visited: tile.visited || tile.id === tileId,
   }));
 
+const pruneUnselectedBranchRoutes = (
+  board: BoardTile[],
+  branchEntryTileId: number,
+  selectedBranchTileId: number,
+): BoardTile[] => {
+  const branchEntry = board.find((tile) => tile.id === branchEntryTileId);
+  const selected = board.find((tile) => tile.id === selectedBranchTileId);
+  if (!branchEntry || !selected || !selected.branchGroup || !selected.branch) return board;
+  if (!branchEntry.nextTiles.includes(selectedBranchTileId)) return board;
+
+  const removedIds = new Set(
+    board
+      .filter(
+        (tile) =>
+          tile.branchGroup === selected.branchGroup &&
+          Boolean(tile.branch) &&
+          tile.branch !== selected.branch,
+      )
+      .map((tile) => tile.id),
+  );
+  if (removedIds.size === 0) return board;
+
+  return board
+    .filter((tile) => !removedIds.has(tile.id))
+    .map((tile) => ({
+      ...tile,
+      nextTiles: tile.nextTiles.filter((nextId) => !removedIds.has(nextId)),
+    }));
+};
+
 const reducer = (state: GameProgress, action: Action): GameProgress => {
   switch (action.type) {
     case 'set_screen':
@@ -575,14 +605,24 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_screen', screen: 'map' });
     const after = stateRef.current;
     const move = movePlayerBySteps(after.board, after.currentTileId, value, after.selectedBranchTileId);
+    dispatch({ type: 'set_pending_steps', steps: value });
     if (move.stoppedAtBranch) {
+      let fromId = after.currentTileId;
+      for (let i = 0; i < move.passedTileIds.length; i += 1) {
+        const toId = move.passedTileIds[i];
+        dispatch({ type: 'add_traveled_edge', from: fromId, to: toId });
+        dispatch({ type: 'set_current_tile', tileId: toId });
+        dispatch({ type: 'set_pending_steps', steps: Math.max(0, value - i - 1) });
+        fromId = toId;
+        await wait(260);
+      }
+      dispatch({ type: 'set_branch', tileId: null });
       dispatch({ type: 'set_selectable_tiles', tileIds: move.branchOptions });
       dispatch({ type: 'set_screen', screen: 'branch_select' });
       return;
     }
     dispatch({ type: 'set_selectable_tiles', tileIds: [] });
     dispatch({ type: 'set_branch', tileId: null });
-    dispatch({ type: 'set_pending_steps', steps: value });
     (async () => {
       let fromId = after.currentTileId;
       for (let i = 0; i < move.passedTileIds.length; i += 1) {
@@ -603,15 +643,17 @@ export const useRunProgress = () => {
     if (current.currentScreen !== 'branch_select') return;
     const currentTile = getTileById(current.board, current.currentTileId);
     if (!currentTile || !currentTile.nextTiles.includes(nextTileId)) return;
+    const prunedBoard = pruneUnselectedBranchRoutes(current.board, current.currentTileId, nextTileId);
 
     dispatch({ type: 'set_selectable_tiles', tileIds: [] });
     dispatch({ type: 'set_branch', tileId: null });
     dispatch({ type: 'set_pending_steps', steps: 0 });
+    dispatch({ type: 'set_board', board: prunedBoard });
     dispatch({ type: 'add_traveled_edge', from: current.currentTileId, to: nextTileId });
     dispatch({ type: 'set_current_tile', tileId: nextTileId });
     dispatch({ type: 'set_screen', screen: 'map' });
 
-    const landed = getTileById(stateRef.current.board, nextTileId);
+    const landed = getTileById(prunedBoard, nextTileId);
     if (landed) {
       window.setTimeout(() => openTileScreen(landed), 120);
     }

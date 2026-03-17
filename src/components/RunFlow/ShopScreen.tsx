@@ -92,7 +92,7 @@ const ShopScreen = ({
           </button>
         </div>
         {tab === 'buy' ? (
-          <div className="flow-list">
+          <div className="flow-list shop-tab-content">
             <p>カード</p>
             <div className="shop-cards-grid">
               {cards.map((item) => {
@@ -193,7 +193,7 @@ const ShopScreen = ({
             </div>
           </div>
         ) : (
-          <div className="flow-list">
+          <div className="flow-list shop-tab-content">
             <div className="shop-remove-section">
               <div className="shop-remove-header">
                 <span>カード売却</span>
@@ -240,7 +240,7 @@ const ShopScreen = ({
                 ✕
               </button>
             </div>
-            <div className="shop-remove-grid card-display-grid">
+            <div className="shop-remove-grid shop-sell-grid">
               {deck.map((card, idx) => (
                 <div
                   key={`${card.id}_${idx}`}
@@ -300,7 +300,7 @@ const ShopScreen = ({
                 ✕
               </button>
             </div>
-            <div className="shop-remove-grid card-display-grid">
+            <div className="shop-remove-grid shop-sell-grid">
               {deck.map((card, idx) => (
                 <div
                   key={`${card.id}_${idx}`}

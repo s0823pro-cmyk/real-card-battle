@@ -431,15 +431,6 @@ const HomeScreen = ({ onStart, onOpenZukan, onContinue, onNewGame, savedProgress
     { label: 'ゲームスタート', className: 'btn-home-start', onClick: onStart },
     { label: '図鑑', className: 'btn-home-zukan', onClick: onOpenZukan },
     { label: '実績', className: 'btn-home-records', onClick: () => setModal('records') },
-    {
-      label: '遊び方',
-      className: 'btn-home-howto',
-      onClick: () => {
-        setActiveHowtoTab('glossary');
-        setOpenedHowtoEntry(null);
-        setModal('howto');
-      },
-    },
     { label: '設定', className: 'btn-home-settings', onClick: () => setModal('settings') },
     { label: 'クレジット', className: 'btn-home-credits', onClick: () => setModal('credits') },
   ] as const;

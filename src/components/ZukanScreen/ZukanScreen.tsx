@@ -22,12 +22,16 @@ import {
 } from '../../data/stories/carpenterStory';
 import type { StoryScene } from '../../data/stories/carpenterStory';
 import { StoryScreen } from '../StoryScreen/StoryScreen';
+import { ENEMY_ZUKAN_DATA } from '../../data/enemyZukanData';
+import type { EnemyZukanEntry } from '../../data/enemyZukanData';
+import { getEnemyDefeatCount, getEnemyStatus } from '../../utils/enemyRecord';
 import './ZukanScreen.css';
 
-type MainTab = 'cards' | 'stories';
+type MainTab = 'cards' | 'stories' | 'enemies';
 type JobTab = 'carpenter' | 'cook' | 'unemployed' | 'neutral';
 type RarityFilter = 'all' | CardRarity;
 type TypeFilter = 'all' | Extract<CardType, 'attack' | 'skill' | 'power' | 'tool'>;
+type EnemyTypeFilter = 'all' | 'normal' | 'elite' | 'boss';
 type FrameRarity = CardRarity | 'starter';
 
 interface StoryEntry {
@@ -126,8 +130,10 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   const [activeTab, setActiveTab] = useState<JobTab>('carpenter');
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [enemyTypeFilter, setEnemyTypeFilter] = useState<EnemyTypeFilter>('all');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [playingStory, setPlayingStory] = useState<StoryEntry | null>(null);
+  const [selectedEnemy, setSelectedEnemy] = useState<EnemyZukanEntry | null>(null);
   const suppressOverlayCloseRef = useRef(false);
 
   const filteredCards = useMemo(() => {
@@ -242,6 +248,13 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
           >
             ストーリー
           </button>
+          <button
+            type="button"
+            className={`zukan-main-tab ${mainTab === 'enemies' ? 'zukan-main-tab--active' : ''}`}
+            onClick={() => setMainTab('enemies')}
+          >
+            敵
+          </button>
         </div>
 
         {mainTab === 'stories' && (
@@ -264,6 +277,67 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {mainTab === 'enemies' && (
+          <div className="zukan-enemy-list">
+            <div className="zukan-enemy-filters">
+              {(['all', 'normal', 'elite', 'boss'] as EnemyTypeFilter[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  className={`zukan-filter-btn ${enemyTypeFilter === type ? 'zukan-filter-btn--active' : ''}`}
+                  onClick={() => setEnemyTypeFilter(type)}
+                >
+                  {type === 'all' ? '全て' : type === 'normal' ? '通常' : type === 'elite' ? 'ELITE' : 'BOSS'}
+                </button>
+              ))}
+            </div>
+            {[1, 2, 3].map((area) => (
+              <div key={area} className="zukan-enemy-area">
+                <h3 className="zukan-enemy-area-title">エリア{area}</h3>
+                <div className="zukan-enemy-grid">
+                  {ENEMY_ZUKAN_DATA
+                    .filter((enemy) => enemy.area === area && (enemyTypeFilter === 'all' || enemy.type === enemyTypeFilter))
+                    .map((enemy) => {
+                    const status = getEnemyStatus(enemy.id);
+                    const defeatCount = getEnemyDefeatCount(enemy.id);
+                    return (
+                      <div
+                        key={enemy.id}
+                        className={`zukan-enemy-item zukan-enemy-item--${status}`}
+                        onClick={() => {
+                          if (status !== 'none') setSelectedEnemy(enemy);
+                        }}
+                      >
+                        {status === 'none' ? (
+                          <div className="zukan-enemy-unknown">
+                            <span className="zukan-enemy-unknown-icon">？</span>
+                          </div>
+                        ) : (
+                          <img
+                            className={`zukan-enemy-img ${status === 'encountered' ? 'zukan-enemy-img--silhouette' : ''}`}
+                            src={enemy.imageUrl}
+                            alt={enemy.name}
+                          />
+                        )}
+                        <p className="zukan-enemy-name">{status === 'none' ? '？？？' : enemy.name}</p>
+                        {status === 'defeated' && defeatCount > 0 && (
+                          <span className="zukan-enemy-defeat-count">討伐 {defeatCount}</span>
+                        )}
+                        {enemy.type === 'boss' && status !== 'none' && (
+                          <span className="zukan-enemy-boss-badge">BOSS</span>
+                        )}
+                        {enemy.type === 'elite' && status !== 'none' && (
+                          <span className="zukan-enemy-elite-badge">ELITE</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -461,6 +535,40 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
               </div>
             )}
           </>
+        )}
+        {selectedEnemy && (
+          <div className="zukan-enemy-modal-overlay" onClick={() => setSelectedEnemy(null)}>
+            <div className="zukan-enemy-modal" onClick={(event) => event.stopPropagation()}>
+              <img
+                className="zukan-enemy-modal-img"
+                src={selectedEnemy.imageUrl}
+                alt={selectedEnemy.name}
+              />
+              <div className="zukan-enemy-modal-info">
+                <h3 className="zukan-enemy-modal-name">{selectedEnemy.name}</h3>
+                <div className="zukan-enemy-modal-stats">
+                  <span>HP: {selectedEnemy.hp}</span>
+                  <span>エリア{selectedEnemy.area}</span>
+                  <span>討伐: {getEnemyDefeatCount(selectedEnemy.id)}回</span>
+                </div>
+                {getEnemyStatus(selectedEnemy.id) === 'defeated' && (
+                  <p className="zukan-enemy-modal-desc">{selectedEnemy.description}</p>
+                )}
+                {getEnemyStatus(selectedEnemy.id) === 'encountered' && (
+                  <p className="zukan-enemy-modal-desc zukan-enemy-modal-desc--unknown">
+                    撃破すると詳細が解放されます
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                className="zukan-enemy-modal-close"
+                onClick={() => setSelectedEnemy(null)}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
