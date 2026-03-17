@@ -398,11 +398,11 @@
 }
 
 .card-type-row {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  flex-wrap: wrap;
+  width: 100%;
   margin-bottom: 2px;
 }
 
@@ -420,10 +420,20 @@
   text-transform: uppercase;
 }
 
-.card-badges {
+.card-sub-badges {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   gap: 2px;
   align-items: center;
+}
+
+.card-badge {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .card-badge--exhaust,
@@ -437,11 +447,10 @@
   line-height: inherit !important;
   background: rgba(255, 255, 255, 0.12);
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.72);
   display: inline-flex;
   align-items: center;
   height: 100%;
-  white-space: nowrap;
 }
 
 .card-description {
