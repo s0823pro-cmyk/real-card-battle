@@ -15,6 +15,7 @@ import { upgradeCard } from '../utils/cardUpgrade';
 import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord';
 
 const MAX_RESERVED = 2;
+const RESERVE_TIME_PENALTY = 1.5;
 const DRAW_COUNT = 5;
 const SELL_ANIMATION_MS = 220;
 const MAX_MENTAL = 10;
@@ -497,26 +498,28 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       : card;
 
     const reserveOrDoubleMultiplier = doubleNextCharges > 0 || gameState.player.nextCardDoubleEffect ? 2 : 1;
-    const nextCardEffectBoostMultiplier = 1 + Math.max(0, gameState.player.nextCardEffectBoost ?? 0);
-    const effectMultiplier = reserveOrDoubleMultiplier * nextCardEffectBoostMultiplier;
-    const multipliedCard: Card =
-      effectMultiplier > 1
-        ? {
-            ...enhancedCard,
-            damage:
-              enhancedCard.damage !== undefined
-                ? enhancedCard.damage * effectMultiplier
-                : enhancedCard.damage,
-            block:
-              enhancedCard.block !== undefined
-                ? enhancedCard.block * effectMultiplier
-                : enhancedCard.block,
-            effects: (enhancedCard.effects ?? []).map((effect) => ({
-              ...effect,
-              value: effect.value * effectMultiplier,
-            })),
-          }
-        : enhancedCard;
+    const nextCardEffectBoostRate = Math.max(0, gameState.player.nextCardEffectBoost ?? 0);
+    const shouldUseTenBoost = reserveOrDoubleMultiplier <= 1 && nextCardEffectBoostRate > 0;
+    const applyBoostWithMinOne = (value: number): number => {
+      if (!shouldUseTenBoost || value <= 0) return value;
+      const add = Math.max(1, Math.ceil(value * nextCardEffectBoostRate));
+      return value + add;
+    };
+    const multipliedCard: Card = {
+      ...enhancedCard,
+      damage:
+        enhancedCard.damage !== undefined
+          ? applyBoostWithMinOne(enhancedCard.damage * reserveOrDoubleMultiplier)
+          : enhancedCard.damage,
+      block:
+        enhancedCard.block !== undefined
+          ? applyBoostWithMinOne(enhancedCard.block * reserveOrDoubleMultiplier)
+          : enhancedCard.block,
+      effects: (enhancedCard.effects ?? []).map((effect) => ({
+        ...effect,
+        value: applyBoostWithMinOne(effect.value * reserveOrDoubleMultiplier),
+      })),
+    };
 
     const enemiesBefore = gameState.enemies.map((enemy) => ({ id: enemy.id, hp: enemy.currentHp, templateId: enemy.templateId }));
 
@@ -662,7 +665,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     };
 
     const nextCardDoubleConsumed = gameState.player.nextCardDoubleEffect && reserveOrDoubleMultiplier > 1;
-    const nextCardEffectBoostConsumed = (gameState.player.nextCardEffectBoost ?? 0) > 0;
+    const nextCardEffectBoostConsumed = shouldUseTenBoost;
     const playedReserveDoubleCardNormally =
       !playedCard.wasReserved &&
       ((playedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false);
@@ -688,7 +691,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       maxTime: prev.maxTime + timeBoost + mentalTimeDelta,
       shuffleAnimation: drawResult.shuffled,
     }));
-    setDoubleNextCharges((prev) => Math.max(0, prev - (doubleNextCharges > 0 && effectMultiplier > 1 ? 1 : 0)) + gainedDoubleNext);
+    setDoubleNextCharges(
+      (prev) => Math.max(0, prev - (doubleNextCharges > 0 && reserveOrDoubleMultiplier > 1 ? 1 : 0)) + gainedDoubleNext,
+    );
 
     setLastPlayedCard(playedCard);
     setSelectedCardId(null);
@@ -887,9 +892,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         ...prev,
         hand: prev.hand.filter((item) => item.id !== cardId),
         reserved: [...prev.reserved, reservedCard],
-        player: hasReserveDouble
-          ? { ...prev.player, nextCardDoubleEffect: true }
-          : prev.player,
+        player: {
+          ...prev.player,
+          nextCardDoubleEffect: hasReserveDouble ? true : prev.player.nextCardDoubleEffect,
+          nextTurnTimePenalty: prev.player.nextTurnTimePenalty + RESERVE_TIME_PENALTY,
+        },
       };
     });
     if (changed) {

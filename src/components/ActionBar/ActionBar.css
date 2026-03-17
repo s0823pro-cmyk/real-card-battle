@@ -95,10 +95,11 @@
   align-items: flex-end;
   gap: 6px;
   height: 90px;
-  overflow: hidden;
+  overflow-x: visible;
+  overflow-y: hidden;
   max-width: 100%;
   flex-shrink: 0;
-  padding: 2px;
+  padding: 2px 5px;
   box-sizing: border-box;
 }
 

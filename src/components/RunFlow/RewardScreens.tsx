@@ -160,7 +160,10 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
   return (
     <main className="flow-screen">
       <section className="flow-card upgrade-screen">
-        <h2>{mode === 'upgrade' ? 'カードを強化' : 'カードを削除'}</h2>
+        <div className="upgrade-header">
+          <h2 className="upgrade-title">{mode === 'upgrade' ? 'カードを強化する' : 'カードを削除する'}</h2>
+          {mode === 'upgrade' && <p className="upgrade-heading">強化するカードを選んでください</p>}
+        </div>
         {mode === 'upgrade' ? (
           <>
             {upgradableCards.length === 0 ? (
@@ -171,78 +174,84 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
                 </button>
               </div>
             ) : (
-            <>
-            <p className="upgrade-heading">強化するカードを選んでください</p>
-            <div className="upgrade-card-grid card-display-grid">
-              {upgradableCards.map((card, idx) => (
-                <div
-                  key={`${card.id}_${idx}`}
-                  className={`upgrade-card-item card-display-item ${
-                    selectedCardId === card.id ? 'upgrade-card-item--selected card-display-item--selected' : ''
-                  }`}
-                  onClick={() => setSelectedCardId(card.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      setSelectedCardId(card.id);
-                    }
-                  }}
-                  style={
-                    {
-                      '--hand-card-width': '80px',
-                      '--hand-card-height': '128px',
-                    } as CSSProperties
-                  }
-                >
-                  <CardComponent
-                    card={card}
-                    jobId={jobId}
-                    selected={false}
-                    disabled={false}
-                    locked={false}
-                    isSelling={false}
-                    isReturning={false}
-                    isGhost={false}
-                    isDragging={false}
-                    isDragUnavailable={false}
-                    effectiveValues={getBaseEffectiveValues(card)}
-                    onSelect={noop}
-                    onPointerDown={noop}
-                    onPointerMove={noop}
-                    onPointerUp={noop}
-                    onPointerCancel={noop}
-                    onMouseEnter={noop}
-                    onMouseLeave={noop}
-                  />
+              <>
+                <div className="upgrade-card-list-container">
+                  <div className="upgrade-card-list">
+                    {upgradableCards.map((card, idx) => (
+                      <div
+                        key={`${card.id}_${idx}`}
+                        className={`upgrade-card-item ${
+                          selectedCardId === card.id ? 'upgrade-card-item--selected' : ''
+                        }`}
+                        onClick={() => setSelectedCardId(card.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setSelectedCardId(card.id);
+                          }
+                        }}
+                      >
+                        <CardComponent
+                          card={card}
+                          jobId={jobId}
+                          selected={false}
+                          disabled={false}
+                          locked={false}
+                          isSelling={false}
+                          isReturning={false}
+                          isGhost={false}
+                          isDragging={false}
+                          isDragUnavailable={false}
+                          effectiveValues={getBaseEffectiveValues(card)}
+                          onSelect={noop}
+                          onPointerDown={noop}
+                          onPointerMove={noop}
+                          onPointerUp={noop}
+                          onPointerCancel={noop}
+                          onMouseEnter={noop}
+                          onMouseLeave={noop}
+                          style={
+                            {
+                              '--hand-card-width': '100%',
+                              '--hand-card-height': '100%',
+                              width: '100%',
+                              height: '100%',
+                              position: 'relative',
+                              transform: 'none',
+                              transition: 'none',
+                            } as CSSProperties
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-            {selectedCard && (
-              <div className="upgrade-preview">
-                <span className="upgrade-preview-label">強化後：</span>
-                <span className="upgrade-preview-text">{getUpgradePreview(selectedCard, jobId)}</span>
-              </div>
-            )}
-            <div className="upgrade-note">
-              <small>※ 強化済み（+）カードは再強化できません</small>
-            </div>
-            <div className="upgrade-actions">
-              {selectedCard && (
-                <button
-                  type="button"
-                  className="btn-upgrade-confirm"
-                  onClick={() => onUpgrade(selectedCard.id)}
-                >
-                  強化する
-                </button>
-              )}
-              <button type="button" className="btn-upgrade-skip" onClick={onSkip}>
-                スキップ
-              </button>
-            </div>
-            </>
+                {selectedCard && (
+                  <div className="upgrade-preview">
+                    <span className="upgrade-preview-label">強化後：</span>
+                    <span className="upgrade-preview-text">{getUpgradePreview(selectedCard, jobId)}</span>
+                  </div>
+                )}
+                <div className="upgrade-note">
+                  <small>※ 強化済み（+）カードは再強化できません</small>
+                </div>
+                <div className="upgrade-actions">
+                  {selectedCard && (
+                    <button
+                      type="button"
+                      className="btn-upgrade-confirm"
+                      onClick={() => onUpgrade(selectedCard.id)}
+                    >
+                      強化する
+                    </button>
+                  )}
+                  <button type="button" className="btn-upgrade-skip" onClick={onSkip}>
+                    スキップ
+                  </button>
+                </div>
+              </>
             )}
           </>
         ) : (

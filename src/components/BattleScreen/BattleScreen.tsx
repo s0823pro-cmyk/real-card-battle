@@ -1040,7 +1040,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
         <div className="reserve-confirm-overlay">
           <div className="reserve-confirm-dialog">
             <p className="reserve-confirm-title">「{reserveConfirm.card.name}」を温存しますか？</p>
-            <p className="reserve-confirm-note">次ターン -{Math.ceil(reserveConfirm.card.timeCost * 0.5)}秒</p>
+            <p className="reserve-confirm-note">次ターン -1.5秒</p>
             <div className="reserve-confirm-buttons">
               <button type="button" className="btn-reserve-cancel" onClick={() => setReserveConfirm(null)}>
                 キャンセル

@@ -23,6 +23,11 @@ const ActionBar = ({
   reserveFull,
   reserveDropRef,
 }: Props) => {
+  const reservePenaltySeconds = reserved.length * 1.5;
+  const reservePenaltyLabel =
+    reserved.length > 0
+      ? `次ターン -${Number.isInteger(reservePenaltySeconds) ? reservePenaltySeconds : reservePenaltySeconds.toFixed(1)}秒`
+      : '';
   const [previewCardId, setPreviewCardId] = useState<string | null>(null);
   const [pinnedPreviewCardId, setPinnedPreviewCardId] = useState<string | null>(null);
   const [previewDialogCard, setPreviewDialogCard] = useState<Card | null>(null);
@@ -209,7 +214,7 @@ const ActionBar = ({
             </div>
           </div>
           <p className="reserve-penalty-inline">
-            {reserved.length > 0 ? `次ターン -${reserved.length}秒` : ''}
+            {reservePenaltyLabel}
           </p>
         </div>
       </div>
