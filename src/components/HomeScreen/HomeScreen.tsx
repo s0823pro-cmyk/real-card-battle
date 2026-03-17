@@ -30,7 +30,6 @@ interface HomeScreenProps {
   onStart: () => void;
   onOpenZukan: () => void;
   onContinue?: (saved: GameProgress) => void;
-  onNewGame?: () => void;
   savedProgress?: GameProgress | null;
   preloadEnabled?: boolean;
   onTogglePreload?: () => void;
@@ -241,7 +240,7 @@ const Fireflies = () => {
   return <canvas ref={canvasRef} className="fireflies-canvas" aria-hidden />;
 };
 
-const HomeScreen = ({ onStart, onOpenZukan, onContinue, onNewGame, savedProgress, preloadEnabled = false, onTogglePreload }: HomeScreenProps) => {
+const HomeScreen = ({ onStart, onOpenZukan, onContinue, savedProgress, preloadEnabled = false, onTogglePreload }: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
   const [activeHowtoTab, setActiveHowtoTab] = useState<HowtoTab>('glossary');
   const [openedHowtoEntry, setOpenedHowtoEntry] = useState<string | null>(null);
@@ -456,37 +455,20 @@ const HomeScreen = ({ onStart, onOpenZukan, onContinue, onNewGame, savedProgress
           </div>
         </div>
 
-        {savedProgress && (
-          <div className="save-data-banner">
-            <div className="save-data-info">
-              <span className="save-data-icon">💾</span>
-              <div>
-                <p className="save-data-title">前回の続きがあります</p>
-                <p className="save-data-sub">
-                  {JOB_NAMES[savedProgress.jobId] ?? savedProgress.jobId} / エリア{savedProgress.currentArea}
-                </p>
-              </div>
-            </div>
-            <div className="save-data-buttons">
-              <button
-                type="button"
-                className="btn-continue"
-                onClick={() => onContinue?.(savedProgress)}
-              >
-                続きから
-              </button>
-              <button
-                type="button"
-                className="btn-new-game"
-                onClick={() => onNewGame?.()}
-              >
-                最初から
-              </button>
-            </div>
-          </div>
-        )}
-
         <div className="home-menu-area">
+          {savedProgress && (
+            <button
+              type="button"
+              className="btn-home-continue"
+              style={{ pointerEvents: fallingIndex !== null ? 'none' : 'auto' }}
+              onClick={() => onContinue?.(savedProgress)}
+            >
+              <span className="btn-home-continue-label">続きから始める</span>
+              <span className="btn-home-continue-sub">
+                {JOB_NAMES[savedProgress.jobId] ?? savedProgress.jobId} / エリア{savedProgress.currentArea}
+              </span>
+            </button>
+          )}
           {homeButtons.map((button, index) => (
             <button
               key={button.label}

@@ -76,10 +76,6 @@ export const calculateCardDamage = (
     }
   }
 
-  if (prevCard?.tags?.includes('preparation')) {
-    damage = Math.floor(damage * (player.templeCarpenterActive ? 1.5 : 1.3));
-  }
-
   if (player.deathWishActive && card.type === 'attack') {
     damage += 4;
   }

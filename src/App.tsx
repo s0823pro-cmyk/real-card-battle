@@ -268,10 +268,7 @@ function App() {
               clearSavedProgress();
               runScreenTransition(() => continueFromSave(saved), 1000, 1000);
             }}
-            onNewGame={() => {
-              clearSavedProgress();
-              runScreenTransition(startRunFromHome, 1000, 1000);
-            }}
+
             savedProgress={savedProgress}
             preloadEnabled={preloadEnabled}
             onTogglePreload={togglePreload}
@@ -364,7 +361,10 @@ function App() {
             area={state.currentArea}
             turnCount={state.totalTurns}
             cardsAcquired={state.cardsAcquired}
-            onHome={() => runScreenTransition(resetRun, 350, 350)}
+            onHome={() => {
+              clearSavedProgress();
+              runScreenTransition(resetRun, 350, 350);
+            }}
           />
         );
       case 'game_over':
@@ -375,9 +375,13 @@ function App() {
             floor={floor}
             totalFloors={totalFloors}
             defeatedBy={state.lastDefeatedBy}
-            onHome={() => runScreenTransition(resetRun, 350, 350)}
+            onHome={() => {
+              clearSavedProgress();
+              runScreenTransition(resetRun, 350, 350);
+            }}
             onRetry={() =>
               runScreenTransition(() => {
+                clearSavedProgress();
                 resetRun();
                 startRunFromHome();
               }, 350, 350)
@@ -394,7 +398,10 @@ function App() {
             branchPreviews={branchPreviews}
             onRollDice={rollDiceAndMove}
             onSelectTile={chooseBranch}
-            onGiveUp={() => runScreenTransition(resetRun, 350, 350)}
+            onGiveUp={() => {
+              clearSavedProgress();
+              runScreenTransition(resetRun, 350, 350);
+            }}
           />
         );
     }
