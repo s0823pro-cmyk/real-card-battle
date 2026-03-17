@@ -67,7 +67,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     name: '集中力',
     type: 'skill',
     timeCost: 2,
-    description: '温存すると次のカードの効果が2倍になる。温存後に捨て札へ。',
+    description: '通常使用で次のカード効果+10%。温存すると次のカード効果が2倍。使用後は除外。',
     icon: '🎯',
     rarity: 'uncommon',
     sellValue: 12,

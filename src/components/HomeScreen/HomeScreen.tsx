@@ -10,6 +10,7 @@ import {
 } from '../../data/stories/carpenterStory';
 import type { StoryScene } from '../../data/stories/carpenterStory';
 import type { GameProgress } from '../../types/run';
+import type { DevDestination } from '../../hooks/useRunProgress';
 import homeBackgroundImage from '../../assets/home_background.png';
 import letterJImage from '../../assets/title/letter_J.png';
 import letterOImage from '../../assets/title/letter_O.png';
@@ -33,6 +34,7 @@ interface HomeScreenProps {
   savedProgress?: GameProgress | null;
   preloadEnabled?: boolean;
   onTogglePreload?: () => void;
+  onDevNavigate?: (destination: DevDestination) => void;
 }
 
 type ModalType = 'howto' | 'settings' | 'records' | 'credits' | null;
@@ -240,7 +242,15 @@ const Fireflies = () => {
   return <canvas ref={canvasRef} className="fireflies-canvas" aria-hidden />;
 };
 
-const HomeScreen = ({ onStart, onOpenZukan, onContinue, savedProgress, preloadEnabled = false, onTogglePreload }: HomeScreenProps) => {
+const HomeScreen = ({
+  onStart,
+  onOpenZukan,
+  onContinue,
+  savedProgress,
+  preloadEnabled = false,
+  onTogglePreload,
+  onDevNavigate,
+}: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
   const [activeHowtoTab, setActiveHowtoTab] = useState<HowtoTab>('glossary');
   const [openedHowtoEntry, setOpenedHowtoEntry] = useState<string | null>(null);
@@ -660,6 +670,49 @@ const HomeScreen = ({ onStart, onOpenZukan, onContinue, savedProgress, preloadEn
                     {preloadEnabled ? 'ON' : 'OFF'}
                   </button>
                 </div>
+                {import.meta.env.DEV && (
+                  <div className="dev-tools">
+                    <p className="dev-tools-title">🛠️ 開発用ツール</p>
+                    <div className="dev-tools-grid">
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_normal')}>
+                        通常戦闘
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_elite')}>
+                        エリート戦闘
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_1')}>
+                        ボス1
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_2')}>
+                        ボス2
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_3')}>
+                        ボス3
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shop')}>
+                        質屋
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shrine')}>
+                        神社
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('hotel')}>
+                        ホテル
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('event')}>
+                        イベント
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('card_reward')}>
+                        カード報酬
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('boss_reward')}>
+                        ボス報酬
+                      </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('story')}>
+                        ストーリー
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <p>準備中です。</p>

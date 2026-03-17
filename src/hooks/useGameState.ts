@@ -216,6 +216,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     nextAttackBoostCount: 0,
     timeBonusPerTurn: 0,
     nextCardDoubleEffect: false,
+    nextCardEffectBoost: 0,
   };
 
   return {
@@ -423,6 +424,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
     nextCardDoubleEffect: false,
+    nextCardEffectBoost: 0,
   });
 
   const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
@@ -494,7 +496,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         }
       : card;
 
-    const effectMultiplier = doubleNextCharges > 0 || gameState.player.nextCardDoubleEffect ? 2 : 1;
+    const reserveOrDoubleMultiplier = doubleNextCharges > 0 || gameState.player.nextCardDoubleEffect ? 2 : 1;
+    const nextCardEffectBoostMultiplier = 1 + Math.max(0, gameState.player.nextCardEffectBoost ?? 0);
+    const effectMultiplier = reserveOrDoubleMultiplier * nextCardEffectBoostMultiplier;
     const multipliedCard: Card =
       effectMultiplier > 1
         ? {
@@ -657,7 +661,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       shuffleAnimation: drawResult.shuffled,
     };
 
-    const nextCardDoubleConsumed = gameState.player.nextCardDoubleEffect && effectMultiplier > 1;
+    const nextCardDoubleConsumed = gameState.player.nextCardDoubleEffect && reserveOrDoubleMultiplier > 1;
+    const nextCardEffectBoostConsumed = (gameState.player.nextCardEffectBoost ?? 0) > 0;
+    const playedReserveDoubleCardNormally =
+      !playedCard.wasReserved &&
+      ((playedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false);
     setGameState((prev) => ({
       ...prev,
       hand: handAfterPlay,
@@ -667,6 +675,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       player: {
         ...playerAfterKill,
         nextCardDoubleEffect: nextCardDoubleConsumed ? false : playerAfterKill.nextCardDoubleEffect,
+        nextCardEffectBoost: playedReserveDoubleCardNormally
+          ? 0.1
+          : nextCardEffectBoostConsumed
+            ? 0
+            : (playerAfterKill.nextCardEffectBoost ?? 0),
       },
       enemies: result.enemies,
       activePowers,
@@ -985,6 +998,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
       nextCardDoubleEffect: false,
+      nextCardEffectBoost: 0,
       statusEffects: tickedPlayerStatuses,
     });
     const anxietyCount = playerAfterReset.mental <= 0 ? 2 : playerAfterReset.mental <= 2 ? 1 : 0;

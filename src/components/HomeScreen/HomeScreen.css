@@ -736,6 +736,42 @@
   color: #0d1117;
 }
 
+.dev-tools {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 0, 0.3);
+}
+
+.dev-tools-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: rgba(255, 255, 0, 0.6);
+  margin: 0 0 8px;
+  letter-spacing: 0.1em;
+}
+
+.dev-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.btn-dev {
+  background: rgba(255, 255, 0, 0.1);
+  border: 1px solid rgba(255, 255, 0, 0.3);
+  border-radius: 6px;
+  color: rgba(255, 255, 0, 0.8);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  padding: 6px 4px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-dev:active {
+  background: rgba(255, 255, 0, 0.2);
+}
+
 .home-return-transition-overlay {
   position: fixed;
   inset: 0;

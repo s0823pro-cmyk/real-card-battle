@@ -173,6 +173,7 @@ export interface PlayerState {
   nextAttackBoostCount: number;
   timeBonusPerTurn: number;
   nextCardDoubleEffect: boolean;
+  nextCardEffectBoost: number;
 }
 
 export interface ToolSlot {

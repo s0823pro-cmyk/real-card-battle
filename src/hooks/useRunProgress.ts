@@ -47,6 +47,19 @@ const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(re
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
 const SAVE_DATA_KEY = 'real-card-battle:save-data';
 const NON_RESUMABLE_SCREENS: GameScreen[] = ['home', 'title', 'zukan', 'job_select', 'victory', 'game_over'];
+export type DevDestination =
+  | 'battle_normal'
+  | 'battle_elite'
+  | 'battle_boss_1'
+  | 'battle_boss_2'
+  | 'battle_boss_3'
+  | 'shop'
+  | 'shrine'
+  | 'hotel'
+  | 'event'
+  | 'card_reward'
+  | 'boss_reward'
+  | 'story';
 
 type SerializedProgress = Omit<GameProgress, 'unlockedCardNames'> & { unlockedCardNames: string[] };
 
@@ -203,6 +216,7 @@ const initialPlayer: PlayerState = {
   nextAttackBoostCount: 0,
   timeBonusPerTurn: 0,
   nextCardDoubleEffect: false,
+  nextCardEffectBoost: 0,
 };
 
 const makeInitialProgress = (): GameProgress => {
@@ -911,6 +925,7 @@ export const useRunProgress = () => {
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
     nextCardDoubleEffect: false,
+    nextCardEffectBoost: 0,
   });
 
   const onBattleEnd = (result: BattleResult) => {
@@ -1053,6 +1068,7 @@ export const useRunProgress = () => {
       nextAttackBoostCount: 0,
       timeBonusPerTurn: 0,
       nextCardDoubleEffect: false,
+      nextCardEffectBoost: 0,
     };
     dispatch({ type: 'set_job', jobId: resetJobId });
     dispatch({ type: 'set_board', board: nextBoard });
@@ -1124,6 +1140,150 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_unlocked_card_names', names: new Set(names) });
   };
 
+  const startDevNavigation = (destination: Exclude<DevDestination, 'boss_reward' | 'story'>) => {
+    const jobId: JobId = 'carpenter';
+    const jobConfig = getJobConfig(jobId);
+    const area = destination === 'battle_boss_2' ? 2 : destination === 'battle_boss_3' ? 3 : 1;
+    const devPlayer: PlayerState = {
+      ...stateRef.current.player,
+      jobId,
+      maxHp: jobConfig.initialHp,
+      currentHp: jobConfig.initialHp,
+      block: 0,
+      scaffold: 0,
+      cookingGauge: 0,
+      mental: jobConfig.initialMental,
+      gold: 100,
+      statusEffects: [],
+      hasRevival: false,
+      revivalUsed: false,
+      deathWishActive: false,
+      ridgepoleActive: false,
+      templeCarpenterActive: false,
+      cliffEdgeActive: false,
+      nextAttackTimeReduce: 0,
+      blockPersist: false,
+      nextAttackDamageBoost: 0,
+      damageImmunityThisTurn: false,
+      nextTurnNoBlock: false,
+      nextTurnTimePenalty: 0,
+      canBlock: true,
+      lowHpDamageBoost: 0,
+      kitchenDemonActive: false,
+      firstCookingUsedThisTurn: false,
+      lastTurnDamageTaken: 0,
+      currentTurnDamageTaken: 0,
+      recipeStudyActive: false,
+      recipeStudyBonus: 0,
+      nextIngredientBonus: 0,
+      threeStarActive: false,
+      firstIngredientUsedThisTurn: false,
+      nextAttackBoostValue: 0,
+      nextAttackBoostCount: 0,
+      timeBonusPerTurn: 0,
+      nextCardDoubleEffect: false,
+      nextCardEffectBoost: 0,
+    };
+    const devDeck = jobConfig.createStarterDeck();
+    const devBoard = updateBoardPosition(generateBoard(), 1);
+
+    dispatch({ type: 'set_job', jobId });
+    dispatch({ type: 'set_player', player: devPlayer });
+    dispatch({ type: 'set_deck', deck: devDeck });
+    dispatch({ type: 'set_items', items: [] });
+    dispatch({ type: 'set_omamoris', omamoris: [] });
+    dispatch({ type: 'set_card_reward', cards: null });
+    dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
+    dispatch({ type: 'set_shop', shopItems: [] });
+    dispatch({ type: 'set_pawnshop_sell_used', used: false });
+    dispatch({ type: 'set_hotel_item_received', used: false });
+    dispatch({ type: 'set_event', event: null });
+    dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
+    dispatch({ type: 'set_branch', tileId: null });
+    dispatch({ type: 'set_selectable_tiles', tileIds: [] });
+    dispatch({ type: 'clear_traveled_edges' });
+    dispatch({ type: 'set_pending_steps', steps: 0 });
+    dispatch({ type: 'set_dice', value: null, rolling: false });
+    dispatch({ type: 'set_card_remove_count', value: 0 });
+    dispatch({ type: 'set_run_stats', totalTurns: 0, cardsAcquired: 0, lastDefeatedBy: '' });
+    dispatch({ type: 'set_current_area', area });
+    dispatch({ type: 'set_board', board: devBoard });
+    dispatch({ type: 'set_current_tile', tileId: 1 });
+
+    if (destination === 'battle_normal' || destination === 'battle_elite' || destination.startsWith('battle_boss')) {
+      const templateId =
+        destination === 'battle_normal'
+          ? 'claimer'
+          : destination === 'battle_elite'
+            ? 'biker_leader'
+            : destination === 'battle_boss_1'
+              ? 'monster_customer'
+              : destination === 'battle_boss_2'
+                ? 'evil_ceo'
+                : 'world_tree_warden';
+      const kind = destination === 'battle_normal' ? 'battle' : destination === 'battle_elite' ? 'elite' : 'boss';
+      const tileType = destination === 'battle_normal' ? 'enemy' : destination === 'battle_elite' ? 'unique_boss' : 'area_boss';
+      const setup: BattleSetup = {
+        jobId,
+        kind,
+        enemies: createEncounterFromTemplateIds([templateId]),
+        deck: devDeck,
+        player: devPlayer,
+        omamoris: [],
+        items: [],
+      };
+      dispatch({ type: 'set_battle_setup', setup, tileType });
+      dispatch({ type: 'set_screen', screen: 'battle' });
+      return;
+    }
+
+    if (destination === 'shop') {
+      const cards = generateShopCards(6, jobId).map((card, idx) => ({
+        id: `shop_card_dev_${idx}_${card.id}`,
+        type: 'card' as const,
+        item: card,
+        price: getCardPrice(card),
+      }));
+      const items = generateShopItems(2).map((item, idx) => ({
+        id: `shop_item_dev_${idx}_${item.id}`,
+        type: 'item' as const,
+        item,
+        price: item.price,
+      }));
+      const omamori = generateOmamoriChoices(1).map((entry, idx) => ({
+        id: `shop_omamori_dev_${idx}`,
+        type: 'omamori' as const,
+        item: entry,
+        price: 150,
+      }));
+      dispatch({
+        type: 'set_shop',
+        shopItems: [...cards, ...omamori, ...items],
+      });
+      dispatch({ type: 'set_screen', screen: 'pawnshop' });
+      return;
+    }
+    if (destination === 'shrine') {
+      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3), source: 'shrine' });
+      dispatch({ type: 'set_screen', screen: 'shrine' });
+      return;
+    }
+    if (destination === 'hotel') {
+      dispatch({ type: 'set_hotel_item_received', used: false });
+      dispatch({ type: 'set_screen', screen: 'hotel' });
+      return;
+    }
+    if (destination === 'event') {
+      dispatch({ type: 'set_event', event: pickEvent() });
+      dispatch({ type: 'set_screen', screen: 'event' });
+      return;
+    }
+    if (destination === 'card_reward') {
+      dispatch({ type: 'set_card_reward', cards: generateCardRewardChoices(jobId, 3) });
+      dispatch({ type: 'set_screen', screen: 'card_reward' });
+    }
+  };
+
   const startRunFromJobSelect = (jobId: JobId) => {
     const jobConfig = getJobConfig(jobId);
     const nextPlayer: PlayerState = {
@@ -1163,6 +1323,7 @@ export const useRunProgress = () => {
       nextAttackBoostCount: 0,
       timeBonusPerTurn: 0,
       nextCardDoubleEffect: false,
+      nextCardEffectBoost: 0,
     };
     dispatch({ type: 'set_job', jobId });
     dispatch({ type: 'set_player', player: nextPlayer });
@@ -1218,6 +1379,7 @@ export const useRunProgress = () => {
     backToHomeFromJobSelect,
     backToHomeFromZukan,
     unlockAllCardsForDebug,
+    startDevNavigation,
     startRunFromJobSelect,
     resetRun,
   };

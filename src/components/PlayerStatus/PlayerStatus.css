@@ -119,6 +119,51 @@
   gap: 6px;
 }
 
+.battle-slots-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.slots-divider {
+  width: 1px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.power-slots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.power-slots--scrollable {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.power-slots--scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+.power-slot-item {
+  flex-shrink: 0;
+  position: relative;
+  width: 44px;
+  height: 70px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
 .tool-inline-label {
   font-size: 10px;
   color: #8b949e;

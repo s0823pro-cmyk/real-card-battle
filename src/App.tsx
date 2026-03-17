@@ -21,6 +21,7 @@ import {
   OmamoriRewardScreen,
 } from './components/RunFlow/RewardScreens';
 import { useRunProgress, loadSavedProgress, clearSavedProgress } from './hooks/useRunProgress';
+import type { DevDestination } from './hooks/useRunProgress';
 import {
   CARPENTER_STORY,
   CARPENTER_E1_STORY,
@@ -70,6 +71,7 @@ function App() {
     backToHomeFromJobSelect,
     backToHomeFromZukan,
     unlockAllCardsForDebug,
+    startDevNavigation,
     startRunFromJobSelect,
     resetRun,
   } = useRunProgress();
@@ -266,6 +268,24 @@ function App() {
     advanceAfterAreaBoss();
   };
 
+  const handleDevNavigate = (destination: DevDestination) => {
+    setRestoredBattleState(null);
+    setShowBattleRestorePrompt(false);
+    setBattleSave(null);
+    if (destination === 'boss_reward') {
+      startRunFromJobSelect('carpenter');
+      setBossRewardArea(1);
+      setShowBossReward(true);
+      return;
+    }
+    if (destination === 'story') {
+      startRunFromJobSelect('carpenter');
+      showAreaStory(1, () => {});
+      return;
+    }
+    startDevNavigation(destination);
+  };
+
   const renderScreen = () => {
     const currentTile = state.board.find((tile) => tile.id === state.currentTileId);
     const floor = currentTile?.index ?? 1;
@@ -285,6 +305,7 @@ function App() {
             savedProgress={savedProgress}
             preloadEnabled={preloadEnabled}
             onTogglePreload={togglePreload}
+            onDevNavigate={handleDevNavigate}
           />
         );
       case 'zukan':

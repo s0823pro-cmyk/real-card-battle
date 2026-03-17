@@ -1,4 +1,4 @@
-import type { PlayerState, ToolSlot } from '../../types/game';
+import type { Card, PlayerState, ToolSlot } from '../../types/game';
 import type { RunItem } from '../../types/run';
 import type { HungryState } from '../../utils/hungrySystem';
 import ToolSlots from './ToolSlots';
@@ -8,6 +8,7 @@ import './PlayerStatus.css';
 interface Props {
   player: PlayerState;
   toolSlots: ToolSlot[];
+  activePowers: Card[];
   battleItems: RunItem[];
   canUseItems: boolean;
   onUseItem: (itemId: string) => void;
@@ -25,6 +26,7 @@ interface Props {
 const PlayerStatus = ({
   player,
   toolSlots,
+  activePowers,
   battleItems,
   canUseItems,
   onUseItem,
@@ -133,7 +135,7 @@ const PlayerStatus = ({
             <span className="status-cliff-edge">⚡</span>
           </Tooltip>
         )}
-        <ToolSlots toolSlots={toolSlots} />
+        <ToolSlots toolSlots={toolSlots} activePowers={activePowers} jobId={player.jobId} />
       </div>
       <div className="player-row player-row--sub">
         {itemSlots}

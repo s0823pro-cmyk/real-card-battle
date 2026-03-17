@@ -65,7 +65,7 @@ const ShopScreen = ({
 
   return (
     <main className="flow-screen">
-      <section className="flow-card">
+      <section className="flow-card shop-flow-card">
         <div className="shop-header">
           <div className="shop-header-left">
             <h2 className="shop-title">🏪 質屋</h2>
@@ -244,7 +244,7 @@ const ShopScreen = ({
               {deck.map((card, idx) => (
                 <div
                   key={`${card.id}_${idx}`}
-                  className="shop-remove-card-item card-display-item card-display-item--purchasable"
+                  className="shop-remove-card-item shop-sell-item card-display-item card-display-item--purchasable"
                   onClick={() => {
                     onSell(card.id);
                     setShowCardSell(false);
@@ -304,7 +304,7 @@ const ShopScreen = ({
               {deck.map((card, idx) => (
                 <div
                   key={`${card.id}_${idx}`}
-                  className="shop-remove-card-item card-display-item card-display-item--purchasable"
+                  className="shop-remove-card-item shop-sell-item card-display-item card-display-item--purchasable"
                   onClick={() => {
                     onRemoveCard(card.id);
                     setShowCardRemove(false);

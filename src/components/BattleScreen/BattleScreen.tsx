@@ -782,6 +782,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
           <PlayerStatus
             player={gameState.player}
             toolSlots={gameState.toolSlots}
+            activePowers={gameState.activePowers}
             battleItems={battleItems}
             canUseItems={gameState.phase === 'player_turn'}
             onUseItem={useBattleItem}
