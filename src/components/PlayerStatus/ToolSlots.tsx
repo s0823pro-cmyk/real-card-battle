@@ -22,6 +22,9 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
     damage: card.damage ?? null,
     block: card.block ?? null,
+    heal:
+      (card.effects ?? []).filter((effect) => effect.type === 'heal').reduce((sum, effect) => sum + effect.value, 0) ||
+      null,
     effectiveTimeCost: card.timeCost,
     isTimeBuffed: false,
     isTimeDebuffed: false,
@@ -29,6 +32,8 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
     isDamageDebuffed: false,
     isBlockBuffed: false,
     isBlockDebuffed: false,
+    isHealBuffed: false,
+    isHealDebuffed: false,
   });
 
   return (

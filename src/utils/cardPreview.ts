@@ -5,6 +5,7 @@ import { getEffectiveTimeCost } from './timeline';
 export interface EffectiveCardValues {
   damage: number | null;
   block: number | null;
+  heal: number | null;
   effectiveTimeCost: number;
   isTimeBuffed: boolean;
   isTimeDebuffed: boolean;
@@ -12,6 +13,8 @@ export interface EffectiveCardValues {
   isDamageDebuffed: boolean;
   isBlockBuffed: boolean;
   isBlockDebuffed: boolean;
+  isHealBuffed: boolean;
+  isHealDebuffed: boolean;
 }
 
 const hasWeak = (player: PlayerState): boolean =>
@@ -29,7 +32,15 @@ export const getEffectiveCardValues = (
 ): EffectiveCardValues => {
   let damage = card.damage ?? null;
   let block = card.block ?? null;
+  const baseHeal = (card.effects ?? [])
+    .filter((effect) => effect.type === 'heal')
+    .reduce((sum, effect) => sum + effect.value, 0);
+  let heal = baseHeal > 0 ? baseHeal : null;
   const effectiveTimeCost = getEffectiveTimeCost(card, lastPlayedCard, player, player.jobId);
+  const dandoriMultiplier = lastPlayedCard?.tags?.includes('preparation')
+    ? (player.templeCarpenterActive ? 1.5 : 1.3)
+    : 1;
+  const isDandoriActive = dandoriMultiplier > 1;
   const baseDamage = card.damage ?? 0;
   const baseBlock = card.block ?? 0;
   const baseTimeCost = card.timeCost;
@@ -64,8 +75,8 @@ export const getEffectiveCardValues = (
     if (card.wasReserved && card.reserveBonus?.damageMultiplier) {
       damage = Math.floor(damage * card.reserveBonus.damageMultiplier);
     }
-    if (lastPlayedCard?.tags?.includes('preparation')) {
-      damage = Math.floor(damage * (player.templeCarpenterActive ? 1.5 : 1.3));
+    if (isDandoriActive) {
+      damage = Math.floor(damage * dandoriMultiplier);
     }
     if (player.deathWishActive && card.type === 'attack') {
       damage += 4;
@@ -83,6 +94,9 @@ export const getEffectiveCardValues = (
     if (card.wasReserved && card.reserveBonus?.blockMultiplier) {
       block = Math.floor(block * card.reserveBonus.blockMultiplier);
     }
+    if (isDandoriActive) {
+      block = Math.floor(block * dandoriMultiplier);
+    }
     const strengthBonus = getStrengthBonus(player);
     if (strengthBonus > 0) {
       block += strengthBonus;
@@ -92,9 +106,18 @@ export const getEffectiveCardValues = (
     }
   }
 
+  if (heal !== null) {
+    if (player.deathWishActive) {
+      heal = 0;
+    } else if (isDandoriActive) {
+      heal = Math.floor(heal * dandoriMultiplier);
+    }
+  }
+
   return {
     damage,
     block,
+    heal,
     effectiveTimeCost,
     isTimeBuffed: effectiveTimeCost < baseTimeCost,
     isTimeDebuffed: effectiveTimeCost > baseTimeCost,
@@ -102,5 +125,7 @@ export const getEffectiveCardValues = (
     isDamageDebuffed: damage !== null && damage < baseDamage,
     isBlockBuffed: block !== null && block > baseBlock,
     isBlockDebuffed: block !== null && block < baseBlock,
+    isHealBuffed: heal !== null && heal > baseHeal,
+    isHealDebuffed: heal !== null && heal < baseHeal,
   };
 };

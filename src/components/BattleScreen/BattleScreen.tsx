@@ -620,6 +620,9 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
     damage: card.damage ?? null,
     block: card.block ?? null,
+    heal:
+      (card.effects ?? []).filter((effect) => effect.type === 'heal').reduce((sum, effect) => sum + effect.value, 0) ||
+      null,
     effectiveTimeCost: card.timeCost,
     isTimeBuffed: false,
     isTimeDebuffed: false,
@@ -627,6 +630,8 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
     isDamageDebuffed: false,
     isBlockBuffed: false,
     isBlockDebuffed: false,
+    isHealBuffed: false,
+    isHealDebuffed: false,
   });
   const currentPileCards = useMemo(() => {
     if (showPile === 'draw') return gameState.drawPile;

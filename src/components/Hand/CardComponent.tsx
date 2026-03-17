@@ -171,6 +171,10 @@ const CardComponent = ({
     let nodes: ReactNode[] = [description];
     nodes = replaceChangedValue(nodes, card.damage, effectiveValues.damage, 'ダメージ', 'damage');
     nodes = replaceChangedValue(nodes, card.block, effectiveValues.block, 'ブロック', 'block');
+    const baseHeal = (card.effects ?? [])
+      .filter((effect) => effect.type === 'heal')
+      .reduce((sum, effect) => sum + effect.value, 0);
+    nodes = replaceChangedValue(nodes, baseHeal, effectiveValues.heal, '回復', 'heal');
     return nodes;
   };
 

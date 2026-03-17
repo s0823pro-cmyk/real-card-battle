@@ -83,6 +83,7 @@ const ALL_CARDS: Record<JobTab, Card[]> = {
 const STATIC_EFFECTIVE_VALUES: EffectiveCardValues = {
   damage: null,
   block: null,
+  heal: null,
   effectiveTimeCost: 0,
   isTimeBuffed: false,
   isTimeDebuffed: false,
@@ -90,6 +91,8 @@ const STATIC_EFFECTIVE_VALUES: EffectiveCardValues = {
   isDamageDebuffed: false,
   isBlockBuffed: false,
   isBlockDebuffed: false,
+  isHealBuffed: false,
+  isHealDebuffed: false,
 };
 
 type CardSizeStyle = CSSProperties & {
@@ -156,6 +159,9 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
     ...STATIC_EFFECTIVE_VALUES,
     damage: card.damage ?? null,
     block: card.block ?? null,
+    heal:
+      (card.effects ?? []).filter((effect) => effect.type === 'heal').reduce((sum, effect) => sum + effect.value, 0) ||
+      null,
     effectiveTimeCost: card.timeCost,
   });
 
