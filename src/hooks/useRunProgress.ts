@@ -699,19 +699,35 @@ export const useRunProgress = () => {
     const currentTile = getTileById(current.board, current.currentTileId);
     if (!currentTile || !currentTile.nextTiles.includes(nextTileId)) return;
     const prunedBoard = pruneUnselectedBranchRoutes(current.board, current.currentTileId, nextTileId);
+    const stepsToAdvance = Math.max(1, current.pendingSteps);
+    const move = movePlayerBySteps(prunedBoard, current.currentTileId, stepsToAdvance, nextTileId);
 
     dispatch({ type: 'set_selectable_tiles', tileIds: [] });
     dispatch({ type: 'set_branch', tileId: null });
-    dispatch({ type: 'set_pending_steps', steps: 0 });
     dispatch({ type: 'set_board', board: prunedBoard });
-    dispatch({ type: 'add_traveled_edge', from: current.currentTileId, to: nextTileId });
-    dispatch({ type: 'set_current_tile', tileId: nextTileId });
     dispatch({ type: 'set_screen', screen: 'map' });
 
-    const landed = getTileById(prunedBoard, nextTileId);
-    if (landed) {
-      window.setTimeout(() => openTileScreen(landed), 120);
-    }
+    (async () => {
+      let fromId = current.currentTileId;
+      for (let i = 0; i < move.passedTileIds.length; i += 1) {
+        const toId = move.passedTileIds[i];
+        dispatch({ type: 'add_traveled_edge', from: fromId, to: toId });
+        dispatch({ type: 'set_current_tile', tileId: toId });
+        dispatch({ type: 'set_pending_steps', steps: Math.max(0, stepsToAdvance - i - 1) });
+        fromId = toId;
+        await wait(260);
+      }
+
+      if (move.stoppedAtBranch) {
+        dispatch({ type: 'set_selectable_tiles', tileIds: move.branchOptions });
+        dispatch({ type: 'set_screen', screen: 'branch_select' });
+        return;
+      }
+
+      dispatch({ type: 'set_pending_steps', steps: 0 });
+      const landed = getTileById(prunedBoard, move.newTileId);
+      if (landed) openTileScreen(landed);
+    })();
   };
 
   const chooseEventChoice = (choiceIndex: number) => {

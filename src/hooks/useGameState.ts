@@ -337,18 +337,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       gameState.hand.some((card) => !card.upgraded && card.type !== 'status' && card.type !== 'curse')
     )
       return;
-    const noPlayableCard =
-      gameState.hand.length > 0 &&
-      gameState.hand.every((card) => {
-        if (card.type === 'status' || card.type === 'curse') return true;
-        const enoughTime =
-          gameState.usedTime + getEffectiveTimeCost(card, lastPlayedCard, gameState.player, gameState.player.jobId) <=
-          gameState.maxTime;
-        const handConditionOk = canPlayWithHandCondition(card, gameState.hand);
-        return !(enoughTime && handConditionOk);
-      });
-    const shouldAutoEnd =
-      gameState.maxTime - gameState.usedTime <= 0 || gameState.hand.length === 0 || noPlayableCard;
+    const shouldAutoEnd = gameState.maxTime - gameState.usedTime <= 0;
     if (!shouldAutoEnd) return;
     const timer = window.setTimeout(() => {
       void endTurnRef.current();
@@ -494,8 +483,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (!card || !canPlayCard(card)) return false;
     if (isEnemyTargetCard(card) && target.type !== 'enemy') return false;
     if (!isEnemyTargetCard(card) && target.type === 'enemy') return false;
+    const cardWasReserved = Boolean(card.wasReserved);
 
-    const reservedBonusActive = Boolean(card.wasReserved && card.reserveBonus);
+    const reservedBonusActive = Boolean(cardWasReserved && card.reserveBonus);
     const enhancedCard: Card = reservedBonusActive
       ? {
           ...card,
@@ -681,7 +671,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const nextCardDoubleConsumed = gameState.player.nextCardDoubleEffect && reserveOrDoubleMultiplier > 1;
     const nextCardEffectBoostConsumed = shouldUseTenBoost;
     const playedReserveDoubleCardNormally =
-      !playedCard.wasReserved &&
+      !cardWasReserved &&
       ((playedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false);
     setGameState((prev) => ({
       ...prev,
@@ -902,10 +892,20 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         wasReserved: false,
         reservedThisTurn: true,
       };
+      const normalizedHand = prev.hand.map((item) => ({
+        ...item,
+        wasReserved: false,
+        reservedThisTurn: false,
+      }));
+      const normalizedReserved = prev.reserved.map((item) => ({
+        ...item,
+        wasReserved: false,
+        reservedThisTurn: false,
+      }));
       return {
         ...prev,
-        hand: prev.hand.filter((item) => item.id !== cardId),
-        reserved: [...prev.reserved, reservedCard],
+        hand: normalizedHand.filter((item) => item.id !== cardId),
+        reserved: [...normalizedReserved, reservedCard],
         player: {
           ...prev.player,
           nextCardDoubleEffect: hasReserveDouble ? true : prev.player.nextCardDoubleEffect,
@@ -1135,7 +1135,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const ridgepoleDamage =
       ridgepolePower?.effects?.find((e) => e.type === 'ridgepole_damage')?.value ?? 10;
 
-    if (workingState.player.ridgepoleActive && workingState.player.scaffold >= ridgepoleThreshold) {
+    const ridgepoleActive = Boolean(ridgepolePower) || workingState.player.ridgepoleActive;
+    if (ridgepoleActive && workingState.player.scaffold >= ridgepoleThreshold) {
       let dealt = false;
       const defeatedByRidgepole: string[] = [];
       const nextEnemies = workingState.enemies.map((enemy) => {
@@ -1310,6 +1311,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     }
 
     const next = moveToNextTurn(workingState);
+    const onTurnStartBlockBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'block');
+    if (onTurnStartBlockBonus > 0 && next.player.canBlock) {
+      pushPopup(`⛑️ +${onTurnStartBlockBonus}ブロック`, 'player', 'buff');
+    }
 
     // burnダメージによる敗北判定
     if (next.player.currentHp <= 0) {

@@ -46,7 +46,7 @@
 .player-hp-row {
   display: flex;
   align-items: center;
-  min-height: 18px;
+  min-height: 16px;
 }
 
 .player-info-row {
@@ -81,8 +81,19 @@
 
 .hp {
   color: #2ecc71;
-  font-size: 1.12em;
+  font-size: 1.02em;
   line-height: 1;
+}
+
+.player-hp-text,
+.status-hp-value,
+.hp-display {
+  font-size: 12px;
+}
+
+.player-hp-bar-container,
+.status-hp-container {
+  height: 6px;
 }
 
 .hp.hp-mid {
