@@ -117,7 +117,7 @@ interface UseGameStateOptions {
 }
 
 const getMaxTime = (mental: number, timeBonusPerTurn = 0): number =>
-  Number((5 + mental * 0.3 + timeBonusPerTurn).toFixed(1));
+  Math.max(3, Number((5 + mental * 0.3 + timeBonusPerTurn).toFixed(1)));
 
 const createAnxietyCards = (count: number): Card[] =>
   Array.from({ length: count }).map((_, idx) => ({
@@ -981,7 +981,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const onTurnStartDrawBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'draw');
     const onTurnStartBlockBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'block');
     const nextMaxTime = Math.max(
-      1,
+      3,
       getMaxTime(state.player.mental, state.player.timeBonusPerTurn) +
         cliffEdgeTimeBonus -
         state.player.nextTurnTimePenalty,

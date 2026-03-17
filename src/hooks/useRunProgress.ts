@@ -996,13 +996,16 @@ export const useRunProgress = () => {
   });
 
   const onBattleEnd = (result: BattleResult) => {
+    const cleanedDeck = result.deck.filter(
+      (card) => card.type !== 'status' && card.type !== 'curse',
+    );
     dispatch({
       type: 'set_run_stats',
       totalTurns: stateRef.current.totalTurns + (result.battleTurns ?? 0),
       lastDefeatedBy: result.defeatedBy ?? stateRef.current.lastDefeatedBy,
     });
     dispatch({ type: 'set_player', player: sanitizePlayerAfterBattle(result.player) });
-    dispatch({ type: 'set_deck', deck: result.deck });
+    dispatch({ type: 'set_deck', deck: cleanedDeck });
     dispatch({ type: 'set_items', items: result.items });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: stateRef.current.lastTileType });
 

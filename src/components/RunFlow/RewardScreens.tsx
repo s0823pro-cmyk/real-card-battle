@@ -150,7 +150,6 @@ interface CardUpgradeProps {
 }
 
 export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onSkip }: CardUpgradeProps) => {
-  const UPGRADE_DIFF_VISIBLE_ROWS = 4;
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const upgradableCards = cards.filter(
     (card) => !card.upgraded && !card.name.endsWith('+') && card.type !== 'status',
@@ -178,7 +177,7 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
         ]
           .filter((row): row is { kind: 'title'; text: string } | { kind: 'pair'; before: string; after: string } => row !== null)
       : [];
-  const paddedUpgradeRows = Array.from({ length: UPGRADE_DIFF_VISIBLE_ROWS }, (_, idx) => selectedUpgradeRows[idx] ?? null);
+  const paddedUpgradeRows = selectedUpgradeRows;
   const noop = () => {};
 
   return (
@@ -260,13 +259,6 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
                   <div className="upgrade-preview">
                     <div className="upgrade-diff-list">
                       {paddedUpgradeRows.map((row, idx) => {
-                        if (!row) {
-                          return (
-                            <p key={`upgrade-diff-row-${idx}`} className="upgrade-diff-item upgrade-diff-item--empty">
-                              {'\u00A0'}
-                            </p>
-                          );
-                        }
                         if (row.kind === 'title') {
                           return (
                             <p key={`upgrade-diff-row-${idx}`} className="upgrade-diff-item upgrade-diff-item--title">
