@@ -223,9 +223,11 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
           <h2 className="zukan-title">図鑑</h2>
           <div className="zukan-header-actions">
             {mainTab === 'cards' && (
-              <button type="button" className="btn-unlock-all" onClick={unlockAllCards}>
-                全解放
-              </button>
+              import.meta.env.DEV ? (
+                <button type="button" className="btn-unlock-all" onClick={unlockAllCards}>
+                  🛠️ 全解放
+                </button>
+              ) : null
             )}
             <button type="button" className="zukan-close-btn" onClick={onClose}>
               ✕
