@@ -12,7 +12,7 @@ import DefeatScreen from '../Result/DefeatScreen';
 import VictoryScreen from '../Result/VictoryScreen';
 import Timeline from '../Timeline/Timeline';
 import { useGameState } from '../../hooks/useGameState';
-import type { Card } from '../../types/game';
+import type { Card, GameState } from '../../types/game';
 import type { BattleResult, BattleSetup } from '../../types/run';
 import { getEffectiveCardValues } from '../../utils/cardPreview';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
@@ -51,6 +51,9 @@ interface BattleScreenProps {
   setup?: BattleSetup | null;
   onBattleEnd?: (result: BattleResult) => void;
   onConsumeItem?: (itemId: string) => void;
+  onTurnStart?: (state: GameState) => void;
+  onBattleFinished?: () => void;
+  initialGameState?: GameState | null;
 }
 
 const DRAG_CARD_HEIGHT = 168;
@@ -79,7 +82,7 @@ const getUpgradePreviewText = (card: Card): string => {
   return `所要時間 ${card.timeCost} → ${Math.max(1, card.timeCost - 1)}秒`;
 };
 
-const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) => {
+const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattleFinished, initialGameState }: BattleScreenProps) => {
   const noop = () => {};
   const {
     gameState,
@@ -116,7 +119,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
     endTurn,
     concedeBattle,
     retryBattle,
-  } = useGameState({ setup, onBattleEnd, onConsumeItem });
+  } = useGameState({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattleFinished, initialGameState });
 
   const enemyAreaRef = useRef<HTMLElement | null>(null);
   const timebarRowRef = useRef<HTMLDivElement | null>(null);

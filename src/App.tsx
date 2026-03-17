@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { Card, JobId } from './types/game';
+import type { Card, GameState, JobId } from './types/game';
 import type { BattleResult } from './types/run';
 import BattleScreen from './components/BattleScreen/BattleScreen';
 import { DefeatScreen } from './components/DefeatScreen/DefeatScreen';
@@ -32,6 +32,8 @@ import {
 import type { BossReward } from './data/bossRewards';
 import type { StoryScene } from './data/stories/carpenterStory';
 import { preloadAllImages } from './utils/preloadImages';
+import { saveBattleState, loadBattleState, clearBattleState } from './utils/battleSave';
+import type { BattleSaveData } from './utils/battleSave';
 import './App.css';
 import './components/RunMap/RunMapScreen.css';
 import './components/RunFlow/RunFlow.css';
@@ -70,7 +72,10 @@ function App() {
     startRunFromJobSelect,
     resetRun,
   } = useRunProgress();
-  const [savedProgress] = useState(() => loadSavedProgress());
+  const [savedProgress, setSavedProgress] = useState(() => loadSavedProgress());
+  const [battleSave, setBattleSave] = useState<BattleSaveData | null>(() => loadBattleState());
+  const [showBattleRestorePrompt, setShowBattleRestorePrompt] = useState(() => loadBattleState() !== null);
+  const [restoredBattleState, setRestoredBattleState] = useState<GameState | null>(null);
   const [screenTransition, setScreenTransition] = useState<{ phase: TransitionPhase; durationMs: number }>({
     phase: 'idle',
     durationMs: 0,
@@ -137,6 +142,12 @@ function App() {
     });
   }, []);
 
+  const clearAllSaveData = () => {
+    clearBattleState();
+    clearSavedProgress();
+    setSavedProgress(null);
+  };
+
   const runScreenTransition = (action: () => void, fadeOutMs: number, fadeInMs: number) => {
     if (screenTransition.phase !== 'idle') return;
     setScreenTransition({ phase: 'fade-out', durationMs: fadeOutMs });
@@ -202,6 +213,7 @@ function App() {
   };
 
   const handleBattleResult = (result: BattleResult) => {
+    setRestoredBattleState(null);
     const isBossVictory = result.outcome === 'victory' && result.kind === 'boss';
     const area = state.currentArea;
     onBattleEnd(result);
@@ -296,6 +308,9 @@ function App() {
           <BattleScreen
             setup={state.battleSetup}
             onBattleEnd={handleBattleResult}
+            onTurnStart={(gs: GameState) => saveBattleState(gs, state)}
+            onBattleFinished={() => clearBattleState()}
+            initialGameState={restoredBattleState}
           />
         );
       case 'event':
@@ -462,6 +477,61 @@ function App() {
           <p className="preload-progress-text">
             画像を読み込み中… {preloadProgress.loaded}/{preloadProgress.total}
           </p>
+        </div>
+      )}
+      {showBattleRestorePrompt && battleSave && (
+        <div className="restore-overlay">
+          <div className="restore-modal">
+            <span className="restore-icon">⚔️</span>
+            <h3 className="restore-title">バトルが中断されています</h3>
+            <p className="restore-desc">前回のバトルの途中から再開しますか？</p>
+            <div className="restore-buttons">
+              <button
+                type="button"
+                className="btn-restore-continue"
+                onClick={() => {
+                  const save = battleSave;
+                  setShowBattleRestorePrompt(false);
+                  setBattleSave(null);
+                  setRestoredBattleState({
+                    phase: 'player_turn',
+                    turn: save.turn,
+                    maxTime: save.player.timeBonusPerTurn
+                      ? Number((5 + save.player.mental * 0.3 + save.player.timeBonusPerTurn).toFixed(1))
+                      : Number((5 + save.player.mental * 0.3).toFixed(1)),
+                    usedTime: 0,
+                    shuffleAnimation: false,
+                    hand: save.hand,
+                    timeline: [],
+                    reserved: save.reserved,
+                    drawPile: save.drawPile,
+                    discardPile: save.discardPile,
+                    exhaustedCards: save.exhaustedCards,
+                    activePowers: save.activePowers,
+                    player: save.player,
+                    enemies: save.enemies,
+                    executingIndex: -1,
+                    toolSlots: save.toolSlots,
+                  });
+                  continueFromSave(save.runProgress);
+                }}
+              >
+                バトルに戻る
+              </button>
+              <button
+                type="button"
+                className="btn-restore-abandon"
+                onClick={() => {
+                  clearBattleState();
+                  clearSavedProgress();
+                  setBattleSave(null);
+                  setShowBattleRestorePrompt(false);
+                }}
+              >
+                諦めてホームへ
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

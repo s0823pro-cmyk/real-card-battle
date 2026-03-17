@@ -110,6 +110,9 @@ interface UseGameStateOptions {
   setup?: BattleSetup | null;
   onBattleEnd?: (result: BattleResult) => void;
   onConsumeItem?: (itemId: string) => void;
+  onTurnStart?: (state: GameState) => void;
+  onBattleFinished?: () => void;
+  initialGameState?: GameState | null;
 }
 
 const getMaxTime = (mental: number, timeBonusPerTurn = 0): number =>
@@ -244,7 +247,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const { resolveCard, equipTool, applyToolEffects } = useBattleLogic();
   const { getEnemyIntent, executeEnemyTurn } = useEnemyAI();
 
-  const [gameState, setGameState] = useState<GameState>(() => createInitialGameState(options?.setup));
+  const [gameState, setGameState] = useState<GameState>(
+    () => options?.initialGameState ?? createInitialGameState(options?.setup),
+  );
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [sellingCardId, setSellingCardId] = useState<string | null>(null);
   const [returningCardId, setReturningCardId] = useState<string | null>(null);
@@ -776,6 +781,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           },
         });
         setBattleMessage('勝利！');
+        options?.onBattleFinished?.();
         options?.onBattleEnd?.({
           outcome: 'victory',
           player: {
@@ -1061,6 +1067,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         },
       });
       setBattleMessage('勝利！');
+      options?.onBattleFinished?.();
       options?.onBattleEnd?.({
         outcome: 'victory',
         player: {
@@ -1129,6 +1136,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           },
         });
         setBattleMessage('勝利！');
+        options?.onBattleFinished?.();
         options?.onBattleEnd?.({
           outcome: 'victory',
           player: {
@@ -1233,6 +1241,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         player: clearBattleFlags(workingState.player),
       });
       setBattleMessage('敗北...');
+      options?.onBattleFinished?.();
       options?.onBattleEnd?.({
         outcome: 'defeat',
         player: clearBattleFlags(workingState.player),
@@ -1271,6 +1280,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (next.player.currentHp <= 0) {
       setGameState({ ...next, phase: 'defeat', player: clearBattleFlags(next.player) });
       setBattleMessage('敗北...');
+      options?.onBattleFinished?.();
       options?.onBattleEnd?.({
         outcome: 'defeat',
         player: clearBattleFlags(next.player),
@@ -1297,6 +1307,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setGameState(next);
     setLastPlayedCard(null);
     setBattleMessage('次のターン');
+    options?.onTurnStart?.(next);
   }
 
   const upgradeHandCardById = (cardId: string): boolean => {
@@ -1373,6 +1384,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       player: clearedPlayer,
     }));
     setBattleMessage('敗北...');
+    options?.onBattleFinished?.();
     options?.onBattleEnd?.({
       outcome: 'defeat',
       player: clearedPlayer,

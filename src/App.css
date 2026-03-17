@@ -68,3 +68,88 @@
   margin: 0;
   text-align: center;
 }
+
+.restore-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.restore-modal {
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 32px 24px;
+  width: 80%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.restore-icon {
+  font-size: 40px;
+}
+
+.restore-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 16px;
+  font-weight: 900;
+  color: #e6edf3;
+  margin: 0;
+}
+
+.restore-desc {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.restore-buttons {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-restore-continue {
+  width: 100%;
+  background: #e74c3c;
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 15px;
+  font-weight: 900;
+  padding: 14px 0;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+
+.btn-restore-continue:active {
+  filter: brightness(0.85);
+}
+
+.btn-restore-abandon {
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.btn-restore-abandon:active {
+  filter: brightness(0.85);
+}
