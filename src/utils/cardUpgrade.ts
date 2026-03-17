@@ -24,13 +24,17 @@ export function upgradeCardByDefinition(
 }
 
 function applyUpgrade(card: Card, upgrade: CardUpgrade): Card {
+  const sanitizedDescription = upgrade.description
+    .replace(/\s*[（(]所要時間[^）)]*[）)]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
   return {
     ...card,
     name: upgrade.name,
     damage: upgrade.damage ?? card.damage,
     block: upgrade.block ?? card.block,
     timeCost: upgrade.timeCost ?? card.timeCost,
-    description: upgrade.description,
+    description: sanitizedDescription,
     effects: upgrade.effects ?? card.effects,
     upgraded: true,
   };

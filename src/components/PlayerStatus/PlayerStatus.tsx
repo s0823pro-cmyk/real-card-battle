@@ -45,7 +45,7 @@ const PlayerStatus = ({
   const awakeThreshold = Math.floor(player.maxHp * 0.3);
   const remainingToAwake = Math.max(0, player.currentHp - awakeThreshold);
   const unemployedLabel =
-    hungryState === 'awakened' ? '⚡ 覚醒中' : `💢 あと${remainingToAwake}で覚醒`;
+    hungryState === 'awakened' ? '⚡ 覚醒' : `💢 ${remainingToAwake}`;
   const unemployedClass =
     hungryState === 'awakened'
       ? 'awakened-state'
@@ -90,51 +90,57 @@ const PlayerStatus = ({
   return (
     <section className={`player-status ${isPlayerHit ? 'player-hit' : ''}`}>
       <div className="player-row player-row--top">
-        <Tooltip tooltipKey="hp">
-          <span className={`hp ${hpClass}`}>♥ {player.currentHp}/{player.maxHp}</span>
-        </Tooltip>
-        <Tooltip tooltipKey="block">
-          <span className={`block ${blockClass}`}>🛡 {player.block}</span>
-        </Tooltip>
-        {player.jobId === 'carpenter' && (
-          <Tooltip tooltipKey="scaffold">
-            <span key={`scaffold-${player.scaffold}`} className="scaffold scaffold-bounce">
-              🏗️ {player.scaffold}
-            </span>
-          </Tooltip>
-        )}
-        {player.jobId === 'cook' && (
-          <Tooltip tooltipKey="cooking">
-            <span key={`cook-${player.cookingGauge}`} className="cooking-gauge scaffold-bounce">
-              🍳 {player.cookingGauge}
-            </span>
-          </Tooltip>
-        )}
-        {player.jobId === 'unemployed' && (
-          <Tooltip tooltipKey="hungry">
-            <span className={unemployedClass}>{unemployedLabel}</span>
-          </Tooltip>
-        )}
-        {player.deathWishActive && (
-          <Tooltip label="💀 デスウィッシュ" description="HP回復無効。全アタック+4ダメージ">
-            <span className="status-death-wish">💀</span>
-          </Tooltip>
-        )}
-        {player.ridgepoleActive && (
-          <Tooltip label="🎌 棟上げ" description="足場5以上で毎ターン全敵10ダメージ">
-            <span className="status-ridgepole">🎌</span>
-          </Tooltip>
-        )}
-        {player.templeCarpenterActive && (
-          <Tooltip label="🏯 宮大工の技" description="段取りボーナスが+50%に強化">
-            <span className="status-temple">🏯</span>
-          </Tooltip>
-        )}
-        {player.cliffEdgeActive && (
-          <Tooltip label="⚡ 崖っぷちの底力" description="覚醒中：毎ターン2ドロー + タイムバー+1秒">
-            <span className="status-cliff-edge">⚡</span>
-          </Tooltip>
-        )}
+        <div className="player-main-stats">
+          <div className="player-hp-row">
+            <Tooltip tooltipKey="hp">
+              <span className={`hp ${hpClass}`}>♥ {player.currentHp}/{player.maxHp}</span>
+            </Tooltip>
+          </div>
+          <div className="player-info-row">
+            <Tooltip tooltipKey="block">
+              <span className={`block ${blockClass}`}>🛡 {player.block}</span>
+            </Tooltip>
+            {player.jobId === 'carpenter' && (
+              <Tooltip tooltipKey="scaffold">
+                <span key={`scaffold-${player.scaffold}`} className="scaffold scaffold-bounce">
+                  🏗️ {player.scaffold}
+                </span>
+              </Tooltip>
+            )}
+            {player.jobId === 'cook' && (
+              <Tooltip tooltipKey="cooking">
+                <span key={`cook-${player.cookingGauge}`} className="cooking-gauge scaffold-bounce">
+                  🍳 {player.cookingGauge}
+                </span>
+              </Tooltip>
+            )}
+            {player.jobId === 'unemployed' && (
+              <Tooltip tooltipKey="hungry">
+                <span className={unemployedClass}>{unemployedLabel}</span>
+              </Tooltip>
+            )}
+            {player.deathWishActive && (
+              <Tooltip label="💀 デスウィッシュ" description="HP回復無効。全アタック+4ダメージ">
+                <span className="status-death-wish">💀</span>
+              </Tooltip>
+            )}
+            {player.ridgepoleActive && (
+              <Tooltip label="🎌 棟上げ" description="足場5以上で毎ターン全敵10ダメージ">
+                <span className="status-ridgepole">🎌</span>
+              </Tooltip>
+            )}
+            {player.templeCarpenterActive && (
+              <Tooltip label="🏯 宮大工の技" description="段取りボーナスが+50%に強化">
+                <span className="status-temple">🏯</span>
+              </Tooltip>
+            )}
+            {player.cliffEdgeActive && (
+              <Tooltip label="⚡ 崖っぷちの底力" description="覚醒中：毎ターン2ドロー + タイムバー+1秒">
+                <span className="status-cliff-edge">⚡</span>
+              </Tooltip>
+            )}
+          </div>
+        </div>
         <ToolSlots toolSlots={toolSlots} activePowers={activePowers} jobId={player.jobId} />
       </div>
       <div className="player-row player-row--sub">

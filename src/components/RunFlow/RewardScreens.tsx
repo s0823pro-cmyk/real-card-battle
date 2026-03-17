@@ -4,7 +4,7 @@ import type { Card, JobId } from '../../types/game';
 import type { Omamori } from '../../types/run';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import CardComponent from '../Hand/CardComponent';
-import { getUpgradeForCard } from '../../data/upgrades';
+import { upgradeCardByJobId } from '../../utils/cardUpgrade';
 
 interface CardRewardProps {
   cards: Card[];
@@ -144,17 +144,36 @@ interface CardUpgradeProps {
   onSkip: () => void;
 }
 
-const getUpgradePreview = (card: Card, jobId: JobId): string => {
-  const def = getUpgradeForCard(card, jobId);
-  return def?.description ?? '強化後の効果が適用されます';
-};
-
 export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onSkip }: CardUpgradeProps) => {
+  const UPGRADE_DIFF_VISIBLE_ROWS = 4;
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const upgradableCards = cards.filter(
     (card) => !card.upgraded && !card.name.endsWith('+') && card.type !== 'status',
   );
   const selectedCard = upgradableCards.find((card) => card.id === selectedCardId) ?? null;
+  const selectedUpgradedCard = selectedCard ? upgradeCardByJobId(selectedCard, jobId) : null;
+  const selectedUpgradeRows =
+    selectedCard && selectedUpgradedCard
+      ? [
+          { kind: 'title' as const, text: '《強化後》' },
+          selectedCard.description !== selectedUpgradedCard.description
+            ? {
+                kind: 'pair' as const,
+                before: selectedCard.description,
+                after: selectedUpgradedCard.description,
+              }
+            : null,
+          selectedCard.timeCost !== selectedUpgradedCard.timeCost
+            ? {
+                kind: 'pair' as const,
+                before: `タイムコスト${selectedCard.timeCost}秒`,
+                after: `タイムコスト${selectedUpgradedCard.timeCost}秒`,
+              }
+            : null,
+        ]
+          .filter((row): row is { kind: 'title'; text: string } | { kind: 'pair'; before: string; after: string } => row !== null)
+      : [];
+  const paddedUpgradeRows = Array.from({ length: UPGRADE_DIFF_VISIBLE_ROWS }, (_, idx) => selectedUpgradeRows[idx] ?? null);
   const noop = () => {};
 
   return (
@@ -178,11 +197,13 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
                 <div className="upgrade-card-list-container">
                   <div className="upgrade-card-list">
                     {upgradableCards.map((card, idx) => (
+                      (() => {
+                        const isSelected = selectedCardId === card.id;
+                        const displayCard = isSelected ? upgradeCardByJobId(card, jobId) : card;
+                        return (
                       <div
                         key={`${card.id}_${idx}`}
-                        className={`upgrade-card-item ${
-                          selectedCardId === card.id ? 'upgrade-card-item--selected' : ''
-                        }`}
+                        className={`upgrade-card-item ${isSelected ? 'upgrade-card-item--selected' : ''}`}
                         onClick={() => setSelectedCardId(card.id)}
                         role="button"
                         tabIndex={0}
@@ -194,7 +215,7 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
                         }}
                       >
                         <CardComponent
-                          card={card}
+                          card={displayCard}
                           jobId={jobId}
                           selected={false}
                           disabled={false}
@@ -204,7 +225,7 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
                           isGhost={false}
                           isDragging={false}
                           isDragUnavailable={false}
-                          effectiveValues={getBaseEffectiveValues(card)}
+                          effectiveValues={getBaseEffectiveValues(displayCard)}
                           onSelect={noop}
                           onPointerDown={noop}
                           onPointerMove={noop}
@@ -225,13 +246,38 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
                           }
                         />
                       </div>
+                        );
+                      })()
                     ))}
                   </div>
                 </div>
                 {selectedCard && (
                   <div className="upgrade-preview">
-                    <span className="upgrade-preview-label">強化後：</span>
-                    <span className="upgrade-preview-text">{getUpgradePreview(selectedCard, jobId)}</span>
+                    <div className="upgrade-diff-list">
+                      {paddedUpgradeRows.map((row, idx) => {
+                        if (!row) {
+                          return (
+                            <p key={`upgrade-diff-row-${idx}`} className="upgrade-diff-item upgrade-diff-item--empty">
+                              {'\u00A0'}
+                            </p>
+                          );
+                        }
+                        if (row.kind === 'title') {
+                          return (
+                            <p key={`upgrade-diff-row-${idx}`} className="upgrade-diff-item upgrade-diff-item--title">
+                              {row.text}
+                            </p>
+                          );
+                        }
+                        return (
+                          <p key={`upgrade-diff-row-${idx}`} className="upgrade-diff-item">
+                            <span className="upgrade-diff-before">{row.before}</span>
+                            <span className="upgrade-diff-arrow">→</span>
+                            <span className="upgrade-diff-after">{row.after}</span>
+                          </p>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
                 <div className="upgrade-note">

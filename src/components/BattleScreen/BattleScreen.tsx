@@ -272,10 +272,11 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
       const cardTop = clientY + DRAG_DISPLAY_Y_OFFSET;
       const anchorX = clientX; // カード上中央
       const anchorY = cardTop + 10;
-      const zoneTop = Math.max(timebarRect.bottom + 4, reserveRect.top + 4);
-      const zoneBottom = reserveRect.bottom - 6;
-      const zoneLeft = reserveRect.left + 10;
-      const zoneRight = reserveRect.left + reserveRect.width / 2 - 8; // 下エリア左半分
+      // 温存の有効範囲を内側に絞って、誤反応を減らす
+      const zoneTop = Math.max(timebarRect.bottom + 8, reserveRect.top + 10);
+      const zoneBottom = reserveRect.bottom - 12;
+      const zoneLeft = reserveRect.left + 18;
+      const zoneRight = reserveRect.left + reserveRect.width / 2 - 18; // 下エリア左半分（内側）
       const inReserveLeftZone =
         anchorX >= zoneLeft &&
         anchorX <= zoneRight &&

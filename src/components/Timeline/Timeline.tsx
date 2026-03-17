@@ -61,7 +61,8 @@ const Timeline = ({
   const displayedRemainingTime = hasPreview ? previewRemainingTime : remainingTime;
   const displayClockTimeText = hasPreview ? displayedRemainingTime.toFixed(1) : String(Math.round(displayedRemainingTime));
   const [clockTimeMainPart, clockTimeDecimalPart] = displayClockTimeText.split('.');
-  const displayBarRemainingText = `${Math.round(remainingTime)}s`;
+  const barDisplayedTime = hasPreview ? previewRemainingTime : remainingTime;
+  const [barDisplayedIntPart, barDisplayedDecimalPart] = barDisplayedTime.toFixed(1).split('.');
   const previewRatio = hasPreview ? Math.max(0, Math.min(1, previewRemainingTime / Math.max(1, maxTime))) : remainingRatio;
   const previewPercent = previewRatio * 100;
   const previewLossPercent = hasPreview ? Math.max(0, fillPercent - previewPercent) : 0;
@@ -155,17 +156,13 @@ const Timeline = ({
               </div>
               <span
                 key={remainingTime.toFixed(1)}
-                className={`timeline-inline-remaining ${remainingTime <= 2 ? 'danger' : ''}`}
+                className={`timeline-inline-remaining ${barDisplayedTime <= 2 ? 'danger' : ''} ${
+                  hasPreview ? 'is-preview' : ''
+                }`}
               >
-                {displayBarRemainingText}
+                {barDisplayedIntPart}
+                <span className="timeline-inline-time-decimal">.{barDisplayedDecimalPart}</span>ｓ
               </span>
-              {hasPreview && (
-                <div
-                  className={`timeline-inline-preview ${previewRemainingTime <= 2 ? 'danger' : ''}`}
-                >
-                  → {previewRemainingTime.toFixed(1)}s（-{previewCost.toFixed(1)}s）
-                </div>
-              )}
             </div>
           </div>
         ) : null}

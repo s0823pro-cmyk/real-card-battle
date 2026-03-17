@@ -325,7 +325,7 @@
 .timeline-bar {
   position: relative;
   width: 100%;
-  height: 22px;
+  height: 24px;
   border: 2px solid var(--border-subtle);
   border-radius: 8px;
   overflow: visible;
@@ -337,8 +337,8 @@
 }
 
 .timeline-bar.drop-active {
-  border-color: var(--color-gold);
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
+  border-color: rgba(46, 204, 113, 0.65);
+  box-shadow: 0 0 15px rgba(46, 204, 113, 0.35);
 }
 
 .timeline-mental-track {
@@ -403,6 +403,16 @@
   color: #ff8989;
 }
 
+.timeline-inline-remaining.is-preview {
+  color: #ff9b9b;
+  text-shadow: 0 0 8px rgba(255, 120, 120, 0.35);
+  animation: timeline-preview-pulse 0.8s ease-in-out infinite;
+}
+
+.timeline-inline-remaining.is-preview.danger {
+  color: #ff6262;
+}
+
 .timeline-inline-preview {
   margin-left: 6px;
   font-size: 0.72rem;
@@ -414,6 +424,10 @@
 
 .timeline-inline-preview.danger {
   color: #ff6262;
+}
+
+.timeline-inline-time-decimal {
+  font-size: 0.82em;
 }
 
 .btn-turn-end {

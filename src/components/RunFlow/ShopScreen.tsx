@@ -16,7 +16,6 @@ interface Props {
   removeCost: number;
   hasUsedSellThisVisit: boolean;
   onClose: () => void;
-  canCarryMoreItems: boolean;
 }
 
 const renderName = (shopItem: ShopItem): string => {
@@ -42,7 +41,6 @@ const ShopScreen = ({
   removeCost,
   hasUsedSellThisVisit,
   onClose,
-  canCarryMoreItems,
 }: Props) => {
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [showCardRemove, setShowCardRemove] = useState(false);
@@ -173,8 +171,7 @@ const ShopScreen = ({
             <p>アイテム</p>
             <div className="shop-grid">
               {runItems.map((item) => {
-                const disabled =
-                  item.purchased || item.price > gold || (item.type === 'item' && !canCarryMoreItems);
+                const disabled = item.purchased || item.price > gold;
                 return (
                   <button
                     key={item.id}

@@ -350,12 +350,16 @@
   gap: 8px;
   padding: 0 12px;
   margin-bottom: 2px;
-  transform: translateY(-6px);
+  transform: translateY(6px);
   width: 100%;
   box-sizing: border-box;
   pointer-events: none;
   position: relative;
   z-index: 120;
+}
+
+.battle-timebar-row:not(.battle-timebar-row--clock) {
+  transform: translateY(32px);
 }
 
 .battle-timebar-row.timebar-row--active .timeline-bar {
@@ -383,9 +387,9 @@
 .battle-timebar-row--clock .timeline-clock {
   position: absolute;
   left: 50%;
-  top: 0;
+  top: 28px;
   bottom: auto;
-  transform: translateX(-50%) scale(2);
+  transform: translateX(-50%) scale(2.2);
   transform-origin: top center;
   z-index: 25;
 }
@@ -413,12 +417,13 @@
   z-index: 10;
 }
 
-.battle-hand-area--clock-align {
-  transform: translateY(-2px);
+.battle-hand-area--clock-align,
+.battle-hand-area--bar-align {
+  transform: translateY(32px);
 }
 
 .battle-hand-area--bar-align {
-  transform: translateY(-10px);
+  transform: translateY(26px);
 }
 
 .battle-hand-area .hand-area {

@@ -27,8 +27,9 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
   },
   'ヤケクソパンチ': {
     name: 'ヤケクソパンチ+',
-    timeCost: 0,
-    description: '減っているHP×1.2ダメージ。覚醒中：所要時間0秒',
+    timeCost: 3,
+    damage: 20,
+    description: '20ダメージ。手札にこのカード以外があると使用不可',
   },
 
   // コモン

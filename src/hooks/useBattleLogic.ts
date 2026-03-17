@@ -59,8 +59,7 @@ export const useBattleLogic = () => {
     enemies.findIndex((enemy) => enemy.currentHp > 0);
 
   const equipTool = (card: Card, toolSlots: ToolSlot[]): ToolSlot[] => {
-    const next = [...toolSlots, { card }];
-    return next.slice(-3);
+    return [...toolSlots, { card }];
   };
 
   const applyToolEffects = (toolSlots: ToolSlot[], player: PlayerState): PlayerState => {

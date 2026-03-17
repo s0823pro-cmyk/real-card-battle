@@ -346,6 +346,22 @@
   opacity: 0.9;
 }
 
+.card-cost-badge.card-value--buffed .card-cost-value,
+.card-cost-badge.card-value--buffed .card-cost-unit {
+  color: #2ed573;
+  text-shadow:
+    0 0 4px rgba(46, 213, 115, 0.6),
+    0 0 2px rgba(0, 0, 0, 0.8);
+}
+
+.card-cost-badge.card-value--debuffed .card-cost-value,
+.card-cost-badge.card-value--debuffed .card-cost-unit {
+  color: #ff4757;
+  text-shadow:
+    0 0 4px rgba(255, 71, 87, 0.6),
+    0 0 2px rgba(0, 0, 0, 0.8);
+}
+
 .card-text-band {
   position: absolute;
   bottom: 0;
@@ -596,6 +612,16 @@
 
 .card-value--changed {
   animation: value-pulse 0.3s ease-out;
+}
+
+.card-inline-value--buffed {
+  color: #2ed573;
+  font-weight: 700;
+}
+
+.card-inline-value--debuffed {
+  color: #ff6b81;
+  font-weight: 700;
 }
 
 .time-shortage {

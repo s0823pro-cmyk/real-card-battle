@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { BossRewardType } from '../data/bossRewards';
 import { CURSE_CARD } from '../data/carpenterDeck';
 import { getJobConfig } from '../data/jobs';
@@ -60,6 +60,12 @@ export type DevDestination =
   | 'card_reward'
   | 'boss_reward'
   | 'story';
+
+export interface PendingItemReplacement {
+  source: 'shop' | 'hotel';
+  incomingItem: RunItem;
+  shopId?: string;
+}
 
 type SerializedProgress = Omit<GameProgress, 'unlockedCardNames'> & { unlockedCardNames: string[] };
 
@@ -477,6 +483,7 @@ const applySingleEffect = (
 
 export const useRunProgress = () => {
   const [state, dispatch] = useReducer(reducer, undefined, makeInitialProgress);
+  const [pendingItemReplacement, setPendingItemReplacement] = useState<PendingItemReplacement | null>(null);
   const stateRef = useRef(state);
   const prevScreenRef = useRef(state.currentScreen);
   useEffect(() => {
@@ -782,13 +789,16 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_screen', screen: 'map' });
       return;
     }
-    if (stateRef.current.items.length >= 3) {
-      dispatch({ type: 'set_screen', screen: 'map' });
-      return;
-    }
     const randomItem = generateShopItems(1)[0];
     if (!randomItem) {
       dispatch({ type: 'set_screen', screen: 'map' });
+      return;
+    }
+    if (stateRef.current.items.length >= 3) {
+      setPendingItemReplacement({
+        source: 'hotel',
+        incomingItem: randomItem,
+      });
       return;
     }
     dispatch({ type: 'set_items', items: [...stateRef.current.items, randomItem] });
@@ -852,10 +862,19 @@ export const useRunProgress = () => {
       shop.type === 'card' && shop.item
         ? [...stateRef.current.deck, shop.item as Card]
         : [...stateRef.current.deck];
-    const nextItems =
-      shop.type === 'item' && shop.item && stateRef.current.items.length < 3
-        ? [...stateRef.current.items, shop.item as RunItem]
-        : [...stateRef.current.items];
+    let nextItems = [...stateRef.current.items];
+    if (shop.type === 'item' && shop.item) {
+      const incomingItem = shop.item as RunItem;
+      if (nextItems.length >= 3) {
+        setPendingItemReplacement({
+          source: 'shop',
+          incomingItem,
+          shopId,
+        });
+        return;
+      }
+      nextItems = [...nextItems, incomingItem];
+    }
     const nextOmamoris =
       shop.type === 'omamori' && shop.item
         ? [...stateRef.current.omamoris, shop.item as Omamori]
@@ -870,6 +889,54 @@ export const useRunProgress = () => {
         item.id === shopId ? { ...item, purchased: true } : item,
       ),
     });
+  };
+
+  const resolvePendingItemReplacement = (discardIndex: number | null) => {
+    const pending = pendingItemReplacement;
+    if (!pending) return;
+    if (discardIndex === null) {
+      setPendingItemReplacement(null);
+      return;
+    }
+    const currentItems = [...stateRef.current.items];
+    if (discardIndex < 0 || discardIndex >= currentItems.length) return;
+    const replacedItems = currentItems.map((item, idx) => (idx === discardIndex ? pending.incomingItem : item));
+
+    if (pending.source === 'hotel') {
+      dispatch({ type: 'set_items', items: replacedItems });
+      dispatch({ type: 'set_hotel_item_received', used: true });
+      dispatch({ type: 'set_screen', screen: 'map' });
+      setPendingItemReplacement(null);
+      return;
+    }
+
+    const shopId = pending.shopId;
+    if (!shopId) {
+      setPendingItemReplacement(null);
+      return;
+    }
+    const shop = stateRef.current.activeShopItems.find((item) => item.id === shopId && !item.purchased);
+    if (!shop || shop.type !== 'item' || !shop.item) {
+      setPendingItemReplacement(null);
+      return;
+    }
+    if (stateRef.current.player.gold < shop.price) {
+      setPendingItemReplacement(null);
+      return;
+    }
+
+    dispatch({
+      type: 'set_player',
+      player: { ...stateRef.current.player, gold: stateRef.current.player.gold - shop.price },
+    });
+    dispatch({ type: 'set_items', items: replacedItems });
+    dispatch({
+      type: 'set_shop',
+      shopItems: stateRef.current.activeShopItems.map((item) =>
+        item.id === shopId ? { ...item, purchased: true } : item,
+      ),
+    });
+    setPendingItemReplacement(null);
   };
 
   const sellPawnshopCard = (cardId: string) => {
@@ -1027,6 +1094,7 @@ export const useRunProgress = () => {
   };
 
   const resetRun = () => {
+    setPendingItemReplacement(null);
     const resetJobId = stateRef.current.jobId;
     const jobConfig = getJobConfig(resetJobId);
     const nextBoard = updateBoardPosition(generateBoard(), 1);
@@ -1100,6 +1168,7 @@ export const useRunProgress = () => {
   };
 
   const continueFromSave = (saved: GameProgress) => {
+    setPendingItemReplacement(null);
     dispatch({ type: 'set_job', jobId: saved.jobId });
     dispatch({ type: 'set_player', player: saved.player });
     dispatch({ type: 'set_deck', deck: saved.deck });
@@ -1141,6 +1210,7 @@ export const useRunProgress = () => {
   };
 
   const startDevNavigation = (destination: Exclude<DevDestination, 'boss_reward' | 'story'>) => {
+    setPendingItemReplacement(null);
     const jobId: JobId = 'carpenter';
     const jobConfig = getJobConfig(jobId);
     const area = destination === 'battle_boss_2' ? 2 : destination === 'battle_boss_3' ? 3 : 1;
@@ -1285,6 +1355,7 @@ export const useRunProgress = () => {
   };
 
   const startRunFromJobSelect = (jobId: JobId) => {
+    setPendingItemReplacement(null);
     const jobConfig = getJobConfig(jobId);
     const nextPlayer: PlayerState = {
       ...stateRef.current.player,
@@ -1352,6 +1423,7 @@ export const useRunProgress = () => {
 
   return {
     state,
+    pendingItemReplacement,
     branchPreviews,
     rollDiceAndMove,
     chooseBranch,
@@ -1359,6 +1431,7 @@ export const useRunProgress = () => {
     hotelHeal,
     hotelMeditate,
     hotelGetItem,
+    resolvePendingItemReplacement,
     openHotelUpgrade,
     closeCardUpgrade,
     upgradeDeckCard,

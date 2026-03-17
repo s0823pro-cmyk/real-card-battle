@@ -307,12 +307,16 @@
   pointer-events: none;
 }
 
+.upgrade-screen .card-upgrade-badge {
+  display: none;
+}
+
 .upgrade-preview {
   margin: 0 16px;
   background: rgba(240, 180, 41, 0.08);
   border: 1px solid rgba(240, 180, 41, 0.25);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 4px 10px 6px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -330,6 +334,51 @@
   color: #f0b429;
   font-family: var(--font-ui);
   line-height: 1.5;
+}
+
+.upgrade-diff-list {
+  margin-top: 0;
+  font-size: 13px;
+  line-height: 1.25;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  height: calc(1.25em * 4 + 3px);
+  justify-content: flex-start;
+}
+
+.upgrade-diff-item {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.92);
+  font-family: var(--font-ui);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upgrade-diff-item--title {
+  color: #f0b429;
+  font-weight: 700;
+}
+
+.upgrade-diff-before {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.upgrade-diff-arrow {
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0 2px;
+}
+
+.upgrade-diff-after {
+  color: #2ed573;
+}
+
+.upgrade-diff-item--empty {
+  color: transparent;
+  user-select: none;
 }
 
 .upgrade-actions {

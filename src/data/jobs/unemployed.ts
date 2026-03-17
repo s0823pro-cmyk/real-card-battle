@@ -33,12 +33,12 @@ export const UNEMPLOYED_STARTER_DECK: Card[] = [
   { id: 'cardboard_2', name: '段ボールの盾', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '📦', sellValue: 5, imageUrl: cardboardShieldImage },
   { id: 'cardboard_3', name: '段ボールの盾', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '📦', sellValue: 5, imageUrl: cardboardShieldImage },
   { id: 'dogeza', name: '土下座', type: 'skill', timeCost: 1, description: '敵1体の攻撃力-3（2ターン）', icon: '🙇', sellValue: 5, effects: [{ type: 'debuff_enemy_atk', value: 3, duration: 2 }], imageUrl: dogezaImage },
-  { id: 'kiai', name: '気合い', type: 'skill', timeCost: 1, description: '自分にダメージ5、タイムバー+2秒', icon: '💢', sellValue: 5, effects: [{ type: 'self_damage', value: 5 }, { type: 'time_boost', value: 2 }], imageUrl: fightingSpiritImage },
-  { id: 'yakekuso', name: 'ヤケクソパンチ', type: 'attack', timeCost: 2, description: '減っているHP分のダメージ。覚醒中：所要時間1秒', damage: 0, icon: '💥', sellValue: 5, tags: ['missing_hp_damage'], imageUrl: desperatePunchImage },
+  { id: 'kiai', name: '気合い', type: 'skill', timeCost: 1, description: '自分にダメージ5、残り時間+2秒', icon: '💢', sellValue: 5, effects: [{ type: 'self_damage', value: 5 }, { type: 'time_boost', value: 2 }], imageUrl: fightingSpiritImage },
+  { id: 'yakekuso', name: 'ヤケクソパンチ', type: 'attack', timeCost: 4, description: '14ダメージ。手札にこのカード以外があると使用不可', damage: 14, icon: '💥', sellValue: 5, tags: ['solo_play_only'], imageUrl: desperatePunchImage },
 ];
 
 export const UNEMPLOYED_COMMON_POOL: Card[] = [
-  { id: 'can', name: '空き缶投げ', type: 'attack', timeCost: 1, description: '4ダメージ', damage: 4, icon: '🥫', sellValue: 5, imageUrl: emptyCanImage },
+  { id: 'can', name: '空き缶投げ', type: 'attack', timeCost: 0, description: '4ダメージ', damage: 4, icon: '🥫', sellValue: 5, imageUrl: emptyCanImage },
   { id: 'newspaper', name: '新聞紙アーマー', type: 'skill', timeCost: 1, description: '3ブロック、カード1枚ドロー', block: 3, icon: '📰', sellValue: 5, effects: [{ type: 'draw', value: 1 }], imageUrl: newspaperArmorImage },
   { id: 'umbrella', name: '傘で突く', type: 'attack', timeCost: 2, description: '7ダメージ、2ブロック', damage: 7, block: 2, icon: '☂️', sellValue: 5, imageUrl: umbrellaStabImage },
   {

@@ -44,6 +44,7 @@ type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 function App() {
   const {
     state,
+    pendingItemReplacement,
     branchPreviews,
     rollDiceAndMove,
     chooseBranch,
@@ -51,6 +52,7 @@ function App() {
     hotelHeal,
     hotelMeditate,
     hotelGetItem,
+    resolvePendingItemReplacement,
     openHotelUpgrade,
     closeCardUpgrade,
     upgradeDeckCard,
@@ -346,7 +348,7 @@ function App() {
             onUpgrade={openHotelUpgrade}
             onMeditate={hotelMeditate}
             onGetItem={hotelGetItem}
-            canReceiveItem={state.items.length < 3 && !state.hotelItemReceivedThisVisit}
+            canReceiveItem={!state.hotelItemReceivedThisVisit}
             itemReceivedThisVisit={state.hotelItemReceivedThisVisit}
             isItemInventoryFull={state.items.length >= 3}
           />
@@ -364,7 +366,6 @@ function App() {
             hasUsedSellThisVisit={state.pawnshopSellUsedThisVisit}
             jobId={state.jobId}
             onClose={closePawnshop}
-            canCarryMoreItems={state.items.length < 3}
           />
         );
       case 'shrine':
@@ -562,6 +563,38 @@ function App() {
                 諦めてホームへ
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {pendingItemReplacement && (
+        <div className="item-replace-overlay">
+          <div className="item-replace-modal">
+            <h3 className="item-replace-title">入れ替えるアイテムを選択</h3>
+            <p className="item-replace-desc">
+              「{pendingItemReplacement.incomingItem.name}」を入手します。捨てるアイテムを選んでください。
+            </p>
+            <div className="item-replace-list">
+              {state.items.map((item, idx) => (
+                <button
+                  key={`replace-item-${item.id}-${idx}`}
+                  type="button"
+                  className="item-replace-button"
+                  onClick={() => resolvePendingItemReplacement(idx)}
+                >
+                  <span className="item-replace-name">
+                    {item.icon ?? '🎒'} {item.name}
+                  </span>
+                  <span className="item-replace-action">これを捨てる</span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="item-replace-cancel"
+              onClick={() => resolvePendingItemReplacement(null)}
+            >
+              キャンセル
+            </button>
           </div>
         </div>
       )}

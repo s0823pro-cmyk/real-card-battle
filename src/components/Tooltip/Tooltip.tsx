@@ -10,18 +10,20 @@ interface TooltipProps {
   tooltipKey?: TooltipKey;
   label?: string;
   description?: string;
+  touchMode?: 'tap' | 'hold';
   children: ReactNode;
 }
 
 const PADDING = 8;
 
-const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => {
+const Tooltip = ({ tooltipKey, label, description, touchMode = 'tap', children }: TooltipProps) => {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: -9999, left: -9999 });
   const [calculated, setCalculated] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const hideTimerRef = useRef<number | null>(null);
+  const holdDelayTimerRef = useRef<number | null>(null);
   const touchIdentifierRef = useRef<number | null>(null);
   const data = tooltipKey
     ? STATUS_TOOLTIPS[tooltipKey as keyof typeof STATUS_TOOLTIPS] ??
@@ -41,6 +43,9 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
       // アンマウント時：タイマーとタッチ状態をクリア
       if (hideTimerRef.current !== null) {
         window.clearTimeout(hideTimerRef.current);
+      }
+      if (holdDelayTimerRef.current !== null) {
+        window.clearTimeout(holdDelayTimerRef.current);
       }
       touchIdentifierRef.current = null;
       setPosition({ top: -9999, left: -9999 });
@@ -124,6 +129,13 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
     }, 2000);
   };
 
+  const clearHoldDelayTimer = () => {
+    if (holdDelayTimerRef.current !== null) {
+      window.clearTimeout(holdDelayTimerRef.current);
+      holdDelayTimerRef.current = null;
+    }
+  };
+
   if (!data) return <>{children}</>;
 
   return (
@@ -140,7 +152,15 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
         touchIdentifierRef.current = touch.identifier;
         event.preventDefault();
         event.stopPropagation();
-        showTooltipWithTimeout();
+        if (touchMode === 'hold') {
+          clearHoldDelayTimer();
+          holdDelayTimerRef.current = window.setTimeout(() => {
+            showTooltip();
+            holdDelayTimerRef.current = null;
+          }, 220);
+        } else {
+          showTooltipWithTimeout();
+        }
       }}
       onTouchEnd={(event) => {
         const touch = Array.from(event.changedTouches).find(
@@ -148,14 +168,17 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
         );
         if (!touch) return;
         touchIdentifierRef.current = null;
+        clearHoldDelayTimer();
         hideTooltip();
       }}
       onTouchCancel={() => {
         touchIdentifierRef.current = null;
+        clearHoldDelayTimer();
         hideTooltip();
       }}
       onTouchMove={() => {
         touchIdentifierRef.current = null;
+        clearHoldDelayTimer();
         hideTooltip();
       }}
     >

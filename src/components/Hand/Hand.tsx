@@ -109,8 +109,11 @@ const Hand = ({
         }}
       >
         {hand.map((card, cardIndex) => {
+          const isSoloPlayOnlyCard = card.tags?.includes('solo_play_only') ?? false;
+          const violatesSoloPlayCondition = isSoloPlayOnlyCard && hand.length > 1;
           const placeDisabled =
             card.type === 'status' ||
+            violatesSoloPlayCondition ||
             usedTime + getEffectiveTimeCost(card, lastPlayedCard, player, player.jobId) > maxTime;
           const effectiveValues = getEffectiveCardValues(card, player, lastPlayedCard);
           const isExpanded = expandedCardId === card.id;

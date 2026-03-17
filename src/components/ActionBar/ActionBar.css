@@ -265,9 +265,9 @@
 
 .reserve-target.active {
   border-color: var(--color-skill);
-  box-shadow: 0 0 14px rgba(46, 213, 115, 0.35);
-  background: rgba(46, 213, 115, 0.08);
-  transform: scale(1.05);
+  box-shadow: 0 0 8px rgba(46, 213, 115, 0.26);
+  background: rgba(46, 213, 115, 0.06);
+  transform: none;
 }
 
 .reserve-target.active.full {

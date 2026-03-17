@@ -1,6 +1,6 @@
 import type { Card, CardBadge, JobId } from '../../types/game';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 
@@ -135,6 +135,44 @@ const CardComponent = ({
     exhaust: '消耗',
     setup: '準備',
   };
+  const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const replaceChangedValue = (
+    source: ReactNode[],
+    baseValue: number | null | undefined,
+    nextValue: number | null | undefined,
+    unit: string,
+    keyPrefix: string,
+  ): ReactNode[] => {
+    if (baseValue == null || nextValue == null || baseValue === nextValue) {
+      return source;
+    }
+    const tokenPattern = new RegExp(`${escapeRegExp(String(baseValue))}(?=${escapeRegExp(unit)})`, 'g');
+    const valueClass = nextValue > baseValue ? 'card-inline-value--buffed' : 'card-inline-value--debuffed';
+    return source.flatMap((node, nodeIdx) => {
+      if (typeof node !== 'string') return [node];
+      const matches = Array.from(node.matchAll(tokenPattern));
+      if (matches.length === 0) return [node];
+      const parts = node.split(tokenPattern);
+      const rebuilt: ReactNode[] = [];
+      parts.forEach((part, partIdx) => {
+        if (part) rebuilt.push(part);
+        if (partIdx < matches.length) {
+          rebuilt.push(
+            <span key={`${keyPrefix}-${nodeIdx}-${partIdx}`} className={valueClass}>
+              {nextValue}
+            </span>,
+          );
+        }
+      });
+      return rebuilt;
+    });
+  };
+  const getRenderedDescription = (description: string): ReactNode => {
+    let nodes: ReactNode[] = [description];
+    nodes = replaceChangedValue(nodes, card.damage, effectiveValues.damage, 'ダメージ', 'damage');
+    nodes = replaceChangedValue(nodes, card.block, effectiveValues.block, 'ブロック', 'block');
+    return nodes;
+  };
 
   const typeColor = TYPE_COLORS[card.type] ?? TYPE_COLORS.status;
   const rarity = getRarity(card);
@@ -237,7 +275,7 @@ const CardComponent = ({
               </div>
             )}
           </div>
-          <div className="card-description">{card.description}</div>
+          <div className="card-description">{getRenderedDescription(card.description)}</div>
           {card.reserveBonus && <p className="card-reserve-bonus">{card.reserveBonus.description}</p>}
         </div>
       </div>

@@ -272,6 +272,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const [hungryFlash, setHungryFlash] = useState<'hungry' | 'awakened' | null>(null);
   const [showRevivalEffect, setShowRevivalEffect] = useState(false);
   const [pendingHandUpgradeCount, setPendingHandUpgradeCount] = useState(0);
+  const canPlayWithHandCondition = (card: Card, hand: Card[]): boolean => {
+    const isSoloPlayOnlyCard = card.tags?.includes('solo_play_only') ?? false;
+    if (!isSoloPlayOnlyCard) return true;
+    return hand.length === 1 && hand[0]?.id === card.id;
+  };
+
   const battleOmamoris = options?.setup?.omamoris ?? [];
   const prevHungryStateRef = useRef<'normal' | 'hungry' | 'awakened'>('normal');
   const endTurnRef = useRef<() => Promise<void>>(async () => {});
@@ -333,7 +339,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return;
     const noPlayableCard =
       gameState.hand.length > 0 &&
-      gameState.hand.every((card) => card.type === 'status' || card.type === 'curse');
+      gameState.hand.every((card) => {
+        if (card.type === 'status' || card.type === 'curse') return true;
+        const enoughTime =
+          gameState.usedTime + getEffectiveTimeCost(card, lastPlayedCard, gameState.player, gameState.player.jobId) <=
+          gameState.maxTime;
+        const handConditionOk = canPlayWithHandCondition(card, gameState.hand);
+        return !(enoughTime && handConditionOk);
+      });
     const shouldAutoEnd =
       gameState.maxTime - gameState.usedTime <= 0 || gameState.hand.length === 0 || noPlayableCard;
     if (!shouldAutoEnd) return;
@@ -441,6 +454,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const remainingTime = gameState.maxTime - gameState.usedTime;
   const canPlayCard = (card: Card): boolean => {
     if (card.type === 'status' || card.type === 'curse') return false;
+    if (!canPlayWithHandCondition(card, gameState.hand)) return false;
     return (
       gameState.usedTime + getEffectiveTimeCost(card, lastPlayedCard, gameState.player, gameState.player.jobId) <=
       gameState.maxTime

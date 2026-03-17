@@ -20,7 +20,7 @@ const RestScreen = ({
   const itemButtonLabel = itemReceivedThisVisit
     ? '🎁 アイテム受け取り済み（この訪問）'
     : isItemInventoryFull
-      ? '🎒 アイテム枠がいっぱい'
+      ? '🎒 アイテムを入れ替える（ランダム1個）'
       : '🎁 アイテムをもらう（ランダム1個）';
 
   return (
