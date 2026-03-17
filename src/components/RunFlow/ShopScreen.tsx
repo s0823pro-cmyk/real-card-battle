@@ -49,6 +49,14 @@ const ShopScreen = ({
   const omamoris = useMemo(() => items.filter((item) => item.type === 'omamori'), [items]);
   const runItems = useMemo(() => items.filter((item) => item.type === 'item'), [items]);
   const noop = () => {};
+  const shopCardStyle: CSSProperties = {
+    width: 90,
+    height: 144,
+    position: 'relative',
+    transform: 'none',
+    transition: 'none',
+    flexShrink: 0,
+  };
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
     damage: card.damage ?? null,
     block: card.block ?? null,
@@ -114,12 +122,6 @@ const ShopScreen = ({
                         onBuy(item.id);
                       }
                     }}
-                    style={
-                      {
-                        '--hand-card-width': '90px',
-                        '--hand-card-height': '144px',
-                      } as CSSProperties
-                    }
                   >
                     <CardComponent
                       card={card}
@@ -140,6 +142,7 @@ const ShopScreen = ({
                       onPointerCancel={noop}
                       onMouseEnter={noop}
                       onMouseLeave={noop}
+                      style={shopCardStyle}
                     />
                     <small className="shop-card-price">
                       {item.price}G {item.purchased ? ' / 購入済み' : ''}
@@ -255,12 +258,6 @@ const ShopScreen = ({
                       setShowCardSell(false);
                     }
                   }}
-                  style={
-                    {
-                      '--hand-card-width': '90px',
-                      '--hand-card-height': '144px',
-                    } as CSSProperties
-                  }
                 >
                   <CardComponent
                     card={card}
@@ -281,6 +278,7 @@ const ShopScreen = ({
                     onPointerCancel={noop}
                     onMouseEnter={noop}
                     onMouseLeave={noop}
+                    style={shopCardStyle}
                   />
                 </div>
               ))}
@@ -315,12 +313,6 @@ const ShopScreen = ({
                       setShowCardRemove(false);
                     }
                   }}
-                  style={
-                    {
-                      '--hand-card-width': '90px',
-                      '--hand-card-height': '144px',
-                    } as CSSProperties
-                  }
                 >
                   <CardComponent
                     card={card}
@@ -341,6 +333,7 @@ const ShopScreen = ({
                     onPointerCancel={noop}
                     onMouseEnter={noop}
                     onMouseLeave={noop}
+                    style={shopCardStyle}
                   />
                 </div>
               ))}

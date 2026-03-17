@@ -8,9 +8,9 @@ export const getEffectiveTimeCost = (
   jobId?: JobId,
 ): number => {
   let cost = card.timeCost;
-  const usesPreparationCost = Boolean(card.preparationTimeCost && prevCard?.tags?.includes('preparation'));
-  if (usesPreparationCost && card.preparationTimeCost) {
-    cost = card.preparationTimeCost;
+  const usesPreparationCost = prevCard?.tags?.includes('preparation') && card.preparationTimeCost !== undefined;
+  if (usesPreparationCost) {
+    cost = card.preparationTimeCost ?? cost;
   }
   const reduction = prevCard?.tags?.includes('preparation') && !usesPreparationCost ? 1 : 0;
   cost -= reduction;
@@ -28,7 +28,7 @@ export const getEffectiveTimeCost = (
   ) {
     return 0;
   }
-  return Math.max(1, cost);
+  return Math.max(0, cost);
 };
 
 interface TimelineSeed {
