@@ -123,10 +123,11 @@ export const useBattleLogic = () => {
     let lighterBurnApplied = false;
     let attackBuff: { value: number; charges: number } | null = null;
 
-    if (card.type === 'attack') {
-      let rawDamage = calculateCardDamage(card, nextPlayer, prevCard, toolSlots);
-      // next_attack_boost（根性+）のボーナスを適用
-      if (nextPlayer.nextAttackBoostCount > 0) {
+    // ダメージ処理（attack / skill / power 共通）
+    if (card.type === 'attack' || ((card.type === 'skill' || card.type === 'power') && card.damage)) {
+      let rawDamage = calculateCardDamage(card, nextPlayer, toolSlots);
+      // next_attack_boost（根性+）のボーナスを適用（attackのみ）
+      if (card.type === 'attack' && nextPlayer.nextAttackBoostCount > 0) {
         rawDamage += nextPlayer.nextAttackBoostValue;
         nextPlayer.nextAttackBoostCount -= 1;
         if (nextPlayer.nextAttackBoostCount <= 0) {
@@ -162,31 +163,8 @@ export const useBattleLogic = () => {
       if (card.tags?.includes('scaffold_consume')) {
         nextPlayer.scaffold = 0;
       }
-      if (nextPlayer.nextAttackDamageBoost > 0) {
+      if (card.type === 'attack' && nextPlayer.nextAttackDamageBoost > 0) {
         nextPlayer.nextAttackDamageBoost = 0;
-      }
-    }
-
-    // スキル・パワーカードが直接 damage 値を持つ場合も段取りブーストを適用
-    if ((card.type === 'skill' || card.type === 'power') && card.damage) {
-      const rawSkillDamage = calculateCardDamage(card, nextPlayer, prevCard, toolSlots);
-      const boostedSkillDamage = isDandoriActive
-        ? Math.floor(rawSkillDamage * bonus.damageMultiplier)
-        : rawSkillDamage;
-      if (card.tags?.includes('aoe')) {
-        for (const enemy of nextEnemies) {
-          if (enemy.currentHp <= 0) continue;
-          damage += applyDamageToEnemy(enemy, boostedSkillDamage);
-        }
-      } else {
-        const preferredIndex = preferredTargetEnemyId
-          ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
-          : -1;
-        const targetIndex = preferredIndex >= 0 ? preferredIndex : getAliveEnemyIndex(nextEnemies);
-        if (targetIndex >= 0) {
-          damage = applyDamageToEnemy(nextEnemies[targetIndex], boostedSkillDamage);
-          targetEnemyId = nextEnemies[targetIndex].id;
-        }
       }
     }
 

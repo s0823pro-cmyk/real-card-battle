@@ -31,7 +31,6 @@ export const getEnemyAttackValue = (intent: EnemyIntent, enemy: Enemy): number =
 export const calculateCardDamage = (
   card: Card,
   player: PlayerState,
-  prevCard: Card | null,
   toolSlots?: ToolSlot[],
 ): number => {
   let damage = card.damage ?? 0;

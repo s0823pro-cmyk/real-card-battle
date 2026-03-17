@@ -586,7 +586,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
 
     let previewDamage = 0;
     if (handDrag.card.type === 'attack') {
-      previewDamage = calculateCardDamage(handDrag.card, gameState.player, lastPlayedCard);
+      previewDamage = calculateCardDamage(handDrag.card, gameState.player);
       const vulnerable = enemy.statusEffects.find((status) => status.type === 'vulnerable');
       if (vulnerable) {
         previewDamage = Math.floor(previewDamage * 1.5);
