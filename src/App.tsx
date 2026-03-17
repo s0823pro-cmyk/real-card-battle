@@ -20,7 +20,7 @@ import {
   CardUpgradeScreen,
   OmamoriRewardScreen,
 } from './components/RunFlow/RewardScreens';
-import { useRunProgress } from './hooks/useRunProgress';
+import { useRunProgress, loadSavedProgress, clearSavedProgress } from './hooks/useRunProgress';
 import {
   CARPENTER_STORY,
   CARPENTER_E1_STORY,
@@ -61,6 +61,7 @@ function App() {
     pickOmamoriReward,
     applyBossReward,
     advanceAfterAreaBoss,
+    continueFromSave,
     startRunFromHome,
     openZukanFromHome,
     backToHomeFromJobSelect,
@@ -69,6 +70,7 @@ function App() {
     startRunFromJobSelect,
     resetRun,
   } = useRunProgress();
+  const [savedProgress] = useState(() => loadSavedProgress());
   const [screenTransition, setScreenTransition] = useState<{ phase: TransitionPhase; durationMs: number }>({
     phase: 'idle',
     durationMs: 0,
@@ -256,6 +258,15 @@ function App() {
           <HomeScreen
             onStart={() => runScreenTransition(startRunFromHome, 1000, 1000)}
             onOpenZukan={() => runScreenTransition(openZukanFromHome, 1000, 1000)}
+            onContinue={(saved) => {
+              clearSavedProgress();
+              runScreenTransition(() => continueFromSave(saved), 1000, 1000);
+            }}
+            onNewGame={() => {
+              clearSavedProgress();
+              runScreenTransition(startRunFromHome, 1000, 1000);
+            }}
+            savedProgress={savedProgress}
             preloadEnabled={preloadEnabled}
             onTogglePreload={togglePreload}
           />

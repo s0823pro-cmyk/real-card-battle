@@ -1,7 +1,7 @@
 import type { Card, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { useEffect, useRef, useState } from 'react';
-import type { RefObject } from 'react';
+import type { CSSProperties, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import CardComponent from '../Hand/CardComponent';
 import './ActionBar.css';
@@ -95,99 +95,118 @@ const ActionBar = ({
             ref={reserveDropRef}
           >
             <span className="reserved-label">温存:</span>
-            {Array.from({ length: 2 }).map((_, index) => {
-              const card = reserved[index];
-              return (
+            <div className={`reserve-slots${reserved.length >= 3 ? ' reserve-slots--scrollable' : ''}`}>
+            {reserved.length === 0 ? (
+              <>
+                <div className="reserved-card-mini empty" />
+                <div className="reserved-card-mini empty" />
+              </>
+            ) : (
+              reserved.map((card, index) => (
                 <div
                   key={`reserved-${index}`}
-                  className={`reserved-card-mini ${card?.type ?? ''} ${card ? '' : 'empty'}`}
+                  className="reserve-slot-item"
                   onMouseEnter={(event) => {
-                    if (!card || isDragging) return;
+                    if (isDragging) return;
                     if (pinnedPreviewCardId) return;
                     showPreview(card, event.currentTarget);
                   }}
                   onMouseLeave={() => {
-                    if (!card) return;
                     hidePreview(card.id);
                   }}
                   onPointerDown={(event) => {
-                    if (!card || isDragging) return;
+                    if (isDragging) return;
                     if (event.pointerType === 'mouse') return;
                     setPinnedPreviewCardId(card.id);
                     showPreview(card, event.currentTarget);
                   }}
-                  onPointerUp={() => {
-                    clearLongPress();
-                  }}
-                  onPointerCancel={() => {
-                    clearLongPress();
-                  }}
-                  onPointerLeave={() => {
-                    clearLongPress();
-                  }}
+                  onPointerUp={() => { clearLongPress(); }}
+                  onPointerCancel={() => { clearLongPress(); }}
+                  onPointerLeave={() => { clearLongPress(); }}
                   onTouchStart={(event) => {
-                    if (!card || isDragging) return;
+                    if (isDragging) return;
                     setPinnedPreviewCardId(card.id);
                     showPreview(card, event.currentTarget);
                   }}
-                  onTouchEnd={() => {
-                    clearLongPress();
-                  }}
-                  onTouchCancel={() => {
-                    clearLongPress();
-                  }}
+                  onTouchEnd={() => { clearLongPress(); }}
+                  onTouchCancel={() => { clearLongPress(); }}
                   onClick={(event) => {
-                    if (!card || isDragging) return;
+                    if (isDragging) return;
                     const shouldClose = previewDialogCard?.id === card.id;
                     setPinnedPreviewCardId(card.id);
                     showPreview(card, event.currentTarget);
                     setPreviewDialogCard(shouldClose ? null : card);
                   }}
                 >
-                  {card && (
-                    <>
-                      <span className="reserved-card-mini-icon">{card.icon ?? '🃏'}</span>
-                      <span className="reserved-card-mini-name">{card.name}</span>
-                      {previewCardId === card.id &&
-                        createPortal(
-                          <div
-                            className={`reserved-card-preview reserved-card-preview--floating ${
-                              previewAlign === 'left'
-                                ? 'reserved-card-preview--left'
-                                : previewAlign === 'right'
-                                  ? 'reserved-card-preview--right'
-                                  : ''
-                            }`}
-                            style={{ left: `${previewPosition.x}px`, top: `${previewPosition.y}px` }}
-                          >
-                            <CardComponent
-                              card={card}
-                              jobId={jobId}
-                              selected={false}
-                              disabled={false}
-                              locked={false}
-                              isSelling={false}
-                              isReturning={false}
-                              isGhost={false}
-                              isDragging={false}
-                              isDragUnavailable={false}
-                              effectiveValues={getBaseEffectiveValues(card)}
-                              onSelect={noop}
-                              onPointerDown={noop}
-                              onPointerMove={noop}
-                              onPointerUp={noop}
-                              onPointerCancel={noop}
-                              onMouseEnter={noop}
-                              onMouseLeave={noop}
-                            />
-                          </div>,
-                          document.body,
-                        )}
-                    </>
-                  )}
+                  <CardComponent
+                    card={card}
+                    jobId={jobId}
+                    selected={false}
+                    disabled={false}
+                    locked={false}
+                    isSelling={false}
+                    isReturning={false}
+                    isGhost={false}
+                    isDragging={false}
+                    isDragUnavailable={false}
+                    effectiveValues={getBaseEffectiveValues(card)}
+                    onSelect={noop}
+                    onPointerDown={noop}
+                    onPointerMove={noop}
+                    onPointerUp={noop}
+                    onPointerCancel={noop}
+                    onMouseEnter={noop}
+                    onMouseLeave={noop}
+                    style={
+                      {
+                        '--hand-card-width': '52px',
+                        '--hand-card-height': '82px',
+                        position: 'relative',
+                        transform: 'none',
+                        transition: 'none',
+                        flexShrink: 0,
+                      } as CSSProperties
+                    }
+                  />
+                  {previewCardId === card.id &&
+                    createPortal(
+                      <div
+                        className={`reserved-card-preview reserved-card-preview--floating ${
+                          previewAlign === 'left'
+                            ? 'reserved-card-preview--left'
+                            : previewAlign === 'right'
+                              ? 'reserved-card-preview--right'
+                              : ''
+                        }`}
+                        style={{ left: `${previewPosition.x}px`, top: `${previewPosition.y}px` }}
+                      >
+                        <CardComponent
+                          card={card}
+                          jobId={jobId}
+                          selected={false}
+                          disabled={false}
+                          locked={false}
+                          isSelling={false}
+                          isReturning={false}
+                          isGhost={false}
+                          isDragging={false}
+                          isDragUnavailable={false}
+                          effectiveValues={getBaseEffectiveValues(card)}
+                          onSelect={noop}
+                          onPointerDown={noop}
+                          onPointerMove={noop}
+                          onPointerUp={noop}
+                          onPointerCancel={noop}
+                          onMouseEnter={noop}
+                          onMouseLeave={noop}
+                        />
+                      </div>,
+                      document.body,
+                    )}
                 </div>
-              );
-            })}
+              ))
+            )}
+            </div>
           </div>
           <p className="reserve-penalty-inline">
             {reserved.length > 0 ? `次ターン -${reserved.length}秒` : ''}

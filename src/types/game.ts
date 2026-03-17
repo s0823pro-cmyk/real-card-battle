@@ -1,4 +1,5 @@
 export type CardType = 'attack' | 'skill' | 'power' | 'tool' | 'status' | 'curse';
+export type CardBadge = 'exhaust' | 'setup';
 export type JobId = 'carpenter' | 'cook' | 'unemployed';
 export type GamePhase =
   | 'battle_start'
@@ -42,7 +43,8 @@ export type EffectType =
   | 'next_turn_block_half'
   | 'block_per_turn_awakened'
   | 'lighter_chance'
-  | 'next_attack_boost';
+  | 'next_attack_boost'
+  | 'reserve_double_next';
 
 export type CardRarity = 'common' | 'uncommon' | 'rare';
 
@@ -85,6 +87,7 @@ export interface Card {
   upgraded?: boolean;
   lowHpBonus?: LowHpBonus;
   hitCount?: number;
+  badges?: CardBadge[];
 }
 
 export interface ReserveBonus {
@@ -169,6 +172,7 @@ export interface PlayerState {
   nextAttackBoostValue: number;
   nextAttackBoostCount: number;
   timeBonusPerTurn: number;
+  nextCardDoubleEffect: boolean;
 }
 
 export interface ToolSlot {

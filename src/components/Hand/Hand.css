@@ -397,10 +397,19 @@
   50%       { opacity: 1; }
 }
 
+.card-type-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
 .card-type-badge {
   display: block !important;
   width: fit-content !important;
-  margin: 0 auto 2px !important;
+  margin: 0 !important;
   padding: 0 5px !important;
   border-radius: 2px !important;
   font-size: 7px !important;
@@ -409,6 +418,38 @@
   line-height: 1.4 !important;
   height: auto !important;
   text-transform: uppercase;
+}
+
+.card-badges {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.card-badge {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 7px;
+  font-weight: 700;
+  padding: 1px 3px;
+  border-radius: 2px;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.15);
+  white-space: nowrap;
+}
+
+.card-badge--exhaust {
+  border-color: rgba(251, 191, 36, 0.8);
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.2);
+}
+
+.card-badge--setup {
+  border-color: rgba(134, 239, 172, 0.8);
+  color: #bbf7d0;
+  background: rgba(134, 239, 172, 0.15);
 }
 
 .card-description {

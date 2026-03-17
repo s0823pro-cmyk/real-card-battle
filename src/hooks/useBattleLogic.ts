@@ -168,8 +168,9 @@ export const useBattleLogic = () => {
     }
 
     if (card.block && nextPlayer.canBlock) {
-      nextPlayer.block += card.block;
-      blockGained += card.block;
+      const boostedBlock = isDandoriActive ? Math.floor(card.block * bonus.damageMultiplier) : card.block;
+      nextPlayer.block += boostedBlock;
+      blockGained += boostedBlock;
     }
 
     for (const effect of card.effects ?? []) {
@@ -183,7 +184,8 @@ export const useBattleLogic = () => {
       }
       if (effect.type === 'heal') {
         if (!nextPlayer.deathWishActive) {
-          nextPlayer.currentHp = Math.min(nextPlayer.maxHp, nextPlayer.currentHp + effect.value);
+          const boostedHeal = isDandoriActive ? Math.floor(effect.value * bonus.damageMultiplier) : effect.value;
+          nextPlayer.currentHp = Math.min(nextPlayer.maxHp, nextPlayer.currentHp + boostedHeal);
         }
       }
       if (effect.type === 'self_damage') {

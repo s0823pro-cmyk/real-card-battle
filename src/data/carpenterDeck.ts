@@ -26,6 +26,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     block: 3,
     effects: [{ type: 'scaffold', value: 1 }],
     tags: ['preparation'],
+    badges: ['setup'],
     sellValue: 5,
     icon: '🏗️',
     imageUrl: scaffoldBuildImage,

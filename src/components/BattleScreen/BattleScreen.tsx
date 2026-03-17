@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
+import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 import ActionBar from '../ActionBar/ActionBar';
 import DamagePopup from '../Effects/DamagePopup';
 import ShieldEffect from '../Effects/ShieldEffect';
@@ -141,6 +142,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const [showPile, setShowPile] = useState<PileView>(null);
   const [reserveConfirm, setReserveConfirm] = useState<ReserveConfirmState>(null);
   const [showBattleSettings, setShowBattleSettings] = useState(false);
+  const [showBattleGlossary, setShowBattleGlossary] = useState(false);
   const [timelineGaugeStyle, setTimelineGaugeStyle] = useState<TimelineGaugeStyle>(() => {
     try {
       const saved = window.localStorage.getItem(TIMELINE_GAUGE_STYLE_STORAGE_KEY);
@@ -1009,12 +1011,26 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
                   ゲージ型
                 </button>
               </div>
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+              <button
+                type="button"
+                className="btn-glossary"
+                onClick={() => {
+                  setShowBattleSettings(false);
+                  setShowBattleGlossary(true);
+                }}
+              >
+                📖 用語集
+              </button>
               <button type="button" className="battle-settings-surrender" onClick={handleConcedeBattle}>
                 あきらめる
               </button>
             </div>
           </div>
         </div>
+      )}
+      {showBattleGlossary && (
+        <GlossaryModal onClose={() => setShowBattleGlossary(false)} />
       )}
       {reserveConfirm?.visible && (
         <div className="reserve-confirm-overlay">

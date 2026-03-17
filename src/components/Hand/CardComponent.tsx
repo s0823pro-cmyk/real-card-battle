@@ -1,4 +1,4 @@
-import type { Card, JobId } from '../../types/game';
+import type { Card, CardBadge, JobId } from '../../types/game';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -16,6 +16,7 @@ interface Props {
   isDragging: boolean;
   isDragUnavailable: boolean;
   zukanMode?: 'list' | 'detail';
+  style?: CSSProperties;
   effectiveValues: EffectiveCardValues;
   onSelect: () => void;
   onPointerDown: (event: ReactPointerEvent) => void;
@@ -38,6 +39,7 @@ const CardComponent = ({
   isDragging,
   isDragUnavailable,
   zukanMode,
+  style: styleProp,
   effectiveValues,
   onSelect,
   onPointerDown,
@@ -129,6 +131,11 @@ const CardComponent = ({
     },
   } as const;
 
+  const BADGE_LABELS: Record<CardBadge, string> = {
+    exhaust: '消耗',
+    setup: '準備',
+  };
+
   const typeColor = TYPE_COLORS[card.type] ?? TYPE_COLORS.status;
   const rarity = getRarity(card);
   const rarityStyle = RARITY_STYLES[rarity];
@@ -151,6 +158,7 @@ const CardComponent = ({
       } ${isReturning ? 'returning' : ''} ${isGhost ? 'ghost' : ''} ${isDragging ? 'hand-card--dragging' : ''} ${
         reserveBonusReady ? 'reserve-ready' : ''
       }`}
+      style={styleProp}
       onClick={(event) => event.preventDefault()}
       onMouseDown={(event) => event.preventDefault()}
       onTouchStart={(event) => event.preventDefault()}
@@ -212,11 +220,22 @@ const CardComponent = ({
               <span className="card-upgrade-badge">✦</span>
             )}
           </span>
-          <div
-            className="card-type-badge"
-            style={{ background: typeColor.bg, color: typeColor.text }}
-          >
-            {typeColor.label}
+          <div className="card-type-row">
+            <div
+              className="card-type-badge"
+              style={{ background: typeColor.bg, color: typeColor.text }}
+            >
+              {typeColor.label}
+            </div>
+            {card.badges && card.badges.length > 0 && (
+              <div className="card-badges">
+                {card.badges.map((badge) => (
+                  <span key={badge} className={`card-badge card-badge--${badge}`}>
+                    {BADGE_LABELS[badge]}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="card-description">{card.description}</div>
           {card.reserveBonus && <p className="card-reserve-bonus">{card.reserveBonus.description}</p>}

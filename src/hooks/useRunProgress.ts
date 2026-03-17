@@ -44,6 +44,47 @@ import type { UpgradeType } from '../utils/cardUpgrade';
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
+const SAVE_DATA_KEY = 'real-card-battle:save-data';
+
+type SerializedProgress = Omit<GameProgress, 'unlockedCardNames'> & { unlockedCardNames: string[] };
+
+const saveProgressToStorage = (progress: GameProgress): void => {
+  try {
+    const saveable: SerializedProgress = {
+      ...progress,
+      unlockedCardNames: [...progress.unlockedCardNames],
+    };
+    window.localStorage.setItem(SAVE_DATA_KEY, JSON.stringify(saveable));
+  } catch {
+    // localStorage が利用できない環境では保存をスキップ。
+  }
+};
+
+export const loadSavedProgress = (): GameProgress | null => {
+  try {
+    const raw = window.localStorage.getItem(SAVE_DATA_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SerializedProgress;
+    if (!parsed.jobId || !parsed.currentScreen) return null;
+    return {
+      ...parsed,
+      unlockedCardNames: new Set(parsed.unlockedCardNames ?? []),
+      // バトル中状態はリセット（マップ画面に戻す）
+      battleSetup: null,
+      currentScreen: parsed.currentScreen === 'battle' ? 'map' : parsed.currentScreen,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const clearSavedProgress = (): void => {
+  try {
+    window.localStorage.removeItem(SAVE_DATA_KEY);
+  } catch {
+    // ignore
+  }
+};
 
 const loadUnlockedCardNames = (): Set<string> => {
   try {
@@ -66,7 +107,9 @@ const saveUnlockedCardNames = (names: Set<string>) => {
 };
 
 const rollRoulette = (): number => {
-  const result = Math.floor(Math.random() * 3) + 1;
+  const roll = Math.random();
+  // 1:30%, 2:35%, 3:35%
+  const result = roll < 0.30 ? 1 : roll < 0.65 ? 2 : 3;
   console.log('ルーレット結果:', result);
   return result;
 };
@@ -139,6 +182,7 @@ const initialPlayer: PlayerState = {
   nextAttackBoostValue: 0,
   nextAttackBoostCount: 0,
   timeBonusPerTurn: 0,
+  nextCardDoubleEffect: false,
 };
 
 const makeInitialProgress = (): GameProgress => {
@@ -380,6 +424,12 @@ export const useRunProgress = () => {
     saveUnlockedCardNames(state.unlockedCardNames);
   }, [state.unlockedCardNames]);
 
+  useEffect(() => {
+    if (state.currentScreen !== 'home' && state.currentScreen !== 'title' && state.currentScreen !== 'zukan') {
+      saveProgressToStorage(state);
+    }
+  }, [state]);
+
   const branchPreviews = useMemo(() => {
     if (state.selectableTileIds.length === 0) return [];
     return state.selectableTileIds.map((nextTileId) => ({
@@ -471,7 +521,7 @@ export const useRunProgress = () => {
     if (tile.type === 'pawnshop') {
       const discount =
         stateRef.current.omamoris.find((omamori) => omamori.effect.stat === 'shop_discount')?.effect.value ?? 0;
-      const cards = generateShopCards(5, stateRef.current.jobId).map((card, idx) => {
+      const cards = generateShopCards(6, stateRef.current.jobId).map((card, idx) => {
         const base = getCardPrice(card);
         const discounted = Math.floor(base * (1 - discount));
         return {
@@ -764,6 +814,7 @@ export const useRunProgress = () => {
     firstIngredientUsedThisTurn: false,
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
+    nextCardDoubleEffect: false,
   });
 
   const onBattleEnd = (result: BattleResult) => {
@@ -905,6 +956,7 @@ export const useRunProgress = () => {
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
       timeBonusPerTurn: 0,
+      nextCardDoubleEffect: false,
     };
     dispatch({ type: 'set_job', jobId: resetJobId });
     dispatch({ type: 'set_board', board: nextBoard });
@@ -932,6 +984,30 @@ export const useRunProgress = () => {
 
   const startRunFromHome = () => {
     dispatch({ type: 'set_screen', screen: 'job_select' });
+  };
+
+  const continueFromSave = (saved: GameProgress) => {
+    dispatch({ type: 'set_job', jobId: saved.jobId });
+    dispatch({ type: 'set_player', player: saved.player });
+    dispatch({ type: 'set_deck', deck: saved.deck });
+    dispatch({ type: 'set_items', items: saved.items });
+    dispatch({ type: 'set_omamoris', omamoris: saved.omamoris });
+    dispatch({ type: 'set_card_reward', cards: saved.cardReward?.cards ?? null });
+    dispatch({ type: 'set_omamori_reward', omamoris: saved.omamoriRewardChoices, source: saved.omamoriRewardSource });
+    dispatch({ type: 'set_shop', shopItems: saved.activeShopItems });
+    dispatch({ type: 'set_pawnshop_sell_used', used: saved.pawnshopSellUsedThisVisit });
+    dispatch({ type: 'set_event', event: saved.activeEvent });
+    dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
+    dispatch({ type: 'set_branch', tileId: saved.selectedBranchTileId });
+    dispatch({ type: 'set_selectable_tiles', tileIds: saved.selectableTileIds });
+    dispatch({ type: 'set_pending_steps', steps: saved.pendingSteps });
+    dispatch({ type: 'set_dice', value: saved.dice.value, rolling: false });
+    dispatch({ type: 'set_card_remove_count', value: saved.cardRemoveCount });
+    dispatch({ type: 'set_run_stats', totalTurns: saved.totalTurns, cardsAcquired: saved.cardsAcquired, lastDefeatedBy: saved.lastDefeatedBy });
+    dispatch({ type: 'set_current_area', area: saved.currentArea });
+    dispatch({ type: 'set_board', board: saved.board });
+    dispatch({ type: 'set_current_tile', tileId: saved.currentTileId });
+    dispatch({ type: 'set_screen', screen: saved.currentScreen });
   };
 
   const openZukanFromHome = () => {
@@ -988,6 +1064,7 @@ export const useRunProgress = () => {
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
       timeBonusPerTurn: 0,
+      nextCardDoubleEffect: false,
     };
     dispatch({ type: 'set_job', jobId });
     dispatch({ type: 'set_player', player: nextPlayer });
@@ -1035,6 +1112,7 @@ export const useRunProgress = () => {
     pickOmamoriReward,
     applyBossReward,
     advanceAfterAreaBoss,
+    continueFromSave,
     startRunFromHome,
     openZukanFromHome,
     backToHomeFromJobSelect,

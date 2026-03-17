@@ -210,6 +210,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
     timeBonusPerTurn: 0,
+    nextCardDoubleEffect: false,
   };
 
   return {
@@ -414,6 +415,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     firstIngredientUsedThisTurn: false,
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
+    nextCardDoubleEffect: false,
   });
 
   const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
@@ -485,7 +487,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         }
       : card;
 
-    const effectMultiplier = doubleNextCharges > 0 ? 2 : 1;
+    const effectMultiplier = doubleNextCharges > 0 || gameState.player.nextCardDoubleEffect ? 2 : 1;
     const multipliedCard: Card =
       effectMultiplier > 1
         ? {
@@ -571,9 +573,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         getMaxTime(gameState.player.mental, gameState.player.timeBonusPerTurn)
       ).toFixed(1),
     );
+    const equippedIdsForDraw = gameState.toolSlots.filter((t) => t !== null).map((t) => t!.card.id);
     const drawResult =
       drawAmount > 0
-        ? drawCards(gameState.drawPile, gameState.discardPile, drawAmount)
+        ? drawCards(gameState.drawPile, gameState.discardPile, drawAmount, equippedIdsForDraw)
         : { drawn: [] as Card[], drawPile: gameState.drawPile, discardPile: gameState.discardPile, shuffled: false };
 
     const newlyDefeated = result.enemies.filter((enemy) => {
@@ -647,13 +650,17 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       shuffleAnimation: drawResult.shuffled,
     };
 
+    const nextCardDoubleConsumed = gameState.player.nextCardDoubleEffect && effectMultiplier > 1;
     setGameState((prev) => ({
       ...prev,
       hand: handAfterPlay,
       discardPile,
       drawPile: drawResult.drawPile,
       exhaustedCards,
-      player: playerAfterKill,
+      player: {
+        ...playerAfterKill,
+        nextCardDoubleEffect: nextCardDoubleConsumed ? false : playerAfterKill.nextCardDoubleEffect,
+      },
       enemies: result.enemies,
       activePowers,
       toolSlots: result.equippedTool ? equipTool(result.equippedTool, prev.toolSlots) : prev.toolSlots,
@@ -661,7 +668,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       maxTime: prev.maxTime + timeBoost + mentalTimeDelta,
       shuffleAnimation: drawResult.shuffled,
     }));
-    setDoubleNextCharges((prev) => Math.max(0, prev - (effectMultiplier > 1 ? 1 : 0)) + gainedDoubleNext);
+    setDoubleNextCharges((prev) => Math.max(0, prev - (doubleNextCharges > 0 && effectMultiplier > 1 ? 1 : 0)) + gainedDoubleNext);
 
     setLastPlayedCard(playedCard);
     setSelectedCardId(null);
@@ -822,7 +829,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       pushPopup(`次${effect.duration ?? 3}回 +${effect.value}⚔`, 'player', 'buff');
     } else if (effect.type === 'draw') {
       setGameState((prev) => {
-        const drawResult = drawCards(prev.drawPile, prev.discardPile, effect.value);
+        const equippedIdsItem = prev.toolSlots.filter((t) => t !== null).map((t) => t!.card.id);
+        const drawResult = drawCards(prev.drawPile, prev.discardPile, effect.value, equippedIdsItem);
         return {
           ...prev,
           hand: [...prev.hand, ...drawResult.drawn],
@@ -847,6 +855,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       const card = prev.hand.find((item) => item.id === cardId);
       if (!card || card.type === 'status' || card.type === 'curse') return prev;
       changed = true;
+      const hasReserveDouble = card.effects?.some((e) => e.type === 'reserve_double_next') ?? false;
       const reservedCard: Card = {
         ...card,
         wasReserved: false,
@@ -856,6 +865,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         ...prev,
         hand: prev.hand.filter((item) => item.id !== cardId),
         reserved: [...prev.reserved, reservedCard],
+        player: hasReserveDouble
+          ? { ...prev.player, nextCardDoubleEffect: true }
+          : prev.player,
       };
     });
     if (changed) {
@@ -963,6 +975,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       firstIngredientUsedThisTurn: false,
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
+      nextCardDoubleEffect: false,
       statusEffects: tickedPlayerStatuses,
     });
     const anxietyCount = playerAfterReset.mental <= 0 ? 2 : playerAfterReset.mental <= 2 ? 1 : 0;
@@ -971,14 +984,23 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       .flatMap((power) => power.effects ?? [])
       .filter((effect) => effect.type === 'draw_per_turn')
       .reduce((sum, effect) => sum + effect.value, 0);
+    const equippedCardIds = state.toolSlots.filter((t) => t !== null).map((t) => t!.card.id);
     const drawResult = drawCards(
       shuffle([...state.drawPile, ...anxietyCards]),
       state.discardPile,
       DRAW_COUNT + powerDrawPerTurn + cliffEdgeDrawBonus + Math.max(0, onTurnStartDrawBonus),
+      equippedCardIds,
     );
-    const reservedToHand = state.reserved.map((card) => ({
+    const exhaustedReserved = state.reserved.filter((card) => card.badges?.includes('exhaust'));
+    const keptReserved = state.reserved.filter((card) => !card.badges?.includes('exhaust'));
+    const reservedToHand = keptReserved.map((card) => ({
       ...card,
       wasReserved: Boolean(card.reservedThisTurn),
+      reservedThisTurn: false,
+    }));
+    const exhaustedToDiscard = exhaustedReserved.map((card) => ({
+      ...card,
+      wasReserved: false,
       reservedThisTurn: false,
     }));
     return {
@@ -992,7 +1014,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       reserved: [],
       timeline: [],
       drawPile: drawResult.drawPile,
-      discardPile: drawResult.discardPile,
+      discardPile: [...drawResult.discardPile, ...exhaustedToDiscard],
       player: playerAfterReset,
       executingIndex: -1,
     };

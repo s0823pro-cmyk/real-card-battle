@@ -66,8 +66,15 @@ const ShopScreen = ({
   return (
     <main className="flow-screen">
       <section className="flow-card">
-        <h2>🏪 質屋</h2>
-        <p>💰 {gold}G</p>
+        <div className="shop-header">
+          <div className="shop-header-left">
+            <h2 className="shop-title">🏪 質屋</h2>
+            <span className="shop-gold">💰 {gold}G</span>
+          </div>
+          <button type="button" className="btn-shop-exit" onClick={onClose}>
+            退出
+          </button>
+        </div>
         <div className="shop-tabs">
           <button
             type="button"
@@ -87,14 +94,14 @@ const ShopScreen = ({
         {tab === 'buy' ? (
           <div className="flow-list">
             <p>カード</p>
-            <div className="card-display-grid">
+            <div className="shop-cards-grid">
               {cards.map((item) => {
                 const disabled = item.purchased || item.price > gold;
                 const card = item.item as Card;
                 return (
                   <div
                     key={item.id}
-                    className={`card-display-item ${!disabled ? 'card-display-item--purchasable' : ''} ${
+                    className={`shop-card-item ${!disabled ? 'card-display-item--purchasable' : ''} ${
                       disabled ? 'card-display-item--unaffordable' : ''
                     }`}
                     role="button"
@@ -111,8 +118,8 @@ const ShopScreen = ({
                     }}
                     style={
                       {
-                        '--hand-card-width': '100px',
-                        '--hand-card-height': '160px',
+                        '--hand-card-width': '90px',
+                        '--hand-card-height': '144px',
                       } as CSSProperties
                     }
                   >
@@ -223,9 +230,6 @@ const ShopScreen = ({
             </div>
           </div>
         )}
-        <button type="button" className="flow-btn ghost" onClick={onClose}>
-          閉じる
-        </button>
       </section>
       {showCardSell && !hasUsedSellThisVisit && (
         <div className="shop-remove-overlay" onClick={() => setShowCardSell(false)}>

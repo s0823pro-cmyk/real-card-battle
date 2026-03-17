@@ -165,13 +165,13 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   };
 
   const detailCardStyle: CardSizeStyle = {
-    width: '180px',
-    height: '288px',
+    width: '210px',
+    height: '336px',
     position: 'relative',
     transform: 'none',
     transition: 'none',
-    '--hand-card-width': '180px',
-    '--hand-card-height': '288px',
+    '--hand-card-width': '210px',
+    '--hand-card-height': '336px',
     '--card-name-min-size': '11px',
   };
 
@@ -457,13 +457,6 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     ›
                   </button>
 
-                  <button
-                    type="button"
-                    className="zukan-detail-close-btn zukan-detail-close"
-                    onClick={() => setSelectedIndex(null)}
-                  >
-                    ✕
-                  </button>
                 </div>
               </div>
             )}

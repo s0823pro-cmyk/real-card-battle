@@ -653,6 +653,24 @@
   margin: 4px 0;
 }
 
+.btn-glossary {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 14px;
+  padding: 12px 0;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.btn-glossary:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .btn-give-up {
   width: 100%;
   background: rgba(231, 76, 60, 0.15);

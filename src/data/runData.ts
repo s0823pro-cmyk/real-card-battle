@@ -298,7 +298,7 @@ export const generateCardRewardChoices = (jobId: JobId = 'carpenter', count = 3)
   const cards: Card[] = [];
   for (let i = 0; i < count; i += 1) {
     const roll = Math.random();
-    const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.1 ? 'rare' : roll < 0.4 ? 'uncommon' : 'common';
+    const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.03 ? 'rare' : roll < 0.23 ? 'uncommon' : 'common';
     const useNeutral = Math.random() < 0.3;
     if (useNeutral) {
       cards.push(pickRandomNeutralByRarity(rarity));
@@ -321,7 +321,7 @@ export const generateOmamoriChoices = (count = 3): Omamori[] => {
 export const generateShopCards = (count: number, jobId: JobId = 'carpenter'): Card[] =>
   Array.from({ length: count }).map(() => {
     const roll = Math.random();
-    const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.12 ? 'rare' : roll < 0.45 ? 'uncommon' : 'common';
+    const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.03 ? 'rare' : roll < 0.23 ? 'uncommon' : 'common';
     const useNeutral = Math.random() < 0.3;
     if (useNeutral) return pickRandomNeutralByRarity(rarity);
     if (rarity === 'rare') return pickRandomRareCard(jobId);

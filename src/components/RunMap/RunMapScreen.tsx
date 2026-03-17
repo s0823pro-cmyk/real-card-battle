@@ -5,6 +5,7 @@ import type { Card } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { getMapBackground } from '../../data/mapBackgrounds';
 import { getNodeImage } from '../../data/mapNodeImages';
+import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
 import './RunMapScreen.css';
@@ -74,6 +75,7 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
   const [showDeck, setShowDeck] = useState(false);
   const [showMapSettings, setShowMapSettings] = useState(false);
   const [showGiveUpConfirm, setShowGiveUpConfirm] = useState(false);
+  const [showMapGlossary, setShowMapGlossary] = useState(false);
   const [bgmEnabled, setBgmEnabled] = useState(true);
   const [seEnabled, setSeEnabled] = useState(true);
   const [failedNodeImages, setFailedNodeImages] = useState<Set<TileType>>(new Set());
@@ -467,6 +469,16 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
             <div className="map-settings-divider" />
             <button
               type="button"
+              className="btn-glossary"
+              onClick={() => {
+                setShowMapSettings(false);
+                setShowMapGlossary(true);
+              }}
+            >
+              📖 用語集
+            </button>
+            <button
+              type="button"
               className="btn-give-up"
               onClick={() => setShowGiveUpConfirm(true)}
             >
@@ -481,6 +493,9 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
             </button>
           </div>
         </div>
+      )}
+      {showMapGlossary && (
+        <GlossaryModal onClose={() => setShowMapGlossary(false)} />
       )}
       {showGiveUpConfirm && (
         <div className="map-settings-overlay" onClick={() => setShowGiveUpConfirm(false)}>

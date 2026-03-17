@@ -9,6 +9,7 @@ import {
   hasSeenStory,
 } from '../../data/stories/carpenterStory';
 import type { StoryScene } from '../../data/stories/carpenterStory';
+import type { GameProgress } from '../../types/run';
 import homeBackgroundImage from '../../assets/home_background.png';
 import letterJImage from '../../assets/title/letter_J.png';
 import letterOImage from '../../assets/title/letter_O.png';
@@ -19,9 +20,18 @@ import letterSImage from '../../assets/title/letter_S.png';
 import letterS2Image from '../../assets/title/letter_S2.png';
 import './HomeScreen.css';
 
+const JOB_NAMES: Record<string, string> = {
+  carpenter: '大工',
+  cook: '料理人',
+  unemployed: '無職',
+};
+
 interface HomeScreenProps {
   onStart: () => void;
   onOpenZukan: () => void;
+  onContinue?: (saved: GameProgress) => void;
+  onNewGame?: () => void;
+  savedProgress?: GameProgress | null;
   preloadEnabled?: boolean;
   onTogglePreload?: () => void;
 }
@@ -231,7 +241,7 @@ const Fireflies = () => {
   return <canvas ref={canvasRef} className="fireflies-canvas" aria-hidden />;
 };
 
-const HomeScreen = ({ onStart, onOpenZukan, preloadEnabled = false, onTogglePreload }: HomeScreenProps) => {
+const HomeScreen = ({ onStart, onOpenZukan, onContinue, onNewGame, savedProgress, preloadEnabled = false, onTogglePreload }: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
   const [activeHowtoTab, setActiveHowtoTab] = useState<HowtoTab>('glossary');
   const [openedHowtoEntry, setOpenedHowtoEntry] = useState<string | null>(null);
@@ -454,6 +464,36 @@ const HomeScreen = ({ onStart, onOpenZukan, preloadEnabled = false, onTogglePrel
             ))}
           </div>
         </div>
+
+        {savedProgress && (
+          <div className="save-data-banner">
+            <div className="save-data-info">
+              <span className="save-data-icon">💾</span>
+              <div>
+                <p className="save-data-title">前回の続きがあります</p>
+                <p className="save-data-sub">
+                  {JOB_NAMES[savedProgress.jobId] ?? savedProgress.jobId} / エリア{savedProgress.currentArea}
+                </p>
+              </div>
+            </div>
+            <div className="save-data-buttons">
+              <button
+                type="button"
+                className="btn-continue"
+                onClick={() => onContinue?.(savedProgress)}
+              >
+                続きから
+              </button>
+              <button
+                type="button"
+                className="btn-new-game"
+                onClick={() => onNewGame?.()}
+              >
+                最初から
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="home-menu-area">
           {homeButtons.map((button, index) => (

@@ -759,3 +759,76 @@
     background: rgba(0, 0, 0, 0);
   }
 }
+
+.save-data-banner {
+  width: 100%;
+  background: rgba(240, 180, 41, 0.1);
+  border: 1px solid rgba(240, 180, 41, 0.3);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+.save-data-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.save-data-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.save-data-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f0b429;
+  margin: 0 0 2px;
+}
+
+.save-data-sub {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+.save-data-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-continue {
+  background: #f0b429;
+  border: none;
+  border-radius: 8px;
+  color: #0d1117;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.btn-new-game {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
