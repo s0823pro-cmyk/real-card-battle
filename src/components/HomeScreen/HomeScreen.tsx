@@ -442,6 +442,20 @@ const HomeScreen = ({ onStart, onOpenZukan, onContinue, savedProgress, preloadEn
     { src: letterSImage, alt: 'S' },
     { src: letterS2Image, alt: 'S' },
   ] as const;
+  const hasSaveData =
+    savedProgress !== null &&
+    savedProgress !== undefined &&
+    savedProgress.jobId != null &&
+    typeof savedProgress.currentArea === 'number' &&
+    savedProgress.currentArea >= 1 &&
+    typeof savedProgress.currentTileId === 'number' &&
+    savedProgress.currentTileId >= 1 &&
+    savedProgress.currentScreen !== 'home' &&
+    savedProgress.currentScreen !== 'title' &&
+    savedProgress.currentScreen !== 'zukan' &&
+    savedProgress.currentScreen !== 'job_select' &&
+    savedProgress.currentScreen !== 'victory' &&
+    savedProgress.currentScreen !== 'game_over';
 
   return (
     <main className="home-screen" style={backgroundStyle}>
@@ -456,12 +470,14 @@ const HomeScreen = ({ onStart, onOpenZukan, onContinue, savedProgress, preloadEn
         </div>
 
         <div className="home-menu-area">
-          {savedProgress && (
+          {hasSaveData && (
             <button
               type="button"
               className="btn-home-continue"
               style={{ pointerEvents: fallingIndex !== null ? 'none' : 'auto' }}
-              onClick={() => onContinue?.(savedProgress)}
+              onClick={() => {
+                if (savedProgress) onContinue?.(savedProgress);
+              }}
             >
               <span className="btn-home-continue-label">続きから始める</span>
               <span className="btn-home-continue-sub">

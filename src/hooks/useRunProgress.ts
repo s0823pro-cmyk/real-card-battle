@@ -45,6 +45,7 @@ import type { UpgradeType } from '../utils/cardUpgrade';
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
 const SAVE_DATA_KEY = 'real-card-battle:save-data';
+const NON_RESUMABLE_SCREENS: GameScreen[] = ['home', 'title', 'zukan', 'job_select', 'victory', 'game_over'];
 
 type SerializedProgress = Omit<GameProgress, 'unlockedCardNames'> & { unlockedCardNames: string[] };
 
@@ -65,15 +66,32 @@ export const loadSavedProgress = (): GameProgress | null => {
     const raw = window.localStorage.getItem(SAVE_DATA_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SerializedProgress;
-    if (!parsed.jobId || !parsed.currentScreen) return null;
+    const normalizedScreen = parsed.currentScreen === 'battle' ? 'map' : parsed.currentScreen;
+    const isInvalidProgress =
+      !parsed.jobId ||
+      !normalizedScreen ||
+      typeof parsed.currentArea !== 'number' ||
+      parsed.currentArea < 1 ||
+      typeof parsed.currentTileId !== 'number' ||
+      parsed.currentTileId < 1 ||
+      !Array.isArray(parsed.board) ||
+      parsed.board.length === 0 ||
+      !parsed.player ||
+      !Array.isArray(parsed.deck) ||
+      NON_RESUMABLE_SCREENS.includes(normalizedScreen);
+    if (isInvalidProgress) {
+      window.localStorage.removeItem(SAVE_DATA_KEY);
+      return null;
+    }
     return {
       ...parsed,
       unlockedCardNames: new Set(parsed.unlockedCardNames ?? []),
       // バトル中状態はリセット（マップ画面に戻す）
       battleSetup: null,
-      currentScreen: parsed.currentScreen === 'battle' ? 'map' : parsed.currentScreen,
+      currentScreen: normalizedScreen,
     };
   } catch {
+    window.localStorage.removeItem(SAVE_DATA_KEY);
     return null;
   }
 };
@@ -455,7 +473,7 @@ export const useRunProgress = () => {
   }, [state.unlockedCardNames]);
 
   useEffect(() => {
-    if (state.currentScreen !== 'home' && state.currentScreen !== 'title' && state.currentScreen !== 'zukan') {
+    if (!NON_RESUMABLE_SCREENS.includes(state.currentScreen)) {
       saveProgressToStorage(state);
     }
   }, [state]);
