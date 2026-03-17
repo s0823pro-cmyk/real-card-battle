@@ -229,8 +229,8 @@ const CardComponent = ({
             </div>
             {card.badges && card.badges.length > 0 && (
               <div className="card-badges">
-                {card.badges.map((badge) => (
-                  <span key={badge} className={`card-badge card-badge--${badge}`}>
+                {card.badges.map((badge, index) => (
+                  <span key={`${badge}-${index}`} className={`card-type-badge card-badge--${badge}`}>
                     {BADGE_LABELS[badge]}
                   </span>
                 ))}

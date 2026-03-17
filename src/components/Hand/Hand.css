@@ -426,30 +426,22 @@
   align-items: center;
 }
 
-.card-badge {
-  font-family: 'Noto Serif JP', serif;
-  font-size: 7px;
-  font-weight: 700;
-  padding: 1px 3px;
-  border-radius: 2px;
-  letter-spacing: 0.03em;
-  line-height: 1.4;
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.15);
-  white-space: nowrap;
-}
-
-.card-badge--exhaust {
-  border-color: rgba(251, 191, 36, 0.8);
-  color: #fde68a;
-  background: rgba(251, 191, 36, 0.2);
-}
-
+.card-badge--exhaust,
 .card-badge--setup {
-  border-color: rgba(134, 239, 172, 0.8);
-  color: #bbf7d0;
-  background: rgba(134, 239, 172, 0.15);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 7px !important;
+  font-weight: 500 !important;
+  padding: 0 4px !important;
+  border-radius: 3px !important;
+  letter-spacing: 0.05em !important;
+  line-height: inherit !important;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  white-space: nowrap;
 }
 
 .card-description {
