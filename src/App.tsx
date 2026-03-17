@@ -80,6 +80,7 @@ function App() {
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
   const [currentStoryScenes, setCurrentStoryScenes] = useState<StoryScene[] | null>(null);
   const pendingAreaTransitionRef = useRef<(() => void) | null>(null);
+  const bossRewardHandledByStoryRef = useRef(false);
   const [showBossReward, setShowBossReward] = useState(false);
   const [bossRewardArea, setBossRewardArea] = useState<number | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
@@ -211,7 +212,8 @@ function App() {
     }
     const storyId = `carpenter_e${area}`;
     if (!hasSeenStory(storyId)) {
-      showAreaStory(area as 1 | 2, () => {});
+      bossRewardHandledByStoryRef.current = true;
+      showAreaStory(area as 1 | 2, () => startPostAreaBossFlow(area));
     }
   };
 
@@ -224,9 +226,10 @@ function App() {
     }
     const hasOmamoriChoices = (state.omamoriRewardChoices?.length ?? 0) > 0;
     pickCardReward(cardId, { deferBossTransition: true });
-    if (!hasOmamoriChoices) {
+    if (!hasOmamoriChoices && !bossRewardHandledByStoryRef.current) {
       startPostAreaBossFlow(area);
     }
+    bossRewardHandledByStoryRef.current = false;
   };
 
   const handlePickOmamoriReward = (omamoriId: string) => {
@@ -237,7 +240,10 @@ function App() {
       return;
     }
     pickOmamoriReward(omamoriId, { deferBossTransition: true });
-    startPostAreaBossFlow(area);
+    if (!bossRewardHandledByStoryRef.current) {
+      startPostAreaBossFlow(area);
+    }
+    bossRewardHandledByStoryRef.current = false;
   };
 
   const handleBossRewardComplete = (reward: BossReward, selectedCard?: Card) => {

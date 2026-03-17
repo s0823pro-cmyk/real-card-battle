@@ -167,6 +167,29 @@ export const useBattleLogic = () => {
       }
     }
 
+    // スキル・パワーカードが直接 damage 値を持つ場合も段取りブーストを適用
+    if ((card.type === 'skill' || card.type === 'power') && card.damage) {
+      const rawSkillDamage = calculateCardDamage(card, nextPlayer, prevCard, toolSlots);
+      const boostedSkillDamage = isDandoriActive
+        ? Math.floor(rawSkillDamage * bonus.damageMultiplier)
+        : rawSkillDamage;
+      if (card.tags?.includes('aoe')) {
+        for (const enemy of nextEnemies) {
+          if (enemy.currentHp <= 0) continue;
+          damage += applyDamageToEnemy(enemy, boostedSkillDamage);
+        }
+      } else {
+        const preferredIndex = preferredTargetEnemyId
+          ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
+          : -1;
+        const targetIndex = preferredIndex >= 0 ? preferredIndex : getAliveEnemyIndex(nextEnemies);
+        if (targetIndex >= 0) {
+          damage = applyDamageToEnemy(nextEnemies[targetIndex], boostedSkillDamage);
+          targetEnemyId = nextEnemies[targetIndex].id;
+        }
+      }
+    }
+
     if (card.block && nextPlayer.canBlock) {
       const boostedBlock = isDandoriActive ? Math.floor(card.block * bonus.damageMultiplier) : card.block;
       nextPlayer.block += boostedBlock;
