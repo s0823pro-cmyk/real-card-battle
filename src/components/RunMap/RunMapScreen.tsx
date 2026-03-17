@@ -67,7 +67,7 @@ const getNodeSize = (type: TileType): number => {
 const NODE_SPACING_SCALE_X = 1.08;
 const NODE_SPACING_SCALE_Y = 1.08;
 
-const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
+const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [tooltip, setTooltip] = useState<TileTooltipState | null>(null);
   const [relicsOpen, setRelicsOpen] = useState(false);
@@ -422,26 +422,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
       <footer className="map-controls">
         {isSelecting ? (
           <div className="map-branch-inline">
-            <p className="map-branch-inline-label">ルートを選んでください</p>
-            <div className="map-branch-inline-btns">
-              {branchPreviews.map((item, i) => {
-                const first = item.previewTiles[0];
-                return (
-                  <button
-                    key={item.nextTileId}
-                    type="button"
-                    className={`map-branch-btn ${i === 0 ? 'map-branch-btn--left' : 'map-branch-btn--right'}`}
-                    onClick={() => onSelectTile?.(item.nextTileId)}
-                  >
-                    <span className="map-branch-icon">{first?.icon ?? '❓'}</span>
-                    <span className="map-branch-name">{first?.name ?? '？'}</span>
-                    <span className="map-branch-route">
-                      {item.previewTiles.map((t) => t.icon).join(' → ')}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <p className="map-branch-inline-label">光っているノードをタップしてルートを選んでください</p>
           </div>
         ) : (
           <button

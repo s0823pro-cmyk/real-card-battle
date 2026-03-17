@@ -696,6 +696,7 @@
   padding: 16px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  min-height: 200px;
 }
 
 .battle-deck-card-item .hand-card {

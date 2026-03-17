@@ -153,6 +153,8 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
   const [skillEffect, setSkillEffect] = useState(false);
   const attackEffectTimerRef = useRef<number | null>(null);
   const skillEffectTimerRef = useRef<number | null>(null);
+  const lastCardPlayTimeRef = useRef<number>(0);
+  const CARD_PLAY_COOLDOWN = 600;
 
   useEffect(() => {
     const heavyPlayerHit = battlePopups.some((popup) => {
@@ -486,6 +488,13 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
       const finalTarget = finalDetection.target;
       const enemyTargetCard = isEnemyTargetCard(handDrag.card);
 
+      const now = Date.now();
+      const isPlayTarget = finalTarget === 'enemy' || finalTarget === 'timebar';
+      if (isPlayTarget && now - lastCardPlayTimeRef.current < CARD_PLAY_COOLDOWN) {
+        resetDragInteraction();
+        return;
+      }
+
       if (finalTarget === 'enemy') {
         if (!enemyTargetCard) {
           resetDragInteraction();
@@ -498,8 +507,9 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
             .find((enemyId) => enemyId !== null) ?? null;
         const preferred = finalHoveredEnemyId ?? hoveredEnemyId ?? aliveEnemies[0]?.id ?? null;
         const played = playCardInstant(handDrag.card.id, { type: 'enemy', enemyId: preferred });
-        if (played && handDrag.card.type === 'attack') {
-          triggerAttackEffect(preferred);
+        if (played) {
+          lastCardPlayTimeRef.current = Date.now();
+          if (handDrag.card.type === 'attack') triggerAttackEffect(preferred);
         }
       } else if (finalTarget === 'field') {
         // フィールド全体は発動しない（静かに手札へ戻す）
@@ -511,8 +521,9 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem }: BattleScreenProps) 
           return;
         }
         const played = playCardInstant(handDrag.card.id, { type: 'field' });
-        if (played && handDrag.card.type === 'skill') {
-          triggerSkillEffect();
+        if (played) {
+          lastCardPlayTimeRef.current = Date.now();
+          if (handDrag.card.type === 'skill') triggerSkillEffect();
         }
       } else if (finalTarget === 'reserve') {
         setReserveConfirm({ card: handDrag.card, visible: true });
