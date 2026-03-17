@@ -38,6 +38,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     timeCost: 3,
     description: '8ダメージ+足場×2',
     damage: 8,
+    scaffoldMultiplier: 2,
     tags: ['scaffold_bonus'],
     sellValue: 5,
     icon: '🔩',

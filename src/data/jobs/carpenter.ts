@@ -181,6 +181,7 @@ export const CARPENTER_RARE_POOL: Card[] = [
     timeCost: 3,
     damage: 14,
     description: '14ダメージ+足場×2',
+    scaffoldMultiplier: 2,
     tags: ['scaffold_bonus'],
     icon: '🧨',
     rarity: 'rare',

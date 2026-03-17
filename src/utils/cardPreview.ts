@@ -36,7 +36,8 @@ export const getEffectiveCardValues = (
 
   if (damage !== null) {
     if (player.jobId === 'carpenter' && card.tags?.includes('scaffold_bonus')) {
-      damage += player.scaffold * 2;
+      const scaffoldMultiplier = card.scaffoldMultiplier ?? 2;
+      damage += player.scaffold * scaffoldMultiplier;
     }
     if (player.jobId === 'cook' && card.tags?.includes('cooking') && card.cookingMultiplier) {
       damage += player.cookingGauge * card.cookingMultiplier;

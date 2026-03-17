@@ -83,6 +83,7 @@ export interface Card {
   wasReserved?: boolean;
   reservedThisTurn?: boolean;
   cookingMultiplier?: number;
+  scaffoldMultiplier?: number;
   preparationTimeCost?: number;
   upgraded?: boolean;
   lowHpBonus?: LowHpBonus;

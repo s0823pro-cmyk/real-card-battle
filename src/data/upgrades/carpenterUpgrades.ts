@@ -5,6 +5,7 @@ export interface CardUpgrade {
   damage?: number;
   block?: number;
   timeCost?: number;
+  scaffoldMultiplier?: number;
   description: string;
   effects?: CardEffect[];
 }
@@ -31,6 +32,7 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   '釘打ち': {
     name: '釘打ち+',
     damage: 10,
+    scaffoldMultiplier: 3,
     description: '10ダメージ+足場×3',
   },
   '作業着を着る': {
@@ -125,6 +127,7 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   '超釘打ち': {
     name: '超釘打ち+',
     damage: 18,
+    scaffoldMultiplier: 3,
     description: '18ダメージ+足場×3',
   },
   '棟上げ': {

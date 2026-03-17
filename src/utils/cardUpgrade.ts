@@ -34,6 +34,7 @@ function applyUpgrade(card: Card, upgrade: CardUpgrade): Card {
     damage: upgrade.damage ?? card.damage,
     block: upgrade.block ?? card.block,
     timeCost: upgrade.timeCost ?? card.timeCost,
+    scaffoldMultiplier: upgrade.scaffoldMultiplier ?? card.scaffoldMultiplier,
     description: sanitizedDescription,
     effects: upgrade.effects ?? card.effects,
     upgraded: true,
