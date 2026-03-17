@@ -99,14 +99,14 @@ export const RELICS: Omamori[] = [
   {
     id: 'energy_drink',
     name: 'エナジードリンク',
-    icon: '🥫',
+    icon: '⚡',
     description: '戦闘開始時タイムバー+1秒（初ターンのみ）',
     effect: { type: 'start_of_battle', stat: 'time', value: 1 },
   },
   {
     id: 'amulet',
     name: '厄除けお守り',
-    icon: '🧧',
+    icon: '🔮',
     description: '呪いカード1枚を無効化',
     effect: { type: 'passive', stat: 'curse_immunity', value: 1 },
   },
@@ -127,7 +127,7 @@ export const RELICS: Omamori[] = [
   {
     id: 'brand_wallet',
     name: 'ブランド財布',
-    icon: '👛',
+    icon: '👜',
     description: 'ショップ全品15%割引',
     effect: { type: 'passive', stat: 'shop_discount', value: 0.15 },
   },
@@ -141,7 +141,7 @@ export const RELICS: Omamori[] = [
   {
     id: 'victory_charm',
     name: '勝利のお守り',
-    icon: '✨',
+    icon: '🏆',
     description: '敵を倒すたびHPを2回復',
     effect: { type: 'on_kill', stat: 'heal', value: 2 },
   },
@@ -241,6 +241,15 @@ export const AREA1_EVENTS: GameEvent[] = [
     choices: [
       { text: '受講する（カード1枚強化）', effects: [] },
       { text: '時間がないので断る', effects: [] },
+    ],
+  },
+  {
+    id: 'shrine_lucky_charm',
+    name: '拾ったお守り',
+    description: '道端で小さなお守りを拾った。持ち主は見当たらない。',
+    choices: [
+      { text: 'ありがたく受け取る（お守り獲得）', effects: [{ type: 'omamori', value: 1 }] },
+      { text: 'そのまま置いておく', effects: [] },
     ],
   },
   {

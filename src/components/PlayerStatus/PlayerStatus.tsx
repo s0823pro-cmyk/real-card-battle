@@ -69,7 +69,15 @@ const PlayerStatus = ({
                 if (item && canUseItems) onUseItem(item.id);
               }}
             >
-              {item ? item.icon : ''}
+              {item ? (
+                item.imageUrl ? (
+                  <img className="item-slot-image" src={item.imageUrl} alt={item.name} />
+                ) : (
+                  <span className="item-emoji">{item.icon ?? '🧪'}</span>
+                )
+              ) : (
+                ''
+              )}
             </button>
           </Tooltip>
         );

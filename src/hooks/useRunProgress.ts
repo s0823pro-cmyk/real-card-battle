@@ -6,6 +6,7 @@ import {
   AREA1_BOSS,
   AREA2_BOSS,
   AREA3_BOSS,
+  RELICS,
   generateCardRewardChoices,
   generateOmamoriChoices,
   generateShopCards,
@@ -145,6 +146,7 @@ type Action =
   | { type: 'set_event'; event: GameEvent | null }
   | { type: 'set_shop'; shopItems: ShopItem[] }
   | { type: 'set_pawnshop_sell_used'; used: boolean }
+  | { type: 'set_hotel_item_received'; used: boolean }
   | { type: 'set_card_reward'; cards: Card[] | null }
   | { type: 'set_omamori_reward'; omamoris: Omamori[] | null; source: 'battle' | 'shrine' | null }
   | { type: 'set_battle_setup'; setup: BattleSetup | null; tileType: TileType | null }
@@ -225,6 +227,7 @@ const makeInitialProgress = (): GameProgress => {
     activeEvent: null,
     activeShopItems: [],
     pawnshopSellUsedThisVisit: false,
+    hotelItemReceivedThisVisit: false,
     cardReward: null,
     omamoriRewardChoices: null,
     omamoriRewardSource: null,
@@ -309,6 +312,8 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       return { ...state, activeShopItems: action.shopItems };
     case 'set_pawnshop_sell_used':
       return { ...state, pawnshopSellUsedThisVisit: action.used };
+    case 'set_hotel_item_received':
+      return { ...state, hotelItemReceivedThisVisit: action.used };
     case 'set_card_reward':
       return {
         ...state,
@@ -438,7 +443,18 @@ const applySingleEffect = (
       next.deck.push(...Array.from({ length: effect.value }).map(() => cloneCurse()));
       break;
     case 'omamori':
-      break;
+      {
+        if (effect.value <= 0) break;
+        const omamoriPool = RELICS.filter(
+          (relic) => !state.omamoris.some((owned) => owned.id === relic.id),
+        );
+        if (omamoriPool.length === 0) break;
+        const randomOmamori = omamoriPool[Math.floor(Math.random() * omamoriPool.length)];
+        return {
+          ...next,
+          omamoris: [...next.omamoris, randomOmamori],
+        };
+      }
     default:
       break;
   }
@@ -600,6 +616,7 @@ export const useRunProgress = () => {
       return;
     }
     if (tile.type === 'hotel') {
+      dispatch({ type: 'set_hotel_item_received', used: false });
       dispatch({ type: 'set_screen', screen: 'hotel' });
       return;
     }
@@ -743,6 +760,25 @@ export const useRunProgress = () => {
       },
     });
     console.log('[run-check] hotel-mental -> map');
+    dispatch({ type: 'set_screen', screen: 'map' });
+  };
+
+  const hotelGetItem = () => {
+    if (stateRef.current.hotelItemReceivedThisVisit) {
+      dispatch({ type: 'set_screen', screen: 'map' });
+      return;
+    }
+    if (stateRef.current.items.length >= 3) {
+      dispatch({ type: 'set_screen', screen: 'map' });
+      return;
+    }
+    const randomItem = generateShopItems(1)[0];
+    if (!randomItem) {
+      dispatch({ type: 'set_screen', screen: 'map' });
+      return;
+    }
+    dispatch({ type: 'set_items', items: [...stateRef.current.items, randomItem] });
+    dispatch({ type: 'set_hotel_item_received', used: true });
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
@@ -1032,6 +1068,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
     dispatch({ type: 'set_shop', shopItems: [] });
     dispatch({ type: 'set_pawnshop_sell_used', used: false });
+    dispatch({ type: 'set_hotel_item_received', used: false });
     dispatch({ type: 'set_event', event: null });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
     dispatch({ type: 'set_branch', tileId: null });
@@ -1056,6 +1093,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_omamori_reward', omamoris: saved.omamoriRewardChoices, source: saved.omamoriRewardSource });
     dispatch({ type: 'set_shop', shopItems: saved.activeShopItems });
     dispatch({ type: 'set_pawnshop_sell_used', used: saved.pawnshopSellUsedThisVisit });
+    dispatch({ type: 'set_hotel_item_received', used: saved.hotelItemReceivedThisVisit ?? false });
     dispatch({ type: 'set_event', event: saved.activeEvent });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
     dispatch({ type: 'set_branch', tileId: saved.selectedBranchTileId });
@@ -1135,6 +1173,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
     dispatch({ type: 'set_shop', shopItems: [] });
     dispatch({ type: 'set_pawnshop_sell_used', used: false });
+    dispatch({ type: 'set_hotel_item_received', used: false });
     dispatch({ type: 'set_event', event: null });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
     dispatch({ type: 'set_branch', tileId: null });
@@ -1158,6 +1197,7 @@ export const useRunProgress = () => {
     chooseEventChoice,
     hotelHeal,
     hotelMeditate,
+    hotelGetItem,
     openHotelUpgrade,
     closeCardUpgrade,
     upgradeDeckCard,

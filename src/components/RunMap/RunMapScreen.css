@@ -138,7 +138,16 @@
 
 .map-relic-icon {
   font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: help;
+}
+
+.map-relic-image {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 .board-wrapper {

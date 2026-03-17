@@ -49,6 +49,7 @@ function App() {
     chooseEventChoice,
     hotelHeal,
     hotelMeditate,
+    hotelGetItem,
     openHotelUpgrade,
     closeCardUpgrade,
     upgradeDeckCard,
@@ -318,7 +319,15 @@ function App() {
           <EventScreen event={state.activeEvent} onChoose={chooseEventChoice} />
         ) : null;
       case 'hotel':
-        return <RestScreen onHeal={hotelHeal} onUpgrade={openHotelUpgrade} onMeditate={hotelMeditate} />;
+        return (
+          <RestScreen
+            onHeal={hotelHeal}
+            onUpgrade={openHotelUpgrade}
+            onMeditate={hotelMeditate}
+            onGetItem={hotelGetItem}
+            canReceiveItem={state.items.length < 3 && !state.hotelItemReceivedThisVisit}
+          />
+        );
       case 'pawnshop':
         return (
           <ShopScreen

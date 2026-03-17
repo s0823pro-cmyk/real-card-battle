@@ -50,7 +50,7 @@ const getTilePreview = (type: GameProgress['board'][number]['type']): TilePrevie
     case 'pawnshop':
       return { title: '🏪 質屋', desc: 'カードやアイテムの売買' };
     case 'hotel':
-      return { title: '🏨 ホテル', desc: '回復・強化・瞑想' };
+      return { title: '🏨 ホテル', desc: '回復・強化・瞑想・アイテム' };
     case 'area_boss':
       return { title: '👑 エリアボス', desc: '強大な敵が待つ' };
     case 'start':
@@ -235,13 +235,15 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
             </button>
             {relicsOpen && (
               <div className="map-relics">
-                {progress.omamoris.map((relic) => (
+                {progress.omamoris.map((relic, idx) => (
                   <Tooltip
-                    key={relic.id}
+                    key={`${relic.id}_${idx}`}
                     label={relic.name}
                     description={relic.description}
                   >
-                    <span className="map-relic-icon">{relic.icon}</span>
+                    <span className="map-relic-icon">
+                      {relic.imageUrl ? <img src={relic.imageUrl} alt={relic.name} className="map-relic-image" /> : (relic.icon ?? '🎴')}
+                    </span>
                   </Tooltip>
                 ))}
               </div>

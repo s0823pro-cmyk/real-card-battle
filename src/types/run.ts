@@ -61,6 +61,7 @@ export interface RunItem {
   id: string;
   name: string;
   icon: string;
+  imageUrl?: string;
   description: string;
   price: number;
   effect: RunItemEffect;
@@ -76,6 +77,7 @@ export interface Omamori {
   id: string;
   name: string;
   icon: string;
+  imageUrl?: string;
   description: string;
   effect: OmamoriEffect;
 }
@@ -173,6 +175,7 @@ export interface GameProgress {
   activeEvent: GameEvent | null;
   activeShopItems: ShopItem[];
   pawnshopSellUsedThisVisit: boolean;
+  hotelItemReceivedThisVisit: boolean;
   cardReward: RewardState | null;
   omamoriRewardChoices: Omamori[] | null;
   omamoriRewardSource: 'battle' | 'shrine' | null;

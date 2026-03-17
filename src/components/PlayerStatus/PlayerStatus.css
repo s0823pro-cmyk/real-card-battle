@@ -233,6 +233,19 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.item-slot-image {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.item-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .stat-deck {
   margin-left: auto;
   font-size: 10px;

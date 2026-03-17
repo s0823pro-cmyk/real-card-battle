@@ -2,9 +2,11 @@ interface Props {
   onHeal: () => void;
   onUpgrade: () => void;
   onMeditate: () => void;
+  onGetItem: () => void;
+  canReceiveItem: boolean;
 }
 
-const RestScreen = ({ onHeal, onUpgrade, onMeditate }: Props) => {
+const RestScreen = ({ onHeal, onUpgrade, onMeditate, onGetItem, canReceiveItem }: Props) => {
   return (
     <main className="flow-screen">
       <section className="flow-card">
@@ -18,6 +20,9 @@ const RestScreen = ({ onHeal, onUpgrade, onMeditate }: Props) => {
           </button>
           <button type="button" className="flow-btn" onClick={onMeditate}>
             🧘 瞑想（メンタル+2）
+          </button>
+          <button type="button" className="flow-btn" onClick={onGetItem} disabled={!canReceiveItem}>
+            🎁 アイテムをもらう（ランダム1個）
           </button>
         </div>
       </section>
