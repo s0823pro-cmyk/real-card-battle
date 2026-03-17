@@ -149,9 +149,11 @@ export interface PlayerState {
   statusEffects: StatusEffect[];
   hasRevival: boolean;
   revivalUsed: boolean;
+  revivalHp?: number;
   deathWishActive: boolean;
   ridgepoleActive: boolean;
   templeCarpenterActive: boolean;
+  templeCarpenterMultiplier?: number;
   cliffEdgeActive: boolean;
   nextAttackTimeReduce: number;
   blockPersist: boolean;

@@ -31,10 +31,22 @@ function applyUpgrade(card: Card, upgrade: CardUpgrade): Card {
   return {
     ...card,
     name: upgrade.name,
-    damage: upgrade.damage ?? card.damage,
-    block: upgrade.block ?? card.block,
-    timeCost: upgrade.timeCost ?? card.timeCost,
-    scaffoldMultiplier: upgrade.scaffoldMultiplier ?? card.scaffoldMultiplier,
+    damage: upgrade.damage !== undefined ? upgrade.damage : card.damage,
+    block: upgrade.block !== undefined ? upgrade.block : card.block,
+    timeCost: upgrade.timeCost !== undefined ? upgrade.timeCost : card.timeCost,
+    scaffoldMultiplier:
+      upgrade.scaffoldMultiplier !== undefined ? upgrade.scaffoldMultiplier : card.scaffoldMultiplier,
+    cookingMultiplier:
+      upgrade.cookingMultiplier !== undefined ? upgrade.cookingMultiplier : card.cookingMultiplier,
+    lowHpBonus: upgrade.lowHpBonus !== undefined ? upgrade.lowHpBonus : card.lowHpBonus,
+    reserveBonus: upgrade.reserveBonus
+      ? {
+          ...(card.reserveBonus ?? {
+            description: '',
+          }),
+          ...upgrade.reserveBonus,
+        }
+      : card.reserveBonus,
     description: sanitizedDescription,
     effects: upgrade.effects ?? card.effects,
     upgraded: true,

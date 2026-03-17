@@ -1,4 +1,4 @@
-import type { CardEffect } from '../../types/game';
+import type { CardEffect, LowHpBonus } from '../../types/game';
 
 export interface CardUpgrade {
   name: string;
@@ -6,6 +6,14 @@ export interface CardUpgrade {
   block?: number;
   timeCost?: number;
   scaffoldMultiplier?: number;
+  cookingMultiplier?: number;
+  lowHpBonus?: LowHpBonus;
+  reserveBonus?: {
+    description?: string;
+    damageMultiplier?: number;
+    blockMultiplier?: number;
+    extraEffects?: CardEffect[];
+  };
   description: string;
   effects?: CardEffect[];
 }
@@ -37,6 +45,7 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   '作業着を着る': {
     name: '作業着を着る+',
+    block: 0,
     description: '毎ターン+3ブロック',
     effects: [{ type: 'block_per_turn', value: 3 }],
   },
@@ -85,6 +94,10 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   '研いだノコギリ': {
     name: '研いだノコギリ+',
     damage: 8,
+    reserveBonus: {
+      damageMultiplier: 2.0,
+      extraEffects: [{ type: 'scaffold', value: 2 }],
+    },
     description: '8ダメージ。温存時：16ダメージ+足場+2',
   },
   '大型クレーン': {
@@ -141,7 +154,7 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   '宮大工の技': {
     name: '宮大工の技+',
     timeCost: 5,
-    description: '段取りボーナスが+80%に強化（所要時間5秒）',
+    description: '段取りボーナスが1.8倍に強化（所要時間5秒）',
   },
   'リフォーム': {
     name: 'リフォーム+',
@@ -152,6 +165,7 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   '匠の一撃': {
     name: '匠の一撃+',
     timeCost: 3,
+    scaffoldMultiplier: 12,
     description: '足場×12ダメージ、足場を全消費。段取り時：2秒',
   },
 };

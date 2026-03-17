@@ -67,7 +67,8 @@ export const calculateCardDamage = (
   }
 
   if (card.tags?.includes('scaffold_consume')) {
-    damage = player.scaffold * 10;
+    const scaffoldMultiplier = card.scaffoldMultiplier ?? 10;
+    damage = player.scaffold * scaffoldMultiplier;
   }
 
   if (card.tags?.includes('low_hp_bonus') && card.lowHpBonus) {
@@ -189,7 +190,49 @@ export const getDandoriBonus = (
 
   const prevCard = timelineCards[index - 1];
   if (prevCard?.tags?.includes('preparation')) {
-    return { damageMultiplier: player?.templeCarpenterActive ? 1.5 : 1.3, timeCostReduction: 1 };
+    return {
+      damageMultiplier: player?.templeCarpenterActive ? (player.templeCarpenterMultiplier ?? 1.5) : 1.3,
+      timeCostReduction: 1,
+    };
   }
   return { damageMultiplier: 1, timeCostReduction: 0 };
+};
+
+/**
+ * カードの実効ダメージを計算する（温存ボーナス・段取りボーナス込み）
+ * BattleScreen のプレビューと useBattleLogic の resolveCard で共通使用。
+ */
+export const calculateEffectiveDamage = (
+  card: Card,
+  prevCard: Card | null,
+  player: PlayerState,
+  toolSlots?: ToolSlot[],
+): number => {
+  // 温存ボーナス適用
+  const reservedBonusActive = Boolean(card.wasReserved && card.reserveBonus);
+  const cardForCalc: Card = reservedBonusActive
+    ? {
+        ...card,
+        damage: card.damage
+          ? Math.floor(card.damage * (card.reserveBonus?.damageMultiplier ?? 1))
+          : card.damage,
+        effects: [
+          ...(card.effects ?? []),
+          ...(card.reserveBonus?.extraEffects ?? []),
+        ],
+        wasReserved: false,
+      }
+    : card;
+
+  // 基本ダメージ計算
+  let damage = calculateCardDamage(cardForCalc, player, toolSlots);
+
+  // 段取りボーナス適用
+  const timelineCards = [prevCard, cardForCalc].filter(Boolean) as Card[];
+  const dandoriBonus = getDandoriBonus(timelineCards, timelineCards.length - 1, player);
+  if (dandoriBonus.damageMultiplier > 1) {
+    damage = Math.floor(damage * dandoriBonus.damageMultiplier);
+  }
+
+  return damage;
 };

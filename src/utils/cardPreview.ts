@@ -38,7 +38,7 @@ export const getEffectiveCardValues = (
   let heal = baseHeal > 0 ? baseHeal : null;
   const effectiveTimeCost = getEffectiveTimeCost(card, lastPlayedCard, player, player.jobId);
   const dandoriMultiplier = lastPlayedCard?.tags?.includes('preparation')
-    ? (player.templeCarpenterActive ? 1.5 : 1.3)
+    ? (player.templeCarpenterActive ? (player.templeCarpenterMultiplier ?? 1.5) : 1.3)
     : 1;
   const isDandoriActive = dandoriMultiplier > 1;
   const baseDamage = card.damage ?? 0;
@@ -68,6 +68,14 @@ export const getEffectiveCardValues = (
       if (ratio <= card.lowHpBonus.threshold) {
         damage = card.lowHpBonus.damage;
       }
+    }
+    if (card.tags?.includes('scaffold_consume')) {
+      const scaffoldMultiplier = card.scaffoldMultiplier ?? 10;
+      damage = player.scaffold * scaffoldMultiplier;
+    }
+    if (card.tags?.includes('revenge_damage')) {
+      const baseDamage = player.lastTurnDamageTaken ?? 0;
+      damage = getHungryState(player) === 'awakened' ? Math.floor(baseDamage * 1.5) : baseDamage;
     }
     if (card.tags?.includes('cooking') && card.name === '闇鍋') {
       damage = 15;

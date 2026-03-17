@@ -21,6 +21,7 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   'フランベ': {
     name: 'フランベ+',
     damage: 10,
+    cookingMultiplier: 4,
     description: '10ダメージ+調理×4',
   },
   '仕込み': {
@@ -101,6 +102,10 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   '寝かせた生地': {
     name: '寝かせた生地+',
     damage: 10,
+    reserveBonus: {
+      damageMultiplier: 2.2,
+      extraEffects: [{ type: 'cooking_gauge', value: 3 }],
+    },
     description: '10ダメージ。温存時：22ダメージ、調理+3',
   },
   '出前配達': {
@@ -137,6 +142,7 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   'フルコース': {
     name: 'フルコース+',
     timeCost: 4,
+    cookingMultiplier: 8,
     description: '調理ゲージ×8ダメージ（所要時間4秒）',
   },
   '秘伝のスープ': {
@@ -162,6 +168,7 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
     name: '炎のフランベ+',
     damage: 15,
     timeCost: 3,
+    cookingMultiplier: 5,
     description: '15ダメージ+調理×5。全体攻撃（所要時間3秒）',
   },
 };

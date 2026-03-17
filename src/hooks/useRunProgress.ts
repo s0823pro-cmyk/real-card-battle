@@ -6,7 +6,6 @@ import {
   AREA1_BOSS,
   AREA2_BOSS,
   AREA3_BOSS,
-  RELICS,
   generateCardRewardChoices,
   generateOmamoriChoices,
   generateShopCards,
@@ -41,8 +40,7 @@ import {
   getTileById,
   movePlayerBySteps,
 } from '../utils/boardGenerator';
-import { upgradeCard, upgradeCardByJobId } from '../utils/cardUpgrade';
-import type { UpgradeType } from '../utils/cardUpgrade';
+import { upgradeCardByJobId } from '../utils/cardUpgrade';
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
@@ -142,10 +140,7 @@ const saveUnlockedCardNames = (names: Set<string>) => {
 
 const rollRoulette = (): number => {
   const roll = Math.random();
-  // 1:30%, 2:35%, 3:35%
-  const result = roll < 0.30 ? 1 : roll < 0.65 ? 2 : 3;
-  console.log('ルーレット結果:', result);
-  return result;
+  return roll < 0.30 ? 1 : roll < 0.65 ? 2 : 3;
 };
 
 type Action =
@@ -194,9 +189,11 @@ const initialPlayer: PlayerState = {
   statusEffects: [],
   hasRevival: false,
   revivalUsed: false,
+  revivalHp: undefined,
   deathWishActive: false,
   ridgepoleActive: false,
   templeCarpenterActive: false,
+  templeCarpenterMultiplier: undefined,
   cliffEdgeActive: false,
   nextAttackTimeReduce: 0,
   blockPersist: false,
@@ -427,11 +424,9 @@ const advanceAfterAreaBossCore = (
   currentArea: number,
 ) => {
   if (currentArea >= 3) {
-    console.log('[run-check] area3 boss -> victory');
     dispatchFn({ type: 'set_screen', screen: 'victory' });
     return;
   }
-  console.log(`[run-check] area${currentArea} boss -> area${currentArea + 1} map`);
   dispatchFn({ type: 'set_current_area', area: currentArea + 1 });
   dispatchFn({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
   dispatchFn({ type: 'set_current_tile', tileId: 1 });
@@ -465,11 +460,9 @@ const applySingleEffect = (
     case 'omamori':
       {
         if (effect.value <= 0) break;
-        const omamoriPool = RELICS.filter(
-          (relic) => !state.omamoris.some((owned) => owned.id === relic.id),
-        );
-        if (omamoriPool.length === 0) break;
-        const randomOmamori = omamoriPool[Math.floor(Math.random() * omamoriPool.length)];
+        const choices = generateOmamoriChoices(1, state.omamoris);
+        if (choices.length === 0) break;
+        const randomOmamori = choices[0];
         return {
           ...next,
           omamoris: [...next.omamoris, randomOmamori],
@@ -491,9 +484,6 @@ export const useRunProgress = () => {
 
   useEffect(() => {
     if (prevScreenRef.current !== state.currentScreen) {
-      console.log(
-        `[run-transition] ${prevScreenRef.current} -> ${state.currentScreen} (tile:${state.currentTileId})`,
-      );
       prevScreenRef.current = state.currentScreen;
     }
   }, [state.currentScreen, state.currentTileId]);
@@ -598,7 +588,7 @@ export const useRunProgress = () => {
       return;
     }
     if (tile.type === 'shrine') {
-      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3), source: 'shrine' });
+      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'shrine' });
       dispatch({ type: 'set_screen', screen: 'shrine' });
       return;
     }
@@ -624,7 +614,7 @@ export const useRunProgress = () => {
       const omamori: ShopItem = {
         id: `shop_omamori_${Date.now()}`,
         type: 'omamori',
-        item: generateOmamoriChoices(1)[0],
+        item: generateOmamoriChoices(1, stateRef.current.omamoris)[0],
         price: Math.max(1, Math.floor(150 * (1 - discount))),
       };
       dispatch({
@@ -760,8 +750,8 @@ export const useRunProgress = () => {
     }
     dispatch({ type: 'set_player', player: nextState.player });
     dispatch({ type: 'set_deck', deck: nextState.deck });
+    dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
     dispatch({ type: 'set_event', event: null });
-    console.log('[run-check] event -> map');
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
@@ -783,7 +773,6 @@ export const useRunProgress = () => {
         currentHp: Math.min(stateRef.current.player.maxHp, stateRef.current.player.currentHp + healAmount),
       },
     });
-    console.log('[run-check] hotel-heal -> map');
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
@@ -795,7 +784,6 @@ export const useRunProgress = () => {
         mental: Math.min(10, stateRef.current.player.mental + 2),
       },
     });
-    console.log('[run-check] hotel-mental -> map');
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
@@ -821,15 +809,12 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
-  const upgradeDeckCard = (cardId: string, upgradeType?: UpgradeType) => {
+  const upgradeDeckCard = (cardId: string) => {
     const target = stateRef.current.deck.find((card) => card.id === cardId);
     if (!target) return;
     if (target.upgraded) return;
     const jobId = stateRef.current.jobId;
-    const upgraded =
-      upgradeType != null
-        ? upgradeCard(target, upgradeType)
-        : upgradeCardByJobId(target, jobId);
+    const upgraded = upgradeCardByJobId(target, jobId);
     dispatch({
       type: 'set_deck',
       deck: stateRef.current.deck.map((card) =>
@@ -970,7 +955,6 @@ export const useRunProgress = () => {
 
   const closePawnshop = () => {
     dispatch({ type: 'set_shop', shopItems: [] });
-    console.log('[run-check] pawnshop -> map');
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
@@ -982,9 +966,11 @@ export const useRunProgress = () => {
     statusEffects: [],
     hasRevival: false,
     revivalUsed: false,
+    revivalHp: undefined,
     deathWishActive: false,
     ridgepoleActive: false,
     templeCarpenterActive: false,
+    templeCarpenterMultiplier: undefined,
     cliffEdgeActive: false,
     nextAttackTimeReduce: 0,
     blockPersist: false,
@@ -1010,7 +996,6 @@ export const useRunProgress = () => {
   });
 
   const onBattleEnd = (result: BattleResult) => {
-    console.log(`[run-check] battle-end outcome:${result.outcome} kind:${result.kind}`);
     dispatch({
       type: 'set_run_stats',
       totalTurns: stateRef.current.totalTurns + (result.battleTurns ?? 0),
@@ -1028,12 +1013,11 @@ export const useRunProgress = () => {
 
     dispatch({ type: 'set_card_reward', cards: generateCardRewardChoices(stateRef.current.jobId, 3) });
     if (result.kind === 'elite' || result.kind === 'boss') {
-      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3), source: 'battle' });
+      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'battle' });
     } else {
       dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
     }
     dispatch({ type: 'set_screen', screen: 'card_reward' });
-    console.log('[run-check] battle-victory -> card_reward');
   };
 
   const pickCardReward = (cardId: string | null, options?: PickRewardOptions) => {
@@ -1043,7 +1027,6 @@ export const useRunProgress = () => {
     }
     dispatch({ type: 'set_card_reward', cards: null });
     if (stateRef.current.omamoriRewardChoices?.length) {
-      console.log('[run-check] card_reward -> omamori_reward');
       dispatch({ type: 'set_screen', screen: 'omamori_reward' });
       return;
     }
@@ -1055,7 +1038,6 @@ export const useRunProgress = () => {
       advanceAfterAreaBossCore(dispatch, stateRef.current.currentArea);
       return;
     }
-    console.log('[run-check] card_reward -> map');
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
@@ -1072,7 +1054,6 @@ export const useRunProgress = () => {
       advanceAfterAreaBossCore(dispatch, stateRef.current.currentArea);
       return;
     }
-    console.log('[run-check] omamori_reward -> map');
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
@@ -1124,9 +1105,11 @@ export const useRunProgress = () => {
       statusEffects: [],
       hasRevival: false,
       revivalUsed: false,
+      revivalHp: undefined,
       deathWishActive: false,
       ridgepoleActive: false,
       templeCarpenterActive: false,
+      templeCarpenterMultiplier: undefined,
       cliffEdgeActive: false,
       nextAttackTimeReduce: 0,
       blockPersist: false,
@@ -1238,9 +1221,11 @@ export const useRunProgress = () => {
       statusEffects: [],
       hasRevival: false,
       revivalUsed: false,
+      revivalHp: undefined,
       deathWishActive: false,
       ridgepoleActive: false,
       templeCarpenterActive: false,
+      templeCarpenterMultiplier: undefined,
       cliffEdgeActive: false,
       nextAttackTimeReduce: 0,
       blockPersist: false,
@@ -1345,7 +1330,7 @@ export const useRunProgress = () => {
       return;
     }
     if (destination === 'shrine') {
-      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3), source: 'shrine' });
+      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3, []), source: 'shrine' });
       dispatch({ type: 'set_screen', screen: 'shrine' });
       return;
     }
@@ -1379,9 +1364,11 @@ export const useRunProgress = () => {
       statusEffects: [],
       hasRevival: false,
       revivalUsed: false,
+      revivalHp: undefined,
       deathWishActive: false,
       ridgepoleActive: false,
       templeCarpenterActive: false,
+      templeCarpenterMultiplier: undefined,
       cliffEdgeActive: false,
       nextAttackTimeReduce: 0,
       blockPersist: false,

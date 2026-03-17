@@ -38,7 +38,7 @@ export const ENEMY_ZUKAN_DATA: EnemyZukanEntry[] = [
   { id: 'claimer', name: 'クレーマー', icon: '😡', imageUrl: claimerImage, area: 1, type: 'normal', hp: 30, description: 'どんな些細なことでも文句をつけてくる厄介な存在。実は自分でも何に怒っているか分かっていない。' },
   { id: 'drunk', name: '酔っぱらい', icon: '🍶', imageUrl: drunkImage, area: 1, type: 'normal', hp: 35, description: '昼間から酒を飲み、絡んでくる迷惑な人物。素面の時は普通の人らしい。' },
   { id: 'wildCat', name: '野良猫', icon: '🐱', imageUrl: strayCatImage, area: 1, type: 'normal', hp: 20, description: '街を縄張りにする気性の荒い猫。懐いてくれたら最高の仲間になれそうだが。' },
-  { id: 'bicycle', name: '放置自転車', icon: '🚲', imageUrl: abandonedBikeImage, area: 1, type: 'normal', hp: 50, description: '誰かが捨てていったボロボロの自転車。なぜか生きているかのように立ちはだかる。' },
+  { id: 'bicycle', name: '放置自転車', icon: '🚲', imageUrl: abandonedBikeImage, area: 1, type: 'normal', hp: 24, description: '誰かが捨てていったボロボロの自転車。なぜか生きているかのように立ちはだかる。' },
   { id: 'solicitor', name: '勧誘員', icon: '📢', imageUrl: solicitorImage, area: 1, type: 'normal', hp: 28, description: 'しつこく勧誘してくる迷惑な人物。断っても断っても追いかけてくる。' },
   { id: 'biker_leader', name: '暴走族リーダー', icon: '🏍️', imageUrl: bikerLeaderImage, area: 1, type: 'elite', hp: 90, description: '地元を牛耳る暴走族のリーダー。子分たちへの面目があるため絶対に引かない。' },
   { id: 'evil_realtor', name: '悪徳不動産屋', icon: '🏠', imageUrl: badRealtorImage, area: 1, type: 'elite', hp: 75, description: '詐欺まがいの契約で儲ける悪徳業者。法の抜け穴を熟知している。' },

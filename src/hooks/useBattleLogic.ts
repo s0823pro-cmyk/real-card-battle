@@ -1,5 +1,5 @@
 import type { Card, Enemy, PlayerState, ToolSlot } from '../types/game';
-import { applyDamageToEnemy, calculateCardDamage, getDandoriBonus } from '../utils/damage';
+import { applyDamageToEnemy, calculateEffectiveDamage, getDandoriBonus } from '../utils/damage';
 import { getHungryState } from '../utils/hungrySystem';
 
 export interface CardResolveResult {
@@ -124,7 +124,8 @@ export const useBattleLogic = () => {
 
     // ダメージ処理（attack / skill / power 共通）
     if (card.type === 'attack' || ((card.type === 'skill' || card.type === 'power') && card.damage)) {
-      let rawDamage = calculateCardDamage(card, nextPlayer, toolSlots);
+      // 温存ボーナス・段取りボーナス込みのダメージを計算
+      let rawDamage = calculateEffectiveDamage(card, prevCard, nextPlayer, toolSlots);
       // next_attack_boost（根性+）のボーナスを適用（attackのみ）
       if (card.type === 'attack' && nextPlayer.nextAttackBoostCount > 0) {
         rawDamage += nextPlayer.nextAttackBoostValue;
@@ -133,7 +134,7 @@ export const useBattleLogic = () => {
           nextPlayer.nextAttackBoostValue = 0;
         }
       }
-      const boostedDamage = isDandoriActive ? Math.floor(rawDamage * bonus.damageMultiplier) : rawDamage;
+      const boostedDamage = rawDamage;
       const hitCountEffect = card.effects?.find((e) => e.type === 'hit_count');
       const effectiveHitCount = hitCountEffect?.value ?? card.hitCount ?? 0;
       if (card.tags?.includes('multi_hit') && effectiveHitCount > 0) {
@@ -255,17 +256,19 @@ export const useBattleLogic = () => {
 
     if (card.id === 'gamble') {
       const isWin = Math.random() < 0.5;
+      const winDamage = card.upgraded ? 35 : 25;
+      const lossDamage = card.upgraded ? 8 : 10;
       if (isWin) {
         const preferredIndex = preferredTargetEnemyId
           ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
           : -1;
         const targetIndex = preferredIndex >= 0 ? preferredIndex : getAliveEnemyIndex(nextEnemies);
         if (targetIndex >= 0) {
-          damage += applyDamageToEnemy(nextEnemies[targetIndex], 25);
+          damage += applyDamageToEnemy(nextEnemies[targetIndex], winDamage);
           targetEnemyId = nextEnemies[targetIndex].id;
         }
       } else {
-        nextPlayer.currentHp = Math.max(0, nextPlayer.currentHp - 10);
+        nextPlayer.currentHp = Math.max(0, nextPlayer.currentHp - lossDamage);
       }
     }
 

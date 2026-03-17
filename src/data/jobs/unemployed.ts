@@ -38,7 +38,19 @@ export const UNEMPLOYED_STARTER_DECK: Card[] = [
 ];
 
 export const UNEMPLOYED_COMMON_POOL: Card[] = [
-  { id: 'can', name: '空き缶投げ', type: 'attack', timeCost: 0, description: '4ダメージ', damage: 4, icon: '🥫', sellValue: 5, imageUrl: emptyCanImage },
+  {
+    id: 'can',
+    name: '空き缶投げ',
+    type: 'attack',
+    timeCost: 0,
+    description: '4ダメージ',
+    damage: 4,
+    hitCount: 1,
+    tags: ['multi_hit'],
+    icon: '🥫',
+    sellValue: 5,
+    imageUrl: emptyCanImage,
+  },
   { id: 'newspaper', name: '新聞紙アーマー', type: 'skill', timeCost: 1, description: '3ブロック、カード1枚ドロー', block: 3, icon: '📰', sellValue: 5, effects: [{ type: 'draw', value: 1 }], imageUrl: newspaperArmorImage },
   { id: 'umbrella', name: '傘で突く', type: 'attack', timeCost: 2, description: '7ダメージ、2ブロック', damage: 7, block: 2, icon: '☂️', sellValue: 5, imageUrl: umbrellaStabImage },
   {

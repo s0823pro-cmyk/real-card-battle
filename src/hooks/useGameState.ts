@@ -11,7 +11,7 @@ import { getHungryState } from '../utils/hungrySystem';
 import { shuffle } from '../utils/shuffle';
 import { isEnemyTargetCard } from '../utils/cardTarget';
 import { getEffectiveTimeCost } from '../utils/timeline';
-import { upgradeCard } from '../utils/cardUpgrade';
+import { upgradeCardByJobId } from '../utils/cardUpgrade';
 import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord';
 
 const MAX_RESERVED = 2;
@@ -140,9 +140,11 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   ...player,
   hasRevival: player.hasRevival ?? false,
   revivalUsed: player.revivalUsed ?? false,
+  revivalHp: player.revivalHp,
   deathWishActive: player.deathWishActive ?? false,
   ridgepoleActive: player.ridgepoleActive ?? false,
   templeCarpenterActive: player.templeCarpenterActive ?? false,
+  templeCarpenterMultiplier: player.templeCarpenterMultiplier,
   cliffEdgeActive: player.cliffEdgeActive ?? false,
   nextAttackTimeReduce: player.nextAttackTimeReduce ?? 0,
   blockPersist: player.blockPersist ?? false,
@@ -161,6 +163,8 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   nextIngredientBonus: player.nextIngredientBonus ?? 0,
   threeStarActive: player.threeStarActive ?? false,
   firstIngredientUsedThisTurn: player.firstIngredientUsedThisTurn ?? false,
+  nextAttackBoostValue: player.nextAttackBoostValue ?? 0,
+  nextAttackBoostCount: player.nextAttackBoostCount ?? 0,
   timeBonusPerTurn: player.timeBonusPerTurn ?? 0,
 });
 
@@ -192,9 +196,11 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     statusEffects: [],
     hasRevival: false,
     revivalUsed: false,
+    revivalHp: undefined,
     deathWishActive: false,
     ridgepoleActive: false,
     templeCarpenterActive: false,
+    templeCarpenterMultiplier: undefined,
     cliffEdgeActive: false,
     nextAttackTimeReduce: 0,
     blockPersist: false,
@@ -387,7 +393,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     return {
       player: {
         ...player,
-        currentHp: 1,
+        currentHp: player.revivalHp ?? 1,
         hasRevival: false,
         revivalUsed: true,
       },
@@ -403,9 +409,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     statusEffects: [],
     hasRevival: false,
     revivalUsed: false,
+    revivalHp: undefined,
     deathWishActive: false,
     ridgepoleActive: false,
     templeCarpenterActive: false,
+    templeCarpenterMultiplier: undefined,
     cliffEdgeActive: false,
     nextAttackTimeReduce: 0,
     blockPersist: false,
@@ -429,12 +437,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     nextCardDoubleEffect: false,
     nextCardEffectBoost: 0,
   });
-
-  const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
-    if ((card.damage ?? 0) > 0) return 'damage';
-    if ((card.block ?? 0) > 0) return 'block';
-    return 'time';
-  };
 
   const selectedCard = useMemo(
     () => gameState.hand.find((card) => card.id === selectedCardId) ?? null,
@@ -532,6 +534,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         ? { ...multipliedCard, damage: (multipliedCard.damage ?? 0) + attackItemBuff.value }
         : multipliedCard;
     const playedCard: Card = { ...buffedCard, wasReserved: false, reservedThisTurn: false };
+    // 捨て札/除外には温存ボーナス適用前の基礎値を保持する
+    const cardForDiscard: Card = { ...card, wasReserved: false, reservedThisTurn: false };
 
     const result = resolveCard(
       playedCard,
@@ -544,7 +548,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const playerAfterPowerFlags: PlayerState = (() => {
       if (playedCard.type !== 'power') return result.player;
       if (playedCard.id === 'revival') {
-        return { ...result.player, hasRevival: true, revivalUsed: false };
+        return {
+          ...result.player,
+          hasRevival: true,
+          revivalUsed: false,
+          revivalHp: playedCard.upgraded ? 10 : 1,
+        };
       }
       if (playedCard.id === 'death_wish') {
         return { ...result.player, deathWishActive: true };
@@ -553,7 +562,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         return { ...result.player, ridgepoleActive: true };
       }
       if (playedCard.id === 'temple_carpenter') {
-        return { ...result.player, templeCarpenterActive: true };
+        return {
+          ...result.player,
+          templeCarpenterActive: true,
+          templeCarpenterMultiplier: playedCard.upgraded ? 1.8 : 1.5,
+        };
       }
       if (playedCard.id === 'cliff_edge') {
         return { ...result.player, cliffEdgeActive: true };
@@ -640,7 +653,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         );
         const targetIds = new Set(targetCards.map((entry) => entry.id));
         handAfterPlay = handAfterPlay.map((entry) =>
-          targetIds.has(entry.id) ? upgradeCard(entry, getAutoUpgradeType(entry)) : entry,
+          targetIds.has(entry.id) ? upgradeCardByJobId(entry, gameState.player.jobId) : entry,
         );
         targetCards.forEach((entry) => {
           const upgradedName = handAfterPlay.find((cardInHand) => cardInHand.id === entry.id)?.name ?? `${entry.name}+`;
@@ -648,11 +661,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         });
       }
     }
-    const exhaustedCards = shouldExhaust ? [...gameState.exhaustedCards, playedCard] : gameState.exhaustedCards;
+    const exhaustedCards = shouldExhaust
+      ? [...gameState.exhaustedCards, cardForDiscard]
+      : gameState.exhaustedCards;
     const discardPile =
       playedCard.type === 'tool' || playedCard.type === 'power' || shouldExhaust
         ? drawResult.discardPile
-        : [...drawResult.discardPile, playedCard];
+        : [...drawResult.discardPile, cardForDiscard];
     const postCardState: GameState = {
       ...gameState,
       discardPile,
@@ -721,11 +736,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       window.setTimeout(() => setShieldEffect(false), 260);
     }
     if (playedCard.id === 'gamble') {
+      const winDmg = playedCard.upgraded ? 35 : 25;
+      const lossDmg = playedCard.upgraded ? 8 : 10;
       if (result.damage > 0) {
-        pushPopup('🎰 大当たり！ 25ダメージ！', 'player', 'buff');
+        pushPopup(`🎰 大当たり！ ${winDmg}ダメージ！`, 'player', 'buff');
       } else {
         setIsPlayerHit(true);
-        pushPopup('🎰 ハズレ… 10ダメージ', 'player', 'damage');
+        pushPopup(`🎰 ハズレ… ${lossDmg}ダメージ`, 'player', 'damage');
         window.setTimeout(() => setIsPlayerHit(false), 260);
       }
     }
@@ -791,7 +808,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         const reward = result.enemies.reduce((sum, enemy) => sum + getEnemyReward(enemy.templateId), 0);
         const nextMental = Math.min(MAX_MENTAL, playerAfterKill.mental + 1);
         setVictoryRewardGold(reward);
-        setVictoryMentalRecovery(nextMental - playerAfterCard.mental);
+        setVictoryMentalRecovery(nextMental - playerAfterKill.mental);
         setGameState({
           ...postCardState,
           phase: 'victory',
@@ -1360,7 +1377,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return {
         ...prev,
         hand: prev.hand.map((card) =>
-          card.id === cardId ? upgradeCard(card, getAutoUpgradeType(card)) : card,
+          card.id === cardId ? upgradeCardByJobId(card, gameState.player.jobId) : card,
         ),
       };
     });

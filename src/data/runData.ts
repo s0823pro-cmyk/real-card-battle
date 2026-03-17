@@ -336,9 +336,15 @@ export const generateCardRewardChoices = (jobId: JobId = 'carpenter', count = 3)
   return cards;
 };
 
-export const generateOmamoriChoices = (count = 3): Omamori[] => {
-  const shuffled = [...RELICS].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+export const generateOmamoriChoices = (
+  count = 3,
+  currentOmamoris: Omamori[] = [],
+): Omamori[] => {
+  const ownedIds = new Set(currentOmamoris.map((o) => o.id));
+  const available = RELICS.filter((relic) => !ownedIds.has(relic.id));
+  const pool = available.length > 0 ? available : [...RELICS];
+  const shuffled = pool.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, shuffled.length));
 };
 
 export const generateShopCards = (count: number, jobId: JobId = 'carpenter'): Card[] =>
@@ -352,14 +358,21 @@ export const generateShopCards = (count: number, jobId: JobId = 'carpenter'): Ca
     return pickRandomCommonCard(jobId);
   });
 
+const ALL_RARE_NAMES = new Set([
+  ...getCardPoolsByJob('carpenter').rare,
+  ...getCardPoolsByJob('cook').rare,
+  ...getCardPoolsByJob('unemployed').rare,
+].map((entry) => entry.name));
+
+const ALL_UNCOMMON_NAMES = new Set([
+  ...getCardPoolsByJob('carpenter').uncommon,
+  ...getCardPoolsByJob('cook').uncommon,
+  ...getCardPoolsByJob('unemployed').uncommon,
+].map((entry) => entry.name));
+
 export const getCardPrice = (card: Card): number => {
-  const carpenterPools = getCardPoolsByJob('carpenter');
-  const cookPools = getCardPoolsByJob('cook');
-  const unemployedPools = getCardPoolsByJob('unemployed');
-  const rarePool = [...carpenterPools.rare, ...cookPools.rare, ...unemployedPools.rare];
-  const uncommonPool = [...carpenterPools.uncommon, ...cookPools.uncommon, ...unemployedPools.uncommon];
-  if (rarePool.some((rare) => rare.name === card.name)) return 150;
-  if (uncommonPool.some((uncommon) => uncommon.name === card.name)) return 80;
+  if (ALL_RARE_NAMES.has(card.name)) return 150;
+  if (ALL_UNCOMMON_NAMES.has(card.name)) return 80;
   return 50;
 };
 

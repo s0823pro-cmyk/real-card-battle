@@ -16,7 +16,7 @@ import type { Card, GameState } from '../../types/game';
 import type { BattleResult, BattleSetup } from '../../types/run';
 import { getEffectiveCardValues } from '../../utils/cardPreview';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
-import { calculateCardDamage } from '../../utils/damage';
+import { calculateEffectiveDamage } from '../../utils/damage';
 import { isEnemyTargetCard } from '../../utils/cardTarget';
 import '../Enemy/Enemy.css';
 import '../Effects/Effects.css';
@@ -590,13 +590,17 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
 
     let previewDamage = 0;
     if (handDrag.card.type === 'attack') {
-      previewDamage = calculateCardDamage(handDrag.card, gameState.player);
+      let rawDamage = calculateEffectiveDamage(
+        handDrag.card,
+        lastPlayedCard,
+        gameState.player,
+        gameState.toolSlots,
+      );
       const vulnerable = enemy.statusEffects.find((status) => status.type === 'vulnerable');
       if (vulnerable) {
-        previewDamage = Math.floor(previewDamage * 1.5);
+        rawDamage = Math.floor(rawDamage * 1.5);
       }
-      const enemyBlock = enemy.block;
-      previewDamage = Math.max(0, previewDamage - enemyBlock);
+      previewDamage = Math.max(0, rawDamage - enemy.block);
     }
     return {
       enemyId: enemy.id,
