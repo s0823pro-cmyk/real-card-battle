@@ -1059,7 +1059,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       wasReserved: Boolean(card.reservedThisTurn),
       reservedThisTurn: false,
     }));
-    const exhaustedToDiscard = exhaustedReserved.map((card) => ({
+    const exhaustedFromReserve = exhaustedReserved.map((card) => ({
       ...card,
       wasReserved: false,
       reservedThisTurn: false,
@@ -1075,7 +1075,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       reserved: [],
       timeline: [],
       drawPile: drawResult.drawPile,
-      discardPile: [...drawResult.discardPile, ...exhaustedToDiscard],
+      discardPile: drawResult.discardPile,
+      exhaustedCards: [...state.exhaustedCards, ...exhaustedFromReserve],
       player: playerAfterReset,
       executingIndex: -1,
     };
