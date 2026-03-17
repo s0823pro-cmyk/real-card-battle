@@ -4,9 +4,25 @@ interface Props {
   onMeditate: () => void;
   onGetItem: () => void;
   canReceiveItem: boolean;
+  itemReceivedThisVisit: boolean;
+  isItemInventoryFull: boolean;
 }
 
-const RestScreen = ({ onHeal, onUpgrade, onMeditate, onGetItem, canReceiveItem }: Props) => {
+const RestScreen = ({
+  onHeal,
+  onUpgrade,
+  onMeditate,
+  onGetItem,
+  canReceiveItem,
+  itemReceivedThisVisit,
+  isItemInventoryFull,
+}: Props) => {
+  const itemButtonLabel = itemReceivedThisVisit
+    ? '🎁 アイテム受け取り済み（この訪問）'
+    : isItemInventoryFull
+      ? '🎒 アイテム枠がいっぱい'
+      : '🎁 アイテムをもらう（ランダム1個）';
+
   return (
     <main className="flow-screen">
       <section className="flow-card">
@@ -22,7 +38,7 @@ const RestScreen = ({ onHeal, onUpgrade, onMeditate, onGetItem, canReceiveItem }
             🧘 瞑想（メンタル+2）
           </button>
           <button type="button" className="flow-btn" onClick={onGetItem} disabled={!canReceiveItem}>
-            🎁 アイテムをもらう（ランダム1個）
+            {itemButtonLabel}
           </button>
         </div>
       </section>

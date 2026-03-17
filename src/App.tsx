@@ -326,6 +326,8 @@ function App() {
             onMeditate={hotelMeditate}
             onGetItem={hotelGetItem}
             canReceiveItem={state.items.length < 3 && !state.hotelItemReceivedThisVisit}
+            itemReceivedThisVisit={state.hotelItemReceivedThisVisit}
+            isItemInventoryFull={state.items.length >= 3}
           />
         );
       case 'pawnshop':

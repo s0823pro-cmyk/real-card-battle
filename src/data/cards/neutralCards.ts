@@ -40,7 +40,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     id: 'first_aid',
     name: '応急処置',
     type: 'skill',
-    timeCost: 2,
+    timeCost: 6,
     description: 'HP5回復',
     icon: '🩹',
     rarity: 'common',
