@@ -221,17 +221,27 @@ function App() {
     setRestoredBattleState(null);
     const isBossVictory = result.outcome === 'victory' && result.kind === 'boss';
     const area = state.currentArea;
-    onBattleEnd(result);
-    if (!isBossVictory || state.jobId !== 'carpenter') return;
-    if (area >= 3) {
+
+    // エリア3ボス撃破時はストーリーを先に表示してからクリア画面へ
+    if (isBossVictory && state.jobId === 'carpenter' && area >= 3) {
+      onBattleEnd(result);
       showAreaStory(3, () => {});
       return;
     }
-    const storyId = `carpenter_e${area}`;
-    if (!hasSeenStory(storyId)) {
-      bossRewardHandledByStoryRef.current = true;
-      showAreaStory(area as 1 | 2, () => startPostAreaBossFlow(area));
+
+    // エリア1・2ボス撃破時はストーリー未見なら先にストーリーを表示してからカード報酬へ
+    if (isBossVictory && state.jobId === 'carpenter') {
+      const storyId = `carpenter_e${area}`;
+      if (!hasSeenStory(storyId)) {
+        showAreaStory(area as 1 | 2, () => {
+          onBattleEnd(result);
+          bossRewardHandledByStoryRef.current = true;
+        });
+        return;
+      }
     }
+
+    onBattleEnd(result);
   };
 
   const handlePickCardReward = (cardId: string | null) => {

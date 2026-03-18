@@ -166,6 +166,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   nextAttackBoostValue: player.nextAttackBoostValue ?? 0,
   nextAttackBoostCount: player.nextAttackBoostCount ?? 0,
   timeBonusPerTurn: player.timeBonusPerTurn ?? 0,
+  fullSprintUsedCount: player.fullSprintUsedCount ?? 0,
 });
 
 const createInitialGameState = (setup?: BattleSetup | null): GameState => {
@@ -181,7 +182,9 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     })),
   );
   const startDrawBonus = getOmamoriBonus(setup?.omamoris ?? [], 'start_of_battle', 'draw');
-  const startBlockBonus = getOmamoriBonus(setup?.omamoris ?? [], 'start_of_battle', 'block');
+  const startBlockBonus =
+    getOmamoriBonus(setup?.omamoris ?? [], 'start_of_battle', 'block') +
+    getOmamoriBonus(setup?.omamoris ?? [], 'on_turn_start', 'block');
   const startTimeBonus = getOmamoriBonus(setup?.omamoris ?? [], 'start_of_battle', 'time');
   const drawResult = drawCards(deck, [], DRAW_COUNT + Math.max(0, startDrawBonus));
   const basePlayer = setup?.player ?? {
@@ -278,6 +281,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const [hungryFlash, setHungryFlash] = useState<'hungry' | 'awakened' | null>(null);
   const [showRevivalEffect, setShowRevivalEffect] = useState(false);
   const [pendingHandUpgradeCount, setPendingHandUpgradeCount] = useState(0);
+  const [curseImmunityUsed, setCurseImmunityUsed] = useState(false);
   const canPlayWithHandCondition = (card: Card, hand: Card[]): boolean => {
     const isSoloPlayOnlyCard = card.tags?.includes('solo_play_only') ?? false;
     if (!isSoloPlayOnlyCard) return true;
@@ -436,6 +440,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     nextAttackBoostCount: 0,
     nextCardDoubleEffect: false,
     nextCardEffectBoost: 0,
+    fullSprintUsedCount: 0,
   });
 
   const selectedCard = useMemo(
@@ -587,10 +592,16 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       playerAfterCardBase,
       playerAfterCardBase.jobId,
     );
-    const playerAfterCard: PlayerState =
-      playedCard.type === 'attack' && playerAfterCardBase.nextAttackTimeReduce > 0
-        ? { ...playerAfterCardBase, nextAttackTimeReduce: 0 }
-        : playerAfterCardBase;
+    const playerAfterCard: PlayerState = (() => {
+      let p = playerAfterCardBase;
+      if (playedCard.type === 'attack' && p.nextAttackTimeReduce > 0) {
+        p = { ...p, nextAttackTimeReduce: 0 };
+      }
+      if (playedCard.id === 'full_sprint') {
+        p = { ...p, fullSprintUsedCount: (p.fullSprintUsedCount ?? 0) + 1 };
+      }
+      return p;
+    })();
 
     const drawAmount = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'draw')
@@ -1260,10 +1271,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         pushPopup(`💰-${result.goldStolen}G 盗まれた！`, 'player', 'damage');
       }
       if (result.addCurse) {
-        const hasCurseImmunity = battleOmamoris.some(
-          (omamori) => omamori.effect.type === 'passive' && omamori.effect.stat === 'curse_immunity',
-        );
+        const hasCurseImmunity =
+          !curseImmunityUsed &&
+          battleOmamoris.some(
+            (omamori) => omamori.effect.type === 'passive' && omamori.effect.stat === 'curse_immunity',
+          );
         if (hasCurseImmunity) {
+          setCurseImmunityUsed(true);
           pushPopup('🧧 呪いを無効化', 'player', 'buff');
         } else {
           const curseCard: Card = {
@@ -1419,6 +1433,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setHungryFlash(null);
     setShowRevivalEffect(false);
     setPendingHandUpgradeCount(0);
+    setCurseImmunityUsed(false);
     prevHungryStateRef.current = 'normal';
   };
 

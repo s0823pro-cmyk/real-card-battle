@@ -65,15 +65,20 @@ const EnemyDisplay = ({
                 )}
               </div>
               <div className="enemy-hp-text">
-                <span>
-                  ❤ {enemy.currentHp}/{enemy.maxHp}
-                </span>
+                {enemy.block > 0 ? (
+                  <span style={{ color: '#60a5fa', fontWeight: 700 }}>
+                    🛡 {enemy.currentHp + enemy.block}/{enemy.maxHp}
+                  </span>
+                ) : (
+                  <span>
+                    ❤ {enemy.currentHp}/{enemy.maxHp}
+                  </span>
+                )}
                 {isPreviewTarget && <span className="enemy-hp-preview-text">→ {previewHp}</span>}
               </div>
             </div>
             <div className="enemy-buffs">
               {strengthUp > 0 && <span className="enemy-buff--positive">⬆️+{strengthUp}</span>}
-              {enemy.block > 0 && <span className="enemy-buff--block">🛡️{enemy.block}</span>}
             </div>
             <div className="enemy-illustration">
               {enemy.imageUrl && !failedImageEnemyIds.has(enemy.id) ? (

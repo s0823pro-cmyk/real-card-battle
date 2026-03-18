@@ -28,6 +28,10 @@ export const getEffectiveTimeCost = (
   ) {
     return 0;
   }
+  if (card.id === 'full_sprint' && player?.fullSprintUsedCount) {
+    const reduction = Math.min(card.timeCost, player.fullSprintUsedCount * 0.5);
+    cost = Math.max(0, cost - reduction);
+  }
   return Math.max(0, cost);
 };
 

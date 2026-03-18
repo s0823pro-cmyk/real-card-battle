@@ -336,6 +336,19 @@ export const generateCardRewardChoices = (jobId: JobId = 'carpenter', count = 3)
   return cards;
 };
 
+export const generateRareCardRewardChoices = (jobId: JobId = 'carpenter', count = 3): Card[] => {
+  const cards: Card[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const useNeutral = Math.random() < 0.3;
+    if (useNeutral) {
+      cards.push(pickRandomNeutralByRarity('rare'));
+    } else {
+      cards.push(pickRandomRareCard(jobId));
+    }
+  }
+  return cards;
+};
+
 export const generateOmamoriChoices = (
   count = 3,
   currentOmamoris: Omamori[] = [],

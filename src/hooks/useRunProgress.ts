@@ -7,6 +7,7 @@ import {
   AREA2_BOSS,
   AREA3_BOSS,
   generateCardRewardChoices,
+  generateRareCardRewardChoices,
   generateOmamoriChoices,
   generateShopCards,
   generateShopItems,
@@ -430,6 +431,7 @@ const advanceAfterAreaBossCore = (
   dispatchFn({ type: 'set_current_area', area: currentArea + 1 });
   dispatchFn({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
   dispatchFn({ type: 'set_current_tile', tileId: 1 });
+  dispatchFn({ type: 'clear_traveled_edges' });
   dispatchFn({ type: 'set_screen', screen: 'map' });
 };
 
@@ -993,6 +995,7 @@ export const useRunProgress = () => {
     nextAttackBoostCount: 0,
     nextCardDoubleEffect: false,
     nextCardEffectBoost: 0,
+    fullSprintUsedCount: 0,
   });
 
   const onBattleEnd = (result: BattleResult) => {
@@ -1014,7 +1017,23 @@ export const useRunProgress = () => {
       return;
     }
 
-    dispatch({ type: 'set_card_reward', cards: generateCardRewardChoices(stateRef.current.jobId, 3) });
+    // エリア3ボス撃破時は報酬なしで直接クリア画面へ
+    if (
+      result.kind === 'boss' &&
+      stateRef.current.lastTileType === 'area_boss' &&
+      stateRef.current.currentArea >= 3
+    ) {
+      dispatch({ type: 'set_screen', screen: 'victory' });
+      return;
+    }
+
+    const isBossBattle = result.kind === 'boss';
+    dispatch({
+      type: 'set_card_reward',
+      cards: isBossBattle
+        ? generateRareCardRewardChoices(stateRef.current.jobId, 3)
+        : generateCardRewardChoices(stateRef.current.jobId, 3),
+    });
     if (result.kind === 'elite' || result.kind === 'boss') {
       dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'battle' });
     } else {

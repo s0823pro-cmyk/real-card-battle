@@ -177,6 +177,7 @@ export interface PlayerState {
   timeBonusPerTurn: number;
   nextCardDoubleEffect: boolean;
   nextCardEffectBoost: number;
+  fullSprintUsedCount?: number;
 }
 
 export interface ToolSlot {

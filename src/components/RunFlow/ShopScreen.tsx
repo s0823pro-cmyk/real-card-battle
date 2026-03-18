@@ -45,6 +45,7 @@ const ShopScreen = ({
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [showCardRemove, setShowCardRemove] = useState(false);
   const [showCardSell, setShowCardSell] = useState(false);
+  const [confirmItem, setConfirmItem] = useState<ShopItem | null>(null);
   const cards = useMemo(() => items.filter((item) => item.type === 'card'), [items]);
   const omamoris = useMemo(() => items.filter((item) => item.type === 'omamori'), [items]);
   const runItems = useMemo(() => items.filter((item) => item.type === 'item'), [items]);
@@ -118,13 +119,13 @@ const ShopScreen = ({
                     role="button"
                     tabIndex={disabled ? -1 : 0}
                     onClick={() => {
-                      if (!disabled) onBuy(item.id);
+                      if (!disabled) setConfirmItem(item);
                     }}
                     onKeyDown={(event) => {
                       if (disabled) return;
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        onBuy(item.id);
+                        setConfirmItem(item);
                       }
                     }}
                   >
@@ -166,7 +167,7 @@ const ShopScreen = ({
                     type="button"
                     className="shop-item"
                     disabled={disabled}
-                    onClick={() => onBuy(item.id)}
+                    onClick={() => { if (!disabled) setConfirmItem(item); }}
                   >
                     <strong>
                       {renderIcon(item)} {renderName(item)}
@@ -186,7 +187,7 @@ const ShopScreen = ({
                     type="button"
                     className="shop-item"
                     disabled={disabled}
-                    onClick={() => onBuy(item.id)}
+                    onClick={() => { if (!disabled) setConfirmItem(item); }}
                   >
                     <strong>
                       {renderIcon(item)} {renderName(item)}
@@ -342,6 +343,73 @@ const ShopScreen = ({
                   />
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmItem && (
+        <div className="shop-remove-overlay" onClick={() => setConfirmItem(null)}>
+          <div className="shop-remove-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="shop-remove-modal-header">
+              <h2 className="shop-remove-modal-title">購入確認</h2>
+              <button type="button" className="shop-remove-close" onClick={() => setConfirmItem(null)}>
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {confirmItem.type === 'card' ? (
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <CardComponent
+                    card={confirmItem.item as Card}
+                    jobId={jobId}
+                    selected={false}
+                    disabled={false}
+                    locked={false}
+                    isSelling={false}
+                    isReturning={false}
+                    isGhost={false}
+                    isDragging={false}
+                    isDragUnavailable={false}
+                    effectiveValues={getBaseEffectiveValues(confirmItem.item as Card)}
+                    onSelect={noop}
+                    onPointerDown={noop}
+                    onPointerMove={noop}
+                    onPointerUp={noop}
+                    onPointerCancel={noop}
+                    onMouseEnter={noop}
+                    onMouseLeave={noop}
+                    style={shopCardStyle}
+                  />
+                </div>
+              ) : (
+                <p style={{ textAlign: 'center', fontSize: 14 }}>
+                  {renderIcon(confirmItem)} {renderName(confirmItem)}
+                </p>
+              )}
+              <p style={{ textAlign: 'center', color: '#f0b429', fontWeight: 700 }}>
+                {confirmItem.price}G
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className="flow-btn ghost"
+                  style={{ flex: 1 }}
+                  onClick={() => setConfirmItem(null)}
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  className="flow-btn"
+                  style={{ flex: 1 }}
+                  onClick={() => {
+                    onBuy(confirmItem.id);
+                    setConfirmItem(null);
+                  }}
+                >
+                  購入する（{confirmItem.price}G）
+                </button>
+              </div>
             </div>
           </div>
         </div>
