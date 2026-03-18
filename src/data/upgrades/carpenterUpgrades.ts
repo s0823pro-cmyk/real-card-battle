@@ -16,6 +16,7 @@ export interface CardUpgrade {
   };
   description: string;
   effects?: CardEffect[];
+  tags?: string[];
 }
 
 export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
@@ -132,16 +133,16 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   '鉄壁工法': {
     name: '鉄壁工法+',
     block: 18,
-    timeCost: 1,
-    description: '18ブロック（所要時間1秒）',
+    description: '18ブロック',
   },
 
   // レア
   '超釘打ち': {
     name: '超釘打ち+',
-    damage: 18,
-    scaffoldMultiplier: 3,
-    description: '18ダメージ+足場×3',
+    timeCost: 3.5,
+    damage: 2,
+    scaffoldMultiplier: 2,
+    description: '2ダメージ+足場×2ダメージ',
   },
   '棟上げ': {
     name: '棟上げ+',
@@ -165,7 +166,8 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   '匠の一撃': {
     name: '匠の一撃+',
     timeCost: 3,
-    scaffoldMultiplier: 12,
-    description: '足場×12ダメージ、足場を全消費。段取り時：2秒',
+    scaffoldMultiplier: 6,
+    tags: ['scaffold_consume', 'exhaust'],
+    description: '足場×6ダメージ、足場を全消費。使用後除外。段取り時：2秒',
   },
 };

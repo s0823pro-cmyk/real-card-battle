@@ -49,6 +49,10 @@ function applyUpgrade(card: Card, upgrade: CardUpgrade): Card {
       : card.reserveBonus,
     description: sanitizedDescription,
     effects: upgrade.effects ?? card.effects,
+    tags: upgrade.tags !== undefined ? upgrade.tags : card.tags,
+    badges: upgrade.tags !== undefined
+      ? (upgrade.tags.filter((t) => t === 'exhaust' || t === 'setup') as import('../types/game').CardBadge[])
+      : card.badges,
     upgraded: true,
   };
 }

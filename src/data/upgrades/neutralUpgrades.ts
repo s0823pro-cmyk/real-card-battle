@@ -15,8 +15,9 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
   応急処置: {
     name: '応急処置+',
     timeCost: 5,
-    description: 'HP8回復（所要時間5秒）',
+    description: 'HP8回復。使用後除外しない。（所要時間5秒）',
     effects: [{ type: 'heal', value: 8 }],
+    tags: [],
   },
   かわす: {
     name: 'かわす+',

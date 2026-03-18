@@ -331,7 +331,7 @@
   position: relative;
   z-index: 2;
   font-family: 'Orbitron', sans-serif;
-  font-size: 6.5px;
+  font-size: 9px;
   font-weight: 900;
   color: #ffffff;
   line-height: 1;
@@ -341,7 +341,7 @@
 }
 
 .card-cost-unit {
-  font-size: 4px;
+  font-size: 6px;
   font-weight: 700;
   opacity: 0.9;
 }
