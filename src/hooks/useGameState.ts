@@ -166,7 +166,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   nextAttackBoostValue: player.nextAttackBoostValue ?? 0,
   nextAttackBoostCount: player.nextAttackBoostCount ?? 0,
   timeBonusPerTurn: player.timeBonusPerTurn ?? 0,
-  fullSprintUsedCount: player.fullSprintUsedCount ?? 0,
+  fullSprintUsedCount: 0,
 });
 
 const createInitialGameState = (setup?: BattleSetup | null): GameState => {
