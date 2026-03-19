@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 import type { BossRewardType } from '../data/bossRewards';
-import { CURSE_CARD } from '../data/carpenterDeck';
+import { CARPENTER_STARTER_DECK, CURSE_CARD, RESERVE_BONUS_CARDS } from '../data/carpenterDeck';
+import { NEUTRAL_CARD_POOL } from '../data/cards/neutralCards';
 import { getJobConfig } from '../data/jobs';
+import { cloneRewardCard } from '../data/jobs/index';
+import {
+  CARPENTER_COMMON_POOL,
+  CARPENTER_RARE_POOL,
+  CARPENTER_UNCOMMON_POOL,
+} from '../data/jobs/carpenter';
 import {
   AREA1_BOSS,
   AREA2_BOSS,
@@ -53,6 +60,7 @@ export type DevDestination =
   | 'battle_boss_1'
   | 'battle_boss_2'
   | 'battle_boss_3'
+  | 'battle_all_cards'
   | 'shop'
   | 'shrine'
   | 'hotel'
@@ -1297,6 +1305,32 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_current_area', area });
     dispatch({ type: 'set_board', board: devBoard });
     dispatch({ type: 'set_current_tile', tileId: 1 });
+
+    if (destination === 'battle_all_cards') {
+      const allCarpenterCards = [
+        ...CARPENTER_STARTER_DECK,
+        ...CARPENTER_COMMON_POOL,
+        ...CARPENTER_UNCOMMON_POOL,
+        ...CARPENTER_RARE_POOL,
+        ...RESERVE_BONUS_CARDS,
+      ];
+      const allNeutralCards = [...NEUTRAL_CARD_POOL];
+      const allCards = [...allCarpenterCards, ...allNeutralCards];
+      const deck: Card[] = allCards.flatMap((card) => [cloneRewardCard(card), cloneRewardCard(card)]);
+      const setup: BattleSetup = {
+        jobId,
+        kind: 'battle',
+        enemies: createEncounterFromTemplateIds(['claimer']),
+        deck,
+        player: devPlayer,
+        omamoris: [],
+        items: [],
+      };
+      dispatch({ type: 'set_deck', deck });
+      dispatch({ type: 'set_battle_setup', setup, tileType: 'enemy' });
+      dispatch({ type: 'set_screen', screen: 'battle' });
+      return;
+    }
 
     if (destination === 'battle_normal' || destination === 'battle_elite' || destination.startsWith('battle_boss')) {
       const templateId =

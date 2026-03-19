@@ -710,6 +710,9 @@ const HomeScreen = ({
                       <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('story')}>
                         ストーリー
                       </button>
+                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_all_cards')}>
+                        全カード戦闘
+                      </button>
                     </div>
                   </div>
                 )}
