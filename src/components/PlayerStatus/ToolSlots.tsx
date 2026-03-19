@@ -40,7 +40,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
     <div className="battle-slots-row">
       <div
         style={{
-          width: '120px',
+          width: '100px',
           flexShrink: 0,
           overflow: 'hidden',
           touchAction: 'pan-x',
@@ -59,10 +59,10 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
         <div
           className="tool-slots-inline tool-slots-inline--scrollable"
           style={{
+            display: 'flex',
+            flexWrap: 'nowrap',
             overflowX: 'auto',
             touchAction: 'pan-x',
-            width: 'max-content',
-            minWidth: '100%',
             WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
@@ -97,7 +97,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
       <div className="slots-divider" />
       <div
         style={{
-          width: '120px',
+          width: '100px',
           flexShrink: 0,
           overflow: 'hidden',
           touchAction: 'pan-x',
@@ -116,10 +116,10 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
         <div
           className="power-slots power-slots--scrollable"
           style={{
+            display: 'flex',
+            flexWrap: 'nowrap',
             overflowX: 'auto',
             touchAction: 'pan-x',
-            width: 'max-content',
-            minWidth: '100%',
             WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
