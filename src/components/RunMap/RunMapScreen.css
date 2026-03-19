@@ -9,7 +9,7 @@
   flex-direction: column;
   gap: 0;
   padding: 0;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: 0;
   color: var(--text-primary);
   overflow: hidden;
 }
@@ -33,7 +33,7 @@
   background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding: max(10px, calc(env(safe-area-inset-top) + 10px)) 16px 8px;
+  padding: 60px 16px 8px;
   flex-shrink: 0;
 }
 
