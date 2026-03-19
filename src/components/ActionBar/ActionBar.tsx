@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import CardComponent from '../Hand/CardComponent';
+import Tooltip from '../Tooltip/Tooltip';
 import './ActionBar.css';
 
 interface Props {
@@ -104,12 +105,23 @@ const ActionBar = ({
             }`}
             ref={reserveDropRef}
           >
-            <span className="reserved-label">温存:</span>
             <div className={`reserve-slots${reserved.length >= 3 ? ' reserve-slots--scrollable' : ''}`}>
             {reserved.length === 0 ? (
               <>
-                <div className="reserved-card-mini empty" />
-                <div className="reserved-card-mini empty" />
+                <Tooltip
+                  label="温存枠"
+                  description="カードをここにドロップすると温存できます。温存したカードは次ターン開始時に手札に戻ります。温存1枚につき次ターンの時間が1.5秒減少します。"
+                  touchMode="hold"
+                >
+                  <div className="reserved-card-mini empty" />
+                </Tooltip>
+                <Tooltip
+                  label="温存枠"
+                  description="カードをここにドロップすると温存できます。温存したカードは次ターン開始時に手札に戻ります。温存1枚につき次ターンの時間が1.5秒減少します。"
+                  touchMode="hold"
+                >
+                  <div className="reserved-card-mini empty" />
+                </Tooltip>
               </>
             ) : (
               reserved.map((card, index) => (
