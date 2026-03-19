@@ -164,21 +164,20 @@ const PlayerStatus = ({
               )}
             </div>
           </div>
+          <div className="stat-preparation">
+            {isPreparationActive && (
+              <Tooltip
+                label="⚡ 段取りボーナス"
+                description="直前に【準備】バッジのカードを使用。次のカードのダメージ・ブロック・回復が1.3倍"
+              >
+                <span className="stat-preparation-text">⚡ 段取り！</span>
+              </Tooltip>
+            )}
+          </div>
         </div>
         <ToolSlots toolSlots={toolSlots} activePowers={activePowers} jobId={player.jobId} />
       </div>
       <div className="player-row player-row--sub">
-        {itemSlots}
-        <div className="stat-preparation">
-          {isPreparationActive && (
-            <Tooltip
-              label="⚡ 段取りボーナス"
-              description="直前に【準備】バッジのカードを使用。次のカードのダメージ・ブロック・回復が1.3倍"
-            >
-              <span className="stat-preparation-text">⚡ 段取り！</span>
-            </Tooltip>
-          )}
-        </div>
         <div className="stat-piles">
           <button type="button" className="btn-pile" onClick={onOpenDrawPile}>
             山:{drawPileCount}
@@ -198,6 +197,7 @@ const PlayerStatus = ({
             終了
           </button>
         </div>
+        {itemSlots}
       </div>
     </section>
   );
