@@ -224,6 +224,7 @@
 .tool-slots-inline--scrollable {
   overflow-x: auto;
   overflow-y: hidden;
+  /* スクロール領域の表示幅を固定し、内部を横スクロールさせる */
   width: 138px;
   max-width: 138px;
   scrollbar-width: none;
