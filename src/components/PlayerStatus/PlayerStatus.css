@@ -227,6 +227,11 @@
   margin-left: -20px;
   max-width: 100%;
   overflow: hidden;
+  touch-action: pan-x;
+}
+
+.battle-slots-row * {
+  touch-action: pan-x;
 }
 
 .slots-divider {
