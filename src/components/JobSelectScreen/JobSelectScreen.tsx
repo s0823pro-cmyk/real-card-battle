@@ -48,6 +48,7 @@ const JOB_CARDS: JobCard[] = [
     mental: 6,
     mechanic: '調理ゲージを爆発させる',
     catchphrase: '厨房は戦場だ',
+    comingSoon: true,
   },
   {
     id: 'unemployed',
@@ -61,6 +62,7 @@ const JOB_CARDS: JobCard[] = [
     mental: 10,
     mechanic: 'ピンチほど強くなる',
     catchphrase: '失うものは何もない',
+    comingSoon: true,
   },
   {
     id: 'doctor',
