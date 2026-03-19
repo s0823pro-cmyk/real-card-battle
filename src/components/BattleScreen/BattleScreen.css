@@ -186,9 +186,13 @@
   border: none !important;
   box-shadow: none !important;
   padding: 12px 16px 8px;
-  padding-top: max(12px, calc(env(safe-area-inset-top) + 8px));
+  padding-top: 12px;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
   position: relative;
+}
+
+.battle-enemy-area {
+  margin-top: env(safe-area-inset-top, 0px);
 }
 
 .battle-item-bar {
@@ -220,7 +224,7 @@
 
 .battle-settings-trigger {
   position: absolute;
-  top: 8px;
+  top: max(8px, calc(env(safe-area-inset-top) + 8px));
   right: 8px;
   z-index: 30;
   min-width: 56px;
