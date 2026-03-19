@@ -56,7 +56,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
     <div className="battle-slots-row">
       <div
         style={{
-          width: '138px',
+          width: '120px',
           flexShrink: 0,
           overflow: 'hidden',
           touchAction: 'pan-x',
@@ -115,7 +115,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
       <div className="slots-divider" />
       <div
         style={{
-          width: '140px',
+          width: '116px',
           flexShrink: 0,
           overflow: 'hidden',
           touchAction: 'pan-x',
@@ -189,8 +189,8 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
                     onMouseLeave={noop}
                     style={
                       {
-                        '--hand-card-width': '44px',
-                        '--hand-card-height': '70px',
+                        '--hand-card-width': '36px',
+                        '--hand-card-height': '56px',
                         position: 'relative',
                         transform: 'none',
                         transition: 'none',
