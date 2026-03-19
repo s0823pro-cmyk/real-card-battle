@@ -1165,27 +1165,33 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return;
     }
 
-    const ridgepolePower = workingState.activePowers.find((p) =>
+    const ridgepolePowers = workingState.activePowers.filter((p) =>
       isCardVariantId(p.id, 'ridgepole'),
     );
-    const ridgepoleThreshold =
-      ridgepolePower?.effects?.find((e) => e.type === 'ridgepole_threshold')?.value ?? 5;
-    const ridgepoleDamage =
-      ridgepolePower?.effects?.find((e) => e.type === 'ridgepole_damage')?.value ?? 10;
-
-    const ridgepoleActive = Boolean(ridgepolePower) || workingState.player.ridgepoleActive;
+    const ridgepoleActive = ridgepolePowers.length > 0 || workingState.player.ridgepoleActive;
+    // 複数枚ある場合は最も発動しやすい閾値（最小値）を採用
+    const ridgepoleThreshold = ridgepolePowers.length > 0
+      ? Math.min(...ridgepolePowers.map(
+        (p) => p.effects?.find((e) => e.type === 'ridgepole_threshold')?.value ?? 5,
+      ))
+      : 5;
+    // 複数枚ある場合はダメージを合算。カード未保持でフラグのみ有効時はデフォルト10。
+    const ridgepoleDamage = ridgepolePowers.reduce((sum, p) => {
+      return sum + (p.effects?.find((e) => e.type === 'ridgepole_damage')?.value ?? 10);
+    }, 0) || 10;
+    const effectiveRidgepoleDamage = ridgepolePowers.length > 0 ? ridgepoleDamage : 10;
     if (ridgepoleActive && workingState.player.scaffold >= ridgepoleThreshold) {
       let dealt = false;
       const defeatedByRidgepole: string[] = [];
       const nextEnemies = workingState.enemies.map((enemy) => {
         if (enemy.currentHp <= 0) return enemy;
         dealt = true;
-        const nextHp = Math.max(0, enemy.currentHp - ridgepoleDamage);
+        const nextHp = Math.max(0, enemy.currentHp - effectiveRidgepoleDamage);
         if (enemy.currentHp > 0 && nextHp <= 0) {
           defeatedByRidgepole.push(enemy.templateId);
         }
         if (enemy.currentHp - nextHp > 0) {
-          pushPopup(`-${ridgepoleDamage}`, enemy.id, 'damage');
+          pushPopup(`-${effectiveRidgepoleDamage}`, enemy.id, 'damage');
         }
         return { ...enemy, currentHp: nextHp };
       });
