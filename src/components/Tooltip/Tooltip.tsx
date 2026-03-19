@@ -108,6 +108,7 @@ const Tooltip = ({ tooltipKey, label, description, touchMode = 'hold', children 
       hideTimerRef.current = null;
     }
     setCalculated(false);
+    setPosition({ top: 100, left: 20 }); // 強制的に画面内に表示
     setVisible(true);
   };
 
