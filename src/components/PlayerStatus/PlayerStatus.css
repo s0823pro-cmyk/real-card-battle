@@ -225,6 +225,7 @@
 .tool-slots-inline--scrollable {
   overflow-x: auto !important;
   overflow-y: hidden;
+  width: 138px !important;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -262,6 +263,7 @@
 .power-slots--scrollable {
   overflow-x: auto !important;
   overflow-y: hidden;
+  width: 140px !important;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
