@@ -97,6 +97,11 @@
   padding: 2px 0 2px 2px;
 }
 
+.player-sub-spacer {
+  flex: 1;
+  min-width: 0;
+}
+
 .stat-preparation {
   flex: 1;
   display: flex;
@@ -358,7 +363,6 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .item-slot {

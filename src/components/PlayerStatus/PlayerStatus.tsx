@@ -178,6 +178,7 @@ const PlayerStatus = ({
         <ToolSlots toolSlots={toolSlots} activePowers={activePowers} jobId={player.jobId} />
       </div>
       <div className="player-row player-row--sub">
+        <div className="player-sub-spacer" />
         {itemSlots}
         <div className="stat-piles">
           <button type="button" className="btn-pile" onClick={onOpenDrawPile}>
