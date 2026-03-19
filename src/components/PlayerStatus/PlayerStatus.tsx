@@ -100,10 +100,14 @@ const PlayerStatus = ({
           </div>
           <div className="player-info-row">
             <Tooltip tooltipKey="block">
-              <span className={`block ${blockClass}`}>
+              <span className={`block ${blockClass} ${previewBlock != null ? 'block--preview' : ''}`}>
                 🛡{' '}
                 {previewBlock != null ? (
-                  <span style={{ color: '#60a5fa', fontWeight: 700 }}>{previewBlock}</span>
+                  <>
+                    <span className="block-preview-current">{player.block}</span>
+                    <span className="block-preview-arrow">→</span>
+                    <span className="block-preview-next">{previewBlock}</span>
+                  </>
                 ) : (
                   player.block
                 )}
