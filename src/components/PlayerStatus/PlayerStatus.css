@@ -244,6 +244,11 @@
   overflow: hidden;
 }
 
+.tool-slots-inline::-webkit-scrollbar,
+.power-slots::-webkit-scrollbar {
+  display: none;
+}
+
 .power-slot-item {
   flex-shrink: 0;
   position: relative;

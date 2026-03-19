@@ -38,18 +38,25 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
 
   return (
     <div className="battle-slots-row">
-      <div style={{ width: '120px', overflow: 'hidden', flexShrink: 0 }}>
+      <div
+        style={{
+          width: '120px',
+          flexShrink: 0,
+          overflow: 'hidden',
+          touchAction: toolSlots.length >= 4 ? 'pan-x' : 'auto',
+        }}
+      >
         <div
-          className="tool-slots-inline"
-          style={
-            toolSlots.length >= 4
-              ? {
-                  overflowX: 'auto',
-                  touchAction: 'pan-x',
-                  WebkitOverflowScrolling: 'touch',
-                }
-              : undefined
-          }
+          className={`tool-slots-inline ${toolSlots.length >= 4 ? 'tool-slots-inline--scrollable' : ''}`}
+          style={{
+            overflowX: toolSlots.length >= 4 ? 'auto' : 'hidden',
+            touchAction: toolSlots.length >= 4 ? 'pan-x' : 'auto',
+            width: 'max-content',
+            minWidth: '100%',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
         >
           {Array.from({ length: toolDisplayCount }).map((_, idx) => {
             const slot = toolSlots[idx];
@@ -78,18 +85,25 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
       </div>
 
       <div className="slots-divider" />
-      <div style={{ width: '120px', overflow: 'hidden', flexShrink: 0 }}>
+      <div
+        style={{
+          width: '120px',
+          flexShrink: 0,
+          overflow: 'hidden',
+          touchAction: activePowers.length >= 4 ? 'pan-x' : 'auto',
+        }}
+      >
         <div
-          className="power-slots"
-          style={
-            activePowers.length >= 4
-              ? {
-                  overflowX: 'auto',
-                  touchAction: 'pan-x',
-                  WebkitOverflowScrolling: 'touch',
-                }
-              : undefined
-          }
+          className={`power-slots ${activePowers.length >= 4 ? 'power-slots--scrollable' : ''}`}
+          style={{
+            overflowX: activePowers.length >= 4 ? 'auto' : 'hidden',
+            touchAction: activePowers.length >= 4 ? 'pan-x' : 'auto',
+            width: 'max-content',
+            minWidth: '100%',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
         >
           {Array.from({ length: powerDisplayCount }).map((_, idx) => {
             const power = activePowers[idx];
