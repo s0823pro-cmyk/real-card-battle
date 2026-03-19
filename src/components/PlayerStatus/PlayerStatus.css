@@ -216,22 +216,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 0 0 138px;
   min-width: 0;
-  overflow-x: hidden;
-  overflow-y: hidden;
-}
-
-.tool-slots-inline--scrollable {
-  overflow-x: auto !important;
-  overflow-y: hidden;
-  width: 138px !important;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.tool-slots-inline--scrollable::-webkit-scrollbar {
-  display: none;
+  overflow: hidden;
 }
 
 .battle-slots-row {
@@ -240,7 +226,7 @@
   gap: 6px;
   margin-left: -20px;
   max-width: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .slots-divider {
@@ -254,22 +240,8 @@
   display: flex;
   gap: 4px;
   align-items: center;
-  flex: 0 0 140px;
   min-width: 0;
-  overflow-x: hidden;
-  overflow-y: hidden;
-}
-
-.power-slots--scrollable {
-  overflow-x: auto !important;
-  overflow-y: hidden;
-  width: 140px !important;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.power-slots--scrollable::-webkit-scrollbar {
-  display: none;
+  overflow: hidden;
 }
 
 .power-slot-item {

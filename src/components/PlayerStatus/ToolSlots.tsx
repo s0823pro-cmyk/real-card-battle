@@ -38,107 +38,117 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
 
   return (
     <div className="battle-slots-row">
-      <div
-        className={`tool-slots-inline ${toolSlots.length >= 4 ? 'tool-slots-inline--scrollable' : ''}`}
-        style={{
-          width: '120px',
-          maxWidth: '120px',
-          overflowX: toolSlots.length >= 4 ? 'auto' : 'hidden',
-          touchAction: toolSlots.length >= 4 ? 'pan-x' : 'none',
-        }}
-      >
-        {Array.from({ length: toolDisplayCount }).map((_, idx) => {
-          const slot = toolSlots[idx];
-          return (
-            <Tooltip
-              key={`tool-${idx}`}
-              label={slot ? slot.card.name : '道具スロット'}
-              description={
-                slot
-                  ? slot.card.description
-                  : '装備カード。4枚以上セット可能。4枚目以降は横スクロールで確認できる。毎ターン自動で効果が発動する。'
-              }
-            >
-              <span className={`tool-slot-inline ${slot ? 'filled' : 'empty'} ${slot?.card.type ?? ''}`}>
-                {slot ? (
-                  <>
-                    <span className="tool-slot-inline-icon">{slot.card.icon ?? '🔧'}</span>
-                    <span className="tool-slot-inline-name">{slot.card.name}</span>
-                  </>
-                ) : null}
-              </span>
-            </Tooltip>
-          );
-        })}
+      <div style={{ width: '120px', overflow: 'hidden', flexShrink: 0 }}>
+        <div
+          className="tool-slots-inline"
+          style={
+            toolSlots.length >= 4
+              ? {
+                  overflowX: 'auto',
+                  touchAction: 'pan-x',
+                  WebkitOverflowScrolling: 'touch',
+                }
+              : undefined
+          }
+        >
+          {Array.from({ length: toolDisplayCount }).map((_, idx) => {
+            const slot = toolSlots[idx];
+            return (
+              <Tooltip
+                key={`tool-${idx}`}
+                label={slot ? slot.card.name : '道具スロット'}
+                description={
+                  slot
+                    ? slot.card.description
+                    : '装備カード。4枚以上セット可能。4枚目以降は横スクロールで確認できる。毎ターン自動で効果が発動する。'
+                }
+              >
+                <span className={`tool-slot-inline ${slot ? 'filled' : 'empty'} ${slot?.card.type ?? ''}`}>
+                  {slot ? (
+                    <>
+                      <span className="tool-slot-inline-icon">{slot.card.icon ?? '🔧'}</span>
+                      <span className="tool-slot-inline-name">{slot.card.name}</span>
+                    </>
+                  ) : null}
+                </span>
+              </Tooltip>
+            );
+          })}
+        </div>
       </div>
 
       <div className="slots-divider" />
-      <div
-        className={`power-slots ${activePowers.length >= 4 ? 'power-slots--scrollable' : ''}`}
-        style={{
-          width: '120px',
-          maxWidth: '120px',
-          overflowX: activePowers.length >= 4 ? 'auto' : 'hidden',
-          touchAction: activePowers.length >= 4 ? 'pan-x' : 'none',
-        }}
-      >
-        {Array.from({ length: powerDisplayCount }).map((_, idx) => {
-          const power = activePowers[idx];
-          if (!power) {
+      <div style={{ width: '120px', overflow: 'hidden', flexShrink: 0 }}>
+        <div
+          className="power-slots"
+          style={
+            activePowers.length >= 4
+              ? {
+                  overflowX: 'auto',
+                  touchAction: 'pan-x',
+                  WebkitOverflowScrolling: 'touch',
+                }
+              : undefined
+          }
+        >
+          {Array.from({ length: powerDisplayCount }).map((_, idx) => {
+            const power = activePowers[idx];
+            if (!power) {
+              return (
+                <Tooltip
+                  key={`power-empty-${idx}`}
+                  label="パワースロット"
+                  description="パワーカードをセットすると、戦闘中に継続効果が有効になります。"
+                  touchMode="hold"
+                >
+                  <div className="power-slot-item power-slot-item--empty" />
+                </Tooltip>
+              );
+            }
             return (
               <Tooltip
-                key={`power-empty-${idx}`}
-                label="パワースロット"
-                description="パワーカードをセットすると、戦闘中に継続効果が有効になります。"
+                key={`power-${power.id}-${idx}`}
+                label={power.name}
+                description={getSimplePowerDescription(power)}
                 touchMode="hold"
               >
-                <div className="power-slot-item power-slot-item--empty" />
+                <div className="power-slot-item">
+                  <CardComponent
+                    card={power}
+                    jobId={jobId}
+                    selected={false}
+                    disabled={false}
+                    locked={false}
+                    isSelling={false}
+                    isReturning={false}
+                    isGhost={false}
+                    isDragging={false}
+                    isDragUnavailable={false}
+                    zukanMode="list"
+                    effectiveValues={getBaseEffectiveValues(power)}
+                    onSelect={noop}
+                    onPointerDown={noop}
+                    onPointerMove={noop}
+                    onPointerUp={noop}
+                    onPointerCancel={noop}
+                    onMouseEnter={noop}
+                    onMouseLeave={noop}
+                    style={
+                      {
+                        '--hand-card-width': '44px',
+                        '--hand-card-height': '70px',
+                        position: 'relative',
+                        transform: 'none',
+                        transition: 'none',
+                        flexShrink: 0,
+                      } as CSSProperties
+                    }
+                  />
+                </div>
               </Tooltip>
             );
-          }
-          return (
-            <Tooltip
-              key={`power-${power.id}-${idx}`}
-              label={power.name}
-              description={getSimplePowerDescription(power)}
-              touchMode="hold"
-            >
-              <div className="power-slot-item">
-                <CardComponent
-                  card={power}
-                  jobId={jobId}
-                  selected={false}
-                  disabled={false}
-                  locked={false}
-                  isSelling={false}
-                  isReturning={false}
-                  isGhost={false}
-                  isDragging={false}
-                  isDragUnavailable={false}
-                  zukanMode="list"
-                  effectiveValues={getBaseEffectiveValues(power)}
-                  onSelect={noop}
-                  onPointerDown={noop}
-                  onPointerMove={noop}
-                  onPointerUp={noop}
-                  onPointerCancel={noop}
-                  onMouseEnter={noop}
-                  onMouseLeave={noop}
-                  style={
-                    {
-                      '--hand-card-width': '44px',
-                      '--hand-card-height': '70px',
-                      position: 'relative',
-                      transform: 'none',
-                      transition: 'none',
-                      flexShrink: 0,
-                    } as CSSProperties
-                  }
-                />
-              </div>
-            </Tooltip>
-          );
-        })}
+          })}
+        </div>
       </div>
     </div>
   );
