@@ -216,17 +216,15 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 138px;
+  flex: 0 0 138px;
+  min-width: 0;
   overflow-x: hidden;
   overflow-y: hidden;
 }
 
 .tool-slots-inline--scrollable {
-  overflow-x: auto;
+  overflow-x: auto !important;
   overflow-y: hidden;
-  /* スクロール領域の表示幅を固定し、内部を横スクロールさせる */
-  width: 138px;
-  max-width: 138px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -255,16 +253,15 @@
   display: flex;
   gap: 4px;
   align-items: center;
-  width: 140px;
+  flex: 0 0 140px;
+  min-width: 0;
   overflow-x: hidden;
   overflow-y: hidden;
 }
 
 .power-slots--scrollable {
-  overflow-x: auto;
+  overflow-x: auto !important;
   overflow-y: hidden;
-  width: 140px;
-  max-width: 140px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
