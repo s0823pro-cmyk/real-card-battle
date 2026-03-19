@@ -1051,7 +1051,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
       nextCardDoubleEffect: false,
-      nextCardEffectBoost: 0,
+      nextCardEffectBoost: state.player.nextCardEffectBoost ?? 0,
       statusEffects: tickedPlayerStatuses,
     });
     const anxietyCount = playerAfterReset.mental <= 0 ? 2 : playerAfterReset.mental <= 2 ? 1 : 0;

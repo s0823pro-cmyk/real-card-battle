@@ -40,6 +40,8 @@ export const getEffectiveCardValues = (
   const dandoriMultiplier = lastPlayedCard?.tags?.includes('preparation')
     ? (player.templeCarpenterActive ? (player.templeCarpenterMultiplier ?? 1.5) : 1.3)
     : 1;
+  const nextCardEffectBoost = Math.max(0, player.nextCardEffectBoost ?? 0);
+  const shouldApplyNextCardEffectBoost = nextCardEffectBoost > 0 && !player.nextCardDoubleEffect;
   const isDandoriActive = dandoriMultiplier > 1;
   const baseDamage = card.damage ?? 0;
   const baseBlock = card.block ?? 0;
@@ -96,6 +98,10 @@ export const getEffectiveCardValues = (
     if (hasWeak(player)) {
       damage = Math.floor(damage * 0.75);
     }
+    if (shouldApplyNextCardEffectBoost && damage > 0) {
+      const add = Math.max(1, Math.ceil(damage * nextCardEffectBoost));
+      damage += add;
+    }
   }
 
   if (block !== null) {
@@ -112,6 +118,10 @@ export const getEffectiveCardValues = (
     if (hasWeak(player)) {
       block = Math.floor(block * 0.75);
     }
+    if (shouldApplyNextCardEffectBoost && block > 0) {
+      const add = Math.max(1, Math.ceil(block * nextCardEffectBoost));
+      block += add;
+    }
   }
 
   if (heal !== null) {
@@ -119,6 +129,10 @@ export const getEffectiveCardValues = (
       heal = 0;
     } else if (isDandoriActive) {
       heal = Math.floor(heal * dandoriMultiplier);
+    }
+    if (shouldApplyNextCardEffectBoost && heal > 0) {
+      const add = Math.max(1, Math.ceil(heal * nextCardEffectBoost));
+      heal += add;
     }
   }
 
