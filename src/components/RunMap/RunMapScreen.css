@@ -9,6 +9,7 @@
   flex-direction: column;
   gap: 0;
   padding: 0;
+  padding-top: env(safe-area-inset-top, 0px);
   color: var(--text-primary);
   overflow: hidden;
 }

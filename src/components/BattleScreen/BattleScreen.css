@@ -3,7 +3,7 @@
   max-width: 430px;
   height: 100dvh;
   margin: 0 auto;
-  padding-top: 0;
+  padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: max(8px, env(safe-area-inset-bottom));
   padding-left: max(12px, env(safe-area-inset-left));
   padding-right: max(12px, env(safe-area-inset-right));
@@ -189,10 +189,6 @@
   padding-top: 12px;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
   position: relative;
-}
-
-.battle-enemy-area {
-  margin-top: env(safe-area-inset-top, 0px);
 }
 
 .battle-item-bar {
