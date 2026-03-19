@@ -351,6 +351,8 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
     index: number,
     event: ReactPointerEvent,
   ) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('.battle-slots-row')) return;
     if (gameState.phase !== 'player_turn') return;
     if (pendingHandUpgradeCount > 0) return;
     if (card.type === 'status') return;
@@ -686,6 +688,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
       }`}
       onPointerDown={(event) => {
         const target = event.target as HTMLElement;
+        if (target.closest('.battle-slots-row')) return;
         if (!target.closest('.hand-area') && expandedCardId) {
           setExpandedCardId(null);
         }
