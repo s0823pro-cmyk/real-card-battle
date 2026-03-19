@@ -56,7 +56,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
     <div className="battle-slots-row">
       <div
         style={{
-          width: '100px',
+          width: '138px',
           flexShrink: 0,
           overflow: 'hidden',
           touchAction: 'pan-x',
@@ -115,7 +115,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
       <div className="slots-divider" />
       <div
         style={{
-          width: '100px',
+          width: '140px',
           flexShrink: 0,
           overflow: 'hidden',
           touchAction: 'pan-x',
