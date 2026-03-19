@@ -127,6 +127,9 @@ const createAnxietyCards = (count: number): Card[] =>
 
 const getEnemyReward = (templateId: string): number => ENEMY_GOLD_REWARDS[templateId] ?? 5;
 
+const isCardVariantId = (cardId: string, baseId: string): boolean =>
+  cardId === baseId || cardId.startsWith(`${baseId}_`);
+
 const getOmamoriBonus = (
   omamoris: Omamori[],
   effectType: Omamori['effect']['type'],
@@ -556,7 +559,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     );
     const playerAfterPowerFlags: PlayerState = (() => {
       if (playedCard.type !== 'power') return result.player;
-      if (playedCard.id === 'revival') {
+      if (isCardVariantId(playedCard.id, 'revival')) {
         return {
           ...result.player,
           hasRevival: true,
@@ -564,26 +567,26 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           revivalHp: playedCard.upgraded ? 10 : 1,
         };
       }
-      if (playedCard.id === 'death_wish') {
+      if (isCardVariantId(playedCard.id, 'death_wish')) {
         return { ...result.player, deathWishActive: true };
       }
-      if (playedCard.id === 'ridgepole') {
+      if (isCardVariantId(playedCard.id, 'ridgepole')) {
         return { ...result.player, ridgepoleActive: true };
       }
-      if (playedCard.id === 'temple_carpenter') {
+      if (isCardVariantId(playedCard.id, 'temple_carpenter')) {
         return {
           ...result.player,
           templeCarpenterActive: true,
           templeCarpenterMultiplier: playedCard.upgraded ? 1.8 : 1.5,
         };
       }
-      if (playedCard.id === 'cliff_edge') {
+      if (isCardVariantId(playedCard.id, 'cliff_edge')) {
         return { ...result.player, cliffEdgeActive: true };
       }
-      if (playedCard.id === 'recipe_study') {
+      if (isCardVariantId(playedCard.id, 'recipe_study')) {
         return { ...result.player, recipeStudyActive: true };
       }
-      if (playedCard.id === 'three_star') {
+      if (isCardVariantId(playedCard.id, 'three_star')) {
         return { ...result.player, threeStarActive: true };
       }
       return result.player;
@@ -601,7 +604,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       if (playedCard.type === 'attack' && p.nextAttackTimeReduce > 0) {
         p = { ...p, nextAttackTimeReduce: 0 };
       }
-      if (playedCard.id === 'full_sprint') {
+      if (isCardVariantId(playedCard.id, 'full_sprint')) {
         p = { ...p, fullSprintUsedCount: (p.fullSprintUsedCount ?? 0) + 1 };
       }
       return p;
@@ -750,7 +753,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       pushPopup(`+${result.blockGained}🛡`, 'player', 'block');
       window.setTimeout(() => setShieldEffect(false), 260);
     }
-    if (playedCard.id === 'gamble') {
+    if (isCardVariantId(playedCard.id, 'gamble')) {
       const winDmg = playedCard.upgraded ? 35 : 25;
       const lossDmg = playedCard.upgraded ? 8 : 10;
       if (result.damage > 0) {
@@ -1162,7 +1165,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return;
     }
 
-    const ridgepolePower = workingState.activePowers.find((p) => p.id === 'ridgepole');
+    const ridgepolePower = workingState.activePowers.find((p) =>
+      isCardVariantId(p.id, 'ridgepole'),
+    );
     const ridgepoleThreshold =
       ridgepolePower?.effects?.find((e) => e.type === 'ridgepole_threshold')?.value ?? 5;
     const ridgepoleDamage =
