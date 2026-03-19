@@ -40,9 +40,10 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   '釘打ち': {
     name: '釘打ち+',
-    damage: 10,
-    scaffoldMultiplier: 3,
-    description: '10ダメージ+足場×3',
+    timeCost: 2,
+    damage: 1,
+    scaffoldMultiplier: 1,
+    description: '1ダメージ+足場×1ダメージ（所要時間2秒）',
   },
   '作業着を着る': {
     name: '作業着を着る+',
