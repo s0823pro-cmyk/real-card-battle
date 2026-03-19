@@ -198,6 +198,12 @@
   display: none !important;
 }
 
+/* スロット内カード（list mode）ではバッジ・テキスト・コストを非表示 */
+.card-frame--no-animation .card-cost-badge,
+.card-frame--no-animation .card-text-band {
+  display: none;
+}
+
 .card-frame--no-animation.card-frame--uncommon {
   border: 2.5px solid #1d4ed8;
 }
@@ -453,7 +459,8 @@
 }
 
 .card-badge--exhaust,
-.card-badge--setup {
+.card-badge--setup,
+.card-badge--self_damage {
   font-family: 'Noto Serif JP', serif;
   font-size: 7px !important;
   font-weight: 500 !important;

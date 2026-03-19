@@ -159,6 +159,7 @@ const ActionBar = ({
                     isGhost={false}
                     isDragging={false}
                     isDragUnavailable={false}
+                    zukanMode="list"
                     effectiveValues={getBaseEffectiveValues(card)}
                     onSelect={noop}
                     onPointerDown={noop}
