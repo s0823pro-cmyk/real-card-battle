@@ -53,19 +53,35 @@
 
 .player-info-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: nowrap;
+  flex-direction: column;
+  gap: 2px;
   min-height: 18px;
   margin-top: 2px;
   min-width: 0;
+}
+
+.player-info-row--top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   overflow: hidden;
+}
+
+.player-info-row--bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.88em;
 }
 
 .player-row--sub {
   font-size: 10px;
   color: #8b949e;
-  padding: 2px 0;
+  padding: 2px 0 2px 2px;
 }
 
 .stat-preparation {
@@ -340,6 +356,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .item-slot {
