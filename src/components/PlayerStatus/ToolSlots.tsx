@@ -40,7 +40,12 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
     <div className="battle-slots-row">
       <div
         className={`tool-slots-inline ${toolSlots.length >= 4 ? 'tool-slots-inline--scrollable' : ''}`}
-        style={{ width: '138px', maxWidth: '138px', overflowX: toolSlots.length >= 4 ? 'auto' : 'hidden' }}
+        style={{
+          width: '138px',
+          maxWidth: '138px',
+          overflowX: toolSlots.length >= 4 ? 'auto' : 'hidden',
+          touchAction: toolSlots.length >= 4 ? 'pan-x' : 'none',
+        }}
       >
         {Array.from({ length: toolDisplayCount }).map((_, idx) => {
           const slot = toolSlots[idx];
@@ -70,7 +75,12 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
       <div className="slots-divider" />
       <div
         className={`power-slots ${activePowers.length >= 4 ? 'power-slots--scrollable' : ''}`}
-        style={{ width: '140px', maxWidth: '140px', overflowX: activePowers.length >= 4 ? 'auto' : 'hidden' }}
+        style={{
+          width: '140px',
+          maxWidth: '140px',
+          overflowX: activePowers.length >= 4 ? 'auto' : 'hidden',
+          touchAction: activePowers.length >= 4 ? 'pan-x' : 'none',
+        }}
       >
         {Array.from({ length: powerDisplayCount }).map((_, idx) => {
           const power = activePowers[idx];
