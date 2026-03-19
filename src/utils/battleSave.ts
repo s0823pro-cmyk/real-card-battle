@@ -21,8 +21,23 @@ export interface BattleSaveData {
   savedAt: number;
 }
 
+type SerializedRunProgress = Omit<GameProgress, 'unlockedCardNames'> & {
+  unlockedCardNames: string[];
+};
+
+type StoredBattleSaveData = Omit<BattleSaveData, 'runProgress'> & {
+  runProgress: SerializedRunProgress;
+};
+
+const getMaxTime = (mental: number, timeBonusPerTurn = 0): number =>
+  Math.max(3, Number((5 + mental * 0.3 + timeBonusPerTurn).toFixed(1)));
+
 export function saveBattleState(gameState: GameState, runProgress: GameProgress): void {
-  const data: BattleSaveData = {
+  const serializedRunProgress: SerializedRunProgress = {
+    ...runProgress,
+    unlockedCardNames: [...runProgress.unlockedCardNames],
+  };
+  const data: StoredBattleSaveData = {
     player: gameState.player,
     enemies: gameState.enemies,
     drawPile: gameState.drawPile,
@@ -33,7 +48,7 @@ export function saveBattleState(gameState: GameState, runProgress: GameProgress)
     activePowers: gameState.activePowers,
     toolSlots: gameState.toolSlots,
     turn: gameState.turn,
-    runProgress,
+    runProgress: serializedRunProgress,
     savedAt: Date.now(),
   };
   try {
@@ -47,14 +62,18 @@ export function loadBattleState(): BattleSaveData | null {
   try {
     const saved = localStorage.getItem(BATTLE_SAVE_KEY);
     if (!saved) return null;
-    const parsed = JSON.parse(saved) as BattleSaveData;
-    // runProgress.unlockedCardNames は Set だが JSON では配列になるので変換
-    if (parsed.runProgress?.unlockedCardNames && !('has' in parsed.runProgress.unlockedCardNames)) {
-      parsed.runProgress.unlockedCardNames = new Set(
-        parsed.runProgress.unlockedCardNames as unknown as string[],
-      );
-    }
-    return parsed;
+    const parsed = JSON.parse(saved) as StoredBattleSaveData;
+    const unlocked = Array.isArray(parsed.runProgress?.unlockedCardNames)
+      ? parsed.runProgress.unlockedCardNames
+      : [];
+    return {
+      ...parsed,
+      runProgress: {
+        ...parsed.runProgress,
+        unlockedCardNames: new Set(unlocked),
+        pendingItemReplacement: null,
+      },
+    };
   } catch {
     return null;
   }
@@ -66,4 +85,25 @@ export function clearBattleState(): void {
 
 export function hasBattleSave(): boolean {
   return localStorage.getItem(BATTLE_SAVE_KEY) !== null;
+}
+
+export function restoreGameState(data: BattleSaveData): GameState {
+  return {
+    phase: 'player_turn',
+    turn: data.turn,
+    maxTime: getMaxTime(data.player.mental, data.player.timeBonusPerTurn ?? 0),
+    usedTime: 0,
+    shuffleAnimation: false,
+    hand: data.hand,
+    timeline: [],
+    reserved: data.reserved,
+    drawPile: data.drawPile,
+    discardPile: data.discardPile,
+    exhaustedCards: data.exhaustedCards,
+    activePowers: data.activePowers,
+    player: data.player,
+    enemies: data.enemies,
+    executingIndex: -1,
+    toolSlots: data.toolSlots,
+  };
 }

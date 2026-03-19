@@ -325,7 +325,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   useEffect(() => {
     if (gameState.phase !== 'battle_start') return;
     const timer = window.setTimeout(() => {
-      setGameState((prev) => ({ ...prev, phase: 'player_turn' }));
+      setGameState((prev) => {
+        const nextState = { ...prev, phase: 'player_turn' as const };
+        options?.onTurnStart?.(nextState);
+        return nextState;
+      });
       setShowStartBanner(false);
       setBattleMessage('カードを配置してターン終了');
     }, 700);

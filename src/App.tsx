@@ -33,7 +33,7 @@ import {
 import type { BossReward } from './data/bossRewards';
 import type { StoryScene } from './data/stories/carpenterStory';
 import { preloadAllImages } from './utils/preloadImages';
-import { saveBattleState, loadBattleState, clearBattleState } from './utils/battleSave';
+import { loadBattleState, clearBattleState, restoreGameState } from './utils/battleSave';
 import type { BattleSaveData } from './utils/battleSave';
 import './App.css';
 import './components/RunMap/RunMapScreen.css';
@@ -62,6 +62,7 @@ function App() {
     buyShopItem,
     sellPawnshopCard,
     closePawnshop,
+    onBattleTurnStart,
     onBattleEnd,
     pickCardReward,
     pickOmamoriReward,
@@ -342,7 +343,7 @@ function App() {
           <BattleScreen
             setup={state.battleSetup}
             onBattleEnd={handleBattleResult}
-            onTurnStart={(gs: GameState) => saveBattleState(gs, state)}
+            onTurnStart={onBattleTurnStart}
             onBattleFinished={() => clearBattleState()}
             initialGameState={restoredBattleState}
           />
@@ -536,26 +537,7 @@ function App() {
                   const save = battleSave;
                   setShowBattleRestorePrompt(false);
                   setBattleSave(null);
-                  setRestoredBattleState({
-                    phase: 'player_turn',
-                    turn: save.turn,
-                    maxTime: save.player.timeBonusPerTurn
-                      ? Number((5 + save.player.mental * 0.3 + save.player.timeBonusPerTurn).toFixed(1))
-                      : Number((5 + save.player.mental * 0.3).toFixed(1)),
-                    usedTime: 0,
-                    shuffleAnimation: false,
-                    hand: save.hand,
-                    timeline: [],
-                    reserved: save.reserved,
-                    drawPile: save.drawPile,
-                    discardPile: save.discardPile,
-                    exhaustedCards: save.exhaustedCards,
-                    activePowers: save.activePowers,
-                    player: save.player,
-                    enemies: save.enemies,
-                    executingIndex: -1,
-                    toolSlots: save.toolSlots,
-                  });
+                  setRestoredBattleState(restoreGameState(save));
                   continueFromSave(save.runProgress);
                 }}
               >

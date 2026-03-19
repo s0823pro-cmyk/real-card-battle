@@ -28,7 +28,7 @@ import {
   pickEvent,
 } from '../data/runData';
 import { createEncounterFromTemplateIds, createEncounterFromTemplates } from '../data/enemies';
-import type { Card, JobId, PlayerState } from '../types/game';
+import type { Card, GameState, JobId, PlayerState } from '../types/game';
 import type {
   BattleResult,
   BattleSetup,
@@ -49,6 +49,7 @@ import {
   movePlayerBySteps,
 } from '../utils/boardGenerator';
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
+import { clearBattleState, saveBattleState } from '../utils/battleSave';
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
@@ -532,6 +533,10 @@ export const useRunProgress = () => {
       previewTiles: getRoutePreviewTiles(state.board, nextTileId, 3),
     }));
   }, [state.board, state.selectableTileIds]);
+
+  const onBattleTurnStart = (gameState: GameState) => {
+    saveBattleState(gameState, stateRef.current);
+  };
 
   const openTileScreen = (tile: BoardTile) => {
     if (tile.type === 'enemy') {
@@ -1018,6 +1023,7 @@ export const useRunProgress = () => {
   });
 
   const onBattleEnd = (result: BattleResult) => {
+    clearBattleState();
     const cleanedDeck = result.deck.filter(
       (card) => card.type !== 'status' && card.type !== 'curse',
     );
@@ -1216,7 +1222,11 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_pawnshop_sell_used', used: saved.pawnshopSellUsedThisVisit });
     dispatch({ type: 'set_hotel_item_received', used: saved.hotelItemReceivedThisVisit ?? false });
     dispatch({ type: 'set_event', event: saved.activeEvent });
-    dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
+    dispatch({
+      type: 'set_battle_setup',
+      setup: saved.currentScreen === 'battle' ? saved.battleSetup : null,
+      tileType: saved.currentScreen === 'battle' ? saved.lastTileType : null,
+    });
     dispatch({ type: 'set_branch', tileId: saved.selectedBranchTileId });
     dispatch({ type: 'set_selectable_tiles', tileIds: saved.selectableTileIds });
     dispatch({ type: 'set_pending_steps', steps: saved.pendingSteps });
@@ -1505,6 +1515,7 @@ export const useRunProgress = () => {
     buyShopItem,
     sellPawnshopCard,
     closePawnshop,
+    onBattleTurnStart,
     onBattleEnd,
     pickCardReward,
     pickOmamoriReward,
