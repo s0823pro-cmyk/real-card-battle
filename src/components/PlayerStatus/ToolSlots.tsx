@@ -45,7 +45,12 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           overflow: 'hidden',
           touchAction: 'pan-x',
         }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          } catch {}
+        }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => {
           e.stopPropagation();
@@ -97,7 +102,12 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           overflow: 'hidden',
           touchAction: 'pan-x',
         }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          } catch {}
+        }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => {
           e.stopPropagation();
