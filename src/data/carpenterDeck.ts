@@ -64,7 +64,7 @@ export const RESERVE_BONUS_CARDS: Card[] = [
     type: 'attack',
     timeCost: 3,
     damage: 10,
-    description: '10ダメージ。温存時：20ダメージ',
+    description: '10ダメージ',
     icon: '🪵',
     reserveBonus: {
       description: '温存時：20ダメージ',
@@ -79,7 +79,7 @@ export const RESERVE_BONUS_CARDS: Card[] = [
     type: 'attack',
     timeCost: 2,
     damage: 6,
-    description: '6ダメージ。温存時：12ダメージ+足場+1',
+    description: '6ダメージ',
     icon: '🪚',
     reserveBonus: {
       description: '温存時：12ダメージ＋足場+1',
@@ -95,7 +95,7 @@ export const RESERVE_BONUS_CARDS: Card[] = [
     type: 'skill',
     timeCost: 2,
     block: 6,
-    description: '6ブロック。温存時：12ブロック',
+    description: '6ブロック',
     icon: '🧱',
     reserveBonus: {
       description: '温存時：12ブロック',

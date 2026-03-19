@@ -87,7 +87,7 @@ export const CARPENTER_COMMON_POOL: Card[] = [
     type: 'skill',
     timeCost: 2,
     block: 6,
-    description: '6ブロック。温存時：12ブロック',
+    description: '6ブロック',
     icon: '🧱',
     reserveBonus: {
       description: '温存時：12ブロック',

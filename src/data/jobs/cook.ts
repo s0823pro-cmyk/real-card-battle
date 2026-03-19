@@ -64,7 +64,7 @@ export const COOK_UNCOMMON_POOL: Card[] = [
   { id: 'hot_sauce', name: '激辛ソース', type: 'skill', timeCost: 1, description: '敵に火傷3付与、調理+1', icon: '🌶️', tags: ['ingredient'], effects: [{ type: 'cooking_gauge', value: 1 }, { type: 'burn', value: 3 }], sellValue: 12, imageUrl: hotSauceImage },
   { id: 'recipe_study', name: 'レシピ研究', type: 'power', timeCost: 4, description: '食材カード使用ごとに全アタック+2', icon: '📖', sellValue: 12, imageUrl: recipeBookImage },
   { id: 'knife_set', name: '包丁セット', type: 'tool', timeCost: 4, description: '全アタック+2ダメージ', icon: '🔪', sellValue: 12, imageUrl: knifeSetImage },
-  { id: 'aged_dough', name: '寝かせた生地', type: 'attack', timeCost: 2, description: '8ダメージ。温存時：16ダメージ、調理+2', damage: 8, icon: '🫓', tags: ['ingredient'], effects: [{ type: 'cooking_gauge', value: 1 }], reserveBonus: { description: '温存時：16ダメージ、調理+2', damageMultiplier: 2.0, extraEffects: [{ type: 'cooking_gauge', value: 2 }] }, sellValue: 12, imageUrl: agedDoughImage },
+  { id: 'aged_dough', name: '寝かせた生地', type: 'attack', timeCost: 2, description: '8ダメージ', damage: 8, icon: '🫓', tags: ['ingredient'], effects: [{ type: 'cooking_gauge', value: 1 }], reserveBonus: { description: '温存時：16ダメージ、調理+2', damageMultiplier: 2.0, extraEffects: [{ type: 'cooking_gauge', value: 2 }] }, sellValue: 12, imageUrl: agedDoughImage },
   {
     id: 'delivery',
     name: '出前配達',
