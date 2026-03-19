@@ -1,5 +1,5 @@
 export type CardType = 'attack' | 'skill' | 'power' | 'tool' | 'status' | 'curse';
-export type CardBadge = 'exhaust' | 'setup';
+export type CardBadge = 'exhaust' | 'setup' | 'self_damage';
 export type JobId = 'carpenter' | 'cook' | 'unemployed';
 export type GamePhase =
   | 'battle_start'

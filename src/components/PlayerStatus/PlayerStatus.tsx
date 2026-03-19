@@ -8,6 +8,7 @@ import './PlayerStatus.css';
 interface Props {
   player: PlayerState;
   previewBlock?: number | null;
+  previewHp?: number | null;
   toolSlots: ToolSlot[];
   activePowers: Card[];
   battleItems: RunItem[];
@@ -27,6 +28,7 @@ interface Props {
 const PlayerStatus = ({
   player,
   previewBlock = null,
+  previewHp = null,
   toolSlots,
   activePowers,
   battleItems,
@@ -97,6 +99,11 @@ const PlayerStatus = ({
             <Tooltip tooltipKey="hp">
               <span className={`hp ${hpClass}`}>♥ {player.currentHp}/{player.maxHp}</span>
             </Tooltip>
+          </div>
+          <div className="player-hp-preview-row">
+            {previewHp != null && (
+              <span className="hp-preview-value">→ {previewHp}</span>
+            )}
           </div>
           <div className="player-info-row">
             <div className="player-info-row--top">

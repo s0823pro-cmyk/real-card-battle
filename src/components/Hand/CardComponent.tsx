@@ -134,6 +134,7 @@ const CardComponent = ({
   const BADGE_LABELS: Record<CardBadge, string> = {
     exhaust: '消耗',
     setup: '準備',
+    self_damage: '自傷',
   };
   const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const replaceChangedValue = (

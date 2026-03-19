@@ -51,6 +51,19 @@
   overflow: hidden;
 }
 
+.player-hp-preview-row {
+  min-height: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.hp-preview-value {
+  font-size: 0.82em;
+  color: #e74c3c;
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
 .player-info-row {
   display: flex;
   flex-direction: column;

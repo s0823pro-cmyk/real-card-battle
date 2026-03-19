@@ -627,6 +627,12 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
     if (effective.block == null) return null;
     return gameState.player.block + effective.block;
   }, [handDrag.isDragging, handDrag.card, gameState.player, lastPlayedCard]);
+  const previewHpValue = useMemo(() => {
+    if (!handDrag.isDragging || !handDrag.card) return null;
+    const selfDamageEffect = handDrag.card.effects?.find((effect) => effect.type === 'self_damage');
+    if (!selfDamageEffect) return null;
+    return Math.max(0, gameState.player.currentHp - selfDamageEffect.value);
+  }, [handDrag.isDragging, handDrag.card, gameState.player.currentHp]);
 
   const reserveFull = gameState.reserved.length >= 2;
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
@@ -800,6 +806,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
           <PlayerStatus
             player={gameState.player}
             previewBlock={previewBlockValue}
+            previewHp={previewHpValue}
             toolSlots={gameState.toolSlots}
             activePowers={gameState.activePowers}
             battleItems={battleItems}

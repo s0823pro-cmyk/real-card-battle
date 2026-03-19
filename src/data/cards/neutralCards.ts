@@ -89,6 +89,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     rarity: 'uncommon',
     sellValue: 12,
     neutral: true,
+    badges: ['self_damage'],
     effects: [
       { type: 'self_damage', value: 5 },
       { type: 'draw', value: 3 },
