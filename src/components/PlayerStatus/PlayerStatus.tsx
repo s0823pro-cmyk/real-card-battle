@@ -7,6 +7,7 @@ import './PlayerStatus.css';
 
 interface Props {
   player: PlayerState;
+  previewBlock?: number | null;
   toolSlots: ToolSlot[];
   activePowers: Card[];
   battleItems: RunItem[];
@@ -25,6 +26,7 @@ interface Props {
 
 const PlayerStatus = ({
   player,
+  previewBlock = null,
   toolSlots,
   activePowers,
   battleItems,
@@ -98,7 +100,14 @@ const PlayerStatus = ({
           </div>
           <div className="player-info-row">
             <Tooltip tooltipKey="block">
-              <span className={`block ${blockClass}`}>🛡 {player.block}</span>
+              <span className={`block ${blockClass}`}>
+                🛡{' '}
+                {previewBlock != null ? (
+                  <span style={{ color: '#60a5fa', fontWeight: 700 }}>{previewBlock}</span>
+                ) : (
+                  player.block
+                )}
+              </span>
             </Tooltip>
             {player.jobId === 'carpenter' && (
               <Tooltip tooltipKey="scaffold">

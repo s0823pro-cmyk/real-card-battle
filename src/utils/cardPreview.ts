@@ -102,7 +102,7 @@ export const getEffectiveCardValues = (
     if (card.wasReserved && card.reserveBonus?.blockMultiplier) {
       block = Math.floor(block * card.reserveBonus.blockMultiplier);
     }
-    if (isDandoriActive) {
+    if (isDandoriActive && block > 0) {
       block = Math.floor(block * dandoriMultiplier);
     }
     const strengthBonus = getStrengthBonus(player);
