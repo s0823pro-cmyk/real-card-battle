@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Card, PlayerState, ToolSlot } from '../../types/game';
 import type { RunItem } from '../../types/run';
 import type { HungryState } from '../../utils/hungrySystem';
@@ -57,38 +58,64 @@ const PlayerStatus = ({
         ? 'hungry-state'
         : 'normal-awake-state';
   const blockClass = player.block > 0 ? 'status-block--active' : 'status-block--zero';
+  const [itemConfirm, setItemConfirm] = useState<RunItem | null>(null);
   const itemSlots = (
-    <div className="stat-items">
-      {Array.from({ length: 3 }).map((_, idx) => {
-        const item = battleItems[idx];
-        return (
-          <Tooltip
-            key={`item-${idx}`}
-            label={item?.name ?? 'アイテム'}
-            description={item?.description ?? '戦闘で使えるアイテム'}
-          >
-            <button
-              type="button"
-              className={`item-slot ${item ? 'filled' : ''}`}
-              disabled={!item || !canUseItems}
-              onClick={() => {
-                if (item && canUseItems) onUseItem(item.id);
-              }}
+    <>
+      <div className="stat-items">
+        {Array.from({ length: 3 }).map((_, idx) => {
+          const item = battleItems[idx];
+          return (
+            <Tooltip
+              key={`item-${idx}`}
+              label={item?.name ?? 'アイテム'}
+              description={item?.description ?? '戦闘で使えるアイテム'}
             >
-              {item ? (
-                item.imageUrl ? (
-                  <img className="item-slot-image" src={item.imageUrl} alt={item.name} />
+              <button
+                type="button"
+                className={`item-slot ${item ? 'filled' : ''}`}
+                disabled={!item || !canUseItems}
+                onClick={() => {
+                  if (item && canUseItems) setItemConfirm(item);
+                }}
+              >
+                {item ? (
+                  item.imageUrl ? (
+                    <img className="item-slot-image" src={item.imageUrl} alt={item.name} />
+                  ) : (
+                    <span className="item-emoji">{item.icon ?? '🧪'}</span>
+                  )
                 ) : (
-                  <span className="item-emoji">{item.icon ?? '🧪'}</span>
-                )
-              ) : (
-                ''
-              )}
-            </button>
-          </Tooltip>
-        );
-      })}
-    </div>
+                  ''
+                )}
+              </button>
+            </Tooltip>
+          );
+        })}
+      </div>
+      {itemConfirm && (
+        <div className="reserve-confirm-overlay">
+          <div className="reserve-confirm-dialog">
+            <p className="reserve-confirm-title">「{itemConfirm.name}」を使用しますか？</p>
+            <p className="reserve-confirm-note">{itemConfirm.description}</p>
+            <div className="reserve-confirm-buttons">
+              <button type="button" className="btn-reserve-cancel" onClick={() => setItemConfirm(null)}>
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="btn-reserve-ok"
+                onClick={() => {
+                  onUseItem(itemConfirm.id);
+                  setItemConfirm(null);
+                }}
+              >
+                使用する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 
   return (
