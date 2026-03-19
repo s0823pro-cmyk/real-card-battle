@@ -150,8 +150,16 @@ const Tooltip = ({ tooltipKey, label, description, touchMode = 'hold', children 
         if (window.matchMedia('(pointer: coarse)').matches) return;
         hideTooltip();
       }}
-      onTouchStart={(_event) => {
-        // タッチでは表示しない
+      onTouchStart={(event) => {
+        if (touchIdentifierRef.current !== null) return;
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+        touchIdentifierRef.current = touch.identifier;
+        clearHoldDelayTimer();
+        holdDelayTimerRef.current = window.setTimeout(() => {
+          showTooltip();
+          holdDelayTimerRef.current = null;
+        }, 2000);
       }}
       onTouchEnd={(event) => {
         const touch = Array.from(event.changedTouches).find(
