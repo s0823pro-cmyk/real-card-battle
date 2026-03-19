@@ -166,7 +166,7 @@ const PlayerStatus = ({
           {isPreparationActive && (
             <Tooltip
               label="⚡ 段取りボーナス"
-              description="直前に【準備】タグのカードを使用。次のカードのダメージ+30%"
+              description="直前に【準備】バッジのカードを使用。次のカードのダメージ・ブロック・回復が1.3倍"
             >
               <span className="stat-preparation-text">⚡ 段取り！</span>
             </Tooltip>

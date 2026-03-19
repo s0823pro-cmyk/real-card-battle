@@ -12,8 +12,6 @@ export const getEffectiveTimeCost = (
   if (usesPreparationCost) {
     cost = card.preparationTimeCost ?? cost;
   }
-  const reduction = prevCard?.tags?.includes('preparation') && !usesPreparationCost ? 1 : 0;
-  cost -= reduction;
   if (player && card.type === 'attack' && player.nextAttackTimeReduce > 0) {
     cost -= player.nextAttackTimeReduce;
   }
