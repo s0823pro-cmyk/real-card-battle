@@ -178,6 +178,7 @@ const PlayerStatus = ({
         <ToolSlots toolSlots={toolSlots} activePowers={activePowers} jobId={player.jobId} />
       </div>
       <div className="player-row player-row--sub">
+        {itemSlots}
         <div className="stat-piles">
           <button type="button" className="btn-pile" onClick={onOpenDrawPile}>
             山:{drawPileCount}
@@ -197,7 +198,6 @@ const PlayerStatus = ({
             終了
           </button>
         </div>
-        {itemSlots}
       </div>
     </section>
   );
