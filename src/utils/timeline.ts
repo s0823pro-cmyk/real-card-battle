@@ -26,7 +26,7 @@ export const getEffectiveTimeCost = (
   ) {
     return 0;
   }
-  if (card.id === 'full_sprint' && player?.fullSprintUsedCount) {
+  if ((card.id === 'full_sprint' || card.id.startsWith('full_sprint_')) && player?.fullSprintUsedCount) {
     const reduction = Math.min(card.timeCost, player.fullSprintUsedCount * 0.5);
     cost = Math.max(0, cost - reduction);
   }
