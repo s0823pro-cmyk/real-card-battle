@@ -35,6 +35,22 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
     isHealBuffed: false,
     isHealDebuffed: false,
   });
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = e.currentTarget.children[0] as HTMLElement;
+    if (!el) return;
+    const startX = e.pageX - el.offsetLeft;
+    const scrollLeft = el.scrollLeft;
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const x = moveEvent.pageX - el.offsetLeft;
+      el.scrollLeft = scrollLeft - (x - startX);
+    };
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   return (
     <div className="battle-slots-row">
@@ -44,6 +60,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           flexShrink: 0,
           overflow: 'hidden',
           touchAction: 'pan-x',
+          cursor: 'grab',
         }}
         onPointerDown={(e) => {
           e.stopPropagation();
@@ -55,6 +72,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
         onTouchMove={(e) => {
           e.stopPropagation();
         }}
+        onMouseDown={handleMouseDown}
       >
         <div
           className="tool-slots-inline tool-slots-inline--scrollable"
@@ -101,6 +119,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           flexShrink: 0,
           overflow: 'hidden',
           touchAction: 'pan-x',
+          cursor: 'grab',
         }}
         onPointerDown={(e) => {
           e.stopPropagation();
@@ -112,6 +131,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
         onTouchMove={(e) => {
           e.stopPropagation();
         }}
+        onMouseDown={handleMouseDown}
       >
         <div
           className="power-slots power-slots--scrollable"
