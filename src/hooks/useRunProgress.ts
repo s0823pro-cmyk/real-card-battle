@@ -53,7 +53,18 @@ import { upgradeCardByJobId } from '../utils/cardUpgrade';
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
 const SAVE_DATA_KEY = 'real-card-battle:save-data';
-const NON_RESUMABLE_SCREENS: GameScreen[] = ['home', 'title', 'zukan', 'job_select', 'victory', 'game_over'];
+const NON_RESUMABLE_SCREENS = [
+  'home',
+  'title',
+  'zukan',
+  'job_select',
+  'victory',
+  'game_over',
+  'card_reward',
+  'omamori_reward',
+  'boss_reward',
+];
+const NORMALIZE_TO_MAP = ['battle', 'card_reward', 'omamori_reward', 'boss_reward'];
 export type DevDestination =
   | 'battle_normal'
   | 'battle_elite'
@@ -88,7 +99,7 @@ export const loadSavedProgress = (): GameProgress | null => {
     const raw = window.localStorage.getItem(SAVE_DATA_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SerializedProgress;
-    const normalizedScreen = parsed.currentScreen === 'battle' ? 'map' : parsed.currentScreen;
+    const normalizedScreen = NORMALIZE_TO_MAP.includes(parsed.currentScreen) ? 'map' : parsed.currentScreen;
     const isInvalidProgress =
       !parsed.jobId ||
       !normalizedScreen ||
