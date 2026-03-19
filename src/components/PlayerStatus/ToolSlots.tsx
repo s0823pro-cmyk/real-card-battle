@@ -41,8 +41,8 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
       <div
         className={`tool-slots-inline ${toolSlots.length >= 4 ? 'tool-slots-inline--scrollable' : ''}`}
         style={{
-          width: '138px',
-          maxWidth: '138px',
+          width: '120px',
+          maxWidth: '120px',
           overflowX: toolSlots.length >= 4 ? 'auto' : 'hidden',
           touchAction: toolSlots.length >= 4 ? 'pan-x' : 'none',
         }}
@@ -76,8 +76,8 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
       <div
         className={`power-slots ${activePowers.length >= 4 ? 'power-slots--scrollable' : ''}`}
         style={{
-          width: '140px',
-          maxWidth: '140px',
+          width: '120px',
+          maxWidth: '120px',
           overflowX: activePowers.length >= 4 ? 'auto' : 'hidden',
           touchAction: activePowers.length >= 4 ? 'pan-x' : 'none',
         }}
