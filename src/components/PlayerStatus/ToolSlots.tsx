@@ -43,14 +43,14 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           width: '120px',
           flexShrink: 0,
           overflow: 'hidden',
-          touchAction: toolSlots.length >= 4 ? 'pan-x' : 'auto',
+          touchAction: 'pan-x',
         }}
       >
         <div
-          className={`tool-slots-inline ${toolSlots.length >= 4 ? 'tool-slots-inline--scrollable' : ''}`}
+          className="tool-slots-inline tool-slots-inline--scrollable"
           style={{
-            overflowX: toolSlots.length >= 4 ? 'auto' : 'hidden',
-            touchAction: toolSlots.length >= 4 ? 'pan-x' : 'auto',
+            overflowX: 'auto',
+            touchAction: 'pan-x',
             width: 'max-content',
             minWidth: '100%',
             WebkitOverflowScrolling: 'touch',
@@ -90,14 +90,14 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           width: '120px',
           flexShrink: 0,
           overflow: 'hidden',
-          touchAction: activePowers.length >= 4 ? 'pan-x' : 'auto',
+          touchAction: 'pan-x',
         }}
       >
         <div
-          className={`power-slots ${activePowers.length >= 4 ? 'power-slots--scrollable' : ''}`}
+          className="power-slots power-slots--scrollable"
           style={{
-            overflowX: activePowers.length >= 4 ? 'auto' : 'hidden',
-            touchAction: activePowers.length >= 4 ? 'pan-x' : 'auto',
+            overflowX: 'auto',
+            touchAction: 'pan-x',
             width: 'max-content',
             minWidth: '100%',
             WebkitOverflowScrolling: 'touch',
