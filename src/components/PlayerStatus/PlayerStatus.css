@@ -223,6 +223,9 @@
 
 .tool-slots-inline--scrollable {
   overflow-x: auto;
+  overflow-y: hidden;
+  width: 138px;
+  max-width: 138px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -259,6 +262,8 @@
 .power-slots--scrollable {
   overflow-x: auto;
   overflow-y: hidden;
+  width: 140px;
+  max-width: 140px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -290,6 +295,7 @@
 .tool-slot-inline {
   width: 42px;
   height: 66px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
