@@ -195,6 +195,8 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
                         transform: 'none',
                         transition: 'none',
                         flexShrink: 0,
+                        width: '36px',
+                        height: '56px',
                       } as CSSProperties
                     }
                   />

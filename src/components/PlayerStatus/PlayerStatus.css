@@ -257,8 +257,8 @@
 .power-slot-item {
   flex-shrink: 0;
   position: relative;
-  width: 44px;
-  height: 70px;
+  width: 36px;
+  height: 56px;
   overflow: hidden;
   border-radius: 6px;
 }
