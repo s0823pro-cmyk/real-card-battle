@@ -145,22 +145,15 @@ const Tooltip = ({ tooltipKey, label, description, touchMode = 'hold', children 
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
       onTouchStart={(event) => {
-        // 既にタッチ追跡中の場合は無視（残留タッチの誤発火を防ぐ）
         if (touchIdentifierRef.current !== null) return;
         const touch = event.changedTouches[0];
         if (!touch) return;
         touchIdentifierRef.current = touch.identifier;
-        event.preventDefault();
-        event.stopPropagation();
-        if (touchMode === 'hold') {
-          clearHoldDelayTimer();
-          holdDelayTimerRef.current = window.setTimeout(() => {
-            showTooltip();
-            holdDelayTimerRef.current = null;
-          }, 2000);
-        } else {
-          showTooltipWithTimeout();
-        }
+        clearHoldDelayTimer();
+        holdDelayTimerRef.current = window.setTimeout(() => {
+          showTooltip();
+          holdDelayTimerRef.current = null;
+        }, 2000);
       }}
       onTouchEnd={(event) => {
         const touch = Array.from(event.changedTouches).find(
