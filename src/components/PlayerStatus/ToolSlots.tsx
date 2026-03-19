@@ -45,8 +45,11 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           overflow: 'hidden',
           touchAction: 'pan-x',
         }}
+        onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
+        onTouchMove={(e) => {
+          e.stopPropagation();
+        }}
       >
         <div
           className="tool-slots-inline tool-slots-inline--scrollable"
@@ -94,8 +97,11 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           overflow: 'hidden',
           touchAction: 'pan-x',
         }}
+        onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
+        onTouchMove={(e) => {
+          e.stopPropagation();
+        }}
       >
         <div
           className="power-slots power-slots--scrollable"
