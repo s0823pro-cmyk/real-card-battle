@@ -142,8 +142,14 @@ const Tooltip = ({ tooltipKey, label, description, touchMode = 'hold', children 
     <div
       ref={wrapperRef}
       className="tooltip-wrapper"
-      onMouseEnter={showTooltip}
-      onMouseLeave={hideTooltip}
+      onMouseEnter={() => {
+        if (window.matchMedia('(pointer: coarse)').matches) return;
+        showTooltip();
+      }}
+      onMouseLeave={() => {
+        if (window.matchMedia('(pointer: coarse)').matches) return;
+        hideTooltip();
+      }}
       onTouchStart={(_event) => {
         // タッチでは表示しない
       }}
