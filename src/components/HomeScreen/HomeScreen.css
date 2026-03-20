@@ -716,6 +716,20 @@
   line-height: 1.5;
 }
 
+.settings-btn-danger {
+  background: rgba(255, 71, 87, 0.15);
+  border: 1px solid rgba(255, 71, 87, 0.45);
+  border-radius: 8px;
+  color: #ff9aa5;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .settings-toggle {
   flex-shrink: 0;
   min-width: 52px;

@@ -657,6 +657,41 @@ const HomeScreen = ({
               <div className="settings-list">
                 <div className="settings-item">
                   <div className="settings-item-info">
+                    <p className="settings-item-title">データ初期化</p>
+                    <p className="settings-item-desc">
+                      ゲームの進行・図鑑・チュートリアルをすべてリセットします。この操作は元に戻せません。
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-btn-danger"
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        'すべてのデータを初期化しますか？\nこの操作は元に戻せません。',
+                      );
+                      if (!confirmed) return;
+                      const keysToDelete = [
+                        'real-card-battle:save-data',
+                        'jobless_battle_save',
+                        'jobless_enemy_records',
+                        'jobless_enemy_defeat_counts',
+                        'real-card-battle:unlocked-card-names',
+                        'real-card-battle:tutorial-seen',
+                        'story_seen_carpenter',
+                        'story_seen_carpenter_e1',
+                        'story_seen_carpenter_e2',
+                        'story_seen_carpenter_e3',
+                      ];
+                      keysToDelete.forEach((key) => localStorage.removeItem(key));
+                      window.alert('データを初期化しました。');
+                      setModal(null);
+                    }}
+                  >
+                    初期化
+                  </button>
+                </div>
+                <div className="settings-item">
+                  <div className="settings-item-info">
                     <p className="settings-item-title">カード画像を事前読み込み</p>
                     <p className="settings-item-desc">
                       起動時に全カード画像を読み込みます。通信量が増えますが表示が速くなります。
