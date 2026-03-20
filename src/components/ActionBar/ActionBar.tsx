@@ -182,8 +182,8 @@ const ActionBar = ({
                     onMouseLeave={noop}
                     style={
                       {
-                        '--hand-card-width': '52px',
-                        '--hand-card-height': '82px',
+                        '--hand-card-width': '36px',
+                        '--hand-card-height': '56px',
                         position: 'relative',
                         transform: 'none',
                         transition: 'none',
