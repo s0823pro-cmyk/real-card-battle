@@ -6,6 +6,7 @@ import { DefeatScreen } from './components/DefeatScreen/DefeatScreen';
 import HomeScreen from './components/HomeScreen/HomeScreen';
 import JobSelectScreen from './components/JobSelectScreen/JobSelectScreen';
 import { StoryScreen } from './components/StoryScreen/StoryScreen';
+import { TutorialOverlay, hasTutorialSeen } from './components/TutorialOverlay/TutorialOverlay';
 import { VictoryScreen } from './components/VictoryScreen/VictoryScreen';
 import { BossRewardScreen } from './components/BossRewardScreen/BossRewardScreen';
 import { ZukanScreen } from './components/ZukanScreen/ZukanScreen';
@@ -87,6 +88,7 @@ function App() {
     durationMs: 0,
   });
   const [showStory, setShowStory] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [pendingJobId, setPendingJobId] = useState<JobId | null>(null);
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
   const [currentStoryScenes, setCurrentStoryScenes] = useState<StoryScene[] | null>(null);
@@ -182,7 +184,12 @@ function App() {
     setShowStory(false);
     const nextJobId = pendingJobId ?? 'carpenter';
     setPendingJobId(null);
-    startRunFromJobSelect(nextJobId);
+    if (!hasTutorialSeen()) {
+      setShowTutorial(true);
+      setPendingJobId(nextJobId);
+    } else {
+      startRunFromJobSelect(nextJobId);
+    }
   };
 
   const showAreaStory = (area: 1 | 2 | 3, onDone: () => void) => {
@@ -589,6 +596,16 @@ function App() {
             </button>
           </div>
         </div>
+      )}
+      {showTutorial && (
+        <TutorialOverlay
+          onComplete={() => {
+            setShowTutorial(false);
+            const jobId = pendingJobId ?? 'carpenter';
+            setPendingJobId(null);
+            startRunFromJobSelect(jobId);
+          }}
+        />
       )}
     </div>
   );

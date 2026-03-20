@@ -1,0 +1,115 @@
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  pointer-events: all;
+}
+
+.tutorial-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.tutorial-highlight {
+  position: absolute;
+  border: 2px solid #f0b429;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.75),
+    0 0 20px rgba(240, 180, 41, 0.5);
+  z-index: 1;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.tutorial-callout {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 380px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  transition: all 0.3s ease;
+}
+
+.tutorial-arrow--down {
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 16px solid #f0b429;
+}
+
+.tutorial-arrow--up {
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 16px solid #f0b429;
+}
+
+.tutorial-box {
+  background: #161b22;
+  border: 1px solid rgba(240, 180, 41, 0.5);
+  border-radius: 12px;
+  padding: 16px;
+  width: 100%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.tutorial-step-count {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: #f0b429;
+  margin: 0 0 4px;
+}
+
+.tutorial-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e6edf3;
+  margin: 0 0 8px;
+}
+
+.tutorial-description {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  color: #c9d1d9;
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+.tutorial-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.tutorial-btn-skip {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #8b949e;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.tutorial-btn-next {
+  background: #f0b429;
+  border: none;
+  border-radius: 8px;
+  color: #0d1117;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 18px;
+  cursor: pointer;
+}
