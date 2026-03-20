@@ -910,6 +910,11 @@
   max-height: 60vh;
 }
 
+.records-page-content .achievement-list {
+  max-height: none;
+  overflow: visible;
+}
+
 .achievement-item {
   display: flex;
   align-items: center;
@@ -918,11 +923,29 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
+  width: 100%;
+  text-align: left;
+  cursor: default;
+  font: inherit;
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.achievement-item:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .achievement-item--unlocked {
   border-color: rgba(240, 180, 41, 0.3);
   background: rgba(240, 180, 41, 0.06);
+  cursor: pointer;
+}
+
+.victory-achievement-tap {
+  font-size: 9px;
+  color: rgba(240, 180, 41, 0.6);
+  margin-left: 4px;
 }
 
 .achievement-icon {
@@ -950,4 +973,58 @@
   font-size: 11px;
   color: #f0b429;
   margin: 0;
+}
+
+.records-page {
+  width: 100%;
+  max-width: 430px;
+  height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+}
+
+.records-page-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  background: rgba(13, 17, 23, 0.8);
+}
+
+.records-page-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e6edf3;
+  margin: 0;
+  text-align: center;
+}
+
+.records-back-btn {
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.records-back-btn:hover {
+  color: #e6edf3;
+}
+
+.records-page-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  -webkit-overflow-scrolling: touch;
 }

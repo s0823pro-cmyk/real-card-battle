@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { StoryScreen } from '../StoryScreen/StoryScreen';
 import {
@@ -20,7 +20,9 @@ import letterEImage from '../../assets/title/letter_E.png';
 import letterSImage from '../../assets/title/letter_S.png';
 import letterS2Image from '../../assets/title/letter_S2.png';
 import './HomeScreen.css';
+import type { Achievement } from '../../utils/achievementSystem';
 import { ACHIEVEMENTS, clearAchievements, getUnlockedAchievementIds } from '../../utils/achievementSystem';
+import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 
 const JOB_NAMES: Record<string, string> = {
   carpenter: '大工',
@@ -38,7 +40,7 @@ interface HomeScreenProps {
   onDevNavigate?: (destination: DevDestination) => void;
 }
 
-type ModalType = 'howto' | 'settings' | 'records' | 'credits' | null;
+type ModalType = 'howto' | 'settings' | 'credits' | null;
 type HowtoTab = 'glossary' | 'story';
 type StoryJobKey = 'carpenter' | 'cook' | 'unemployed';
 type StoryEpisodeId =
@@ -253,6 +255,8 @@ const HomeScreen = ({
   onDevNavigate,
 }: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
+  const [showRecords, setShowRecords] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const [activeHowtoTab, setActiveHowtoTab] = useState<HowtoTab>('glossary');
   const [openedHowtoEntry, setOpenedHowtoEntry] = useState<string | null>(null);
   const [playingStory, setPlayingStory] = useState<StoryEpisodeId | null>(null);
@@ -277,14 +281,10 @@ const HomeScreen = ({
   const modalTitles: Record<Exclude<ModalType, null>, string> = {
     howto: '遊び方',
     settings: '設定',
-    records: '実績',
     credits: 'クレジット',
   };
 
-  const recordsUnlockedIds = useMemo(() => {
-    if (modal !== 'records') return null;
-    return getUnlockedAchievementIds();
-  }, [modal]);
+  const unlockedIds = getUnlockedAchievementIds();
   const storyJobs: {
     jobKey: StoryJobKey;
     jobName: string;
@@ -445,7 +445,7 @@ const HomeScreen = ({
   const homeButtons = [
     { label: 'ゲームスタート', className: 'btn-home-start', onClick: onStart },
     { label: '図鑑', className: 'btn-home-zukan', onClick: onOpenZukan },
-    { label: '実績', className: 'btn-home-records', onClick: () => setModal('records') },
+    { label: '実績', className: 'btn-home-records', onClick: () => setShowRecords(true) },
     { label: '設定', className: 'btn-home-settings', onClick: () => setModal('settings') },
     { label: 'クレジット', className: 'btn-home-credits', onClick: () => setModal('credits') },
   ] as const;
@@ -472,6 +472,56 @@ const HomeScreen = ({
     savedProgress.currentScreen !== 'job_select' &&
     savedProgress.currentScreen !== 'victory' &&
     savedProgress.currentScreen !== 'game_over';
+
+  if (showRecords) {
+    return (
+      <main className="home-screen" style={backgroundStyle}>
+        <Fireflies />
+        <div className="records-page">
+          <div className="records-page-header">
+            <button type="button" className="records-back-btn" onClick={() => setShowRecords(false)}>
+              ← 戻る
+            </button>
+            <h2 className="records-page-title">実績</h2>
+            <div />
+          </div>
+          <div className="records-page-content">
+            <div className="achievement-list">
+              {ACHIEVEMENTS.map((a) => {
+                const isUnlocked = unlockedIds.has(a.id);
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className={`achievement-item ${isUnlocked ? 'achievement-item--unlocked' : ''}`}
+                    disabled={!isUnlocked}
+                    onClick={() => (isUnlocked ? setSelectedAchievement(a) : undefined)}
+                  >
+                    <span className="achievement-icon">{isUnlocked ? a.icon : '🔒'}</span>
+                    <div className="achievement-info">
+                      <p className="achievement-name">{isUnlocked ? a.name : '???'}</p>
+                      <p className="achievement-desc">{isUnlocked ? a.description : '未達成'}</p>
+                      {isUnlocked && (
+                        <p className="achievement-reward">
+                          {a.rewardIcon} {a.rewardName} 解放済み
+                          <span className="victory-achievement-tap"> タップで確認</span>
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <AchievementRewardModal
+            selected={selectedAchievement}
+            onClose={() => setSelectedAchievement(null)}
+            jobId="carpenter"
+          />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="home-screen" style={backgroundStyle}>
@@ -758,29 +808,6 @@ const HomeScreen = ({
                     </div>
                   </div>
                 )}
-              </div>
-            ) : modal === 'records' && recordsUnlockedIds ? (
-              <div className="achievement-list">
-                {ACHIEVEMENTS.map((a) => {
-                  const isUnlocked = recordsUnlockedIds.has(a.id);
-                  return (
-                    <div
-                      key={a.id}
-                      className={`achievement-item ${isUnlocked ? 'achievement-item--unlocked' : ''}`}
-                    >
-                      <span className="achievement-icon">{isUnlocked ? a.icon : '🔒'}</span>
-                      <div className="achievement-info">
-                        <p className="achievement-name">{isUnlocked ? a.name : '???'}</p>
-                        <p className="achievement-desc">{isUnlocked ? a.description : '未達成'}</p>
-                        {isUnlocked && (
-                          <p className="achievement-reward">
-                            {a.rewardIcon} {a.rewardName} 解放済み
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             ) : (
               <p>準備中です。</p>
