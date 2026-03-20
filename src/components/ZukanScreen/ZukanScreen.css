@@ -595,9 +595,10 @@
 
 .zukan-enemy-modal-img {
   width: 100%;
-  height: 200px;
-  object-fit: cover;
-  object-position: top;
+  max-height: 240px;
+  object-fit: contain;
+  object-position: center;
+  background: #0d1117;
 }
 
 .zukan-enemy-modal-info {

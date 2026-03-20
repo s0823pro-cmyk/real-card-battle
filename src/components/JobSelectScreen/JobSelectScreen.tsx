@@ -215,7 +215,11 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
 
   // ---- pointer handlers on hand cards ----
   const handlePointerDown = (e: React.PointerEvent, index: number) => {
-    if (JOB_CARDS[index].comingSoon || isMelting) return;
+    if (isMelting) return;
+    if (JOB_CARDS[index].comingSoon) {
+      e.preventDefault();
+      return;
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
     dragStartPos.current = { x: e.clientX, y: e.clientY };
     dragDeltaRef.current = { x: 0, y: 0 };
