@@ -176,6 +176,7 @@ const rollRoulette = (): number => {
 
 type Action =
   | { type: 'set_screen'; screen: GameScreen }
+  | { type: 'set_screen_with_achievements'; screen: GameScreen; achievements: Achievement[] }
   | { type: 'set_board'; board: BoardTile[] }
   | { type: 'set_current_tile'; tileId: number }
   | { type: 'set_dice'; value: number | null; rolling: boolean }
@@ -366,6 +367,12 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
   switch (action.type) {
     case 'set_screen':
       return { ...state, currentScreen: action.screen };
+    case 'set_screen_with_achievements':
+      return {
+        ...state,
+        currentScreen: action.screen,
+        lastBattleNewAchievements: action.achievements,
+      };
     case 'set_board':
       return { ...state, board: action.board };
     case 'set_current_tile':
@@ -1075,7 +1082,6 @@ export const useRunProgress = () => {
     clearBattleState();
     const battleArea = stateRef.current.currentArea;
     const newAchievements = evaluateBattleAchievements(result, battleArea);
-    dispatch({ type: 'set_last_battle_achievements', achievements: newAchievements });
     const cleanedDeck = result.deck.filter(
       (card) => card.type !== 'status' && card.type !== 'curse',
     );
@@ -1090,9 +1096,15 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_battle_setup', setup: null, tileType: stateRef.current.lastTileType });
 
     if (result.outcome === 'defeat') {
-      dispatch({ type: 'set_screen', screen: 'game_over' });
+      dispatch({
+        type: 'set_screen_with_achievements',
+        screen: 'game_over',
+        achievements: newAchievements,
+      });
       return;
     }
+
+    dispatch({ type: 'set_last_battle_achievements', achievements: newAchievements });
 
     // エリア3ボス撃破時は報酬なしで直接クリア画面へ
     if (
