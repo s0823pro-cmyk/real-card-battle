@@ -94,7 +94,7 @@
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  height: 90px;
+  height: 60px;
   overflow-x: visible;
   overflow-y: hidden;
   max-width: 100%;
@@ -119,7 +119,7 @@
   flex-shrink: 0;
   position: relative;
   width: 36px;
-  height: 56px;
+  height: 52px;
   overflow: visible;
   border-radius: 6px;
 }
