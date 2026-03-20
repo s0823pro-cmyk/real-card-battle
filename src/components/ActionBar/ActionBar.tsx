@@ -125,108 +125,123 @@ const ActionBar = ({
               </>
             ) : (
               reserved.map((card, index) => (
-                <div
+                <Tooltip
                   key={`reserved-${index}`}
-                  className="reserve-slot-item"
-                  onMouseEnter={(event) => {
-                    if (isDragging) return;
-                    if (pinnedPreviewCardId) return;
-                    showPreview(card, event.currentTarget);
-                  }}
-                  onMouseLeave={() => {
-                    hidePreview(card.id);
-                  }}
-                  onPointerDown={(event) => {
-                    if (isDragging) return;
-                    if (event.pointerType === 'mouse') return;
-                    setPinnedPreviewCardId(card.id);
-                    showPreview(card, event.currentTarget);
-                  }}
-                  onPointerUp={() => { clearLongPress(); }}
-                  onPointerCancel={() => { clearLongPress(); }}
-                  onPointerLeave={() => { clearLongPress(); }}
-                  onTouchStart={(event) => {
-                    if (isDragging) return;
-                    setPinnedPreviewCardId(card.id);
-                    showPreview(card, event.currentTarget);
-                  }}
-                  onTouchEnd={() => { clearLongPress(); }}
-                  onTouchCancel={() => { clearLongPress(); }}
-                  onClick={(event) => {
-                    if (isDragging) return;
-                    const shouldClose = previewDialogCard?.id === card.id;
-                    setPinnedPreviewCardId(card.id);
-                    showPreview(card, event.currentTarget);
-                    setPreviewDialogCard(shouldClose ? null : card);
-                  }}
+                  label={card.name}
+                  description={card.description ?? ''}
                 >
-                  <CardComponent
-                    card={card}
-                    jobId={jobId}
-                    selected={false}
-                    disabled={false}
-                    locked={false}
-                    isSelling={false}
-                    isReturning={false}
-                    isGhost={false}
-                    isDragging={false}
-                    isDragUnavailable={false}
-                    zukanMode="list"
-                    effectiveValues={getBaseEffectiveValues(card)}
-                    onSelect={noop}
-                    onPointerDown={noop}
-                    onPointerMove={noop}
-                    onPointerUp={noop}
-                    onPointerCancel={noop}
-                    onMouseEnter={noop}
-                    onMouseLeave={noop}
-                    style={
-                      {
-                        '--hand-card-width': '36px',
-                        '--hand-card-height': '56px',
-                        position: 'relative',
-                        transform: 'none',
-                        transition: 'none',
-                        flexShrink: 0,
-                      } as CSSProperties
-                    }
-                  />
-                  {previewCardId === card.id &&
-                    createPortal(
-                      <div
-                        className={`reserved-card-preview reserved-card-preview--floating ${
-                          previewAlign === 'left'
-                            ? 'reserved-card-preview--left'
-                            : previewAlign === 'right'
-                              ? 'reserved-card-preview--right'
-                              : ''
-                        }`}
-                        style={{ left: `${previewPosition.x}px`, top: `${previewPosition.y}px` }}
-                      >
-                        <CardComponent
-                          card={card}
-                          jobId={jobId}
-                          selected={false}
-                          disabled={false}
-                          locked={false}
-                          isSelling={false}
-                          isReturning={false}
-                          isGhost={false}
-                          isDragging={false}
-                          isDragUnavailable={false}
-                          effectiveValues={getBaseEffectiveValues(card)}
-                          onSelect={noop}
-                          onPointerDown={noop}
-                          onPointerMove={noop}
-                          onPointerUp={noop}
-                          onPointerCancel={noop}
-                          onMouseEnter={noop}
-                          onMouseLeave={noop}
-                        />
-                      </div>,
-                      document.body,
-                    )}
-                </div>
+                  <div
+                    className="reserve-slot-item"
+                    onMouseEnter={(event) => {
+                      if (isDragging) return;
+                      if (pinnedPreviewCardId) return;
+                      showPreview(card, event.currentTarget);
+                    }}
+                    onMouseLeave={() => {
+                      hidePreview(card.id);
+                    }}
+                    onPointerDown={(event) => {
+                      if (isDragging) return;
+                      if (event.pointerType === 'mouse') return;
+                      setPinnedPreviewCardId(card.id);
+                      showPreview(card, event.currentTarget);
+                    }}
+                    onPointerUp={() => {
+                      clearLongPress();
+                    }}
+                    onPointerCancel={() => {
+                      clearLongPress();
+                    }}
+                    onPointerLeave={() => {
+                      clearLongPress();
+                    }}
+                    onTouchStart={(event) => {
+                      if (isDragging) return;
+                      setPinnedPreviewCardId(card.id);
+                      showPreview(card, event.currentTarget);
+                    }}
+                    onTouchEnd={() => {
+                      clearLongPress();
+                    }}
+                    onTouchCancel={() => {
+                      clearLongPress();
+                    }}
+                    onClick={(event) => {
+                      if (isDragging) return;
+                      const shouldClose = previewDialogCard?.id === card.id;
+                      setPinnedPreviewCardId(card.id);
+                      showPreview(card, event.currentTarget);
+                      setPreviewDialogCard(shouldClose ? null : card);
+                    }}
+                  >
+                    <CardComponent
+                      card={card}
+                      jobId={jobId}
+                      selected={false}
+                      disabled={false}
+                      locked={false}
+                      isSelling={false}
+                      isReturning={false}
+                      isGhost={false}
+                      isDragging={false}
+                      isDragUnavailable={false}
+                      zukanMode="list"
+                      effectiveValues={getBaseEffectiveValues(card)}
+                      onSelect={noop}
+                      onPointerDown={noop}
+                      onPointerMove={noop}
+                      onPointerUp={noop}
+                      onPointerCancel={noop}
+                      onMouseEnter={noop}
+                      onMouseLeave={noop}
+                      style={
+                        {
+                          '--hand-card-width': '36px',
+                          '--hand-card-height': '56px',
+                          position: 'relative',
+                          transform: 'none',
+                          transition: 'none',
+                          flexShrink: 0,
+                        } as CSSProperties
+                      }
+                    />
+                    {previewCardId === card.id &&
+                      createPortal(
+                        <div
+                          className={`reserved-card-preview reserved-card-preview--floating ${
+                            previewAlign === 'left'
+                              ? 'reserved-card-preview--left'
+                              : previewAlign === 'right'
+                                ? 'reserved-card-preview--right'
+                                : ''
+                          }`}
+                          style={{ left: `${previewPosition.x}px`, top: `${previewPosition.y}px` }}
+                        >
+                          <CardComponent
+                            card={card}
+                            jobId={jobId}
+                            selected={false}
+                            disabled={false}
+                            locked={false}
+                            isSelling={false}
+                            isReturning={false}
+                            isGhost={false}
+                            isDragging={false}
+                            isDragUnavailable={false}
+                            effectiveValues={getBaseEffectiveValues(card)}
+                            onSelect={noop}
+                            onPointerDown={noop}
+                            onPointerMove={noop}
+                            onPointerUp={noop}
+                            onPointerCancel={noop}
+                            onMouseEnter={noop}
+                            onMouseLeave={noop}
+                          />
+                        </div>,
+                        document.body,
+                      )}
+                  </div>
+                </Tooltip>
               ))
             )}
             </div>
