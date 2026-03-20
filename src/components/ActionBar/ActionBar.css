@@ -118,8 +118,8 @@
 .reserve-slot-item {
   flex-shrink: 0;
   position: relative;
-  width: 44px;
-  height: 68px;
+  width: 36px;
+  height: 56px;
   overflow: visible;
   border-radius: 6px;
 }
