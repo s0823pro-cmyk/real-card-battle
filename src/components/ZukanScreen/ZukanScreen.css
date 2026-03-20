@@ -497,7 +497,8 @@
   position: relative;
 }
 
-.zukan-enemy-item--none {
+.zukan-enemy-item--none,
+.zukan-enemy-item--encountered {
   cursor: default;
   opacity: 0.4;
 }

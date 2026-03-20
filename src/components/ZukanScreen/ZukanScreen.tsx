@@ -323,7 +323,8 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                         key={enemy.id}
                         className={`zukan-enemy-item zukan-enemy-item--${status}`}
                         onClick={() => {
-                          if (status !== 'none') setSelectedEnemy(enemy);
+                          if (status === 'none' || status === 'encountered') return;
+                          setSelectedEnemy(enemy);
                         }}
                       >
                         {status === 'none' ? (
@@ -439,7 +440,9 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                       type="button"
                       className="zukan-card-hitbox"
                       aria-label={`${card.name} の詳細を開く`}
+                      disabled={!isUnlocked}
                       onClick={(event) => {
+                        if (!isUnlocked) return;
                         event.preventDefault();
                         event.stopPropagation();
                         openCardDetail(index);
