@@ -13,6 +13,7 @@ import { isEnemyTargetCard } from '../utils/cardTarget';
 import { getEffectiveTimeCost } from '../utils/timeline';
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
 import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord';
+import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../utils/playCardMultipliers';
 
 const MAX_RESERVED = 2;
 const RESERVE_TIME_PENALTY = 1.5;
@@ -92,6 +93,8 @@ export interface UseGameStateResult {
   showRevivalEffect: boolean;
   pendingHandUpgradeCount: number;
   upgradeableHandCards: Card[];
+  doubleNextCharges: number;
+  attackItemBuff: { value: number; charges: number } | null;
   selectCard: (cardId: string) => void;
   playCardInstant: (
     cardId: string,
@@ -499,50 +502,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (!isEnemyTargetCard(card) && target.type === 'enemy') return false;
     const cardWasReserved = Boolean(card.wasReserved);
 
-    const reservedBonusActive = Boolean(cardWasReserved && card.reserveBonus);
-    const enhancedCard: Card = reservedBonusActive
-      ? {
-          ...card,
-          damage: card.damage
-            ? Math.floor(card.damage * (card.reserveBonus?.damageMultiplier ?? 1))
-            : card.damage,
-          block: card.block
-            ? Math.floor(card.block * (card.reserveBonus?.blockMultiplier ?? 1))
-            : card.block,
-          effects: [...(card.effects ?? []), ...(card.reserveBonus?.extraEffects ?? [])],
-          wasReserved: false,
-          reservedThisTurn: false,
-        }
-      : card;
-
+    const enhancedCard = getEnhancedCardForPlay(card);
     const reserveOrDoubleMultiplier = doubleNextCharges > 0 || gameState.player.nextCardDoubleEffect ? 2 : 1;
     const nextCardEffectBoostRate = Math.max(0, gameState.player.nextCardEffectBoost ?? 0);
-    // 集中力（reserve_double_next）は「次のカード用ブーストをセット」するカードなので、
-    // 溜まっている nextCardEffectBoost はこのカード自身には適用しない（消費は次カードで行う）
     const isReserveDoubleNextPlay =
       (enhancedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false;
     const shouldUseTenBoost =
       reserveOrDoubleMultiplier <= 1 && nextCardEffectBoostRate > 0 && !isReserveDoubleNextPlay;
-    const applyBoostWithMinOne = (value: number): number => {
-      if (!shouldUseTenBoost || value <= 0) return value;
-      const add = Math.max(1, Math.ceil(value * nextCardEffectBoostRate));
-      return value + add;
-    };
-    const multipliedCard: Card = {
-      ...enhancedCard,
-      damage:
-        enhancedCard.damage !== undefined
-          ? applyBoostWithMinOne(enhancedCard.damage * reserveOrDoubleMultiplier)
-          : enhancedCard.damage,
-      block:
-        enhancedCard.block !== undefined
-          ? applyBoostWithMinOne(enhancedCard.block * reserveOrDoubleMultiplier)
-          : enhancedCard.block,
-      effects: (enhancedCard.effects ?? []).map((effect) => ({
-        ...effect,
-        value: applyBoostWithMinOne(effect.value * reserveOrDoubleMultiplier),
-      })),
-    };
+    const multipliedCard = applyMultiplierAndBoostToCard(enhancedCard, gameState.player, doubleNextCharges);
 
     const enemiesBefore = gameState.enemies.map((enemy) => ({ id: enemy.id, hp: enemy.currentHp, templateId: enemy.templateId }));
 
@@ -711,6 +678,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const playedReserveDoubleCardNormally =
       !cardWasReserved &&
       ((playedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false);
+    const nextCardEffectBoostAfterPlay = playedReserveDoubleCardNormally
+      ? 0.1
+      : nextCardEffectBoostConsumed
+        ? 0
+        : (playerAfterKill.nextCardEffectBoost ?? 0);
     setGameState((prev) => ({
       ...prev,
       hand: handAfterPlay,
@@ -720,11 +692,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       player: {
         ...playerAfterKill,
         nextCardDoubleEffect: nextCardDoubleConsumed ? false : playerAfterKill.nextCardDoubleEffect,
-        nextCardEffectBoost: playedReserveDoubleCardNormally
-          ? 0.1
-          : nextCardEffectBoostConsumed
-            ? 0
-            : (playerAfterKill.nextCardEffectBoost ?? 0),
+        nextCardEffectBoost: nextCardEffectBoostAfterPlay,
       },
       enemies: result.enemies,
       activePowers,
@@ -794,7 +762,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (result.isDandoriActive) {
       pushPopup('⚡段取り！', 'player', 'dandori');
     }
-    if (reservedBonusActive) {
+    if (cardWasReserved && card.reserveBonus) {
       pushPopup('✨温存ボーナス！', 'player', 'buff');
     }
     if (attackItemBuff && playedCard.type === 'attack') {
@@ -1520,6 +1488,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     showRevivalEffect,
     pendingHandUpgradeCount: activePendingHandUpgradeCount,
     upgradeableHandCards,
+    doubleNextCharges,
+    attackItemBuff,
     selectCard,
     playCardInstant,
     reserveCardById,

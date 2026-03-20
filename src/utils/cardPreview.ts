@@ -29,6 +29,7 @@ export const getEffectiveCardValues = (
   card: Card,
   player: PlayerState,
   lastPlayedCard: Card | null,
+  doubleNextCharges: number = 0,
 ): EffectiveCardValues => {
   let damage = card.damage ?? null;
   let block = card.block ?? null;
@@ -41,7 +42,11 @@ export const getEffectiveCardValues = (
     ? (player.templeCarpenterActive ? (player.templeCarpenterMultiplier ?? 1.5) : 1.3)
     : 1;
   const nextCardEffectBoost = Math.max(0, player.nextCardEffectBoost ?? 0);
-  const shouldApplyNextCardEffectBoost = nextCardEffectBoost > 0 && !player.nextCardDoubleEffect;
+  const reserveOrDoubleMultiplierPreview = doubleNextCharges > 0 || player.nextCardDoubleEffect ? 2 : 1;
+  const isReserveDoubleNextCard =
+    (card.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false;
+  const shouldApplyNextCardEffectBoost =
+    nextCardEffectBoost > 0 && reserveOrDoubleMultiplierPreview <= 1 && !isReserveDoubleNextCard;
   const isDandoriActive = dandoriMultiplier > 1;
   const baseDamage = card.damage ?? 0;
   const baseBlock = card.block ?? 0;
@@ -98,6 +103,9 @@ export const getEffectiveCardValues = (
     if (hasWeak(player)) {
       damage = Math.floor(damage * 0.75);
     }
+    if (damage > 0) {
+      damage = Math.floor(damage * reserveOrDoubleMultiplierPreview);
+    }
     if (shouldApplyNextCardEffectBoost && damage > 0) {
       const add = Math.max(1, Math.ceil(damage * nextCardEffectBoost));
       damage += add;
@@ -118,6 +126,9 @@ export const getEffectiveCardValues = (
     if (hasWeak(player)) {
       block = Math.floor(block * 0.75);
     }
+    if (block > 0) {
+      block = Math.floor(block * reserveOrDoubleMultiplierPreview);
+    }
     if (shouldApplyNextCardEffectBoost && block > 0) {
       const add = Math.max(1, Math.ceil(block * nextCardEffectBoost));
       block += add;
@@ -130,7 +141,10 @@ export const getEffectiveCardValues = (
     } else if (isDandoriActive) {
       heal = Math.floor(heal * dandoriMultiplier);
     }
-    if (shouldApplyNextCardEffectBoost && heal > 0) {
+    if (heal !== null && heal > 0) {
+      heal = Math.floor(heal * reserveOrDoubleMultiplierPreview);
+    }
+    if (shouldApplyNextCardEffectBoost && heal !== null && heal > 0) {
       const add = Math.max(1, Math.ceil(heal * nextCardEffectBoost));
       heal += add;
     }

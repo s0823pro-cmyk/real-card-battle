@@ -17,6 +17,7 @@ import type { BattleResult, BattleSetup } from '../../types/run';
 import { getEffectiveCardValues } from '../../utils/cardPreview';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
+import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
 import { isEnemyTargetCard } from '../../utils/cardTarget';
 import '../Enemy/Enemy.css';
 import '../Effects/Effects.css';
@@ -108,6 +109,8 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
     showRevivalEffect,
     pendingHandUpgradeCount,
     upgradeableHandCards,
+    doubleNextCharges,
+    attackItemBuff,
     canPlayCard,
     selectCard,
     playCardInstant,
@@ -592,8 +595,13 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
 
     let previewDamage = 0;
     if (handDrag.card.type === 'attack') {
+      const enhanced = getEnhancedCardForPlay(handDrag.card);
+      let previewCard = applyMultiplierAndBoostToCard(enhanced, gameState.player, doubleNextCharges);
+      if (attackItemBuff && attackItemBuff.charges > 0 && previewCard.type === 'attack') {
+        previewCard = { ...previewCard, damage: (previewCard.damage ?? 0) + attackItemBuff.value };
+      }
       let rawDamage = calculateEffectiveDamage(
-        handDrag.card,
+        previewCard,
         lastPlayedCard,
         gameState.player,
         gameState.toolSlots,
@@ -609,26 +617,50 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
       damage: previewDamage,
       previewHp: Math.max(0, enemy.currentHp - previewDamage),
     };
-  }, [gameState.enemies, gameState.player, handDrag.card, hoveredEnemyId, isEnemyPreviewActive, lastPlayedCard]);
+  }, [
+    gameState.enemies,
+    gameState.player,
+    gameState.toolSlots,
+    handDrag.card,
+    hoveredEnemyId,
+    isEnemyPreviewActive,
+    lastPlayedCard,
+    doubleNextCharges,
+    attackItemBuff,
+  ]);
 
   const timeUsagePreview = useMemo(() => {
     if (!handDrag.isDragging || !handDrag.card) return null;
     if (!canPlayCard(handDrag.card)) return null;
     const isPlayableTarget = handDrag.dropTarget === 'enemy' || handDrag.dropTarget === 'timebar';
     if (!isPlayableTarget) return null;
-    const effective = getEffectiveCardValues(handDrag.card, gameState.player, lastPlayedCard).effectiveTimeCost;
+    const effective = getEffectiveCardValues(
+      handDrag.card,
+      gameState.player,
+      lastPlayedCard,
+      doubleNextCharges,
+    ).effectiveTimeCost;
     const previewCost = Math.max(0, effective);
     const previewRemaining = Math.max(0, remainingTime - previewCost);
     return { previewCost, previewRemaining };
-  }, [canPlayCard, gameState.player, handDrag.card, handDrag.dropTarget, handDrag.isDragging, lastPlayedCard, remainingTime]);
+  }, [
+    canPlayCard,
+    gameState.player,
+    handDrag.card,
+    handDrag.dropTarget,
+    handDrag.isDragging,
+    lastPlayedCard,
+    remainingTime,
+    doubleNextCharges,
+  ]);
   const previewBlockValue = useMemo(() => {
     if (!handDrag.isDragging || !handDrag.card) return null;
     const card = handDrag.card;
     if (!card.block || card.block <= 0) return null;
-    const effective = getEffectiveCardValues(card, gameState.player, lastPlayedCard);
+    const effective = getEffectiveCardValues(card, gameState.player, lastPlayedCard, doubleNextCharges);
     if (effective.block == null) return null;
     return gameState.player.block + effective.block;
-  }, [handDrag.isDragging, handDrag.card, gameState.player, lastPlayedCard]);
+  }, [handDrag.isDragging, handDrag.card, gameState.player, lastPlayedCard, doubleNextCharges]);
   const previewHpValue = useMemo(() => {
     if (!handDrag.isDragging || !handDrag.card) return null;
     const selfDamageEffect = handDrag.card.effects?.find((effect) => effect.type === 'self_damage');
@@ -747,6 +779,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
           <Hand
             hand={gameState.hand}
             player={gameState.player}
+            doubleNextCharges={doubleNextCharges}
             usedTime={gameState.usedTime}
             lastPlayedCard={lastPlayedCard}
             selectedCardId={selectedCardId}
@@ -860,7 +893,12 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
             isGhost={false}
             isDragging
             isDragUnavailable={false}
-            effectiveValues={getEffectiveCardValues(handDrag.card, gameState.player, lastPlayedCard)}
+            effectiveValues={getEffectiveCardValues(
+              handDrag.card,
+              gameState.player,
+              lastPlayedCard,
+              doubleNextCharges,
+            )}
             onSelect={noop}
             onPointerDown={noop}
             onPointerMove={noop}

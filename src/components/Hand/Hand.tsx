@@ -10,6 +10,8 @@ import './Hand.css';
 interface Props {
   hand: Card[];
   player: PlayerState;
+  /** playCardInstant と同じ倍撃チャージ（プレビュー用） */
+  doubleNextCharges?: number;
   usedTime: number;
   lastPlayedCard: Card | null;
   selectedCardId: string | null;
@@ -63,6 +65,7 @@ const calcHandLayout = (cardCount: number, areaWidth: number): LayoutItem[] => {
 const Hand = ({
   hand,
   player,
+  doubleNextCharges = 0,
   usedTime,
   lastPlayedCard,
   selectedCardId,
@@ -115,7 +118,7 @@ const Hand = ({
             card.type === 'status' ||
             violatesSoloPlayCondition ||
             usedTime + getEffectiveTimeCost(card, lastPlayedCard, player, player.jobId) > maxTime;
-          const effectiveValues = getEffectiveCardValues(card, player, lastPlayedCard);
+          const effectiveValues = getEffectiveCardValues(card, player, lastPlayedCard, doubleNextCharges);
           const isExpanded = expandedCardId === card.id;
           const isDraggingCard = draggedCardId === card.id;
           const current = layout[cardIndex];

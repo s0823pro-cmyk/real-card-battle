@@ -16,7 +16,7 @@ interface TooltipProps {
 
 const PADDING = 8;
 
-const Tooltip = ({ tooltipKey, label, description, touchMode = 'hold', children }: TooltipProps) => {
+const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: -9999, left: -9999 });
   const [calculated, setCalculated] = useState(false);
@@ -120,14 +120,6 @@ const Tooltip = ({ tooltipKey, label, description, touchMode = 'hold', children 
     setPosition({ top: -9999, left: -9999 });
     setCalculated(false);
     setVisible(false);
-  };
-
-  const showTooltipWithTimeout = () => {
-    showTooltip();
-    hideTimerRef.current = window.setTimeout(() => {
-      hideTooltip();
-      hideTimerRef.current = null;
-    }, 2000);
   };
 
   const clearHoldDelayTimer = () => {
