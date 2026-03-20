@@ -465,7 +465,7 @@
 }
 
 .battle-reserve-area--gauge-expand {
-  transform: translateY(2px);
+  transform: translateY(18px);
 }
 
 .battle-reserve-area--gauge-expand .reserved-card-mini,
