@@ -28,7 +28,7 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
   集中力: {
     name: '集中力+',
     timeCost: 1,
-    description: '通常使用で次のカード効果+20%。温存すると次のカード効果が2倍。使用後は除外。（所要時間1秒）',
+    description: '通常使用で次のカード効果+20%（捨て札）。温存すると次のカード効果が2倍で、使用後は除外。（所要時間1秒）',
   },
   根性見せろ: {
     name: '根性見せろ+',
