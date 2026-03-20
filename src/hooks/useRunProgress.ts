@@ -50,6 +50,12 @@ import {
 } from '../utils/boardGenerator';
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
 import { clearBattleState, saveBattleState } from '../utils/battleSave';
+import type { Achievement } from '../utils/achievementSystem';
+import {
+  getUnlockedAchievementIds,
+  incrementDefeatCount,
+  unlockAchievements,
+} from '../utils/achievementSystem';
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
@@ -81,12 +87,15 @@ export type DevDestination =
   | 'boss_reward'
   | 'story';
 
-type SerializedProgress = Omit<GameProgress, 'unlockedCardNames'> & { unlockedCardNames: string[] };
+type SerializedProgress = Omit<GameProgress, 'unlockedCardNames' | 'lastBattleNewAchievements'> & {
+  unlockedCardNames: string[];
+};
 
 const saveProgressToStorage = (progress: GameProgress): void => {
   try {
+    const { lastBattleNewAchievements: _a, ...rest } = progress;
     const saveable: SerializedProgress = {
-      ...progress,
+      ...rest,
       unlockedCardNames: [...progress.unlockedCardNames],
     };
     window.localStorage.setItem(SAVE_DATA_KEY, JSON.stringify(saveable));
@@ -121,6 +130,7 @@ export const loadSavedProgress = (): GameProgress | null => {
       ...parsed,
       unlockedCardNames: new Set(parsed.unlockedCardNames ?? []),
       pendingItemReplacement: null,
+      lastBattleNewAchievements: [],
       // バトル中状態はリセット（マップ画面に戻す）
       battleSetup: null,
       currentScreen: normalizedScreen,
@@ -192,7 +202,8 @@ type Action =
   | { type: 'set_current_area'; area: number }
   | { type: 'set_pending_item_replacement'; value: PendingItemReplacement | null }
   | { type: 'open_card_upgrade'; mode: 'upgrade' | 'remove'; returnScreen: Exclude<GameScreen, 'card_upgrade'> }
-  | { type: 'close_card_upgrade' };
+  | { type: 'close_card_upgrade' }
+  | { type: 'set_last_battle_achievements'; achievements: Achievement[] };
 
 interface PickRewardOptions {
   deferBossTransition?: boolean;
@@ -275,6 +286,7 @@ const makeInitialProgress = (): GameProgress => {
     cardsAcquired: 0,
     lastDefeatedBy: '',
     pendingItemReplacement: null,
+    lastBattleNewAchievements: [],
   };
 };
 
@@ -284,6 +296,41 @@ const updateBoardPosition = (board: BoardTile[], tileId: number): BoardTile[] =>
     isCurrentPosition: tile.id === tileId,
     visited: tile.visited || tile.id === tileId,
   }));
+
+const evaluateBattleAchievements = (
+  result: BattleResult,
+  currentArea: number,
+): Achievement[] => {
+  const achievementIds: string[] = [];
+
+  if (result.outcome === 'victory') {
+    const already = getUnlockedAchievementIds();
+    if (!already.has('first_win')) achievementIds.push('first_win');
+  }
+
+  if (result.outcome === 'victory' && result.kind === 'boss') {
+    if (currentArea === 1) achievementIds.push('area1_clear');
+    if (currentArea === 2) achievementIds.push('area2_clear');
+    if (currentArea === 3) achievementIds.push('area3_clear');
+  }
+
+  if (result.outcome === 'defeat') {
+    const count = incrementDefeatCount();
+    if (count >= 3) achievementIds.push('defeat_3');
+  }
+
+  if (result.player.scaffold >= 10) achievementIds.push('scaffold_10');
+
+  if (result.outcome === 'victory' && result.player.currentHp <= 10) {
+    achievementIds.push('low_hp_kill');
+  }
+
+  if (result.outcome === 'victory' && result.player.mental <= 0) {
+    achievementIds.push('zero_mental_survive');
+  }
+
+  return unlockAchievements(achievementIds);
+};
 
 const pruneUnselectedBranchRoutes = (
   board: BoardTile[],
@@ -416,6 +463,8 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
         cardUpgradeMode: null,
         returnScreenAfterUpgrade: null,
       };
+    case 'set_last_battle_achievements':
+      return { ...state, lastBattleNewAchievements: action.achievements };
     default:
       return state;
   }
@@ -1024,6 +1073,9 @@ export const useRunProgress = () => {
 
   const onBattleEnd = (result: BattleResult) => {
     clearBattleState();
+    const battleArea = stateRef.current.currentArea;
+    const newAchievements = evaluateBattleAchievements(result, battleArea);
+    dispatch({ type: 'set_last_battle_achievements', achievements: newAchievements });
     const cleanedDeck = result.deck.filter(
       (card) => card.type !== 'status' && card.type !== 'curse',
     );
@@ -1203,6 +1255,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'clear_traveled_edges' });
     dispatch({ type: 'set_pending_steps', steps: 0 });
     dispatch({ type: 'set_dice', value: null, rolling: false });
+    dispatch({ type: 'set_last_battle_achievements', achievements: [] });
     dispatch({ type: 'set_screen', screen: 'home' });
   };
 
@@ -1237,6 +1290,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_board', board: saved.board });
     dispatch({ type: 'set_current_tile', tileId: saved.currentTileId });
     dispatch({ type: 'set_screen', screen: saved.currentScreen });
+    dispatch({ type: 'set_last_battle_achievements', achievements: [] });
   };
 
   const openZukanFromHome = () => {
@@ -1326,6 +1380,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_current_area', area });
     dispatch({ type: 'set_board', board: devBoard });
     dispatch({ type: 'set_current_tile', tileId: 1 });
+    dispatch({ type: 'set_last_battle_achievements', achievements: [] });
 
     if (destination === 'battle_all_cards') {
       const allCarpenterCards = [
@@ -1492,6 +1547,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_current_area', area: 1 });
     dispatch({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
     dispatch({ type: 'set_current_tile', tileId: 1 });
+    dispatch({ type: 'set_last_battle_achievements', achievements: [] });
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 

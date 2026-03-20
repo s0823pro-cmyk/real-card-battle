@@ -1,5 +1,11 @@
 import { cloneRewardCard, getCardPoolsByJob } from './jobs';
-import { NEUTRAL_COMMON_POOL, NEUTRAL_RARE_POOL, NEUTRAL_UNCOMMON_POOL } from './cards/neutralCards';
+import {
+  NEUTRAL_ACHIEVEMENT_RARE_CARDS,
+  NEUTRAL_COMMON_POOL,
+  NEUTRAL_RARE_POOL,
+  NEUTRAL_UNCOMMON_POOL,
+} from './cards/neutralCards';
+import { getUnlockedCardIds, getUnlockedOmamoriIds } from '../utils/achievementSystem';
 import type {
   EnemyTemplateLike,
   GameEvent,
@@ -311,8 +317,13 @@ export const pickRandomUncommonCard = (jobId: JobId = 'carpenter'): Card =>
 export const pickRandomRareCard = (jobId: JobId = 'carpenter'): Card =>
   cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).rare.filter((card) => !card.neutral)));
 
+const getNeutralRarePoolForPick = (): Card[] => {
+  const unlocked = getUnlockedCardIds();
+  return [...NEUTRAL_RARE_POOL, ...NEUTRAL_ACHIEVEMENT_RARE_CARDS.filter((c) => unlocked.has(c.id))];
+};
+
 const pickRandomNeutralByRarity = (rarity: 'common' | 'uncommon' | 'rare'): Card => {
-  if (rarity === 'rare') return cloneRewardCard(pickRandom(NEUTRAL_RARE_POOL));
+  if (rarity === 'rare') return cloneRewardCard(pickRandom(getNeutralRarePoolForPick()));
   if (rarity === 'uncommon') return cloneRewardCard(pickRandom(NEUTRAL_UNCOMMON_POOL));
   return cloneRewardCard(pickRandom(NEUTRAL_COMMON_POOL));
 };
@@ -354,8 +365,14 @@ export const generateOmamoriChoices = (
   currentOmamoris: Omamori[] = [],
 ): Omamori[] => {
   const ownedIds = new Set(currentOmamoris.map((o) => o.id));
-  const available = RELICS.filter((relic) => !ownedIds.has(relic.id));
-  const pool = available.length > 0 ? available : [...RELICS];
+  const unlockedIds = getUnlockedOmamoriIds();
+  const ACHIEVEMENT_OMAMORI_IDS = new Set(['alarm_clock', 'hard_hat', 'victory_charm']);
+  const available = RELICS.filter((relic) => {
+    if (ownedIds.has(relic.id)) return false;
+    if (ACHIEVEMENT_OMAMORI_IDS.has(relic.id)) return unlockedIds.has(relic.id);
+    return true;
+  });
+  const pool = available.length > 0 ? available : RELICS.filter((r) => !ACHIEVEMENT_OMAMORI_IDS.has(r.id));
   const shuffled = pool.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, shuffled.length));
 };

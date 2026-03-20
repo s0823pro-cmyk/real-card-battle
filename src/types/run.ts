@@ -1,3 +1,4 @@
+import type { Achievement } from '../utils/achievementSystem';
 import type { Card, Enemy, EnemyIntent, JobId, PlayerState } from './game';
 
 export type TileType =
@@ -194,4 +195,6 @@ export interface GameProgress {
   cardsAcquired: number;
   lastDefeatedBy: string;
   pendingItemReplacement: PendingItemReplacement | null;
+  /** 直近のバトル終了で新規解除された実績（勝敗画面表示用・セーブ対象外） */
+  lastBattleNewAchievements: Achievement[];
 }

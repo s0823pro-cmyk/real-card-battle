@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { StoryScreen } from '../StoryScreen/StoryScreen';
 import {
@@ -20,6 +20,7 @@ import letterEImage from '../../assets/title/letter_E.png';
 import letterSImage from '../../assets/title/letter_S.png';
 import letterS2Image from '../../assets/title/letter_S2.png';
 import './HomeScreen.css';
+import { ACHIEVEMENTS, clearAchievements, getUnlockedAchievementIds } from '../../utils/achievementSystem';
 
 const JOB_NAMES: Record<string, string> = {
   carpenter: '大工',
@@ -279,6 +280,11 @@ const HomeScreen = ({
     records: '実績',
     credits: 'クレジット',
   };
+
+  const recordsUnlockedIds = useMemo(() => {
+    if (modal !== 'records') return null;
+    return getUnlockedAchievementIds();
+  }, [modal]);
   const storyJobs: {
     jobKey: StoryJobKey;
     jobName: string;
@@ -683,6 +689,7 @@ const HomeScreen = ({
                         'story_seen_carpenter_e3',
                       ];
                       keysToDelete.forEach((key) => localStorage.removeItem(key));
+                      clearAchievements();
                       window.alert('データを初期化しました。');
                       window.location.reload();
                     }}
@@ -751,6 +758,29 @@ const HomeScreen = ({
                     </div>
                   </div>
                 )}
+              </div>
+            ) : modal === 'records' && recordsUnlockedIds ? (
+              <div className="achievement-list">
+                {ACHIEVEMENTS.map((a) => {
+                  const isUnlocked = recordsUnlockedIds.has(a.id);
+                  return (
+                    <div
+                      key={a.id}
+                      className={`achievement-item ${isUnlocked ? 'achievement-item--unlocked' : ''}`}
+                    >
+                      <span className="achievement-icon">{isUnlocked ? a.icon : '🔒'}</span>
+                      <div className="achievement-info">
+                        <p className="achievement-name">{isUnlocked ? a.name : '???'}</p>
+                        <p className="achievement-desc">{isUnlocked ? a.description : '未達成'}</p>
+                        {isUnlocked && (
+                          <p className="achievement-reward">
+                            {a.rewardIcon} {a.rewardName} 解放済み
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p>準備中です。</p>

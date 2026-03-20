@@ -141,6 +141,15 @@ export const NEUTRAL_CARD_POOL: Card[] = [
   },
 ];
 
+/** 実績解放が必要な無色レア */
+export const ACHIEVEMENT_LOCKED_NEUTRAL_IDS = new Set(['miracle', 'hidden_power']);
+
+export const NEUTRAL_ACHIEVEMENT_RARE_CARDS: Card[] = NEUTRAL_CARD_POOL.filter((card) =>
+  ACHIEVEMENT_LOCKED_NEUTRAL_IDS.has(card.id),
+);
+
 export const NEUTRAL_COMMON_POOL = NEUTRAL_CARD_POOL.filter((card) => card.rarity === 'common');
 export const NEUTRAL_UNCOMMON_POOL = NEUTRAL_CARD_POOL.filter((card) => card.rarity === 'uncommon');
-export const NEUTRAL_RARE_POOL = NEUTRAL_CARD_POOL.filter((card) => card.rarity === 'rare');
+export const NEUTRAL_RARE_POOL = NEUTRAL_CARD_POOL.filter(
+  (card) => card.rarity === 'rare' && !ACHIEVEMENT_LOCKED_NEUTRAL_IDS.has(card.id),
+);

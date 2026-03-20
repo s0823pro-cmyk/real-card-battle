@@ -420,6 +420,7 @@ function App() {
             area={state.currentArea}
             turnCount={state.totalTurns}
             cardsAcquired={state.cardsAcquired}
+            newAchievements={state.lastBattleNewAchievements}
             onHome={() => {
               clearAllSaveData();
               runScreenTransition(resetRun, 350, 350);
@@ -434,6 +435,7 @@ function App() {
             floor={floor}
             totalFloors={totalFloors}
             defeatedBy={state.lastDefeatedBy}
+            newAchievements={state.lastBattleNewAchievements}
             onHome={() => {
               clearAllSaveData();
               runScreenTransition(resetRun, 350, 350);

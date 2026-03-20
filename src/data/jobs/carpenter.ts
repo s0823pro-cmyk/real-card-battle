@@ -173,21 +173,11 @@ export const CARPENTER_UNCOMMON_POOL: Card[] = [
   },
 ];
 
-export const CARPENTER_RARE_POOL: Card[] = [
-  {
-    id: 'mega_nail',
-    name: '超釘打ち',
-    type: 'attack',
-    timeCost: 4,
-    damage: 1,
-    description: '1ダメージ+足場×1.5ダメージ',
-    scaffoldMultiplier: 1.5,
-    tags: ['scaffold_bonus'],
-    icon: '🧨',
-    rarity: 'rare',
-    sellValue: 14,
-    imageUrl: superNailImage,
-  },
+/** 実績解放が必要なレアカード（ゲーム開始時は報酬・ショップ抽選に出現しない） */
+export const ACHIEVEMENT_LOCKED_RARE_IDS = new Set(['ridgepole', 'temple_carpenter', 'master_strike']);
+
+/** 実績達成後にプールへ追加される大工レア */
+export const CARPENTER_ACHIEVEMENT_RARE_CARDS: Card[] = [
   {
     id: 'ridgepole',
     name: '棟上げ',
@@ -211,19 +201,6 @@ export const CARPENTER_RARE_POOL: Card[] = [
     imageUrl: templeCarpenterImage,
   },
   {
-    id: 'renovation',
-    name: 'リフォーム',
-    type: 'skill',
-    timeCost: 2,
-    description: '手札のカード1枚をランダムで強化。使用後除外',
-    icon: '🔄',
-    rarity: 'rare',
-    sellValue: 25,
-    tags: ['exhaust'],
-    effects: [{ type: 'upgrade_random_hand_card', value: 1 }],
-    imageUrl: renovationImage,
-  },
-  {
     id: 'master_strike',
     name: '匠の一撃',
     type: 'attack',
@@ -238,6 +215,36 @@ export const CARPENTER_RARE_POOL: Card[] = [
     tags: ['scaffold_consume', 'exhaust'],
     badges: ['exhaust'],
     imageUrl: masterStrikeImage,
+  },
+];
+
+export const CARPENTER_RARE_POOL: Card[] = [
+  {
+    id: 'mega_nail',
+    name: '超釘打ち',
+    type: 'attack',
+    timeCost: 4,
+    damage: 1,
+    description: '1ダメージ+足場×1.5ダメージ',
+    scaffoldMultiplier: 1.5,
+    tags: ['scaffold_bonus'],
+    icon: '🧨',
+    rarity: 'rare',
+    sellValue: 14,
+    imageUrl: superNailImage,
+  },
+  {
+    id: 'renovation',
+    name: 'リフォーム',
+    type: 'skill',
+    timeCost: 2,
+    description: '手札のカード1枚をランダムで強化。使用後除外',
+    icon: '🔄',
+    rarity: 'rare',
+    sellValue: 25,
+    tags: ['exhaust'],
+    effects: [{ type: 'upgrade_random_hand_card', value: 1 }],
+    imageUrl: renovationImage,
   },
 ];
 

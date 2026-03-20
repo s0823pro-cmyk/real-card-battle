@@ -1,5 +1,7 @@
 import type { Card, JobId } from '../../types/game';
+import { getUnlockedCardIds } from '../../utils/achievementSystem';
 import {
+  CARPENTER_ACHIEVEMENT_RARE_CARDS,
   CARPENTER_COMMON_POOL,
   CARPENTER_RARE_POOL,
   CARPENTER_UNCOMMON_POOL,
@@ -13,6 +15,7 @@ import {
   UNEMPLOYED_UNCOMMON_POOL,
 } from './unemployed';
 import {
+  NEUTRAL_ACHIEVEMENT_RARE_CARDS,
   NEUTRAL_COMMON_POOL,
   NEUTRAL_RARE_POOL,
   NEUTRAL_UNCOMMON_POOL,
@@ -75,27 +78,58 @@ export const getJobConfig = (jobId: JobId): JobConfig => {
   return CARPENTER_CONFIG;
 };
 
+const withUnlockedAchievementRares = (jobId: JobId, carpenterRare: Card[], neutralRare: Card[]): Card[] => {
+  const unlocked = getUnlockedCardIds();
+  const extraNeutral = NEUTRAL_ACHIEVEMENT_RARE_CARDS.filter((c) => unlocked.has(c.id)).map((c) => ({
+    ...c,
+    rarity: 'rare' as const,
+  }));
+  if (jobId === 'carpenter') {
+    const extraJob = CARPENTER_ACHIEVEMENT_RARE_CARDS.filter((c) => unlocked.has(c.id)).map((c) => ({
+      ...c,
+      rarity: 'rare' as const,
+    }));
+    return [...carpenterRare, ...neutralRare, ...extraJob, ...extraNeutral];
+  }
+  return [...carpenterRare, ...neutralRare, ...extraNeutral];
+};
+
 export const getCardPoolsByJob = (jobId: JobId): JobCardPools => {
   if (jobId === 'cook') {
+    const rare = withUnlockedAchievementRares(
+      'cook',
+      [...withRarity(COOK_RARE_POOL, 'rare')],
+      [...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+    );
     return {
       common: [...withRarity(COOK_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
       uncommon: [...withRarity(COOK_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
-      rare: [...withRarity(COOK_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+      rare,
     };
   }
   if (jobId === 'unemployed') {
+    const rare = withUnlockedAchievementRares(
+      'unemployed',
+      [...withRarity(UNEMPLOYED_RARE_POOL, 'rare')],
+      [...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+    );
     return {
       common: [...withRarity(UNEMPLOYED_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
       uncommon: [
         ...withRarity(UNEMPLOYED_UNCOMMON_POOL, 'uncommon'),
         ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon'),
       ],
-      rare: [...withRarity(UNEMPLOYED_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+      rare,
     };
   }
+  const rare = withUnlockedAchievementRares(
+    'carpenter',
+    [...withRarity(CARPENTER_RARE_POOL, 'rare')],
+    [...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+  );
   return {
     common: [...withRarity(CARPENTER_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
     uncommon: [...withRarity(CARPENTER_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
-    rare: [...withRarity(CARPENTER_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+    rare,
   };
 };

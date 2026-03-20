@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { JobId } from '../../types/game';
+import type { Achievement } from '../../utils/achievementSystem';
 import './DefeatScreen.css';
 
 interface DefeatScreenProps {
@@ -8,6 +9,7 @@ interface DefeatScreenProps {
   floor: number;
   totalFloors: number;
   defeatedBy: string;
+  newAchievements?: Achievement[];
   onHome: () => void;
   onRetry: () => void;
 }
@@ -27,6 +29,7 @@ export const DefeatScreen = ({
   floor,
   totalFloors,
   defeatedBy,
+  newAchievements = [],
   onHome,
   onRetry,
 }: DefeatScreenProps) => {
@@ -68,6 +71,23 @@ export const DefeatScreen = ({
         <div className="defeat-message">
           <p className="defeat-message-text">「{message}」</p>
         </div>
+
+        {newAchievements.length > 0 && (
+          <div className="victory-achievements defeat-achievements">
+            <h3 className="victory-achievements-title">🎖️ 実績解除！</h3>
+            {newAchievements.map((a) => (
+              <div key={a.id} className="victory-achievement-item">
+                <span className="victory-achievement-icon">{a.icon}</span>
+                <div className="victory-achievement-info">
+                  <p className="victory-achievement-name">{a.name}</p>
+                  <p className="victory-achievement-reward">
+                    {a.rewardIcon} {a.rewardName} 解放！
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="defeat-buttons">
           <button type="button" className="btn-defeat-retry" onClick={onRetry}>

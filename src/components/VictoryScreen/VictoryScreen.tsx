@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JobId } from '../../types/game';
+import type { Achievement } from '../../utils/achievementSystem';
 import './VictoryScreen.css';
 
 interface VictoryScreenProps {
@@ -7,6 +8,7 @@ interface VictoryScreenProps {
   area: number;
   turnCount: number;
   cardsAcquired: number;
+  newAchievements?: Achievement[];
   onHome: () => void;
 }
 
@@ -15,6 +17,7 @@ export const VictoryScreen = ({
   area,
   turnCount,
   cardsAcquired,
+  newAchievements = [],
   onHome,
 }: VictoryScreenProps) => {
   const [showStats, setShowStats] = useState(false);
@@ -119,6 +122,23 @@ export const VictoryScreen = ({
                 <p className="victory-stat-value">{cardsAcquired}枚</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {showStats && newAchievements.length > 0 && (
+          <div className="victory-achievements">
+            <h3 className="victory-achievements-title">🎖️ 実績解除！</h3>
+            {newAchievements.map((a) => (
+              <div key={a.id} className="victory-achievement-item">
+                <span className="victory-achievement-icon">{a.icon}</span>
+                <div className="victory-achievement-info">
+                  <p className="victory-achievement-name">{a.name}</p>
+                  <p className="victory-achievement-reward">
+                    {a.rewardIcon} {a.rewardName} 解放！
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

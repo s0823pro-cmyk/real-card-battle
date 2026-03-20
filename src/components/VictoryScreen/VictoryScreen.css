@@ -147,3 +147,47 @@
   box-shadow: 0 4px 20px rgba(240, 180, 41, 0.4);
   animation: stats-appear 0.5s ease 0.2s both;
 }
+
+.victory-achievements {
+  margin-top: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.victory-achievements-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 14px;
+  color: #f0b429;
+  margin: 0 0 10px;
+  text-align: center;
+}
+
+.victory-achievement-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(240, 180, 41, 0.1);
+  border: 1px solid rgba(240, 180, 41, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+
+.victory-achievement-icon {
+  font-size: 24px;
+}
+
+.victory-achievement-name {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e6edf3;
+  margin: 0 0 2px;
+}
+
+.victory-achievement-reward {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: #f0b429;
+  margin: 0;
+}
