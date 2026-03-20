@@ -517,7 +517,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
     const reserveOrDoubleMultiplier = doubleNextCharges > 0 || gameState.player.nextCardDoubleEffect ? 2 : 1;
     const nextCardEffectBoostRate = Math.max(0, gameState.player.nextCardEffectBoost ?? 0);
-    const shouldUseTenBoost = reserveOrDoubleMultiplier <= 1 && nextCardEffectBoostRate > 0;
+    // 集中力（reserve_double_next）は「次のカード用ブーストをセット」するカードなので、
+    // 溜まっている nextCardEffectBoost はこのカード自身には適用しない（消費は次カードで行う）
+    const isReserveDoubleNextPlay =
+      (enhancedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false;
+    const shouldUseTenBoost =
+      reserveOrDoubleMultiplier <= 1 && nextCardEffectBoostRate > 0 && !isReserveDoubleNextPlay;
     const applyBoostWithMinOne = (value: number): number => {
       if (!shouldUseTenBoost || value <= 0) return value;
       const add = Math.max(1, Math.ceil(value * nextCardEffectBoostRate));
