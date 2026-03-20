@@ -64,19 +64,6 @@ const JOB_CARDS: JobCard[] = [
     catchphrase: '失うものは何もない',
     comingSoon: true,
   },
-  {
-    id: 'doctor',
-    name: '医者',
-    icon: '👨‍⚕️',
-    imageUrl: '',
-    color: '#2ecc71',
-    hp: 0,
-    timeBar: 0,
-    mental: 0,
-    mechanic: '?',
-    catchphrase: '?',
-    comingSoon: true,
-  },
 ];
 
 /** タップ判定の移動距離上限（px） */

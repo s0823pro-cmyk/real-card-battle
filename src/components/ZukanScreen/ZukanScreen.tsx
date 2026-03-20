@@ -28,7 +28,7 @@ import { getEnemyDefeatCount, getEnemyStatus } from '../../utils/enemyRecord';
 import './ZukanScreen.css';
 
 type MainTab = 'cards' | 'stories' | 'enemies';
-type JobTab = 'carpenter' | 'cook' | 'unemployed' | 'neutral';
+type JobTab = 'carpenter' | 'neutral';
 type RarityFilter = 'all' | CardRarity;
 type TypeFilter = 'all' | Extract<CardType, 'attack' | 'skill' | 'power' | 'tool'>;
 type EnemyTypeFilter = 'all' | 'normal' | 'elite' | 'boss';
@@ -50,15 +50,14 @@ const STORY_LIST: StoryEntry[] = [
 
 const JOB_TABS: { id: JobTab; label: string; icon: string }[] = [
   { id: 'carpenter', label: '大工', icon: '🔨' },
-  { id: 'cook', label: '料理人', icon: '🔪' },
-  { id: 'unemployed', label: '無職', icon: '✊' },
   { id: 'neutral', label: '無色', icon: '⬜' },
 ];
 
 const withRarity = (cards: Card[], rarity: CardRarity): Card[] =>
   cards.map((card) => ({ ...card, rarity: card.rarity ?? rarity }));
 
-const ALL_CARDS: Record<JobTab, Card[]> = {
+/** 図鑑の「全解放」用に全ジョブプールを保持（タブは大工・無色のみ） */
+const ZUKAN_CARD_POOLS = {
   carpenter: [
     ...CARPENTER_STARTER_DECK,
     ...withRarity(CARPENTER_COMMON_POOL, 'common'),
@@ -78,6 +77,11 @@ const ALL_CARDS: Record<JobTab, Card[]> = {
     ...withRarity(UNEMPLOYED_RARE_POOL, 'rare'),
   ],
   neutral: withRarity(NEUTRAL_CARD_POOL, 'common'),
+};
+
+const ALL_CARDS: Record<JobTab, Card[]> = {
+  carpenter: ZUKAN_CARD_POOLS.carpenter,
+  neutral: ZUKAN_CARD_POOLS.neutral,
 };
 
 const STATIC_EFFECTIVE_VALUES: EffectiveCardValues = {
@@ -205,9 +209,12 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   };
   const unlockAllCards = () => {
     const allNames = new Set(
-      [...ALL_CARDS.carpenter, ...ALL_CARDS.cook, ...ALL_CARDS.unemployed, ...ALL_CARDS.neutral].map(
-        (card) => card.name,
-      ),
+      [
+        ...ZUKAN_CARD_POOLS.carpenter,
+        ...ZUKAN_CARD_POOLS.cook,
+        ...ZUKAN_CARD_POOLS.unemployed,
+        ...ZUKAN_CARD_POOLS.neutral,
+      ].map((card) => card.name),
     );
     onUnlockAll(allNames);
   };
@@ -226,6 +233,9 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
     <div className="zukan-overlay" onClick={onClose}>
       <div className="zukan-modal" onClick={(event) => event.stopPropagation()}>
         <div className="zukan-header">
+          <button type="button" className="zukan-back-btn" onClick={onClose}>
+            ← 戻る
+          </button>
           <h2 className="zukan-title">図鑑</h2>
           <div className="zukan-header-actions">
             {mainTab === 'cards' && (
@@ -235,9 +245,6 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                 </button>
               ) : null
             )}
-            <button type="button" className="zukan-close-btn" onClick={onClose}>
-              ✕
-            </button>
           </div>
         </div>
 
@@ -251,17 +258,17 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
           </button>
           <button
             type="button"
-            className={`zukan-main-tab ${mainTab === 'stories' ? 'zukan-main-tab--active' : ''}`}
-            onClick={() => setMainTab('stories')}
-          >
-            ストーリー
-          </button>
-          <button
-            type="button"
             className={`zukan-main-tab ${mainTab === 'enemies' ? 'zukan-main-tab--active' : ''}`}
             onClick={() => setMainTab('enemies')}
           >
             敵
+          </button>
+          <button
+            type="button"
+            className={`zukan-main-tab ${mainTab === 'stories' ? 'zukan-main-tab--active' : ''}`}
+            onClick={() => setMainTab('stories')}
+          >
+            ストーリー
           </button>
         </div>
 

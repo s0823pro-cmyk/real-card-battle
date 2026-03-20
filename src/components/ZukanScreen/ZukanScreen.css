@@ -23,9 +23,10 @@
 }
 
 .zukan-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
@@ -37,6 +38,8 @@
   font-weight: 700;
   color: #e6edf3;
   margin: 0;
+  text-align: center;
+  justify-self: center;
 }
 
 .zukan-header-actions {
@@ -649,4 +652,20 @@
   justify-content: center;
   cursor: pointer;
   font-size: 14px;
+}
+
+.zukan-back-btn {
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.zukan-back-btn:hover {
+  color: #e6edf3;
 }
