@@ -327,25 +327,27 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                           setSelectedEnemy(enemy);
                         }}
                       >
-                        {status === 'none' ? (
+                        {status === 'none' || status === 'encountered' ? (
                           <div className="zukan-enemy-unknown">
                             <span className="zukan-enemy-unknown-icon">？</span>
                           </div>
                         ) : (
                           <img
-                            className={`zukan-enemy-img ${status === 'encountered' ? 'zukan-enemy-img--silhouette' : ''}`}
+                            className="zukan-enemy-img"
                             src={enemy.imageUrl}
                             alt={enemy.name}
                           />
                         )}
-                        <p className="zukan-enemy-name">{status === 'none' ? '？？？' : enemy.name}</p>
+                        <p className="zukan-enemy-name">
+                          {status === 'none' || status === 'encountered' ? '？？？' : enemy.name}
+                        </p>
                         {status === 'defeated' && defeatCount > 0 && (
                           <span className="zukan-enemy-defeat-count">討伐 {defeatCount}</span>
                         )}
-                        {enemy.type === 'boss' && status !== 'none' && (
+                        {enemy.type === 'boss' && status === 'defeated' && (
                           <span className="zukan-enemy-boss-badge">BOSS</span>
                         )}
-                        {enemy.type === 'elite' && status !== 'none' && (
+                        {enemy.type === 'elite' && status === 'defeated' && (
                           <span className="zukan-enemy-elite-badge">ELITE</span>
                         )}
                       </div>
