@@ -176,7 +176,10 @@ function App() {
         return;
       }
       startRunFromJobSelect(jobId);
-    }, 0, 500);
+      if (!hasTutorialSeen()) {
+        setShowTutorial(true);
+      }
+    }, 400, 500);
   };
 
   const handleStoryComplete = () => {
@@ -184,11 +187,9 @@ function App() {
     setShowStory(false);
     const nextJobId = pendingJobId ?? 'carpenter';
     setPendingJobId(null);
+    startRunFromJobSelect(nextJobId);
     if (!hasTutorialSeen()) {
       setShowTutorial(true);
-      setPendingJobId(nextJobId);
-    } else {
-      startRunFromJobSelect(nextJobId);
     }
   };
 
@@ -347,13 +348,22 @@ function App() {
         );
       case 'battle':
         return (
-          <BattleScreen
-            setup={state.battleSetup}
-            onBattleEnd={handleBattleResult}
-            onTurnStart={onBattleTurnStart}
-            onBattleFinished={() => clearBattleState()}
-            initialGameState={restoredBattleState}
-          />
+          <>
+            <BattleScreen
+              setup={state.battleSetup}
+              onBattleEnd={handleBattleResult}
+              onTurnStart={onBattleTurnStart}
+              onBattleFinished={() => clearBattleState()}
+              initialGameState={restoredBattleState}
+            />
+            {showTutorial && (
+              <TutorialOverlay
+                onComplete={() => {
+                  setShowTutorial(false);
+                }}
+              />
+            )}
+          </>
         );
       case 'event':
         return state.activeEvent ? (
@@ -596,16 +606,6 @@ function App() {
             </button>
           </div>
         </div>
-      )}
-      {showTutorial && (
-        <TutorialOverlay
-          onComplete={() => {
-            setShowTutorial(false);
-            const jobId = pendingJobId ?? 'carpenter';
-            setPendingJobId(null);
-            startRunFromJobSelect(jobId);
-          }}
-        />
       )}
     </div>
   );

@@ -684,7 +684,7 @@ const HomeScreen = ({
                       ];
                       keysToDelete.forEach((key) => localStorage.removeItem(key));
                       window.alert('データを初期化しました。');
-                      setModal(null);
+                      window.location.reload();
                     }}
                   >
                     初期化
