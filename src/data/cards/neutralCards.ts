@@ -75,7 +75,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     sellValue: 12,
     neutral: true,
     tags: ['exhaust'],
-    badges: [],
+    badges: ['exhaust'],
     effects: [{ type: 'reserve_double_next', value: 1 }],
     imageUrl: focusImage,
   },
