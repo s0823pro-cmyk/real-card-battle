@@ -248,4 +248,7 @@ export const CARPENTER_RARE_POOL: Card[] = [
   },
 ];
 
+/** 大工レア全件（通常プール＋実績ロック分。図鑑・実績報酬表示用） */
+export const CARPENTER_RARE_POOL_ALL: Card[] = [...CARPENTER_RARE_POOL, ...CARPENTER_ACHIEVEMENT_RARE_CARDS];
+
 export const createCarpenterStarterDeck = (): Card[] => buildStarterDeck();

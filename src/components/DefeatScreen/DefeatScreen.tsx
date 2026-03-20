@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { JobId } from '../../types/game';
 import type { Achievement } from '../../utils/achievementSystem';
+import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import './DefeatScreen.css';
 
 interface DefeatScreenProps {
@@ -33,6 +34,7 @@ export const DefeatScreen = ({
   onHome,
   onRetry,
 }: DefeatScreenProps) => {
+  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const message = useMemo(
     () => DEFEAT_MESSAGES[Math.floor(Math.random() * DEFEAT_MESSAGES.length)],
     [],
@@ -76,15 +78,21 @@ export const DefeatScreen = ({
           <div className="victory-achievements defeat-achievements">
             <h3 className="victory-achievements-title">🎖️ 実績解除！</h3>
             {newAchievements.map((a) => (
-              <div key={a.id} className="victory-achievement-item">
+              <button
+                key={a.id}
+                type="button"
+                className="victory-achievement-item"
+                onClick={() => setSelectedAchievement(a)}
+              >
                 <span className="victory-achievement-icon">{a.icon}</span>
                 <div className="victory-achievement-info">
                   <p className="victory-achievement-name">{a.name}</p>
                   <p className="victory-achievement-reward">
-                    {a.rewardIcon} {a.rewardName} 解放！
+                    {a.rewardIcon} {a.rewardName} 解放！{' '}
+                    <span className="victory-achievement-tap">タップで確認</span>
                   </p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -98,6 +106,12 @@ export const DefeatScreen = ({
           </button>
         </div>
       </div>
+
+      <AchievementRewardModal
+        selected={selectedAchievement}
+        onClose={() => setSelectedAchievement(null)}
+        jobId={jobId}
+      />
     </div>
   );
 };

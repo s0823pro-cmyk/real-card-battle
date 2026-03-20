@@ -168,6 +168,11 @@ export const getUnlockedCardIds = (): Set<string> => {
   return ids;
 };
 
+/**
+ * 実績報酬のカード／お守りオブジェクト取得は `achievementRewardLookup.ts`
+ * （`runData` が本モジュールを参照するため、循環依存回避で分離）
+ */
+
 /** データ初期化時に呼ぶ */
 export const clearAchievements = (): void => {
   try {

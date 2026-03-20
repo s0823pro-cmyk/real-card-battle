@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JobId } from '../../types/game';
 import type { Achievement } from '../../utils/achievementSystem';
+import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import './VictoryScreen.css';
 
 interface VictoryScreenProps {
@@ -21,6 +22,7 @@ export const VictoryScreen = ({
   onHome,
 }: VictoryScreenProps) => {
   const [showStats, setShowStats] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -129,15 +131,21 @@ export const VictoryScreen = ({
           <div className="victory-achievements">
             <h3 className="victory-achievements-title">🎖️ 実績解除！</h3>
             {newAchievements.map((a) => (
-              <div key={a.id} className="victory-achievement-item">
+              <button
+                key={a.id}
+                type="button"
+                className="victory-achievement-item"
+                onClick={() => setSelectedAchievement(a)}
+              >
                 <span className="victory-achievement-icon">{a.icon}</span>
                 <div className="victory-achievement-info">
                   <p className="victory-achievement-name">{a.name}</p>
                   <p className="victory-achievement-reward">
-                    {a.rewardIcon} {a.rewardName} 解放！
+                    {a.rewardIcon} {a.rewardName} 解放！{' '}
+                    <span className="victory-achievement-tap">タップで確認</span>
                   </p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -148,6 +156,12 @@ export const VictoryScreen = ({
           </button>
         )}
       </div>
+
+      <AchievementRewardModal
+        selected={selectedAchievement}
+        onClose={() => setSelectedAchievement(null)}
+        jobId={jobId}
+      />
     </div>
   );
 };
