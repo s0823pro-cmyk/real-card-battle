@@ -31,7 +31,6 @@ import './BattleScreen.css';
 
 type DropTarget = 'enemy' | 'field' | 'timebar' | 'hand' | 'reserve' | 'sell' | null;
 type PileView = 'draw' | 'discard' | 'exhaust' | null;
-type TimelineGaugeStyle = 'clock' | 'bar';
 
 interface HandDragState {
   isDragging: boolean;
@@ -69,7 +68,6 @@ interface BattleScreenProps {
 
 const DRAG_CARD_HEIGHT = 168;
 const DRAG_CARD_WIDTH = 105;
-const TIMELINE_GAUGE_STYLE_STORAGE_KEY = 'real-card-battle:timeline-gauge-style';
 // 表示オフセット：指の位置がカード下部になるよう上にずらす
 const DRAG_DISPLAY_Y_OFFSET = -(DRAG_CARD_HEIGHT - 40);
 // 判定オフセット：カード上端基準（複数プローブで使用）
@@ -211,14 +209,8 @@ const BattleScreen = ({
   const [reserveConfirm, setReserveConfirm] = useState<ReserveConfirmState>(null);
   const [showBattleSettings, setShowBattleSettings] = useState(false);
   const [showBattleGlossary, setShowBattleGlossary] = useState(false);
-  const [timelineGaugeStyle, setTimelineGaugeStyle] = useState<TimelineGaugeStyle>(() => {
-    try {
-      const saved = window.localStorage.getItem(TIMELINE_GAUGE_STYLE_STORAGE_KEY);
-      return saved === 'bar' ? 'bar' : 'clock';
-    } catch {
-      return 'clock';
-    }
-  });
+  /** タイムラインはゲージ型に固定 */
+  const timelineGaugeStyle = 'bar' as const;
   const [attackEffect, setAttackEffect] = useState<{ x: number; y: number } | null>(null);
   const [skillEffect, setSkillEffect] = useState(false);
   const attackEffectTimerRef = useRef<number | null>(null);
@@ -246,14 +238,6 @@ const BattleScreen = ({
     },
     [],
   );
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(TIMELINE_GAUGE_STYLE_STORAGE_KEY, timelineGaugeStyle);
-    } catch {
-      // localStorage が使えない場合は保存をスキップ。
-    }
-  }, [timelineGaugeStyle]);
 
   useEffect(() => {
     if (gameState.phase === 'victory' || gameState.phase === 'defeat') {
@@ -866,11 +850,7 @@ const BattleScreen = ({
       <div className="battle-spacer" />
 
       <section className="player-area">
-        <div
-          className={`battle-hand-area ${timelineGaugeStyle === 'clock' ? 'battle-hand-area--clock-align' : ''} ${
-            timelineGaugeStyle === 'bar' ? 'battle-hand-area--bar-align' : ''
-          }`}
-        >
+        <div className="battle-hand-area battle-hand-area--bar-align">
           <Hand
             hand={gameState.hand}
             player={gameState.player}
@@ -895,9 +875,7 @@ const BattleScreen = ({
         </div>
 
         <div
-          className={`battle-timebar-row ${isHoveringTimebar ? 'timebar-row--active' : ''} ${
-            timelineGaugeStyle === 'clock' ? 'battle-timebar-row--clock' : ''
-          }`}
+          className={`battle-timebar-row ${isHoveringTimebar ? 'timebar-row--active' : ''}`}
           ref={timebarRowRef}
         >
           <Timeline
@@ -911,14 +889,7 @@ const BattleScreen = ({
           />
         </div>
 
-        <div
-          className={`battle-reserve-area ${
-            timelineGaugeStyle === 'clock' ? 'battle-reserve-area--align-turn-end' : ''
-          } ${
-            timelineGaugeStyle === 'bar' ? 'battle-reserve-area--gauge-expand' : ''
-          }`}
-          ref={reserveAreaRef}
-        >
+        <div className="battle-reserve-area battle-reserve-area--gauge-expand" ref={reserveAreaRef}>
           <ActionBar
             reserved={gameState.reserved}
             jobId={gameState.player.jobId}
@@ -929,11 +900,7 @@ const BattleScreen = ({
           />
         </div>
 
-        <div
-          className={`battle-status-row ${
-            timelineGaugeStyle === 'clock' ? 'battle-status-row--extend-up' : ''
-          }`}
-        >
+        <div className="battle-status-row">
           <PlayerStatus
             player={gameState.player}
             previewBlock={previewBlockValue}
@@ -1160,24 +1127,6 @@ const BattleScreen = ({
               </button>
             </div>
             <div className="battle-settings-content">
-              <p className="battle-settings-label">タイムゲージスタイル</p>
-              <div className="battle-settings-gauge-options">
-                <button
-                  type="button"
-                  className={`battle-settings-option ${timelineGaugeStyle === 'clock' ? 'battle-settings-option--active' : ''}`}
-                  onClick={() => setTimelineGaugeStyle('clock')}
-                >
-                  時計型
-                </button>
-                <button
-                  type="button"
-                  className={`battle-settings-option ${timelineGaugeStyle === 'bar' ? 'battle-settings-option--active' : ''}`}
-                  onClick={() => setTimelineGaugeStyle('bar')}
-                >
-                  ゲージ型
-                </button>
-              </div>
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
               <button
                 type="button"
                 className="btn-glossary"
