@@ -1,5 +1,6 @@
 import type { Enemy, EnemyIntent } from '../../types/game';
 import { useState } from 'react';
+import { ICONS } from '../../assets/icons';
 import EnemyIntentView from './EnemyIntent';
 import Tooltip from '../Tooltip/Tooltip';
 import './Enemy.css';
@@ -67,18 +68,23 @@ const EnemyDisplay = ({
               <div className="enemy-hp-text">
                 {enemy.block > 0 ? (
                   <span style={{ color: '#60a5fa', fontWeight: 700 }}>
-                    🛡 {enemy.currentHp + enemy.block}/{enemy.maxHp}
+                    <img src={ICONS.block} alt="Block" className="status-icon" /> {enemy.currentHp + enemy.block}/
+                    {enemy.maxHp}
                   </span>
                 ) : (
                   <span>
-                    ❤ {enemy.currentHp}/{enemy.maxHp}
+                    <img src={ICONS.hp} alt="HP" className="status-icon" /> {enemy.currentHp}/{enemy.maxHp}
                   </span>
                 )}
                 {isPreviewTarget && <span className="enemy-hp-preview-text">→ {previewHp}</span>}
               </div>
             </div>
             <div className="enemy-buffs">
-              {strengthUp > 0 && <span className="enemy-buff--positive">⬆️+{strengthUp}</span>}
+              {strengthUp > 0 && (
+                <span className="enemy-buff--positive">
+                  <img src={ICONS.buff} alt="Buff" className="status-icon" />+{strengthUp}
+                </span>
+              )}
             </div>
             <div className="enemy-illustration">
               {enemy.imageUrl && !failedImageEnemyIds.has(enemy.id) ? (
@@ -102,22 +108,34 @@ const EnemyDisplay = ({
             <div className="enemy-status-effects">
               {vulnerable > 0 && (
                 <Tooltip label="脆弱" description={`受けるダメージ+50%。残り${vulnerable}ターン`}>
-                  <span className="status-badge status-badge--vulnerable">💧{vulnerable}</span>
+                  <span className="status-badge status-badge--vulnerable">
+                    <img src={ICONS.badgeVulnerable} alt="" className="status-icon" />
+                    {vulnerable}
+                  </span>
                 </Tooltip>
               )}
               {weak > 0 && (
                 <Tooltip label="弱体" description={`与えるダメージ-25%。残り${weak}ターン`}>
-                  <span className="status-badge status-badge--weak">⬇️{weak}</span>
+                  <span className="status-badge status-badge--weak">
+                    <img src={ICONS.badgeWeak} alt="" className="status-icon" />
+                    {weak}
+                  </span>
                 </Tooltip>
               )}
               {burn > 0 && (
                 <Tooltip label="火傷" description={`ターン終了時に${burn}ダメージ`}>
-                  <span className="status-badge status-badge--burn">🔥{burn}</span>
+                  <span className="status-badge status-badge--burn">
+                    <img src={ICONS.badgeBurn} alt="" className="status-icon" />
+                    {burn}
+                  </span>
                 </Tooltip>
               )}
               {attackDown > 0 && (
                 <Tooltip label="攻撃デバフ" description={`攻撃力-${attackDown}（このターンのみ）`}>
-                  <span className="status-badge status-badge--debuff">🔽{attackDown}</span>
+                  <span className="status-badge status-badge--debuff">
+                    <img src={ICONS.badgeAttackDown} alt="" className="status-icon" />
+                    {attackDown}
+                  </span>
                 </Tooltip>
               )}
             </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Card, PlayerState, ToolSlot } from '../../types/game';
 import type { RunItem } from '../../types/run';
 import type { HungryState } from '../../utils/hungrySystem';
+import { ICONS } from '../../assets/icons';
 import ToolSlots from './ToolSlots';
 import Tooltip from '../Tooltip/Tooltip';
 import './PlayerStatus.css';
@@ -124,7 +125,10 @@ const PlayerStatus = ({
         <div className="player-main-stats">
           <div className="player-hp-row">
             <Tooltip tooltipKey="hp">
-              <span className={`hp ${hpClass}`}>♥ {player.currentHp}/{player.maxHp}</span>
+              <span className={`hp ${hpClass}`}>
+                <img src={ICONS.hp} alt="HP" className="status-icon" />
+                {player.currentHp}/{player.maxHp}
+              </span>
             </Tooltip>
           </div>
           <div className="player-hp-preview-row">
@@ -136,7 +140,7 @@ const PlayerStatus = ({
             <div className="player-info-row--top">
               <Tooltip tooltipKey="block">
                 <span className={`block ${blockClass} ${previewBlock != null ? 'block--preview' : ''}`}>
-                  🛡{' '}
+                  <img src={ICONS.block} alt="Block" className="status-icon" />{' '}
                   {previewBlock != null ? (
                     <>
                       <span className="block-preview-current">{player.block}</span>

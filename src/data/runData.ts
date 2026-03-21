@@ -1,3 +1,4 @@
+import { ICONS } from '../assets/icons';
 import { cloneRewardCard, getCardPoolsByJob } from './jobs';
 import {
   NEUTRAL_ACHIEVEMENT_RARE_CARDS,
@@ -11,6 +12,7 @@ import type {
   GameEvent,
   Omamori,
   RunItem,
+  TileType,
 } from '../types/run';
 import type { Card, JobId } from '../types/game';
 import bikerLeaderImage from '../assets/enemies/biker_leader.png';
@@ -41,15 +43,15 @@ import hardHatImage from '../assets/omamori/hard_hat.png';
 import victoryCharmImage from '../assets/omamori/victory_charm.png';
 import fortuneCatImage from '../assets/omamori/fortune_cat.png';
 
-export const TILE_LABELS: Record<string, { icon: string; name: string }> = {
-  start: { icon: '🏁', name: 'スタート' },
-  enemy: { icon: '⚔️', name: '戦闘' },
-  unique_boss: { icon: '💀', name: '強敵' },
-  pawnshop: { icon: '🏪', name: '質屋' },
-  event: { icon: '❓', name: 'イベント' },
-  shrine: { icon: '⛩️', name: '神社' },
-  hotel: { icon: '🏨', name: 'ホテル' },
-  area_boss: { icon: '👑', name: 'エリアボス' },
+export const TILE_LABELS: Record<TileType, { icon: string; iconImg: string; name: string }> = {
+  start: { icon: '🏁', iconImg: ICONS.mapStart, name: 'スタート' },
+  enemy: { icon: '⚔️', iconImg: ICONS.mapBattle, name: '戦闘' },
+  unique_boss: { icon: '💀', iconImg: ICONS.mapElite, name: '強敵' },
+  pawnshop: { icon: '🏪', iconImg: ICONS.mapShop, name: '質屋' },
+  event: { icon: '❓', iconImg: ICONS.mapEvent, name: 'イベント' },
+  shrine: { icon: '⛩️', iconImg: ICONS.mapShrine, name: '神社' },
+  hotel: { icon: '🏨', iconImg: ICONS.mapHotel, name: 'ホテル' },
+  area_boss: { icon: '👑', iconImg: ICONS.mapBoss, name: 'エリアボス' },
 };
 
 export const AREA1_ENCOUNTER_TEMPLATE_IDS: string[][] = [

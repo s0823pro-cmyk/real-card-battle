@@ -9,6 +9,7 @@ const ROUTE_LABELS = ['A', 'B', 'C', 'D'] as const;
 const MAX_INDEX = 40;
 
 const iconOf = (type: TileType): string => TILE_LABELS[type].icon;
+const iconImgOf = (type: TileType): string => TILE_LABELS[type].iconImg;
 const nameOf = (type: TileType): string => TILE_LABELS[type].name;
 
 interface BranchPlan {
@@ -230,6 +231,7 @@ export const generateBoard = (): BoardTile[] => {
       branch,
       type: 'enemy',
       icon: iconOf('enemy'),
+      iconImg: iconImgOf('enemy'),
       name: nameOf('enemy'),
       nextTiles: [],
       isBranch: !!branch,
@@ -312,6 +314,7 @@ export const generateBoard = (): BoardTile[] => {
     const type = typeById.get(node.id) ?? 'enemy';
     node.type = type;
     node.icon = iconOf(type);
+    node.iconImg = iconImgOf(type);
     node.name = nameOf(type);
   });
 

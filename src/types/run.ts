@@ -37,6 +37,8 @@ export interface BoardTile {
   branch?: string;
   type: TileType;
   icon: string;
+  /** マップノード用の画像（旧セーブ互換で省略される場合あり） */
+  iconImg?: string;
   name: string;
   nextTiles: number[];
   isBranch: boolean;

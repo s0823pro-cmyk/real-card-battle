@@ -3,26 +3,15 @@ import type { CSSProperties } from 'react';
 import type { BranchPreview, GameProgress, TileType } from '../../types/run';
 import type { Card } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
-import { ICONS } from '../../assets/icons';
 import { getMapBackground } from '../../data/mapBackgrounds';
+import { TILE_LABELS } from '../../data/runData';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
 import './RunMapScreen.css';
 
-const MAP_NODE_IMAGES: Record<TileType, string> = {
-  start: ICONS.mapStart,
-  enemy: ICONS.mapBattle,
-  unique_boss: ICONS.mapElite,
-  area_boss: ICONS.mapBoss,
-  pawnshop: ICONS.mapShop,
-  event: ICONS.mapEvent,
-  shrine: ICONS.mapShrine,
-  hotel: ICONS.mapHotel,
-};
-
 function getNodeImage(nodeType: TileType): string | null {
-  return MAP_NODE_IMAGES[nodeType] ?? null;
+  return TILE_LABELS[nodeType]?.iconImg ?? null;
 }
 
 interface Props {
@@ -331,7 +320,9 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
 
           {progress.board.map((tile) => {
             const preview = getTilePreview(tile.type);
-            const nodeImage = failedNodeImages.has(tile.type) ? null : getNodeImage(tile.type);
+            const nodeImage = failedNodeImages.has(tile.type)
+              ? null
+              : (tile.iconImg ?? getNodeImage(tile.type));
             const nodeSize = getNodeSize(tile.type);
             return (
               <button
