@@ -457,29 +457,36 @@
   flex-direction: column;
   gap: 0;
   flex-shrink: 0;
+  padding-top: 10px;
 }
 
 .battle-timebar-reserve-row {
   display: flex;
   flex-direction: row;
-  align-items: flex-end;
+  align-items: center;
   width: 100%;
   position: relative;
-  transform: translateY(32px);
+  /* 以前の -20px は全体を上に寄せていた → 下方向へ */
+  transform: translateY(6px);
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.battle-timebar-reserve-row .battle-reserve-area {
+  flex-shrink: 0;
+  transform: translateY(12px);
+  padding: 0 0 0 4px;
+  width: auto;
+  min-height: unset;
 }
 
 .battle-timebar-reserve-row .battle-timebar-row {
   flex: 1;
   min-width: 0;
   transform: none;
-  padding: 0 8px 0 12px;
-}
-
-.battle-timebar-reserve-row .battle-reserve-area {
-  flex-shrink: 0;
-  transform: none;
-  padding: 0 4px 0 0;
-  width: auto;
+  padding: 0 8px 0 4px;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .battle-timebar-row {
@@ -498,7 +505,7 @@
 }
 
 .battle-timebar-row:not(.battle-timebar-row--clock) {
-  transform: translateY(32px);
+  transform: translateY(23px);
 }
 
 .battle-timebar-row.timebar-row--active .timeline-bar {
@@ -533,26 +540,27 @@
   z-index: 25;
 }
 
+/* translateY で下げると overflow:hidden の画面下端でステータスが切れるため margin のみ使用 */
 .battle-status-row {
   flex-shrink: 0;
   padding-top: 2px;
-  margin-top: 0;
+  margin-top: 20px;
   position: relative;
   z-index: 10;
   touch-action: auto;
+  overflow: visible;
 }
 
 .battle-status-row--extend-up {
   margin-top: 0;
   padding-top: 2px;
-  transform: none;
 }
 
 .battle-hand-area {
   height: 220px;
   flex-shrink: 0;
   margin-top: 0;
-  transform: translateY(-6px);
+  transform: translateY(4px);
   position: relative;
   z-index: 10;
 }
@@ -563,12 +571,13 @@
 }
 
 .battle-hand-area--bar-align {
-  transform: translateY(26px);
+  /* 負の値が大きいほど手札が上に寄る → 下げる */
+  transform: translateY(-17px);
 }
 
 .battle-hand-area .hand-area {
   height: 220px;
-  transform: translateY(-60px);
+  transform: translateY(-28px);
   overflow: visible;
 }
 

@@ -1098,6 +1098,31 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.records-page-dev {
+  margin-bottom: 12px;
+}
+
+.records-page-dev-unlock-all {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px dashed rgba(240, 180, 41, 0.6);
+  background: rgba(240, 180, 41, 0.08);
+  color: #f0b429;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.records-page-dev-unlock-all:hover {
+  background: rgba(240, 180, 41, 0.15);
+}
+
+.records-page-dev-unlock-all:active {
+  transform: scale(0.99);
+}
+
 .credits-content {
   display: flex;
   flex-direction: column;

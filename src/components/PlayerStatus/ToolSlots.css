@@ -1,0 +1,8 @@
+.tool-slot-card-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--slot-frame-width, 36px);
+  height: 52px;
+  flex-shrink: 0;
+}

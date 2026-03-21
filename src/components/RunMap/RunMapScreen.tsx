@@ -215,7 +215,7 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
           <span className="map-area-name">エリア{progress.currentArea}</span>
           <div className="map-player-stats">
             <span className={`map-stat map-stat--hp ${getHpClass()}`}>
-              ❤️ {progress.player.currentHp}/{progress.player.maxHp}
+              ❤️ {progress.player.maxHp}/{progress.player.currentHp}
             </span>
             <span className="map-stat">💰 {progress.player.gold}G</span>
           </div>

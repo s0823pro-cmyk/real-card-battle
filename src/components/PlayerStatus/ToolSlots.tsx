@@ -3,6 +3,7 @@ import type { Card, JobId, ToolSlot } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
+import './ToolSlots.css';
 
 interface Props {
   toolSlots: ToolSlot[];
@@ -98,14 +99,53 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
                     : '装備カード。4枚以上セット可能。4枚目以降は横スクロールで確認できる。毎ターン自動で効果が発動する。'
                 }
               >
-                <span className={`tool-slot-inline ${slot ? 'filled' : 'empty'} ${slot?.card.type ?? ''}`}>
-                  {slot ? (
-                    <>
-                      <span className="tool-slot-inline-icon">{slot.card.icon ?? '🔧'}</span>
-                      <span className="tool-slot-inline-name">{slot.card.name}</span>
-                    </>
-                  ) : null}
-                </span>
+                {slot ? (
+                  <div
+                    className="tool-slot-card-item"
+                    style={
+                      {
+                        '--hand-card-width': '36px',
+                        '--hand-card-height': '52px',
+                      } as CSSProperties
+                    }
+                  >
+                    <CardComponent
+                      card={slot.card}
+                      jobId={jobId}
+                      selected={false}
+                      disabled={false}
+                      locked={true}
+                      isSelling={false}
+                      isReturning={false}
+                      isGhost={false}
+                      isDragging={false}
+                      isDragUnavailable={false}
+                      zukanMode="list"
+                      effectiveValues={getBaseEffectiveValues(slot.card)}
+                      onSelect={noop}
+                      onPointerDown={noop}
+                      onPointerMove={noop}
+                      onPointerUp={noop}
+                      onPointerCancel={noop}
+                      onMouseEnter={noop}
+                      onMouseLeave={noop}
+                      style={
+                        {
+                          '--hand-card-width': '36px',
+                          '--hand-card-height': '52px',
+                          position: 'relative',
+                          transform: 'none',
+                          transition: 'none',
+                          flexShrink: 0,
+                          width: '36px',
+                          height: '52px',
+                        } as CSSProperties
+                      }
+                    />
+                  </div>
+                ) : (
+                  <span className="tool-slot-inline empty" />
+                )}
               </Tooltip>
             );
           })}

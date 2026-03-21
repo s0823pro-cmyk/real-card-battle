@@ -46,7 +46,8 @@ const PlayerStatus = ({
   onOpenDrawPile,
   onOpenDiscardPile,
 }: Props) => {
-  const hpRatio = player.currentHp / Math.max(1, player.maxHp);
+  const displayCurrentHp = previewHp != null ? previewHp : player.currentHp;
+  const hpRatio = displayCurrentHp / Math.max(1, player.maxHp);
   const hpClass = hpRatio <= 0.3 ? 'hp-low' : hpRatio <= 0.7 ? 'hp-mid' : 'hp-high';
   const awakeThreshold = Math.floor(player.maxHp * 0.3);
   const remainingToAwake = Math.max(0, player.currentHp - awakeThreshold);
@@ -60,38 +61,159 @@ const PlayerStatus = ({
         : 'normal-awake-state';
   const blockClass = player.block > 0 ? 'status-block--active' : 'status-block--zero';
   const [itemConfirm, setItemConfirm] = useState<RunItem | null>(null);
-  const itemSlots = (
-    <>
-      <div className="stat-items">
-        {Array.from({ length: 3 }).map((_, idx) => {
-          const item = battleItems[idx];
-          return (
-            <Tooltip
-              key={`item-${idx}`}
-              label={item?.name ?? 'アイテム'}
-              description={item?.description ?? '戦闘で使えるアイテム'}
+  const itemSlotsRow = (
+    <div className="stat-items stat-items--sub-row">
+      {Array.from({ length: 3 }).map((_, idx) => {
+        const item = battleItems[idx];
+        return (
+          <Tooltip
+            key={`item-${idx}`}
+            label={item?.name ?? 'アイテム'}
+            description={item?.description ?? '戦闘で使えるアイテム'}
+          >
+            <button
+              type="button"
+              className={`item-slot ${item ? 'filled' : ''}`}
+              disabled={!item || !canUseItems}
+              onClick={() => {
+                if (item && canUseItems) setItemConfirm(item);
+              }}
             >
-              <button
-                type="button"
-                className={`item-slot ${item ? 'filled' : ''}`}
-                disabled={!item || !canUseItems}
-                onClick={() => {
-                  if (item && canUseItems) setItemConfirm(item);
-                }}
-              >
-                {item ? (
-                  item.imageUrl ? (
-                    <img className="item-slot-image" src={item.imageUrl} alt={item.name} />
-                  ) : (
-                    <span className="item-emoji">{item.icon ?? '🧪'}</span>
-                  )
+              {item ? (
+                item.imageUrl ? (
+                  <img className="item-slot-image" src={item.imageUrl} alt={item.name} />
                 ) : (
-                  ''
-                )}
-              </button>
-            </Tooltip>
-          );
-        })}
+                  <span className="item-emoji">{item.icon ?? '🧪'}</span>
+                )
+              ) : (
+                ''
+              )}
+            </button>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <section className={`player-status ${isPlayerHit ? 'player-hit' : ''}`}>
+      <div className="player-row player-row--top">
+        <div className="player-main-stats">
+          <div className="player-hp-block-column">
+            <div className="player-hp-row">
+              <Tooltip tooltipKey="hp">
+                <span className={`hp ${hpClass}`}>
+                  <img src={ICONS.hp} alt="HP" className="status-icon" />
+                  <span className="hp-value">
+                    {player.maxHp}/
+                    <span
+                      className={`hp-value-current${previewHp != null ? ' stat-value-preview stat-value-preview--hp' : ''}`}
+                    >
+                      {displayCurrentHp}
+                    </span>
+                  </span>
+                </span>
+              </Tooltip>
+            </div>
+            <div className="player-block-row">
+              <Tooltip tooltipKey="block">
+                <span className={`block ${blockClass} ${previewBlock != null ? 'block--preview' : ''}`}>
+                  <img src={ICONS.block} alt="Block" className="status-icon" />
+                  <span
+                    className={`block-value${previewBlock != null ? ' stat-value-preview stat-value-preview--block' : ''}`}
+                  >
+                    {previewBlock != null ? previewBlock : player.block}
+                  </span>
+                </span>
+              </Tooltip>
+              {(player.ridgepoleActive || player.templeCarpenterActive) && (
+                <div className="player-block-trailing-icons">
+                  {player.ridgepoleActive && (
+                    <Tooltip label="🎌 棟上げ" description="足場5以上で毎ターン全敵10ダメージ">
+                      <span className="status-ridgepole">🎌</span>
+                    </Tooltip>
+                  )}
+                  {player.templeCarpenterActive && (
+                    <Tooltip label="🏯 宮大工の技" description="段取りボーナスが+50%に強化">
+                      <span className="status-temple">🏯</span>
+                    </Tooltip>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="player-info-row-icons">
+            {player.jobId === 'cook' && (
+              <Tooltip tooltipKey="cooking">
+                <span key={`cook-${player.cookingGauge}`} className="cooking-gauge scaffold-bounce">
+                  🍳 {player.cookingGauge}
+                </span>
+              </Tooltip>
+            )}
+            {player.jobId === 'unemployed' && (
+              <Tooltip tooltipKey="hungry">
+                <span className={unemployedClass}>{unemployedLabel}</span>
+              </Tooltip>
+            )}
+            {player.deathWishActive && (
+              <Tooltip label="💀 デスウィッシュ" description="HP回復無効。全アタック+4ダメージ">
+                <span className="status-death-wish">💀</span>
+              </Tooltip>
+            )}
+            {player.cliffEdgeActive && (
+              <Tooltip label="⚡ 崖っぷちの底力" description="覚醒中：毎ターン2ドロー + タイムバー+1秒">
+                <span className="status-cliff-edge">⚡</span>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+        <ToolSlots toolSlots={toolSlots} activePowers={activePowers} jobId={player.jobId} />
+      </div>
+      <div className="player-row player-row--sub">
+        {player.jobId === 'carpenter' && (
+          <Tooltip tooltipKey="scaffold">
+            <span key={`scaffold-${player.scaffold}`} className="scaffold scaffold-bounce scaffold--sub-row">
+              <span className="scaffold-icon" aria-hidden>
+                🏗️
+              </span>
+              <span className="scaffold-value">{player.scaffold}</span>
+            </span>
+          </Tooltip>
+        )}
+        <div className="player-sub-spacer" />
+        <div className="player-sub-prep-items">
+          {/* アイテム枠は常に同じ位置（段取りは absolute で左に重ね、幅を取らない） */}
+          <div className="player-sub-item-slots-wrap">{itemSlotsRow}</div>
+          {isPreparationActive && (
+            <div className="stat-preparation stat-preparation--next-to-items">
+              <Tooltip
+                label="⚡ 段取りボーナス"
+                description="直前に【準備】バッジのカードを使用。次のカードのダメージ・ブロック・回復が1.3倍"
+              >
+                <span className="stat-preparation-text">⚡ 段取り！</span>
+              </Tooltip>
+            </div>
+          )}
+        </div>
+        <div className="stat-piles">
+          <button type="button" className="btn-pile" onClick={onOpenDrawPile}>
+            山:{drawPileCount}
+          </button>
+          <button type="button" className="btn-pile" onClick={onOpenDiscardPile}>
+            捨:{discardPileCount}
+          </button>
+          <button
+            type="button"
+            className="btn-turn-end-inline"
+            disabled={isTurnEnding}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEndTurn();
+            }}
+          >
+            終了
+          </button>
+        </div>
       </div>
       {itemConfirm && (
         <div className="reserve-confirm-overlay">
@@ -116,121 +238,6 @@ const PlayerStatus = ({
           </div>
         </div>
       )}
-    </>
-  );
-
-  return (
-    <section className={`player-status ${isPlayerHit ? 'player-hit' : ''}`}>
-      <div className="player-row player-row--top">
-        <div className="player-main-stats">
-          <div className="player-hp-row">
-            <Tooltip tooltipKey="hp">
-              <span className={`hp ${hpClass}`}>
-                <img src={ICONS.hp} alt="HP" className="status-icon" />
-                {player.currentHp}/{player.maxHp}
-              </span>
-            </Tooltip>
-          </div>
-          <div className="player-hp-preview-row">
-            {previewHp != null && (
-              <span className="hp-preview-value">→ {previewHp}</span>
-            )}
-          </div>
-          <div className="player-info-row">
-            <div className="player-info-row--top">
-              <Tooltip tooltipKey="block">
-                <span className={`block ${blockClass} ${previewBlock != null ? 'block--preview' : ''}`}>
-                  <img src={ICONS.block} alt="Block" className="status-icon" />{' '}
-                  {previewBlock != null ? (
-                    <>
-                      <span className="block-preview-current">{player.block}</span>
-                      <span className="block-preview-arrow">→</span>
-                      <span className="block-preview-next">{previewBlock}</span>
-                    </>
-                  ) : (
-                    player.block
-                  )}
-                </span>
-              </Tooltip>
-            </div>
-            <div className="player-info-row--bottom">
-              {player.jobId === 'carpenter' && (
-                <Tooltip tooltipKey="scaffold">
-                  <span key={`scaffold-${player.scaffold}`} className="scaffold scaffold-bounce">
-                    🏗️ {player.scaffold}
-                  </span>
-                </Tooltip>
-              )}
-              {player.jobId === 'cook' && (
-                <Tooltip tooltipKey="cooking">
-                  <span key={`cook-${player.cookingGauge}`} className="cooking-gauge scaffold-bounce">
-                    🍳 {player.cookingGauge}
-                  </span>
-                </Tooltip>
-              )}
-              {player.jobId === 'unemployed' && (
-                <Tooltip tooltipKey="hungry">
-                  <span className={unemployedClass}>{unemployedLabel}</span>
-                </Tooltip>
-              )}
-              {player.deathWishActive && (
-                <Tooltip label="💀 デスウィッシュ" description="HP回復無効。全アタック+4ダメージ">
-                  <span className="status-death-wish">💀</span>
-                </Tooltip>
-              )}
-              {player.ridgepoleActive && (
-                <Tooltip label="🎌 棟上げ" description="足場5以上で毎ターン全敵10ダメージ">
-                  <span className="status-ridgepole">🎌</span>
-                </Tooltip>
-              )}
-              {player.templeCarpenterActive && (
-                <Tooltip label="🏯 宮大工の技" description="段取りボーナスが+50%に強化">
-                  <span className="status-temple">🏯</span>
-                </Tooltip>
-              )}
-              {player.cliffEdgeActive && (
-                <Tooltip label="⚡ 崖っぷちの底力" description="覚醒中：毎ターン2ドロー + タイムバー+1秒">
-                  <span className="status-cliff-edge">⚡</span>
-                </Tooltip>
-              )}
-            </div>
-          </div>
-          <div className="stat-preparation">
-            {isPreparationActive && (
-              <Tooltip
-                label="⚡ 段取りボーナス"
-                description="直前に【準備】バッジのカードを使用。次のカードのダメージ・ブロック・回復が1.3倍"
-              >
-                <span className="stat-preparation-text">⚡ 段取り！</span>
-              </Tooltip>
-            )}
-          </div>
-        </div>
-        <ToolSlots toolSlots={toolSlots} activePowers={activePowers} jobId={player.jobId} />
-      </div>
-      <div className="player-row player-row--sub">
-        <div className="player-sub-spacer" />
-        {itemSlots}
-        <div className="stat-piles">
-          <button type="button" className="btn-pile" onClick={onOpenDrawPile}>
-            山:{drawPileCount}
-          </button>
-          <button type="button" className="btn-pile" onClick={onOpenDiscardPile}>
-            捨:{discardPileCount}
-          </button>
-          <button
-            type="button"
-            className="btn-turn-end-inline"
-            disabled={isTurnEnding}
-            onClick={(event) => {
-              event.stopPropagation();
-              onEndTurn();
-            }}
-          >
-            終了
-          </button>
-        </div>
-      </div>
     </section>
   );
 };

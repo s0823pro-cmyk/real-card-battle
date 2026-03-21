@@ -182,3 +182,8 @@ export const clearAchievements = (): void => {
     /* ignore */
   }
 };
+
+/** 開発用: 全実績を達成済みにする（localStorage に保存） */
+export const unlockAllAchievements = (): void => {
+  unlockAchievements(ACHIEVEMENTS.map((a) => a.id));
+};

@@ -179,7 +179,7 @@ export const BossRewardScreen = ({ area, jobId, player, onComplete }: BossReward
           </button>
         </div>
       )}
-      <div className="boss-reward-player-hp">現在HP: {player.currentHp}/{player.maxHp}</div>
+      <div className="boss-reward-player-hp">HP: {player.maxHp}/{player.currentHp}</div>
     </div>
   );
 };

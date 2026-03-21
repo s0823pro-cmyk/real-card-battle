@@ -7,6 +7,23 @@
 }
 
 .player-status {
+  /* ブロック行と足場行で数値の左端を揃える（盾アイコン幅 + 数値前余白） */
+  --status-stat-icon-width: 22px;
+  --status-stat-value-inset: 2px;
+  /* 装備・パワー枠のサイズ。アイテム枠の横幅も --slot-frame-width で装備と揃える */
+  --slot-frame-width: 36px;
+  --slot-frame-height: 56px;
+  --item-slot-size: 36px;
+  /* 下段「段取り＋アイテム」ブロックの横位置（大きいほど右） */
+  --item-slots-sub-nudge: 58px;
+  /* 下段行全体をわずかに左へ（段取り・山札・終了などの見た目位置を揃える） */
+  --player-sub-row-shift-x: -33px;
+  /* 段取りテキストだけ左へ（px を増やすほど左） */
+  --prep-bonus-nudge-left: 7px;
+  /* 足場アイコン＋数値だけ右へ（relative+left：フレックス上の他要素の位置は変えない） */
+  --scaffold-sub-visual-right: calc(-1 * var(--player-sub-row-shift-x));
+  /* ブロック数値・棟上げ・宮大工アイコンを少し下へ（盾アイコンはそのまま） */
+  --block-row-sub-nudge-y: 3px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   border-left: none;
@@ -18,6 +35,7 @@
   flex-direction: column;
   gap: 0;
   transition: box-shadow 0.2s ease;
+  overflow: visible;
 }
 
 .player-status.player-hit {
@@ -45,64 +63,100 @@
 
 .player-main-stats {
   display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* HP・プレビュー・ブロックを同じ縦列に */
+.player-hp-block-column {
+  display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  flex: 1;
+  flex: 0 1 auto;
+}
+
+.player-block-row {
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  min-width: 0;
 }
 
 .player-hp-row {
   display: flex;
   align-items: center;
-  min-height: 16px;
+  min-height: 28px;
   min-width: 0;
   overflow: hidden;
 }
 
-.player-hp-preview-row {
-  min-height: 14px;
-  display: flex;
-  align-items: center;
+/* HP行のアイコンのみ拡大（他の .status-icon は 16px のまま） */
+.player-hp-row .status-icon {
+  width: 26px;
+  height: 26px;
+  margin-left: -2px;
 }
 
-.hp-preview-value {
-  font-size: 0.82em;
-  color: #e74c3c;
+/* HP「最大/現在」：右が現在HP（プレビュー時は予測の現在HP） */
+.hp-value-current {
   font-weight: 700;
-  font-family: var(--font-display);
 }
 
-.player-info-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-height: 18px;
-  margin-top: 2px;
-  min-width: 0;
+/* 予測値：ゆっくり点滅（色は --hp 赤 / --block 青） */
+@keyframes stat-value-preview-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
 }
 
-.player-info-row--top {
+.stat-value-preview {
+  animation: stat-value-preview-pulse 2.2s ease-in-out infinite;
+}
+
+.stat-value-preview--hp {
+  color: #e74c3c !important;
+}
+
+.stat-value-preview--block {
+  color: #60a5fa !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-value-preview {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* HP列の右：料理・無職・戦闘中バッジなど */
+.player-info-row-icons {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  overflow: hidden;
-}
-
-.player-info-row--bottom {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
-  min-width: 0;
+  flex: 1;
   overflow: hidden;
   font-size: 0.88em;
+  padding-top: 2px;
 }
 
 .player-row--sub {
+  display: flex;
+  align-items: center;
   font-size: 10px;
   color: #8b949e;
-  padding: 2px 0 2px 2px;
+  padding: 2px 0;
+  overflow: visible;
+  margin-left: var(--player-sub-row-shift-x);
 }
 
 .player-sub-spacer {
@@ -115,6 +169,31 @@
   display: flex;
   align-items: center;
   min-height: 16px;
+  margin-top: 8px;
+}
+
+/* 下段：アイテム枠の左外側に重ねる（フローに含めない＝アイテム枠は段取りの有無で動かない） */
+.stat-preparation--next-to-items {
+  position: absolute;
+  /* アイテム枠左端より 8px 左に「段取り」の右端が来る */
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translate(calc(-1 * var(--prep-bonus-nudge-left)), -50%);
+  display: flex;
+  align-items: center;
+  margin: 0;
+  min-height: 0;
+  min-width: max-content;
+}
+
+/* .stat-preparation の flex:1 が下段では幅を潰すため、ラッパー内では上書き */
+.player-sub-prep-items .stat-preparation {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.player-sub-prep-items .tooltip-wrapper {
+  flex-shrink: 0;
 }
 
 .stat-preparation-text {
@@ -122,12 +201,13 @@
   font-size: 11px;
   font-weight: 700;
   color: #f0b429;
+  white-space: nowrap;
   animation: preparation-flash 0.4s ease-in-out;
 }
 
 .hp {
   color: #2ecc71;
-  font-size: clamp(0.7em, 1.8vw, 0.82em);
+  font-size: clamp(1.12em, 2.88vw, 1.312em); /* 約20%小さく（従来の0.8倍） */
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -140,7 +220,7 @@
 .player-hp-text,
 .status-hp-value,
 .hp-display {
-  font-size: 12px;
+  font-size: 19px; /* 24px の約80% */
 }
 
 .player-hp-bar-container,
@@ -168,19 +248,48 @@
   font-size: clamp(0.7em, 1.8vw, 0.88em);
 }
 
-.block-preview-current {
-  color: #4fc3f7;
-  opacity: 0.6;
-}
-
-.block-preview-arrow {
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.85em;
-}
-
-.block-preview-next {
-  color: #60a5fa;
+/* HP 数値：ブロック行と同じサイズ・フォント（Orbitron + clamp） */
+.player-hp-block-column .hp {
+  font-size: clamp(1.12em, 2.88vw, 1.312em);
   font-weight: 700;
+  font-family: var(--font-display);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.player-hp-block-column .hp .hp-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ブロック：HP と同じ数値サイズ・アイコンサイズ（盾アイコン位置は維持し、数値側だけ詰める） */
+.player-hp-block-column .block {
+  font-size: clamp(1.12em, 2.88vw, 1.312em);
+  font-weight: 700;
+  font-family: var(--font-display);
+  gap: 0;
+  line-height: 1;
+}
+
+.player-hp-block-column .block .status-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+/* ブロック数値：盾アイコンのすぐ右（左揃え）。4ch 固定で桁が増えても棟上げ等の横位置は一定 */
+/* HP 行（26px アイコン + margin -2px）と数値の左端を揃えるため、ブロック（22px）の数値だけわずかに右へ */
+.player-hp-block-column .block .block-value {
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  width: 4ch;
+  text-align: left;
+  box-sizing: border-box;
+  white-space: nowrap;
+  margin-left: var(--status-stat-value-inset);
+  position: relative;
+  top: var(--block-row-sub-nudge-y);
 }
 
 .status-block--active {
@@ -193,6 +302,46 @@
 
 .scaffold {
   color: #4fc3f7;
+}
+
+/* 下段の足場：ブロック行と同じ「22px アイコン列 + 2px + 数値」で数値左端を一致 */
+/* position:relative + left で描画だけずらす（margin は隣接フレックスの開始位置を変えるため使わない） */
+.scaffold--sub-row {
+  position: relative;
+  left: var(--scaffold-sub-visual-right);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+  white-space: nowrap;
+  font-size: clamp(15.68px, 2.88vw, 18.37px);
+  font-weight: 700;
+  font-family: var(--font-display);
+  line-height: 1;
+  gap: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.scaffold--sub-row .scaffold-icon {
+  width: var(--status-stat-icon-width);
+  height: var(--status-stat-icon-width);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+.scaffold--sub-row .scaffold-value {
+  font-size: inherit;
+  font-weight: inherit;
+  margin-left: var(--status-stat-value-inset);
+  display: inline-block;
+  width: 4ch;
+  text-align: left;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .cooking-gauge {
@@ -215,10 +364,32 @@
 }
 
 .status-death-wish,
-.status-ridgepole,
-.status-temple,
 .status-cliff-edge {
   font-size: 14px;
+}
+
+/* 棟上げ・宮大工：ブロック盾アイコン（22px）一個分左へ */
+.player-block-trailing-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: calc(6px - 22px);
+  flex-shrink: 0;
+  position: relative;
+  top: var(--block-row-sub-nudge-y);
+}
+
+/* ブロックアイコンよりひと回り小さめ */
+.player-block-trailing-icons .status-ridgepole,
+.player-block-trailing-icons .status-temple {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .status-death-wish {
@@ -270,8 +441,8 @@
 .power-slot-item {
   flex-shrink: 0;
   position: relative;
-  width: 36px;
-  height: 56px;
+  width: var(--slot-frame-width);
+  height: var(--slot-frame-height);
   overflow: hidden;
   border-radius: 6px;
 }
@@ -288,8 +459,8 @@
 }
 
 .tool-slot-inline {
-  width: 36px;
-  height: 56px;
+  width: var(--slot-frame-width);
+  height: var(--slot-frame-height);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -336,7 +507,7 @@
 }
 
 .tool-slot-inline-name {
-  max-width: 36px;
+  max-width: var(--slot-frame-width);
   font-size: 8px;
   line-height: 1.1;
   text-align: center;
@@ -373,16 +544,42 @@
   flex-shrink: 0;
 }
 
+/* アイテム枠の位置基準（段取りは absolute でこのブロックの左外に描画） */
+.player-sub-prep-items {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  align-self: center;
+  position: relative;
+  z-index: 2;
+  margin-left: var(--item-slots-sub-nudge);
+  overflow: visible;
+}
+
+.player-sub-item-slots-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* 下段：山札・終了と同じ行に並べるアイテム枠 */
+.stat-items--sub-row {
+  flex-shrink: 0;
+  align-items: center;
+}
+
 .item-slot {
-  width: 34px;
-  height: 34px;
+  width: var(--slot-frame-width);
+  height: var(--item-slot-size);
   background: #161b22;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 20px;
   color: #e6edf3;
   cursor: pointer;
   padding: 0;
@@ -398,8 +595,10 @@
 }
 
 .item-slot-image {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
+  max-width: 85%;
+  max-height: 85%;
   object-fit: contain;
 }
 
@@ -517,15 +716,9 @@
 
 @keyframes preparation-flash {
   0% {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
+    opacity: 0.3;
   }
   100% {
     opacity: 1;
-    transform: scale(1);
   }
 }

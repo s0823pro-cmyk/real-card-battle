@@ -313,19 +313,17 @@ const BattleScreen = ({
     const enemyFound = detections.find((detection) => detection.target === 'enemy');
     if (enemyFound) return enemyFound;
 
-    // 温存：reserveArea（温存枠）の実表示矩形に合わせて判定（タイムバー左配置後も枠全体が有効）
+    // 温存：reserveArea（温存枠）の実表示矩形に合わせて判定（タイムバーと横並びのため reserveRect のみ使用）
     // 判定はカード上部（上中央）がゾーン内に入った場合のみ
-    const timebarRect = timebarRowRef.current?.getBoundingClientRect();
     const reserveRect = reserveAreaRef.current?.getBoundingClientRect();
-    if (timebarRect && reserveRect) {
+    if (reserveRect) {
       const cardTop = clientY + DRAG_DISPLAY_Y_OFFSET;
       const anchorX = clientX; // カード上中央
       const anchorY = cardTop + 10;
-      // 温存の有効範囲を内側に絞って、誤反応を減らす
-      const zoneTop = Math.max(timebarRect.bottom + 8, reserveRect.top + 10);
-      const zoneBottom = reserveRect.bottom - 12;
-      const zoneLeft = reserveRect.left + 18;
-      const zoneRight = reserveRect.right - 4; // 温存枠全体（右端は少しマージン）
+      const zoneTop = reserveRect.top + 4;
+      const zoneBottom = reserveRect.bottom - 4;
+      const zoneLeft = reserveRect.left + 4;
+      const zoneRight = reserveRect.right - 4;
       const inReserveLeftZone =
         anchorX >= zoneLeft &&
         anchorX <= zoneRight &&

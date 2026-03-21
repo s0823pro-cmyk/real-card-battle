@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { StoryScreen } from '../StoryScreen/StoryScreen';
 import {
@@ -21,7 +21,12 @@ import letterSImage from '../../assets/title/letter_S.png';
 import letterS2Image from '../../assets/title/letter_S2.png';
 import './HomeScreen.css';
 import type { Achievement } from '../../utils/achievementSystem';
-import { ACHIEVEMENTS, clearAchievements, getUnlockedAchievementIds } from '../../utils/achievementSystem';
+import {
+  ACHIEVEMENTS,
+  clearAchievements,
+  getUnlockedAchievementIds,
+  unlockAllAchievements,
+} from '../../utils/achievementSystem';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 
 const JOB_NAMES: Record<string, string> = {
@@ -256,6 +261,7 @@ const HomeScreen = ({
 }: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
   const [showRecords, setShowRecords] = useState(false);
+  const [achievementRefreshKey, setAchievementRefreshKey] = useState(0);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const [activeHowtoTab, setActiveHowtoTab] = useState<HowtoTab>('glossary');
   const [openedHowtoEntry, setOpenedHowtoEntry] = useState<string | null>(null);
@@ -284,7 +290,7 @@ const HomeScreen = ({
     credits: 'クレジット',
   };
 
-  const unlockedIds = getUnlockedAchievementIds();
+  const unlockedIds = useMemo(() => getUnlockedAchievementIds(), [achievementRefreshKey]);
   const storyJobs: {
     jobKey: StoryJobKey;
     jobName: string;
@@ -486,6 +492,20 @@ const HomeScreen = ({
             <div />
           </div>
           <div className="records-page-content">
+            {import.meta.env.DEV && (
+              <div className="records-page-dev">
+                <button
+                  type="button"
+                  className="records-page-dev-unlock-all"
+                  onClick={() => {
+                    unlockAllAchievements();
+                    setAchievementRefreshKey((k) => k + 1);
+                  }}
+                >
+                  【開発】全実績解放
+                </button>
+              </div>
+            )}
             <div className="achievement-list">
               {ACHIEVEMENTS.map((a) => {
                 const isUnlocked = unlockedIds.has(a.id);

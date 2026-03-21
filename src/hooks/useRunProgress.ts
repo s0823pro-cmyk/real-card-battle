@@ -6,7 +6,7 @@ import { getJobConfig } from '../data/jobs';
 import { cloneRewardCard } from '../data/jobs/index';
 import {
   CARPENTER_COMMON_POOL,
-  CARPENTER_RARE_POOL,
+  CARPENTER_RARE_POOL_ALL,
   CARPENTER_UNCOMMON_POOL,
 } from '../data/jobs/carpenter';
 import {
@@ -1406,7 +1406,7 @@ export const useRunProgress = () => {
         ...CARPENTER_STARTER_DECK,
         ...CARPENTER_COMMON_POOL,
         ...CARPENTER_UNCOMMON_POOL,
-        ...CARPENTER_RARE_POOL,
+        ...CARPENTER_RARE_POOL_ALL,
         ...RESERVE_BONUS_CARDS,
       ];
       const allNeutralCards = [...NEUTRAL_CARD_POOL];
