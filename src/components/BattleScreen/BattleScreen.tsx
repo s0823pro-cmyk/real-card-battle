@@ -101,7 +101,6 @@ const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
       onTouchEnd={() => {
         setTimeout(() => setShowTooltip(false), 1500);
       }}
-      style={{ pointerEvents: 'auto' }}
     >
       {omamori.imageUrl ? (
         <img src={omamori.imageUrl} alt={omamori.name} className="battle-omamori-img" />

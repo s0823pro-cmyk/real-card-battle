@@ -243,16 +243,17 @@
 .battle-omamori-list {
   position: absolute;
   top: max(8px, calc(env(safe-area-inset-top) + 8px));
-  left: 90px;
-  right: 90px;
+  left: 105px;
+  right: 55px;
   display: flex;
   justify-content: flex-start;
   align-items: center;
   gap: 6px;
-  z-index: 30;
+  z-index: 32;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  pointer-events: auto;
 }
 
 .battle-omamori-list::-webkit-scrollbar {
