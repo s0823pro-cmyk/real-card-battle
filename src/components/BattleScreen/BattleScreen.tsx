@@ -94,8 +94,6 @@ const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
   return (
     <div
       className="battle-omamori-item"
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
       onTouchStart={(e) => {
         e.stopPropagation();
         setShowTooltip(true);
@@ -110,12 +108,12 @@ const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
       ) : (
         <span className="battle-omamori-icon">{omamori.icon}</span>
       )}
-      {showTooltip && (
-        <div className="battle-omamori-tooltip">
-          <p className="battle-omamori-tooltip-name">{omamori.name}</p>
-          <p className="battle-omamori-tooltip-desc">{omamori.description}</p>
-        </div>
-      )}
+      <div
+        className={`battle-omamori-tooltip ${showTooltip ? 'battle-omamori-tooltip--touch' : ''}`}
+      >
+        <p className="battle-omamori-tooltip-name">{omamori.name}</p>
+        <p className="battle-omamori-tooltip-desc">{omamori.description}</p>
+      </div>
     </div>
   );
 };

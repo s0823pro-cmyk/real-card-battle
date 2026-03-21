@@ -243,14 +243,13 @@
 .battle-omamori-list {
   position: absolute;
   top: max(8px, calc(env(safe-area-inset-top) + 8px));
-  left: 0;
-  right: 0;
+  left: 90px;
+  right: 90px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   gap: 6px;
   z-index: 30;
-  padding: 0 90px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -291,8 +290,7 @@
 .battle-omamori-tooltip {
   position: absolute;
   top: 38px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   background: #161b22;
   border: 1px solid rgba(240, 180, 41, 0.4);
   border-radius: 8px;
@@ -300,6 +298,17 @@
   width: 140px;
   z-index: 200;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  text-align: left;
+}
+
+.battle-omamori-item:hover .battle-omamori-tooltip {
+  opacity: 1;
+}
+
+.battle-omamori-tooltip--touch {
+  opacity: 1 !important;
 }
 
 .battle-omamori-tooltip-name {
