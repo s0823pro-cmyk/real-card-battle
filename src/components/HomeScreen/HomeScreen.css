@@ -730,6 +730,25 @@
   flex-shrink: 0;
 }
 
+.settings-btn-purchase {
+  background: rgba(46, 204, 113, 0.15);
+  border: 1px solid rgba(46, 204, 113, 0.45);
+  border-radius: 8px;
+  color: #2ecc71;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.settings-btn-purchase:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .settings-toggle {
   flex-shrink: 0;
   min-width: 52px;

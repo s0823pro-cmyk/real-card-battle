@@ -749,6 +749,17 @@ const HomeScreen = ({
                 </div>
                 <div className="settings-item">
                   <div className="settings-item-info">
+                    <p className="settings-item-title">広告を削除</p>
+                    <p className="settings-item-desc">
+                      ¥250で広告を完全に削除します。（Capacitor移行後に有効化）
+                    </p>
+                  </div>
+                  <button type="button" className="settings-btn-purchase" disabled>
+                    ¥250
+                  </button>
+                </div>
+                <div className="settings-item">
+                  <div className="settings-item-info">
                     <p className="settings-item-title">カード画像を事前読み込み</p>
                     <p className="settings-item-desc">
                       起動時に全カード画像を読み込みます。通信量が増えますが表示が速くなります。

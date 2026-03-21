@@ -97,6 +97,11 @@ export const DefeatScreen = ({
           </div>
         )}
 
+        {/* 広告プレースホルダー: Capacitor移行後にAdMobのインタースティシャル広告を表示 */}
+        <div className="ad-placeholder">
+          <p className="ad-placeholder-text">広告スペース</p>
+        </div>
+
         <div className="defeat-buttons">
           <button type="button" className="btn-defeat-retry" onClick={onRetry}>
             もう一度挑戦

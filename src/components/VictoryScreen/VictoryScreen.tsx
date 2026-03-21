@@ -150,6 +150,13 @@ export const VictoryScreen = ({
           </div>
         )}
 
+        {/* 広告プレースホルダー: Capacitor移行後にAdMobのインタースティシャル広告を表示 */}
+        {showStats && (
+          <div className="ad-placeholder">
+            <p className="ad-placeholder-text">広告スペース</p>
+          </div>
+        )}
+
         {showStats && (
           <button type="button" className="btn-victory-home" onClick={onHome}>
             ホームに戻る
