@@ -28,7 +28,7 @@ export const STATUS_TOOLTIPS = {
     description: 'HP50%以下でダメージ+3（ハングリー）、HP30%以下でダメージ+6＋時間-1秒（覚醒）。',
   },
   tool: {
-    label: '🔧 道具',
+    label: '🔧 装備',
     description: '装備カード。最大3枠。毎ターン自動で効果が発動する。',
   },
 } as const;

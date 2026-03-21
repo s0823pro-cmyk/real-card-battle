@@ -91,7 +91,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
             return (
               <Tooltip
                 key={`tool-${idx}`}
-                label={slot ? slot.card.name : '道具スロット'}
+                label={slot ? slot.card.name : '装備スロット'}
                 description={
                   slot
                     ? slot.card.description

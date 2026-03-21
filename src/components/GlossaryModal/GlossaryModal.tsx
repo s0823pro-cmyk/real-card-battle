@@ -40,7 +40,7 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   },
   {
     type: 'item',
-    term: '道具',
+    term: '装備',
     desc: '使用するとツールスロットに装備され、毎ターン開始時に自動で効果が発動するカード。使用後はデッキに戻らない。',
   },
   {

@@ -95,7 +95,7 @@ const CardComponent = ({
     attack: { bg: '#7f1d1d', text: '#fca5a5', label: 'アタック' },
     skill: { bg: '#1e3a5f', text: '#93c5fd', label: 'スキル' },
     power: { bg: '#3b1f6e', text: '#c4b5fd', label: 'パワー' },
-    tool: { bg: '#1a3a2a', text: '#6ee7b7', label: '道具' },
+    tool: { bg: '#1a3a2a', text: '#6ee7b7', label: '装備' },
     status: { bg: '#374151', text: '#9ca3af', label: 'ステータス' },
     curse: { bg: '#1a0a0a', text: '#f87171', label: '呪い' },
   } as const;
