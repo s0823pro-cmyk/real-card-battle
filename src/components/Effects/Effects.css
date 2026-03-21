@@ -52,6 +52,14 @@
   top: 56%;
 }
 
+/* 敵の行動ログ（result.log）。target-player より後に置き top を上書き */
+.damage-popup.damage-popup--enemy-action {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8b949e;
+  top: 28%;
+}
+
 .effect-attack {
   position: fixed;
   width: 80px;

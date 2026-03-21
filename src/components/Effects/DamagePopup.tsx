@@ -2,7 +2,7 @@ export interface PopupItem {
   id: number;
   text: string;
   target: 'player' | string;
-  kind: 'damage' | 'block' | 'buff' | 'dandori';
+  kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action';
 }
 
 interface Props {
@@ -24,7 +24,9 @@ const DamagePopup = ({ popups }: Props) => {
                 ? 'damage-popup--block'
                 : popup.kind === 'dandori'
                   ? 'damage-popup--dandori'
-                  : 'damage-popup--buff'
+                  : popup.kind === 'enemy_action'
+                    ? 'damage-popup--enemy-action'
+                    : 'damage-popup--buff'
           }`}
         >
           {popup.text}

@@ -63,7 +63,7 @@ export interface BattlePopup {
   id: number;
   text: string;
   target: 'player' | string;
-  kind: 'damage' | 'block' | 'buff' | 'dandori';
+  kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action';
 }
 
 export interface UseGameStateResult {
@@ -1252,7 +1252,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         setIsPlayerHit(true);
         pushPopup(`-${result.damageToPlayer}`, 'player', 'damage');
       } else {
-        pushPopup(result.log, 'player', 'buff');
+        pushPopup(result.log, 'player', 'enemy_action');
       }
       if (result.mentalDamageToPlayer > 0) {
         setIsMentalHit(true);
