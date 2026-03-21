@@ -313,7 +313,7 @@ const BattleScreen = ({
     const enemyFound = detections.find((detection) => detection.target === 'enemy');
     if (enemyFound) return enemyFound;
 
-    // 温存：タイムバー下エリアを左右に分割し、左側のみ反応
+    // 温存：reserveArea（温存枠）の実表示矩形に合わせて判定（タイムバー左配置後も枠全体が有効）
     // 判定はカード上部（上中央）がゾーン内に入った場合のみ
     const timebarRect = timebarRowRef.current?.getBoundingClientRect();
     const reserveRect = reserveAreaRef.current?.getBoundingClientRect();
@@ -325,7 +325,7 @@ const BattleScreen = ({
       const zoneTop = Math.max(timebarRect.bottom + 8, reserveRect.top + 10);
       const zoneBottom = reserveRect.bottom - 12;
       const zoneLeft = reserveRect.left + 18;
-      const zoneRight = reserveRect.left + reserveRect.width / 2 - 18; // 下エリア左半分（内側）
+      const zoneRight = reserveRect.right - 4; // 温存枠全体（右端は少しマージン）
       const inReserveLeftZone =
         anchorX >= zoneLeft &&
         anchorX <= zoneRight &&
@@ -875,6 +875,17 @@ const BattleScreen = ({
         </div>
 
         <div className="battle-timebar-reserve-row">
+          <div className="battle-reserve-area battle-reserve-area--gauge-expand" ref={reserveAreaRef}>
+            <ActionBar
+              reserved={gameState.reserved}
+              jobId={gameState.player.jobId}
+              isDragging={handDrag.isDragging}
+              activeDropTarget={handDrag.dropTarget}
+              reserveFull={reserveFull}
+              reserveDropRef={reserveDropRef}
+            />
+          </div>
+
           <div
             className={`battle-timebar-row ${isHoveringTimebar ? 'timebar-row--active' : ''}`}
             ref={timebarRowRef}
@@ -887,17 +898,6 @@ const BattleScreen = ({
               previewCost={timeUsagePreview?.previewCost ?? null}
               gaugeStyle={timelineGaugeStyle}
               timelineBarRef={timelineBarRef}
-            />
-          </div>
-
-          <div className="battle-reserve-area battle-reserve-area--gauge-expand" ref={reserveAreaRef}>
-            <ActionBar
-              reserved={gameState.reserved}
-              jobId={gameState.player.jobId}
-              isDragging={handDrag.isDragging}
-              activeDropTarget={handDrag.dropTarget}
-              reserveFull={reserveFull}
-              reserveDropRef={reserveDropRef}
             />
           </div>
         </div>
