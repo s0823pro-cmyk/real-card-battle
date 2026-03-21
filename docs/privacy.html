@@ -50,10 +50,51 @@
       padding-top: 16px;
       border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 10px;
+      margin-bottom: 16px;
+    }
+    .header-game {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .header-sep {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .header-title {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .header-back {
+      background: none;
+      border: none;
+      color: #8b949e;
+      font-family: 'Noto Serif JP', serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 4px 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .header-back:hover { color: #e6edf3; }
   </style>
 </head>
 <body>
-  <h1>プライバシーポリシー</h1>
+  <header>
+    <button class="header-back" type="button" onclick="history.back()">← 戻る</button>
+    <span class="header-game">JOBLESS</span>
+    <span class="header-sep">/</span>
+    <span class="header-title">プライバシーポリシー</span>
+  </header>
   <p class="meta">アプリ「JOBLESS」（以下「本アプリ」）における、利用者情報の取り扱いについて定めます。</p>
 
   <h2>1. 取得する情報</h2>
