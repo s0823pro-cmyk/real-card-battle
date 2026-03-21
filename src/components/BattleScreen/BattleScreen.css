@@ -288,6 +288,11 @@
   line-height: 1;
 }
 
+.battle-omamori-img,
+.battle-omamori-icon {
+  pointer-events: none;
+}
+
 .battle-omamori-tooltip {
   position: absolute;
   top: 38px;
