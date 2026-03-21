@@ -91,11 +91,25 @@ const getUpgradePreviewText = (card: Card): string => {
 
 const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
   const [showTooltip, setShowTooltip] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onEnter = () => setShowTooltip(true);
+    const onLeave = () => setShowTooltip(false);
+    el.addEventListener('mouseenter', onEnter);
+    el.addEventListener('mouseleave', onLeave);
+    return () => {
+      el.removeEventListener('mouseenter', onEnter);
+      el.removeEventListener('mouseleave', onLeave);
+    };
+  }, []);
+
   return (
     <div
+      ref={ref}
       className="battle-omamori-item"
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
       onTouchStart={(e) => {
         e.stopPropagation();
         setShowTooltip(true);
