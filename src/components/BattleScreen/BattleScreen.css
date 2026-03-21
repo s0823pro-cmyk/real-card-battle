@@ -302,9 +302,21 @@
   border-radius: 8px;
   padding: 8px 10px;
   width: 140px;
-  z-index: 200;
+  z-index: 9999;
   pointer-events: none;
-  text-align: left;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.battle-omamori-item:hover .battle-omamori-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.battle-omamori-item--active .battle-omamori-tooltip {
+  visibility: visible;
+  opacity: 1;
 }
 
 .battle-omamori-tooltip-name {

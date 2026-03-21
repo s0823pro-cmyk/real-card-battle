@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
+import type {
+  CSSProperties,
+  PointerEvent as ReactPointerEvent,
+  TouchEvent as ReactTouchEvent,
+} from 'react';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 import ActionBar from '../ActionBar/ActionBar';
 import DamagePopup from '../Effects/DamagePopup';
@@ -90,45 +94,30 @@ const getUpgradePreviewText = (card: Card): string => {
 };
 
 const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const divRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = divRef.current;
-    if (!el) return;
-    const show = () => setShowTooltip(true);
-    const hide = () => setShowTooltip(false);
-    el.addEventListener('mouseenter', show, true);
-    el.addEventListener('mouseleave', hide, true);
-    return () => {
-      el.removeEventListener('mouseenter', show, true);
-      el.removeEventListener('mouseleave', hide, true);
-    };
-  }, []);
-
+  const ref = useRef<HTMLDivElement>(null);
+  const handleTouchStart = (e: ReactTouchEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    ref.current?.classList.add('battle-omamori-item--active');
+  };
+  const handleTouchEnd = () => {
+    setTimeout(() => ref.current?.classList.remove('battle-omamori-item--active'), 1500);
+  };
   return (
     <div
-      ref={divRef}
+      ref={ref}
       className="battle-omamori-item"
-      onTouchStart={(e) => {
-        e.stopPropagation();
-        setShowTooltip(true);
-      }}
-      onTouchEnd={() => {
-        setTimeout(() => setShowTooltip(false), 1500);
-      }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {omamori.imageUrl ? (
         <img src={omamori.imageUrl} alt={omamori.name} className="battle-omamori-img" />
       ) : (
         <span className="battle-omamori-icon">{omamori.icon}</span>
       )}
-      {showTooltip && (
-        <div className="battle-omamori-tooltip">
-          <p className="battle-omamori-tooltip-name">{omamori.name}</p>
-          <p className="battle-omamori-tooltip-desc">{omamori.description}</p>
-        </div>
-      )}
+      <div className="battle-omamori-tooltip">
+        <p className="battle-omamori-tooltip-name">{omamori.name}</p>
+        <p className="battle-omamori-tooltip-desc">{omamori.description}</p>
+      </div>
     </div>
   );
 };
