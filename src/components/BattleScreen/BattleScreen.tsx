@@ -95,17 +95,29 @@ const getUpgradePreviewText = (card: Card): string => {
 
 const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  const updateTooltipPos = () => {
+    if (!ref.current || !tooltipRef.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    tooltipRef.current.style.left = `${Math.min(rect.left, window.innerWidth - 150)}px`;
+    tooltipRef.current.style.top = `${rect.bottom + 6}px`;
+  };
+
   const handleTouchStart = (e: ReactTouchEvent<HTMLDivElement>) => {
     e.stopPropagation();
+    updateTooltipPos();
     ref.current?.classList.add('battle-omamori-item--active');
   };
   const handleTouchEnd = () => {
     setTimeout(() => ref.current?.classList.remove('battle-omamori-item--active'), 1500);
   };
+
   return (
     <div
       ref={ref}
       className="battle-omamori-item"
+      onMouseEnter={updateTooltipPos}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -114,7 +126,7 @@ const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
       ) : (
         <span className="battle-omamori-icon">{omamori.icon}</span>
       )}
-      <div className="battle-omamori-tooltip">
+      <div ref={tooltipRef} className="battle-omamori-tooltip">
         <p className="battle-omamori-tooltip-name">{omamori.name}</p>
         <p className="battle-omamori-tooltip-desc">{omamori.description}</p>
       </div>

@@ -288,10 +288,9 @@
 }
 
 .battle-omamori-tooltip {
-  position: absolute;
-  bottom: 38px;
-  top: auto;
-  left: 0;
+  position: fixed;
+  top: 52px;
+  left: auto;
   background: #161b22;
   border: 1px solid rgba(240, 180, 41, 0.4);
   border-radius: 8px;
