@@ -394,9 +394,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   function pushPopup(text: string, target: 'player' | string, kind: BattlePopup['kind']) {
     const id = Date.now() + Math.floor(Math.random() * 10000);
     setBattlePopups((prev) => [...prev, { id, text, target, kind }]);
+    const duration = kind === 'enemy_action' ? 2200 : 720;
     window.setTimeout(() => {
       setBattlePopups((prev) => prev.filter((popup) => popup.id !== id));
-    }, 720);
+    }, duration);
   }
 
   const triggerRevivalEffect = () => {

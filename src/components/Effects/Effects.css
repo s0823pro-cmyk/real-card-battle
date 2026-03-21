@@ -56,8 +56,9 @@
 .damage-popup.damage-popup--enemy-action {
   font-size: 13px;
   font-weight: 700;
-  color: #8b949e;
+  color: #c9d1d9;
   top: 28%;
+  animation: enemy-action-float 2.2s ease-out forwards;
 }
 
 .effect-attack {
@@ -162,6 +163,24 @@
   }
   100% {
     transform: translate(-50%, -50px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes enemy-action-float {
+  0% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  30% {
+    transform: translateX(-50%) translateY(-8px);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(-20px);
     opacity: 0;
   }
 }
