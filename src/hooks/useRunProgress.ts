@@ -131,6 +131,7 @@ export const loadSavedProgress = (): GameProgress | null => {
       unlockedCardNames: new Set(parsed.unlockedCardNames ?? []),
       pendingItemReplacement: null,
       lastBattleNewAchievements: [],
+      rewardAdUsed: parsed.rewardAdUsed ?? false,
       // バトル中状態はリセット（マップ画面に戻す）
       battleSetup: null,
       currentScreen: normalizedScreen,
@@ -204,7 +205,8 @@ type Action =
   | { type: 'set_pending_item_replacement'; value: PendingItemReplacement | null }
   | { type: 'open_card_upgrade'; mode: 'upgrade' | 'remove'; returnScreen: Exclude<GameScreen, 'card_upgrade'> }
   | { type: 'close_card_upgrade' }
-  | { type: 'set_last_battle_achievements'; achievements: Achievement[] };
+  | { type: 'set_last_battle_achievements'; achievements: Achievement[] }
+  | { type: 'set_reward_ad_used'; used: boolean };
 
 interface PickRewardOptions {
   deferBossTransition?: boolean;
@@ -288,6 +290,7 @@ const makeInitialProgress = (): GameProgress => {
     lastDefeatedBy: '',
     pendingItemReplacement: null,
     lastBattleNewAchievements: [],
+    rewardAdUsed: false,
   };
 };
 
@@ -472,6 +475,8 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       };
     case 'set_last_battle_achievements':
       return { ...state, lastBattleNewAchievements: action.achievements };
+    case 'set_reward_ad_used':
+      return { ...state, rewardAdUsed: action.used };
     default:
       return state;
   }
@@ -1268,6 +1273,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_pending_steps', steps: 0 });
     dispatch({ type: 'set_dice', value: null, rolling: false });
     dispatch({ type: 'set_last_battle_achievements', achievements: [] });
+    dispatch({ type: 'set_reward_ad_used', used: false });
     dispatch({ type: 'set_screen', screen: 'home' });
   };
 
@@ -1303,6 +1309,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_current_tile', tileId: saved.currentTileId });
     dispatch({ type: 'set_screen', screen: saved.currentScreen });
     dispatch({ type: 'set_last_battle_achievements', achievements: [] });
+    dispatch({ type: 'set_reward_ad_used', used: saved.rewardAdUsed ?? false });
   };
 
   const openZukanFromHome = () => {
@@ -1560,7 +1567,12 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
     dispatch({ type: 'set_current_tile', tileId: 1 });
     dispatch({ type: 'set_last_battle_achievements', achievements: [] });
+    dispatch({ type: 'set_reward_ad_used', used: false });
     dispatch({ type: 'set_screen', screen: 'map' });
+  };
+
+  const useRewardAd = () => {
+    dispatch({ type: 'set_reward_ad_used', used: true });
   };
 
   return {
@@ -1598,5 +1610,7 @@ export const useRunProgress = () => {
     startDevNavigation,
     startRunFromJobSelect,
     resetRun,
+    rewardAdUsed: state.rewardAdUsed,
+    useRewardAd,
   };
 };

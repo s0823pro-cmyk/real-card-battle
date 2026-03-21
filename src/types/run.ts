@@ -197,4 +197,6 @@ export interface GameProgress {
   pendingItemReplacement: PendingItemReplacement | null;
   /** 直近のバトル終了で新規解除された実績（勝敗画面表示用・セーブ対象外） */
   lastBattleNewAchievements: Achievement[];
+  /** リワード広告を使用済みか（1ラン1回） */
+  rewardAdUsed: boolean;
 }

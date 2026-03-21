@@ -218,6 +218,28 @@
   color: var(--text-secondary);
 }
 
+.battle-reward-ad-btn {
+  position: absolute;
+  top: max(8px, calc(env(safe-area-inset-top) + 8px));
+  left: 8px;
+  z-index: 30;
+  min-width: 80px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(46, 204, 113, 0.45);
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.battle-reward-ad-btn--used {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #3d444d;
+}
+
 .battle-settings-trigger {
   position: absolute;
   top: max(8px, calc(env(safe-area-inset-top) + 8px));

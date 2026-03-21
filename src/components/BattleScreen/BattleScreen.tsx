@@ -55,6 +55,10 @@ interface BattleScreenProps {
   onTurnStart?: (state: GameState) => void;
   onBattleFinished?: () => void;
   initialGameState?: GameState | null;
+  /** 1ラン1回のリワード広告使用済み */
+  rewardAdUsed?: boolean;
+  /** リワード使用時（HP回復後にラン状態を更新） */
+  onUseRewardAd?: () => void;
 }
 
 const DRAG_CARD_HEIGHT = 168;
@@ -83,7 +87,16 @@ const getUpgradePreviewText = (card: Card): string => {
   return `所要時間 ${card.timeCost} → ${Math.max(1, card.timeCost - 1)}秒`;
 };
 
-const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattleFinished, initialGameState }: BattleScreenProps) => {
+const BattleScreen = ({
+  setup,
+  onBattleEnd,
+  onConsumeItem,
+  onTurnStart,
+  onBattleFinished,
+  initialGameState,
+  rewardAdUsed = false,
+  onUseRewardAd,
+}: BattleScreenProps) => {
   const noop = () => {};
   const {
     gameState,
@@ -122,6 +135,7 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
     endTurn,
     concedeBattle,
     retryBattle,
+    applyRewardAdHeal,
   } = useGameState({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattleFinished, initialGameState });
 
   const enemyAreaRef = useRef<HTMLElement | null>(null);
@@ -741,6 +755,30 @@ const BattleScreen = ({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattle
         <div className="revival-effect">
           <span className="revival-text">🔄 七転び八起き！</span>
         </div>
+      )}
+      {canOpenBattleSettings && !rewardAdUsed && (
+        <button
+          type="button"
+          className="battle-reward-ad-btn"
+          onClick={() => {
+            // Capacitor移行後に AdMob リワード広告を表示
+            const ok = applyRewardAdHeal();
+            if (ok) onUseRewardAd?.();
+          }}
+          aria-label="広告を見てHP回復"
+        >
+          📺 広告でHP回復
+        </button>
+      )}
+      {rewardAdUsed && (
+        <button
+          type="button"
+          className="battle-reward-ad-btn battle-reward-ad-btn--used"
+          disabled
+          aria-label="使用済み"
+        >
+          📺 使用済み
+        </button>
       )}
       {canOpenBattleSettings && (
         <button

@@ -77,6 +77,8 @@ function App() {
     startDevNavigation,
     startRunFromJobSelect,
     resetRun,
+    rewardAdUsed,
+    useRewardAd,
   } = useRunProgress();
   const [savedProgress, setSavedProgress] = useState(() => loadSavedProgress());
   const [battleSave, setBattleSave] = useState<BattleSaveData | null>(() => loadBattleState());
@@ -346,6 +348,8 @@ function App() {
             onTurnStart={onBattleTurnStart}
             onBattleFinished={() => clearBattleState()}
             initialGameState={restoredBattleState}
+            rewardAdUsed={rewardAdUsed}
+            onUseRewardAd={useRewardAd}
           />
         );
       case 'event':

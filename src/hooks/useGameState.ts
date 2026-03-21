@@ -19,6 +19,7 @@ const MAX_RESERVED = 2;
 const RESERVE_TIME_PENALTY = 1.5;
 const DRAW_COUNT = 5;
 const SELL_ANIMATION_MS = 220;
+const REWARD_AD_HEAL_AMOUNT = 20;
 const MAX_MENTAL = 10;
 const INITIAL_MENTAL = 7;
 const CARPENTER_CAN_SELL_IN_BATTLE = false;
@@ -108,6 +109,8 @@ export interface UseGameStateResult {
   endTurn: () => Promise<void>;
   concedeBattle: () => void;
   retryBattle: () => void;
+  /** リワード広告プレースホルダー：HPを最大20回復（バトル開始／プレイヤーターンのみ） */
+  applyRewardAdHeal: () => boolean;
 }
 
 interface UseGameStateOptions {
@@ -1399,6 +1402,29 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     pushPopupRef.current = pushPopup;
   });
 
+  const applyRewardAdHeal = (): boolean => {
+    let healed = 0;
+    setGameState((prev) => {
+      if (!['battle_start', 'player_turn'].includes(prev.phase)) return prev;
+      const { currentHp, maxHp } = prev.player;
+      if (currentHp >= maxHp) return prev;
+      const nextHp = Math.min(maxHp, currentHp + REWARD_AD_HEAL_AMOUNT);
+      healed = nextHp - currentHp;
+      return {
+        ...prev,
+        player: {
+          ...prev.player,
+          currentHp: nextHp,
+        },
+      };
+    });
+    if (healed > 0) {
+      pushPopup(`+${healed} HP`, 'player', 'buff');
+      return true;
+    }
+    return false;
+  };
+
   const retryBattle = (): void => {
     setGameState(createInitialGameState(options?.setup));
     setSelectedCardId(null);
@@ -1500,5 +1526,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     endTurn,
     concedeBattle,
     retryBattle,
+    applyRewardAdHeal,
   };
 };
