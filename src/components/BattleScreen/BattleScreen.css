@@ -250,14 +250,8 @@
   align-items: center;
   gap: 6px;
   z-index: 50;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  overflow: visible;
   pointer-events: auto;
-}
-
-.battle-omamori-list::-webkit-scrollbar {
-  display: none;
 }
 
 .battle-omamori-item {
@@ -295,7 +289,8 @@
 
 .battle-omamori-tooltip {
   position: absolute;
-  top: 38px;
+  bottom: 38px;
+  top: auto;
   left: 0;
   background: #161b22;
   border: 1px solid rgba(240, 180, 41, 0.4);
