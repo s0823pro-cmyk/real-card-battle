@@ -89,6 +89,34 @@ const getUpgradePreviewText = (card: Card): string => {
   return `所要時間 ${card.timeCost} → ${Math.max(1, card.timeCost - 1)}秒`;
 };
 
+const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  return (
+    <div
+      className="battle-omamori-item"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+      onTouchStart={(e) => {
+        e.stopPropagation();
+        setShowTooltip(true);
+      }}
+      onTouchEnd={() => setTimeout(() => setShowTooltip(false), 1500)}
+    >
+      {omamori.imageUrl ? (
+        <img src={omamori.imageUrl} alt={omamori.name} className="battle-omamori-img" />
+      ) : (
+        <span className="battle-omamori-icon">{omamori.icon}</span>
+      )}
+      {showTooltip && (
+        <div className="battle-omamori-tooltip">
+          <p className="battle-omamori-tooltip-name">{omamori.name}</p>
+          <p className="battle-omamori-tooltip-desc">{omamori.description}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const BattleScreen = ({
   setup,
   onBattleEnd,
@@ -785,19 +813,9 @@ const BattleScreen = ({
       )}
       {/* お守りリスト */}
       {omamoris && omamoris.length > 0 && (
-        <div className="battle-omamori-list" aria-hidden>
+        <div className="battle-omamori-list">
           {omamoris.map((omamori) => (
-            <div key={omamori.id} className="battle-omamori-item" title={omamori.name}>
-              {omamori.imageUrl ? (
-                <img
-                  src={omamori.imageUrl}
-                  alt={omamori.name}
-                  className="battle-omamori-img"
-                />
-              ) : (
-                <span className="battle-omamori-icon">{omamori.icon}</span>
-              )}
-            </div>
+            <BattleOmamoriItem key={omamori.id} omamori={omamori} />
           ))}
         </div>
       )}

@@ -250,32 +250,75 @@
   align-items: center;
   gap: 6px;
   z-index: 30;
-  pointer-events: none;
   padding: 0 90px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.battle-omamori-list::-webkit-scrollbar {
+  display: none;
 }
 
 .battle-omamori-item {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  overflow: hidden;
+  overflow: visible;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .battle-omamori-img {
-  width: 100%;
-  height: 100%;
+  width: 32px;
+  height: 32px;
   object-fit: cover;
+  border-radius: 6px;
 }
 
 .battle-omamori-icon {
   font-size: 18px;
   line-height: 1;
+}
+
+.battle-omamori-tooltip {
+  position: absolute;
+  top: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #161b22;
+  border: 1px solid rgba(240, 180, 41, 0.4);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 140px;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.battle-omamori-tooltip-name {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f0b429;
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.battle-omamori-tooltip-desc {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  color: #8b949e;
+  margin: 0;
+  line-height: 1.5;
 }
 
 .battle-settings-trigger {
