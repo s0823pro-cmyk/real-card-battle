@@ -459,6 +459,29 @@
   flex-shrink: 0;
 }
 
+.battle-timebar-reserve-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  width: 100%;
+  position: relative;
+  transform: translateY(32px);
+}
+
+.battle-timebar-reserve-row .battle-timebar-row {
+  flex: 1;
+  min-width: 0;
+  transform: none;
+  padding: 0 8px 0 12px;
+}
+
+.battle-timebar-reserve-row .battle-reserve-area {
+  flex-shrink: 0;
+  transform: none;
+  padding: 0 4px 0 0;
+  width: auto;
+}
+
 .battle-timebar-row {
   flex-shrink: 0;
   display: flex;

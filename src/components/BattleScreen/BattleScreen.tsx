@@ -874,30 +874,32 @@ const BattleScreen = ({
           />
         </div>
 
-        <div
-          className={`battle-timebar-row ${isHoveringTimebar ? 'timebar-row--active' : ''}`}
-          ref={timebarRowRef}
-        >
-          <Timeline
-            maxTime={gameState.maxTime}
-            remainingTime={remainingTime}
-            isDropActive={Boolean(timeUsagePreview)}
-            previewRemainingTime={timeUsagePreview?.previewRemaining ?? null}
-            previewCost={timeUsagePreview?.previewCost ?? null}
-            gaugeStyle={timelineGaugeStyle}
-            timelineBarRef={timelineBarRef}
-          />
-        </div>
+        <div className="battle-timebar-reserve-row">
+          <div
+            className={`battle-timebar-row ${isHoveringTimebar ? 'timebar-row--active' : ''}`}
+            ref={timebarRowRef}
+          >
+            <Timeline
+              maxTime={gameState.maxTime}
+              remainingTime={remainingTime}
+              isDropActive={Boolean(timeUsagePreview)}
+              previewRemainingTime={timeUsagePreview?.previewRemaining ?? null}
+              previewCost={timeUsagePreview?.previewCost ?? null}
+              gaugeStyle={timelineGaugeStyle}
+              timelineBarRef={timelineBarRef}
+            />
+          </div>
 
-        <div className="battle-reserve-area battle-reserve-area--gauge-expand" ref={reserveAreaRef}>
-          <ActionBar
-            reserved={gameState.reserved}
-            jobId={gameState.player.jobId}
-            isDragging={handDrag.isDragging}
-            activeDropTarget={handDrag.dropTarget}
-            reserveFull={reserveFull}
-            reserveDropRef={reserveDropRef}
-          />
+          <div className="battle-reserve-area battle-reserve-area--gauge-expand" ref={reserveAreaRef}>
+            <ActionBar
+              reserved={gameState.reserved}
+              jobId={gameState.player.jobId}
+              isDragging={handDrag.isDragging}
+              activeDropTarget={handDrag.dropTarget}
+              reserveFull={reserveFull}
+              reserveDropRef={reserveDropRef}
+            />
+          </div>
         </div>
 
         <div className="battle-status-row">
