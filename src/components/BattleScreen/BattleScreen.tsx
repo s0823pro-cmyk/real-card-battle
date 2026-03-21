@@ -13,7 +13,7 @@ import VictoryScreen from '../Result/VictoryScreen';
 import Timeline from '../Timeline/Timeline';
 import { useGameState } from '../../hooks/useGameState';
 import type { Card, GameState } from '../../types/game';
-import type { BattleResult, BattleSetup } from '../../types/run';
+import type { BattleResult, BattleSetup, Omamori } from '../../types/run';
 import { getEffectiveCardValues } from '../../utils/cardPreview';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
@@ -59,6 +59,8 @@ interface BattleScreenProps {
   rewardAdUsed?: boolean;
   /** リワード使用時（HP回復後にラン状態を更新） */
   onUseRewardAd?: () => void;
+  /** 所持お守り（ヘッダー表示） */
+  omamoris?: Omamori[];
 }
 
 const DRAG_CARD_HEIGHT = 168;
@@ -96,6 +98,7 @@ const BattleScreen = ({
   initialGameState,
   rewardAdUsed = false,
   onUseRewardAd,
+  omamoris,
 }: BattleScreenProps) => {
   const noop = () => {};
   const {
@@ -779,6 +782,24 @@ const BattleScreen = ({
         >
           📺 使用済み
         </button>
+      )}
+      {/* お守りリスト */}
+      {omamoris && omamoris.length > 0 && (
+        <div className="battle-omamori-list" aria-hidden>
+          {omamoris.map((omamori) => (
+            <div key={omamori.id} className="battle-omamori-item" title={omamori.name}>
+              {omamori.imageUrl ? (
+                <img
+                  src={omamori.imageUrl}
+                  alt={omamori.name}
+                  className="battle-omamori-img"
+                />
+              ) : (
+                <span className="battle-omamori-icon">{omamori.icon}</span>
+              )}
+            </div>
+          ))}
+        </div>
       )}
       {canOpenBattleSettings && (
         <button

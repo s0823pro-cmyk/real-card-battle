@@ -348,6 +348,7 @@ function App() {
             onTurnStart={onBattleTurnStart}
             onBattleFinished={() => clearBattleState()}
             initialGameState={restoredBattleState}
+            omamoris={state.omamoris}
             rewardAdUsed={rewardAdUsed}
             onUseRewardAd={useRewardAd}
           />
