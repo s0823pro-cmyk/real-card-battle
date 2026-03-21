@@ -4,6 +4,7 @@ import CardComponent from '../Hand/CardComponent';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import type { Achievement } from '../../utils/achievementSystem';
 import { getAchievementRewardCard, getAchievementRewardOmamori } from '../../utils/achievementRewardLookup';
+import './AchievementRewardModal.css';
 
 const STATIC_VALUES: EffectiveCardValues = {
   damage: null,
@@ -83,7 +84,15 @@ export const AchievementRewardModal = ({ selected, onClose, jobId }: Achievement
           if (!omamori) return null;
           return (
             <div className="achievement-omamori-detail">
-              <span className="achievement-omamori-icon">{omamori.icon}</span>
+              {omamori.imageUrl ? (
+                <img
+                  src={omamori.imageUrl}
+                  alt={omamori.name}
+                  className="achievement-omamori-img"
+                />
+              ) : (
+                <span className="achievement-omamori-icon">{omamori.icon}</span>
+              )}
               <p className="achievement-omamori-name">{omamori.name}</p>
               <p className="achievement-omamori-desc">{omamori.description}</p>
             </div>

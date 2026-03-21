@@ -44,6 +44,34 @@
   font-weight: 600;
 }
 
+.flow-btn--omamori {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.omamori-reward-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.omamori-reward-icon {
+  font-size: 40px;
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 52px;
+  text-align: center;
+}
+
+.omamori-reward-text {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
 .card-display-grid {
   display: flex;
   flex-wrap: wrap;
