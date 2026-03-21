@@ -800,7 +800,7 @@ const HomeScreen = ({
                   <button
                     type="button"
                     className="settings-btn-link"
-                    onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/terms.html', '_blank')}
+                    onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/terms.html', '_self')}
                   >
                     確認 →
                   </button>
@@ -813,7 +813,7 @@ const HomeScreen = ({
                   <button
                     type="button"
                     className="settings-btn-link"
-                    onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/privacy.html', '_blank')}
+                    onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/privacy.html', '_self')}
                   >
                     確認 →
                   </button>
