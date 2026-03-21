@@ -1028,3 +1028,57 @@
   padding: 16px;
   -webkit-overflow-scrolling: touch;
 }
+
+.credits-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.credits-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.credits-game-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: #f0b429;
+  margin: 0;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 20px rgba(240, 180, 41, 0.4);
+}
+
+.credits-version {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: #3d444d;
+  margin: 0;
+}
+
+.credits-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: #f0b429;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.credits-value {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  color: #e6edf3;
+  margin: 0;
+}
+
+.credits-value-sub {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  color: #8b949e;
+  margin: 0;
+}

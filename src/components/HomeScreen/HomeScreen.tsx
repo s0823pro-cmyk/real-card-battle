@@ -810,7 +810,44 @@ const HomeScreen = ({
                 )}
               </div>
             ) : (
-              <p>準備中です。</p>
+              <div className="credits-content">
+                <div className="credits-section">
+                  <p className="credits-game-title">JOBLESS</p>
+                  <p className="credits-version">ver 0.1.0</p>
+                </div>
+
+                <div className="credits-section">
+                  <p className="credits-label">Development</p>
+                  <p className="credits-value">Aramanchu</p>
+                </div>
+
+                <div className="credits-section">
+                  <p className="credits-label">Tools</p>
+                  <p className="credits-value">React / Vite / TypeScript</p>
+                  <p className="credits-value">Cursor / Claude (Anthropic)</p>
+                </div>
+
+                <div className="credits-section">
+                  <p className="credits-label">Art & Images</p>
+                  <p className="credits-value">AI Generated (ChatGPT / DALL·E)</p>
+                </div>
+
+                <div className="credits-section">
+                  <p className="credits-label">Fonts</p>
+                  <p className="credits-value">Noto Serif JP / Orbitron</p>
+                </div>
+
+                <div className="credits-section">
+                  <p className="credits-label">Inspired by</p>
+                  <p className="credits-value">Slay the Spire</p>
+                  <p className="credits-value-sub">by MegaCrit</p>
+                </div>
+
+                <div className="credits-section">
+                  <p className="credits-label">Special Thanks</p>
+                  <p className="credits-value">すべてのプレイヤーへ 🙏</p>
+                </div>
+              </div>
             )}
             <button type="button" className="home-modal-close" onClick={() => setModal(null)}>
               閉じる
