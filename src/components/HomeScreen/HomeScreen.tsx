@@ -773,6 +773,58 @@ const HomeScreen = ({
                     {preloadEnabled ? 'ON' : 'OFF'}
                   </button>
                 </div>
+
+                {/* 課金・法的情報 */}
+                <div className="settings-divider" />
+
+                <div className="settings-item">
+                  <div className="settings-item-info">
+                    <p className="settings-item-title">購入の復元</p>
+                    <p className="settings-item-desc">
+                      以前に購入した広告削除を復元します。
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-btn-restore"
+                    disabled
+                  >
+                    復元
+                  </button>
+                </div>
+
+                <div className="settings-item">
+                  <div className="settings-item-info">
+                    <p className="settings-item-title">利用規約</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-btn-link"
+                    onClick={() => window.open('https://aramanchu.notion.site/jobless-terms', '_blank')}
+                  >
+                    確認 →
+                  </button>
+                </div>
+
+                <div className="settings-item">
+                  <div className="settings-item-info">
+                    <p className="settings-item-title">プライバシーポリシー</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-btn-link"
+                    onClick={() => window.open('https://aramanchu.notion.site/jobless-privacy', '_blank')}
+                  >
+                    確認 →
+                  </button>
+                </div>
+
+                <div className="settings-legal">
+                  <p className="settings-legal-text">
+                    広告削除（¥250）は買い切りです。購入後は同一Apple ID / Google アカウントで無制限にご利用いただけます。
+                  </p>
+                </div>
+
                 {import.meta.env.DEV && (
                   <div className="dev-tools">
                     <p className="dev-tools-title">🛠️ 開発用ツール</p>
