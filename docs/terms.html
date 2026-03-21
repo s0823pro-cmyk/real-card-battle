@@ -50,50 +50,14 @@
       padding-top: 16px;
       border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
-    header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px 10px;
-      margin-bottom: 16px;
-    }
-    .header-game {
-      font-family: 'Noto Serif JP', serif;
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .header-sep {
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-    .header-title {
-      font-family: 'Noto Serif JP', serif;
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .header-back {
-      background: none;
-      border: none;
-      color: #8b949e;
-      font-family: 'Noto Serif JP', serif;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      padding: 4px 8px;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .header-back:hover { color: #e6edf3; }
   </style>
 </head>
 <body>
-  <header>
-    <button class="header-back" type="button" onclick="history.back()">← 戻る</button>
-    <span class="header-game">JOBLESS</span>
-    <span class="header-sep">/</span>
-    <span class="header-title">利用規約</span>
+  <header style="position:sticky;top:0;z-index:10;background:rgba(13,17,23,0.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);padding:16px 24px;display:flex;align-items:center;gap:16px;">
+    <button type="button" onclick="history.back()" style="background:none;border:none;color:#8b949e;font-family:'Noto Serif JP',serif;font-size:13px;font-weight:700;cursor:pointer;padding:4px 8px;">← 戻る</button>
+    <span style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:#f0b429;letter-spacing:0.15em;">JOBLESS</span>
+    <span style="color:#3d444d;font-size:12px;">/</span>
+    <span style="font-size:13px;color:#8b949e;">利用規約</span>
   </header>
   <p class="meta">アプリ「JOBLESS」（以下「本アプリ」）をご利用いただくにあたり、以下の事項をご確認ください。</p>
 
