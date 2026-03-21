@@ -32,6 +32,14 @@ import cursedTreeImage from '../assets/enemies/cursed_tree.png';
 import worldTreeGuardianImage from '../assets/enemies/world_tree_guardian.png';
 import ancientGhostImage from '../assets/enemies/ancient_ghost.png';
 import worldTreeWardenImage from '../assets/enemies/world_tree_warden.png';
+import energyDrinkImage from '../assets/omamori/energy_drink.png';
+import amuletImage from '../assets/omamori/amulet.png';
+import alarmClockImage from '../assets/omamori/alarm_clock.png';
+import supplementImage from '../assets/omamori/supplement.png';
+import brandWalletImage from '../assets/omamori/brand_wallet.png';
+import hardHatImage from '../assets/omamori/hard_hat.png';
+import victoryCharmImage from '../assets/omamori/victory_charm.png';
+import fortuneCatImage from '../assets/omamori/fortune_cat.png';
 
 export const TILE_LABELS: Record<string, { icon: string; name: string }> = {
   start: { icon: '🏁', name: 'スタート' },
@@ -106,6 +114,7 @@ export const RELICS: Omamori[] = [
     id: 'energy_drink',
     name: 'エナジードリンク',
     icon: '⚡',
+    imageUrl: energyDrinkImage,
     description: '戦闘開始時タイムバー+1秒（初ターンのみ）',
     effect: { type: 'start_of_battle', stat: 'time', value: 1 },
   },
@@ -113,6 +122,7 @@ export const RELICS: Omamori[] = [
     id: 'amulet',
     name: '厄除けお守り',
     icon: '🔮',
+    imageUrl: amuletImage,
     description: '呪いカード1枚を無効化',
     effect: { type: 'passive', stat: 'curse_immunity', value: 1 },
   },
@@ -120,6 +130,7 @@ export const RELICS: Omamori[] = [
     id: 'alarm_clock',
     name: '目覚まし時計',
     icon: '⏰',
+    imageUrl: alarmClockImage,
     description: '毎ターン開始時カード+1枚ドロー',
     effect: { type: 'on_turn_start', stat: 'draw', value: 1 },
   },
@@ -127,6 +138,7 @@ export const RELICS: Omamori[] = [
     id: 'supplement',
     name: '栄養サプリ',
     icon: '💊',
+    imageUrl: supplementImage,
     description: '休憩マスでの回復量+10',
     effect: { type: 'passive', stat: 'rest_heal', value: 10 },
   },
@@ -134,6 +146,7 @@ export const RELICS: Omamori[] = [
     id: 'brand_wallet',
     name: 'ブランド財布',
     icon: '👜',
+    imageUrl: brandWalletImage,
     description: 'ショップ全品15%割引',
     effect: { type: 'passive', stat: 'shop_discount', value: 0.15 },
   },
@@ -141,6 +154,7 @@ export const RELICS: Omamori[] = [
     id: 'hard_hat',
     name: '安全第一ヘルメット',
     icon: '⛑️',
+    imageUrl: hardHatImage,
     description: '毎ターン+2ブロック',
     effect: { type: 'on_turn_start', stat: 'block', value: 2 },
   },
@@ -148,6 +162,7 @@ export const RELICS: Omamori[] = [
     id: 'victory_charm',
     name: '勝利のお守り',
     icon: '🏆',
+    imageUrl: victoryCharmImage,
     description: '敵を倒すたびHPを2回復',
     effect: { type: 'on_kill', stat: 'heal', value: 2 },
   },
@@ -155,6 +170,7 @@ export const RELICS: Omamori[] = [
     id: 'fortune_cat',
     name: '招き猫のお守り',
     icon: '🐱',
+    imageUrl: fortuneCatImage,
     description: '敵を倒すたび+4G',
     effect: { type: 'on_kill', stat: 'gold', value: 4 },
   },
