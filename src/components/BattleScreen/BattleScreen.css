@@ -249,7 +249,7 @@
   justify-content: flex-start;
   align-items: center;
   gap: 6px;
-  z-index: 32;
+  z-index: 50;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -299,17 +299,7 @@
   width: 140px;
   z-index: 200;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s ease;
   text-align: left;
-}
-
-.battle-omamori-item:hover .battle-omamori-tooltip {
-  opacity: 1;
-}
-
-.battle-omamori-tooltip--touch {
-  opacity: 1 !important;
 }
 
 .battle-omamori-tooltip-name {
