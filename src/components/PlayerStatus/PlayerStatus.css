@@ -15,7 +15,7 @@
   --slot-frame-height: 56px;
   --item-slot-size: 36px;
   /* 下段「段取り＋アイテム」ブロックの横位置（大きいほど右） */
-  --item-slots-sub-nudge: 58px;
+  --item-slots-sub-nudge: 42px;
   /* 下段行全体をわずかに左へ（段取り・山札・終了などの見た目位置を揃える） */
   --player-sub-row-shift-x: -33px;
   /* 段取りテキストだけ左へ（px を増やすほど左） */
