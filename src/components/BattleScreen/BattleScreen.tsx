@@ -74,6 +74,8 @@ const DRAG_DISPLAY_Y_OFFSET = -(DRAG_CARD_HEIGHT - 40);
 // 判定オフセット：カード上端基準（複数プローブで使用）
 const DRAG_JUDGE_Y_OFFSET = DRAG_DISPLAY_Y_OFFSET;
 type ReserveConfirmState = { card: Card; visible: boolean } | null;
+
+const BOSS_IDS = ['monster_customer', 'evil_ceo', 'world_tree_warden'];
 const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
   if ((card.damage ?? 0) > 0) return 'damage';
   if ((card.block ?? 0) > 0) return 'block';
@@ -187,6 +189,11 @@ const BattleScreen = ({
     applyRewardAdHeal,
   } = useGameState({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattleFinished, initialGameState });
 
+  const isBoss = useMemo(
+    () => gameState.enemies.some((e) => BOSS_IDS.includes(e.templateId)),
+    [gameState.enemies],
+  );
+
   const enemyAreaRef = useRef<HTMLElement | null>(null);
   const timebarRowRef = useRef<HTMLDivElement | null>(null);
   const reserveAreaRef = useRef<HTMLDivElement | null>(null);
@@ -248,13 +255,13 @@ const BattleScreen = ({
     }
   }, [gameState.phase]);
 
-  // バトルBGM
   useEffect(() => {
-    playBgm('battle');
-    return () => { playBgm('none'); };
-  }, [playBgm]);
+    playBgm(isBoss ? 'boss' : 'battle');
+    return () => {
+      playBgm('none');
+    };
+  }, [isBoss, playBgm]);
 
-  // ダメージポップアップ → SE
   const prevPopupsLenRef = useRef(0);
   useEffect(() => {
     const newPopups = battlePopups.slice(prevPopupsLenRef.current);
@@ -262,8 +269,6 @@ const BattleScreen = ({
     for (const popup of newPopups) {
       if (popup.target === 'player' && popup.kind === 'damage') {
         playSe('damage');
-      } else if (popup.kind === 'block') {
-        playSe('block');
       }
     }
   }, [battlePopups, playSe]);
@@ -584,14 +589,15 @@ const BattleScreen = ({
             .map((probe) => detectHoveredEnemyId(probe.x, probe.y))
             .find((enemyId) => enemyId !== null) ?? null;
         const preferred = finalHoveredEnemyId ?? hoveredEnemyId ?? aliveEnemies[0]?.id ?? null;
-        const played = playCardInstant(handDrag.card.id, { type: 'enemy', enemyId: preferred });
-        if (played) {
+        const result = playCardInstant(handDrag.card.id, { type: 'enemy', enemyId: preferred });
+        if (result.played) {
           lastCardPlayTimeRef.current = Date.now();
-          playSe('cardPlay');
+          playSe('card');
           if (handDrag.card.type === 'attack') {
             playSe('attack');
             triggerAttackEffect(preferred);
           }
+          if (result.blockGained > 0) playSe('block');
         }
       } else if (finalTarget === 'field') {
         // フィールド全体は発動しない（静かに手札へ戻す）
@@ -602,11 +608,12 @@ const BattleScreen = ({
           resetDragInteraction();
           return;
         }
-        const played = playCardInstant(handDrag.card.id, { type: 'field' });
-        if (played) {
+        const result = playCardInstant(handDrag.card.id, { type: 'field' });
+        if (result.played) {
           lastCardPlayTimeRef.current = Date.now();
-          playSe('cardPlay');
+          playSe('card');
           if (handDrag.card.type === 'skill') triggerSkillEffect();
+          if (result.blockGained > 0) playSe('block');
         }
       } else if (finalTarget === 'reserve') {
         setReserveConfirm({ card: handDrag.card, visible: true });
@@ -962,13 +969,9 @@ const BattleScreen = ({
         {skillEffect && <div className="effect-skill" />}
       </div>
 
-      {/* ミュートボタン */}
       <button
         type="button"
-        onClick={() => {
-          const nowMuted = toggleMute();
-          setMuted(nowMuted);
-        }}
+        onClick={() => setMuted(toggleMute())}
         style={{
           position: 'fixed',
           top: 8,
@@ -982,9 +985,6 @@ const BattleScreen = ({
           fontSize: 18,
           cursor: 'pointer',
           color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
         }}
         aria-label={muted ? 'ミュート解除' : 'ミュート'}
       >

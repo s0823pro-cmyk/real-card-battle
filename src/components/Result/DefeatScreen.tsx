@@ -1,8 +1,17 @@
+import { useEffect } from 'react';
+import { useAudioContext } from '../../contexts/AudioContext';
+
 interface Props {
   onRetry: () => void;
 }
 
 const DefeatScreen = ({ onRetry }: Props) => {
+  const { playBgm } = useAudioContext();
+
+  useEffect(() => {
+    playBgm('defeat');
+  }, [playBgm]);
+
   return (
     <div className="result-overlay defeat">
       <h2>GAME OVER</h2>

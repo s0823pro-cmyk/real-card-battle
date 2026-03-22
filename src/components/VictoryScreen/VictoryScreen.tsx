@@ -25,12 +25,11 @@ export const VictoryScreen = ({
   const [showStats, setShowStats] = useState(false);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
-  const { playSe, playBgm } = useAudioContext();
+  const { playBgm } = useAudioContext();
 
   useEffect(() => {
-    playSe('victory');
-    playBgm('none');
-  }, [playSe, playBgm]);
+    playBgm('victory');
+  }, [playBgm]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowStats(true), 800);

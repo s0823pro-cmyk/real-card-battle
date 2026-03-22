@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAudioContext } from '../../contexts/AudioContext';
 
 interface Props {
   onRetry: () => void;
@@ -9,6 +10,11 @@ interface Props {
 
 const VictoryScreen = ({ onRetry, rewardGold, totalGold, mentalRecovery }: Props) => {
   const [displayGold, setDisplayGold] = useState(0);
+  const { playBgm } = useAudioContext();
+
+  useEffect(() => {
+    playBgm('victory');
+  }, [playBgm]);
 
   useEffect(() => {
     const start = performance.now();

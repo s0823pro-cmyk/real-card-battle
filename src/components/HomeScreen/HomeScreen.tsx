@@ -364,11 +364,19 @@ const HomeScreen = ({
     });
   };
 
+  const { playSe, playBgm } = useAudioContext();
+
+  useEffect(() => {
+    playBgm('menu');
+    return () => playBgm('none');
+  }, [playBgm]);
+
   const handleButtonClick = (index: number, callback: () => void) => {
     if (fallingIndex !== null) {
       return;
     }
 
+    playSe('button');
     setFallingIndex(index);
     const clickedBtn = btnRefs.current[index];
     if (!clickedBtn) {
@@ -442,12 +450,6 @@ const HomeScreen = ({
       activeFragmentsRef.current = [];
     };
   }, []);
-
-  const { playBgm } = useAudioContext();
-  useEffect(() => {
-    playBgm('menu');
-    return () => { playBgm('none'); };
-  }, [playBgm]);
 
   const handleHowtoStoryComplete = () => {
     setPlayingStory(null);

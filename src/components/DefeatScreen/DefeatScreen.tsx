@@ -36,12 +36,11 @@ export const DefeatScreen = ({
   onRetry,
 }: DefeatScreenProps) => {
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
-  const { playSe, playBgm } = useAudioContext();
+  const { playBgm } = useAudioContext();
 
   useEffect(() => {
-    playSe('defeat');
-    playBgm('none');
-  }, [playSe, playBgm]);
+    playBgm('defeat');
+  }, [playBgm]);
 
   const message = useMemo(
     () => DEFEAT_MESSAGES[Math.floor(Math.random() * DEFEAT_MESSAGES.length)],

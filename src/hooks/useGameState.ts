@@ -100,7 +100,7 @@ export interface UseGameStateResult {
   playCardInstant: (
     cardId: string,
     target: { type: 'enemy'; enemyId: string | null } | { type: 'field' },
-  ) => boolean;
+  ) => { played: boolean; blockGained: number };
   reserveCardById: (cardId: string) => boolean;
   sellCardById: (cardId: string) => boolean;
   useBattleItem: (itemId: string) => boolean;
@@ -497,13 +497,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const playCardInstant = (
     cardId: string,
     target: { type: 'enemy'; enemyId: string | null } | { type: 'field' },
-  ): boolean => {
-    if (gameState.phase !== 'player_turn') return false;
-    if (activePendingHandUpgradeCount > 0) return false;
+  ): { played: boolean; blockGained: number } => {
+    if (gameState.phase !== 'player_turn') return { played: false, blockGained: 0 };
+    if (activePendingHandUpgradeCount > 0) return { played: false, blockGained: 0 };
     const card = gameState.hand.find((item) => item.id === cardId);
-    if (!card || !canPlayCard(card)) return false;
-    if (isEnemyTargetCard(card) && target.type !== 'enemy') return false;
-    if (!isEnemyTargetCard(card) && target.type === 'enemy') return false;
+    if (!card || !canPlayCard(card)) return { played: false, blockGained: 0 };
+    if (isEnemyTargetCard(card) && target.type !== 'enemy') return { played: false, blockGained: 0 };
+    if (!isEnemyTargetCard(card) && target.type === 'enemy') return { played: false, blockGained: 0 };
     const cardWasReserved = Boolean(card.wasReserved);
 
     const enhancedCard = getEnhancedCardForPlay(card);
@@ -841,7 +841,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         });
       }, 500);
     }
-    return true;
+    return { played: true, blockGained: result.blockGained };
   };
 
   const useBattleItem = (itemId: string): boolean => {
