@@ -364,7 +364,31 @@ const HomeScreen = ({
     });
   };
 
-  const { playSe, playBgm } = useAudioContext();
+  const {
+    playSe,
+    playBgm,
+    setBgmVolume,
+    setSeVolume,
+    toggleBgmMute,
+    toggleSeMute,
+    getBgmVolume,
+    getSeVolume,
+    isBgmMuted,
+    isSeMuted,
+  } = useAudioContext();
+
+  const [bgmVol, setBgmVol] = useState(0.4);
+  const [seVol, setSeVol] = useState(0.6);
+  const [bgmMuted, setBgmMuted] = useState(false);
+  const [seMuted, setSeMuted] = useState(false);
+
+  useEffect(() => {
+    if (modal !== 'settings') return;
+    setBgmVol(getBgmVolume());
+    setSeVol(getSeVolume());
+    setBgmMuted(isBgmMuted());
+    setSeMuted(isSeMuted());
+  }, [modal, getBgmVolume, getSeVolume, isBgmMuted, isSeMuted]);
 
   useEffect(() => {
     playBgm('menu');
@@ -739,6 +763,99 @@ const HomeScreen = ({
               </div>
             ) : modal === 'settings' ? (
               <div className="settings-list">
+                {/* BGM音量 */}
+                <div style={{ marginBottom: 20 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ fontWeight: 'bold' }}>BGM音量</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = toggleBgmMute();
+                        setBgmMuted(next);
+                      }}
+                      style={{
+                        background: bgmMuted ? '#666' : '#4caf50',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 4,
+                        padding: '2px 10px',
+                        cursor: 'pointer',
+                        fontSize: 13,
+                      }}
+                    >
+                      {bgmMuted ? '🔇 OFF' : '🔊 ON'}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={bgmVol}
+                    disabled={bgmMuted}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      setBgmVol(v);
+                      setBgmVolume(v);
+                    }}
+                    style={{ width: '100%', accentColor: '#c8a96e' }}
+                  />
+                </div>
+
+                {/* SE音量 */}
+                <div style={{ marginBottom: 20 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ fontWeight: 'bold' }}>SE音量</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = toggleSeMute();
+                        setSeMuted(next);
+                      }}
+                      style={{
+                        background: seMuted ? '#666' : '#4caf50',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 4,
+                        padding: '2px 10px',
+                        cursor: 'pointer',
+                        fontSize: 13,
+                      }}
+                    >
+                      {seMuted ? '🔇 OFF' : '🔊 ON'}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={seVol}
+                    disabled={seMuted}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      setSeVol(v);
+                      setSeVolume(v);
+                    }}
+                    style={{ width: '100%', accentColor: '#c8a96e' }}
+                  />
+                </div>
+                <hr style={{ borderColor: '#444', marginBottom: 20 }} />
+
                 <div className="settings-item">
                   <div className="settings-item-info">
                     <p className="settings-item-title">データ初期化</p>

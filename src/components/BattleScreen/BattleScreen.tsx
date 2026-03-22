@@ -147,8 +147,7 @@ const BattleScreen = ({
   omamoris,
 }: BattleScreenProps) => {
   const noop = () => {};
-  const { playSe, playBgm, toggleMute } = useAudioContext();
-  const [muted, setMuted] = useState(false);
+  const { playSe, playBgm } = useAudioContext();
   const {
     gameState,
     selectedCardId,
@@ -968,28 +967,6 @@ const BattleScreen = ({
         )}
         {skillEffect && <div className="effect-skill" />}
       </div>
-
-      <button
-        type="button"
-        onClick={() => setMuted(toggleMute())}
-        style={{
-          position: 'fixed',
-          top: 8,
-          right: 8,
-          zIndex: 100,
-          background: 'rgba(0,0,0,0.5)',
-          border: 'none',
-          borderRadius: '50%',
-          width: 36,
-          height: 36,
-          fontSize: 18,
-          cursor: 'pointer',
-          color: '#fff',
-        }}
-        aria-label={muted ? 'ミュート解除' : 'ミュート'}
-      >
-        {muted ? '🔇' : '🔊'}
-      </button>
 
       {gameState.shuffleAnimation && <div className="shuffle-popup">🔀 シャッフル中</div>}
 

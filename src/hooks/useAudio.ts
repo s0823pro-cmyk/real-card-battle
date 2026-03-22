@@ -21,15 +21,59 @@ const BGM_FILES: Record<Exclude<BgmType, 'none'>, string> = {
 
 const LOOP_BGM: BgmType[] = ['menu', 'battle', 'boss'];
 
+function readStoredFloat(key: string, fallback: number): number {
+  const v = parseFloat(localStorage.getItem(key) ?? String(fallback));
+  return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
+}
+
 export const useAudio = () => {
   const bgmRef = useRef<HTMLAudioElement | null>(null);
   const currentBgmRef = useRef<BgmType>('none');
-  const mutedRef = useRef(false);
+
+  const bgmVolumeRef = useRef<number>(readStoredFloat('bgmVolume', 0.4));
+  const seVolumeRef = useRef<number>(readStoredFloat('seVolume', 0.6));
+  const bgmMutedRef = useRef<boolean>(localStorage.getItem('bgmMuted') === 'true');
+  const seMutedRef = useRef<boolean>(localStorage.getItem('seMuted') === 'true');
+
+  const setBgmVolume = useCallback((vol: number) => {
+    const clamped = Math.min(1, Math.max(0, vol));
+    bgmVolumeRef.current = clamped;
+    localStorage.setItem('bgmVolume', String(clamped));
+    if (bgmRef.current) {
+      bgmRef.current.volume = bgmMutedRef.current ? 0 : clamped;
+    }
+  }, []);
+
+  const setSeVolume = useCallback((vol: number) => {
+    const clamped = Math.min(1, Math.max(0, vol));
+    seVolumeRef.current = clamped;
+    localStorage.setItem('seVolume', String(clamped));
+  }, []);
+
+  const toggleBgmMute = useCallback((): boolean => {
+    bgmMutedRef.current = !bgmMutedRef.current;
+    localStorage.setItem('bgmMuted', String(bgmMutedRef.current));
+    if (bgmRef.current) {
+      bgmRef.current.volume = bgmMutedRef.current ? 0 : bgmVolumeRef.current;
+    }
+    return bgmMutedRef.current;
+  }, []);
+
+  const toggleSeMute = useCallback((): boolean => {
+    seMutedRef.current = !seMutedRef.current;
+    localStorage.setItem('seMuted', String(seMutedRef.current));
+    return seMutedRef.current;
+  }, []);
+
+  const getBgmVolume = useCallback(() => bgmVolumeRef.current, []);
+  const getSeVolume = useCallback(() => seVolumeRef.current, []);
+  const isBgmMuted = useCallback(() => bgmMutedRef.current, []);
+  const isSeMuted = useCallback(() => seMutedRef.current, []);
 
   const playSe = useCallback((type: SeType) => {
-    if (mutedRef.current) return;
+    if (seMutedRef.current) return;
     const audio = new Audio(SE_FILES[type]);
-    audio.volume = 0.6;
+    audio.volume = seVolumeRef.current;
     audio.play().catch(() => {});
   }, []);
 
@@ -46,10 +90,10 @@ export const useAudio = () => {
     (type: BgmType) => {
       if (type === currentBgmRef.current) return;
       stopBgm();
-      if (type === 'none' || mutedRef.current) return;
+      if (type === 'none') return;
 
       const audio = new Audio(BGM_FILES[type]);
-      audio.volume = type === 'battle' || type === 'boss' ? 0.4 : 0.5;
+      audio.volume = bgmMutedRef.current ? 0 : bgmVolumeRef.current;
       audio.loop = LOOP_BGM.includes(type);
       audio.play().catch(() => {});
       bgmRef.current = audio;
@@ -58,23 +102,23 @@ export const useAudio = () => {
     [stopBgm],
   );
 
-  const toggleMute = useCallback((): boolean => {
-    mutedRef.current = !mutedRef.current;
-    if (mutedRef.current) {
-      if (bgmRef.current) bgmRef.current.pause();
-    } else {
-      if (bgmRef.current) bgmRef.current.play().catch(() => {});
-    }
-    return mutedRef.current;
-  }, []);
-
-  const isMuted = useCallback(() => mutedRef.current, []);
-
   useEffect(() => {
     return () => {
       stopBgm();
     };
   }, [stopBgm]);
 
-  return { playSe, playBgm, stopBgm, toggleMute, isMuted };
+  return {
+    playSe,
+    playBgm,
+    stopBgm,
+    setBgmVolume,
+    setSeVolume,
+    toggleBgmMute,
+    toggleSeMute,
+    getBgmVolume,
+    getSeVolume,
+    isBgmMuted,
+    isSeMuted,
+  };
 };
