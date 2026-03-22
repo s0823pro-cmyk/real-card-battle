@@ -190,7 +190,9 @@ const PlayerStatus = ({
                 label="⚡ 段取りボーナス"
                 description="直前に【準備】バッジのカードを使用。次のカードのダメージ・ブロック・回復が1.3倍"
               >
-                <span className="stat-preparation-text">⚡ 段取り！</span>
+                <span className="stat-preparation-text" aria-label="段取りボーナス">
+                  ⚡
+                </span>
               </Tooltip>
             </div>
           )}
