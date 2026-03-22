@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAudioContext } from '../../contexts/AudioContext';
 import type { JobId } from '../../types/game';
 import type { Achievement } from '../../utils/achievementSystem';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
@@ -24,6 +25,12 @@ export const VictoryScreen = ({
   const [showStats, setShowStats] = useState(false);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
+  const { playSe, playBgm } = useAudioContext();
+
+  useEffect(() => {
+    playSe('victory');
+    playBgm('none');
+  }, [playSe, playBgm]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowStats(true), 800);

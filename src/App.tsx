@@ -20,6 +20,8 @@ import {
   CardUpgradeScreen,
   OmamoriRewardScreen,
 } from './components/RunFlow/RewardScreens';
+import { useAudio } from './hooks/useAudio';
+import { AudioCtx } from './contexts/AudioContext';
 import { useRunProgress, loadSavedProgress, clearSavedProgress } from './hooks/useRunProgress';
 import type { DevDestination } from './hooks/useRunProgress';
 import {
@@ -42,6 +44,7 @@ import './components/RunFlow/RunFlow.css';
 type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 
 function App() {
+  const audio = useAudio();
   const {
     state,
     pendingItemReplacement,
@@ -474,6 +477,7 @@ function App() {
   };
 
   return (
+    <AudioCtx.Provider value={audio}>
     <div
       className={`app ${
         state.currentScreen === 'map' ||
@@ -598,6 +602,7 @@ function App() {
         </div>
       )}
     </div>
+    </AudioCtx.Provider>
   );
 }
 

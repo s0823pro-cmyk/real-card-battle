@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAudioContext } from '../../contexts/AudioContext';
 import type { JobId } from '../../types/game';
 import type { Achievement } from '../../utils/achievementSystem';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
@@ -35,6 +36,13 @@ export const DefeatScreen = ({
   onRetry,
 }: DefeatScreenProps) => {
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+  const { playSe, playBgm } = useAudioContext();
+
+  useEffect(() => {
+    playSe('defeat');
+    playBgm('none');
+  }, [playSe, playBgm]);
+
   const message = useMemo(
     () => DEFEAT_MESSAGES[Math.floor(Math.random() * DEFEAT_MESSAGES.length)],
     [],

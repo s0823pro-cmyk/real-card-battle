@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAudioContext } from '../../contexts/AudioContext';
 import type { CSSProperties } from 'react';
 import { StoryScreen } from '../StoryScreen/StoryScreen';
 import {
@@ -441,6 +442,12 @@ const HomeScreen = ({
       activeFragmentsRef.current = [];
     };
   }, []);
+
+  const { playBgm } = useAudioContext();
+  useEffect(() => {
+    playBgm('menu');
+    return () => { playBgm('none'); };
+  }, [playBgm]);
 
   const handleHowtoStoryComplete = () => {
     setPlayingStory(null);

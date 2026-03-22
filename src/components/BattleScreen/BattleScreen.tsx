@@ -23,6 +23,7 @@ import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
 import { isEnemyTargetCard } from '../../utils/cardTarget';
+import { useAudioContext } from '../../contexts/AudioContext';
 import '../Enemy/Enemy.css';
 import '../Effects/Effects.css';
 import '../PlayerStatus/PlayerStatus.css';
@@ -144,6 +145,8 @@ const BattleScreen = ({
   omamoris,
 }: BattleScreenProps) => {
   const noop = () => {};
+  const { playSe, playBgm, toggleMute } = useAudioContext();
+  const [muted, setMuted] = useState(false);
   const {
     gameState,
     selectedCardId,
@@ -244,6 +247,26 @@ const BattleScreen = ({
       setShowBattleSettings(false);
     }
   }, [gameState.phase]);
+
+  // バトルBGM
+  useEffect(() => {
+    playBgm('battle');
+    return () => { playBgm('none'); };
+  }, [playBgm]);
+
+  // ダメージポップアップ → SE
+  const prevPopupsLenRef = useRef(0);
+  useEffect(() => {
+    const newPopups = battlePopups.slice(prevPopupsLenRef.current);
+    prevPopupsLenRef.current = battlePopups.length;
+    for (const popup of newPopups) {
+      if (popup.target === 'player' && popup.kind === 'damage') {
+        playSe('damage');
+      } else if (popup.kind === 'block') {
+        playSe('block');
+      }
+    }
+  }, [battlePopups, playSe]);
 
   const detectDropTarget = (
     clientX: number,
@@ -564,7 +587,11 @@ const BattleScreen = ({
         const played = playCardInstant(handDrag.card.id, { type: 'enemy', enemyId: preferred });
         if (played) {
           lastCardPlayTimeRef.current = Date.now();
-          if (handDrag.card.type === 'attack') triggerAttackEffect(preferred);
+          playSe('cardPlay');
+          if (handDrag.card.type === 'attack') {
+            playSe('attack');
+            triggerAttackEffect(preferred);
+          }
         }
       } else if (finalTarget === 'field') {
         // フィールド全体は発動しない（静かに手札へ戻す）
@@ -578,6 +605,7 @@ const BattleScreen = ({
         const played = playCardInstant(handDrag.card.id, { type: 'field' });
         if (played) {
           lastCardPlayTimeRef.current = Date.now();
+          playSe('cardPlay');
           if (handDrag.card.type === 'skill') triggerSkillEffect();
         }
       } else if (finalTarget === 'reserve') {
@@ -933,6 +961,35 @@ const BattleScreen = ({
         )}
         {skillEffect && <div className="effect-skill" />}
       </div>
+
+      {/* ミュートボタン */}
+      <button
+        type="button"
+        onClick={() => {
+          const nowMuted = toggleMute();
+          setMuted(nowMuted);
+        }}
+        style={{
+          position: 'fixed',
+          top: 8,
+          right: 8,
+          zIndex: 100,
+          background: 'rgba(0,0,0,0.5)',
+          border: 'none',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          fontSize: 18,
+          cursor: 'pointer',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        aria-label={muted ? 'ミュート解除' : 'ミュート'}
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
 
       {gameState.shuffleAnimation && <div className="shuffle-popup">🔀 シャッフル中</div>}
 
