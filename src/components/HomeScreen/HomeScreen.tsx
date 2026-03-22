@@ -377,18 +377,10 @@ const HomeScreen = ({
     isSeMuted,
   } = useAudioContext();
 
-  const [bgmVol, setBgmVol] = useState(0.4);
-  const [seVol, setSeVol] = useState(0.6);
-  const [bgmMuted, setBgmMuted] = useState(false);
-  const [seMuted, setSeMuted] = useState(false);
-
-  useEffect(() => {
-    if (modal !== 'settings') return;
-    setBgmVol(getBgmVolume());
-    setSeVol(getSeVolume());
-    setBgmMuted(isBgmMuted());
-    setSeMuted(isSeMuted());
-  }, [modal, getBgmVolume, getSeVolume, isBgmMuted, isSeMuted]);
+  const [bgmVol, setBgmVol] = useState(() => getBgmVolume());
+  const [seVol, setSeVol] = useState(() => getSeVolume());
+  const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
+  const [seMuted, setSeMuted] = useState(() => isSeMuted());
 
   useEffect(() => {
     playBgm('menu');
@@ -799,7 +791,6 @@ const HomeScreen = ({
                     max={1}
                     step={0.01}
                     value={bgmVol}
-                    disabled={bgmMuted}
                     onChange={(e) => {
                       const v = parseFloat(e.target.value);
                       setBgmVol(v);
@@ -845,7 +836,6 @@ const HomeScreen = ({
                     max={1}
                     step={0.01}
                     value={seVol}
-                    disabled={seMuted}
                     onChange={(e) => {
                       const v = parseFloat(e.target.value);
                       setSeVol(v);
