@@ -2,7 +2,8 @@
   position: relative;
   width: 100%;
   max-width: 430px;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   margin: 0 auto;
   padding: 20px 16px;
   box-sizing: border-box;

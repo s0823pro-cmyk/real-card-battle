@@ -71,7 +71,7 @@
 
 .story-progress {
   position: absolute;
-  top: 24px;
+  top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 16px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -101,8 +101,8 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 40px 24px 48px;
-  height: 220px;
+  padding: 40px 24px calc(var(--sab, env(safe-area-inset-bottom, 0px)) + 24px);
+  height: calc(220px + var(--sab, env(safe-area-inset-bottom, 0px)));
   box-sizing: border-box;
   background: linear-gradient(
     to bottom,
@@ -180,7 +180,7 @@
 
 .story-btn-skip {
   position: absolute;
-  top: 20px;
+  top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 12px);
   right: 20px;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.2);

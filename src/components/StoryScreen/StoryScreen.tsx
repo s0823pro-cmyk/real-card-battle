@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { StoryScene } from '../../data/stories/carpenterStory';
+import { useAudioContext } from '../../contexts/AudioContext';
 import './StoryScreen.css';
 
 interface StoryScreenProps {
@@ -9,6 +10,7 @@ interface StoryScreenProps {
 }
 
 export const StoryScreen = ({ scenes, onComplete, showStartButton = true }: StoryScreenProps) => {
+  const { stopBgm } = useAudioContext();
   const [sceneIndex, setSceneIndex] = useState(0);
   const [lineIndex, setLineIndex] = useState(0);
   const [displayed, setDisplayed] = useState('');
@@ -19,6 +21,10 @@ export const StoryScreen = ({ scenes, onComplete, showStartButton = true }: Stor
 
   const currentScene = scenes[sceneIndex];
   const currentLine = currentScene.lines[lineIndex] ?? '';
+
+  useEffect(() => {
+    stopBgm();
+  }, [stopBgm]);
 
   useEffect(() => {
     setDisplayed('');
