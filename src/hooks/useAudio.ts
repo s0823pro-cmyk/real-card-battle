@@ -21,6 +21,15 @@ const BGM_FILES: Record<Exclude<BgmType, 'none'>, string> = {
 
 const LOOP_BGM: BgmType[] = ['menu', 'battle', 'boss'];
 
+/** ブラウザにデコードを先読みさせる（初回再生の遅延を減らす） */
+export function preloadAudio(src: string): void {
+  const a = new Audio(src);
+  a.preload = 'auto';
+  a.load();
+}
+
+const ALL_PRELOAD_SRC = [...new Set([...Object.values(SE_FILES), ...Object.values(BGM_FILES)])];
+
 function readStoredFloat(key: string, fallback: number): number {
   const v = parseFloat(localStorage.getItem(key) ?? String(fallback));
   return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
@@ -101,6 +110,10 @@ export const useAudio = () => {
     },
     [stopBgm],
   );
+
+  useEffect(() => {
+    ALL_PRELOAD_SRC.forEach(preloadAudio);
+  }, []);
 
   useEffect(() => {
     return () => {
