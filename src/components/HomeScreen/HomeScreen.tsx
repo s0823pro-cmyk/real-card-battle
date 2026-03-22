@@ -368,7 +368,6 @@ const HomeScreen = ({
 
   useEffect(() => {
     playBgm('menu');
-    return () => playBgm('none');
   }, [playBgm]);
 
   const handleButtonClick = (index: number, callback: () => void) => {

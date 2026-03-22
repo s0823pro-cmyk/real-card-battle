@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAudioContext } from '../../contexts/AudioContext';
 import './TitleScreen.css';
 
 interface TitleScreenProps {
@@ -7,6 +8,11 @@ interface TitleScreenProps {
 
 const TitleScreen = ({ onStart }: TitleScreenProps) => {
   const [showHowTo, setShowHowTo] = useState(false);
+  const { playBgm } = useAudioContext();
+
+  useEffect(() => {
+    playBgm('none');
+  }, [playBgm]);
 
   return (
     <main className="title-screen">

@@ -1,10 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { useAudioContext } from '../../contexts/AudioContext';
 import type { Card, JobId } from '../../types/game';
 import type { Omamori } from '../../types/run';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import CardComponent from '../Hand/CardComponent';
 import { upgradeCardByJobId } from '../../utils/cardUpgrade';
+
+function useVictoryRewardBgm() {
+  const { playBgm } = useAudioContext();
+  useEffect(() => {
+    playBgm('victory');
+    return () => {
+      playBgm('none');
+    };
+  }, [playBgm]);
+}
 
 interface CardRewardProps {
   cards: Card[];
@@ -31,6 +42,7 @@ const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
 });
 
 export const CardRewardScreen = ({ cards, jobId, onPick, onSkip }: CardRewardProps) => {
+  useVictoryRewardBgm();
   const noop = () => {};
   const rewardListRef = useRef<HTMLDivElement | null>(null);
   const [rewardCardWidth, setRewardCardWidth] = useState(() =>
@@ -124,6 +136,7 @@ interface OmamoriProps {
 }
 
 export const OmamoriRewardScreen = ({ omamoris, onPick }: OmamoriProps) => {
+  useVictoryRewardBgm();
   return (
     <main className="flow-screen">
       <section className="flow-card">
@@ -166,6 +179,7 @@ interface CardUpgradeProps {
 }
 
 export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onSkip }: CardUpgradeProps) => {
+  useVictoryRewardBgm();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const upgradableCards = cards.filter(
     (card) => !card.upgraded && !card.name.endsWith('+') && card.type !== 'status',

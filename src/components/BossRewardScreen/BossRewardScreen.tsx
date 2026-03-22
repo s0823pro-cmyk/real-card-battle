@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { useAudioContext } from '../../contexts/AudioContext';
 import CardComponent from '../Hand/CardComponent';
 import { BOSS_REWARDS } from '../../data/bossRewards';
 import type { BossReward } from '../../data/bossRewards';
@@ -51,6 +52,14 @@ const generateRareRewardCards = (jobId: JobId): Card[] => {
 };
 
 export const BossRewardScreen = ({ area, jobId, player, onComplete }: BossRewardScreenProps) => {
+  const { playBgm } = useAudioContext();
+  useEffect(() => {
+    playBgm('victory');
+    return () => {
+      playBgm('none');
+    };
+  }, [playBgm]);
+
   const [selectedReward, setSelectedReward] = useState<BossReward | null>(null);
   const [showCardSelect, setShowCardSelect] = useState(false);
   const [rareCards] = useState<Card[]>(() => generateRareRewardCards(jobId));
