@@ -76,6 +76,7 @@ export const useAudio = () => {
 
   const getBgmVolume = useCallback(() => bgmVolumeRef.current, []);
   const getSeVolume = useCallback(() => seVolumeRef.current, []);
+  const getCurrentBgm = useCallback(() => currentBgmRef.current, []);
   const isBgmMuted = useCallback(() => bgmMutedRef.current, []);
   const isSeMuted = useCallback(() => seMutedRef.current, []);
 
@@ -133,5 +134,6 @@ export const useAudio = () => {
     getSeVolume,
     isBgmMuted,
     isSeMuted,
+    getCurrentBgm,
   };
 };

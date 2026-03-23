@@ -604,5 +604,22 @@ function App() {
     </div>
     </AudioCtx.Provider>
   );
+
+  useEffect(() => {
+    const snap = { bgm: 'none' as string };
+    (window as any).__stopBgm = () => {
+      snap.bgm = audio.getCurrentBgm();
+      audio.stopBgm();
+    };
+    (window as any).__resumeBgm = () => {
+      if (snap.bgm && snap.bgm !== 'none') {
+        audio.playBgm(snap.bgm as any);
+      }
+    };
+    return () => {
+      delete (window as any).__stopBgm;
+      delete (window as any).__resumeBgm;
+    };
+  }, [audio]);
 }
 export default App;
