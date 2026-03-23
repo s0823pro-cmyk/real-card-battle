@@ -4,7 +4,6 @@
   max-width: 430px;
   height: 100dvh;
   min-height: 100vh;
-  box-sizing: border-box;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -34,14 +33,10 @@
   background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-<<<<<<< HEAD
-  padding: calc(var(--sat, env(safe-area-inset-top, 0px)) + 12px) 16px 8px;
-=======
-  padding-top: calc(env(safe-area-inset-top) + 8px);
   padding-left: 16px;
   padding-right: 16px;
   padding-bottom: 8px;
->>>>>>> f0d9119 (fix(map): add safe-area padding to map header on Android)
+  padding-top: max(env(safe-area-inset-top, 0px), 20px);
   flex-shrink: 0;
 }
 
@@ -416,8 +411,8 @@
   background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(8px);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  /* #root に --sab があるため、ここでさらに safe-area を足すとボタン下に不自然な空白になる */
   padding: 12px 16px;
-  padding-bottom: max(12px, calc(var(--sab, env(safe-area-inset-bottom, 0px)) + 8px));
   flex-shrink: 0;
 }
 

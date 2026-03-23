@@ -15,12 +15,18 @@ body {
 }
 
 #root {
-  padding-top: var(--sat);
   padding-bottom: var(--sab);
   padding-left: var(--sal);
   padding-right: var(--sar);
   min-height: 100dvh;
   box-sizing: border-box;
+}
+
+/* デスクトップブラウザで不要な下余白を付けない（max(sab,12px) は PC で常に 12px 足していた） */
+@media (pointer: coarse) {
+  #root {
+    padding-bottom: max(var(--sab), 12px);
+  }
 }
 
 .app {

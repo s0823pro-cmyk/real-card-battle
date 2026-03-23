@@ -8,7 +8,7 @@
 
 .player-status {
   /* ブロック行と足場行で数値の左端を揃える（盾アイコン幅 + 数値前余白） */
-  --status-stat-icon-width: 22px;
+  --status-stat-icon-width: 20px;
   --status-stat-value-inset: 2px;
   /* 装備・パワー枠のサイズ。アイテム枠の横幅も --slot-frame-width で装備と揃える */
   --slot-frame-width: 36px;
@@ -17,9 +17,11 @@
   /* 下段「段取り＋アイテム」ブロックの横位置（大きいほど右） */
   --item-slots-sub-nudge: 42px;
   /* 下段行全体をわずかに左へ（段取り・山札・終了などの見た目位置を揃える） */
-  --player-sub-row-shift-x: -33px;
-  /* 段取りテキストだけ左へ（px を増やすほど左） */
-  --prep-bonus-nudge-left: 7px;
+  --player-sub-row-shift-x: -40px;
+  /* 段取りアイコンを左へ（px を増やすほど左） */
+  --prep-bonus-nudge-left: 13px;
+  /* HP・ブロック列を少し左へ */
+  --player-main-stats-nudge-left: -8px;
   /* 足場アイコン＋数値だけ右へ（relative+left：フレックス上の他要素の位置は変えない） */
   --scaffold-sub-visual-right: calc(-1 * var(--player-sub-row-shift-x));
   /* ブロック数値・棟上げ・宮大工アイコンを少し下へ（盾アイコンはそのまま） */
@@ -68,6 +70,7 @@
   gap: 10px;
   min-width: 0;
   flex: 1;
+  margin-left: var(--player-main-stats-nudge-left);
 }
 
 /* HP・プレビュー・ブロックを同じ縦列に */
@@ -82,22 +85,22 @@
 .player-block-row {
   display: flex;
   align-items: center;
-  min-height: 26px;
+  min-height: 23px;
   min-width: 0;
 }
 
 .player-hp-row {
   display: flex;
   align-items: center;
-  min-height: 28px;
+  min-height: 24px;
   min-width: 0;
   overflow: hidden;
 }
 
 /* HP行のアイコンのみ拡大（他の .status-icon は 16px のまま） */
 .player-hp-row .status-icon {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   margin-left: -2px;
 }
 
@@ -207,7 +210,7 @@
 
 .hp {
   color: #2ecc71;
-  font-size: clamp(1.12em, 2.88vw, 1.312em); /* 約20%小さく（従来の0.8倍） */
+  font-size: clamp(1em, 2.55vw, 1.15em);
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -220,7 +223,7 @@
 .player-hp-text,
 .status-hp-value,
 .hp-display {
-  font-size: 19px; /* 24px の約80% */
+  font-size: 17px;
 }
 
 .player-hp-bar-container,
@@ -250,7 +253,7 @@
 
 /* HP 数値：ブロック行と同じサイズ・フォント（Orbitron + clamp） */
 .player-hp-block-column .hp {
-  font-size: clamp(1.12em, 2.88vw, 1.312em);
+  font-size: clamp(1em, 2.55vw, 1.15em);
   font-weight: 700;
   font-family: var(--font-display);
   line-height: 1;
@@ -265,7 +268,7 @@
 
 /* ブロック：HP と同じ数値サイズ・アイコンサイズ（盾アイコン位置は維持し、数値側だけ詰める） */
 .player-hp-block-column .block {
-  font-size: clamp(1.12em, 2.88vw, 1.312em);
+  font-size: clamp(1em, 2.55vw, 1.15em);
   font-weight: 700;
   font-family: var(--font-display);
   gap: 0;
@@ -273,13 +276,13 @@
 }
 
 .player-hp-block-column .block .status-icon {
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
   flex-shrink: 0;
 }
 
 /* ブロック数値：盾アイコンのすぐ右（左揃え）。4ch 固定で桁が増えても棟上げ等の横位置は一定 */
-/* HP 行（26px アイコン + margin -2px）と数値の左端を揃えるため、ブロック（22px）の数値だけわずかに右へ */
+/* HP 行（22px アイコン + margin -2px）と数値の左端を揃えるため、ブロック（19px）の数値だけわずかに右へ */
 .player-hp-block-column .block .block-value {
   font-variant-numeric: tabular-nums;
   display: inline-block;
@@ -304,7 +307,7 @@
   color: #4fc3f7;
 }
 
-/* 下段の足場：ブロック行と同じ「22px アイコン列 + 2px + 数値」で数値左端を一致 */
+/* 下段の足場：ブロック行と同じ「アイコン列 + 2px + 数値」で数値左端を一致 */
 /* position:relative + left で描画だけずらす（margin は隣接フレックスの開始位置を変えるため使わない） */
 .scaffold--sub-row {
   position: relative;
@@ -314,7 +317,7 @@
   align-items: center;
   margin-right: 8px;
   white-space: nowrap;
-  font-size: clamp(15.68px, 2.88vw, 18.37px);
+  font-size: clamp(13.8px, 2.55vw, 16.2px);
   font-weight: 700;
   font-family: var(--font-display);
   line-height: 1;
@@ -368,12 +371,12 @@
   font-size: 14px;
 }
 
-/* 棟上げ・宮大工：ブロック盾アイコン（22px）一個分左へ */
+/* 棟上げ・宮大工：ブロック盾アイコン（19px）一個分左へ */
 .player-block-trailing-icons {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: calc(6px - 22px);
+  margin-left: calc(6px - 19px);
   flex-shrink: 0;
   position: relative;
   top: var(--block-row-sub-nudge-y);

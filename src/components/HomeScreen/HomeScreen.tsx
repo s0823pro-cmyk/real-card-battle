@@ -21,6 +21,7 @@ import letterEImage from '../../assets/title/letter_E.png';
 import letterSImage from '../../assets/title/letter_S.png';
 import letterS2Image from '../../assets/title/letter_S2.png';
 import './HomeScreen.css';
+import './SettingsScreen.css';
 import type { Achievement } from '../../utils/achievementSystem';
 import {
   ACHIEVEMENTS,
@@ -627,10 +628,20 @@ const HomeScreen = ({
           }}
         >
           <div
-            className={`home-modal-box ${modal === 'howto' ? 'home-modal-box--howto' : ''}`}
+            className={
+              modal === 'settings'
+                ? 'settings-screen'
+                : `home-modal-box ${modal === 'howto' ? 'home-modal-box--howto' : ''}`
+            }
             onClick={(event) => event.stopPropagation()}
           >
-            <h2>{modalTitles[modal]}</h2>
+            {modal === 'settings' ? (
+              <div className="settings-header">
+                <h2>{modalTitles[modal]}</h2>
+              </div>
+            ) : (
+              <h2>{modalTitles[modal]}</h2>
+            )}
             {modal === 'howto' ? (
               <div className="howto-panel">
                 <div className="howto-tabs">
@@ -754,7 +765,8 @@ const HomeScreen = ({
                 )}
               </div>
             ) : modal === 'settings' ? (
-              <div className="settings-list">
+              <div className="settings-content">
+                <div className="settings-list">
                 {/* BGM音量 */}
                 <div style={{ marginBottom: 20 }}>
                   <div
@@ -1006,6 +1018,7 @@ const HomeScreen = ({
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             ) : (
               <div className="credits-content">
