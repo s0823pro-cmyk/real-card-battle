@@ -5,7 +5,7 @@
   height: 100dvh;
   min-height: 100dvh;
   margin: 0 auto;
-  padding-top: max(env(safe-area-inset-top, 0px), 20px);
+  padding-top: max(0px, calc(var(--sat) - 4px));
   padding-left: 16px;
   padding-right: 16px;
   padding-bottom: 20px;
@@ -683,11 +683,130 @@
   color: #e6edf3;
 }
 
-.settings-list {
+/* 設定ページ（全画面）本文 */
+.settings-page-stack {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+/* 設定：アコーディオン（音量・データ・課金を折りたたみ） */
+.settings-accordion {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.settings-accordion-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: #e8d5a3;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.settings-accordion-header.is-open {
+  background: rgba(200, 169, 110, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settings-accordion-arrow {
+  font-size: 12px;
+  color: rgba(232, 213, 163, 0.6);
+}
+
+.settings-accordion-body {
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-accordion-body .settings-item--audio {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+  border-bottom: none;
+}
+
+.settings-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-item-label {
+  font-weight: bold;
+  font-size: 15px;
+  color: #e6edf3;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.settings-slider {
+  width: 100%;
+  accent-color: #c8a96e;
+}
+
+.settings-accordion-body .settings-item--row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 4px 0;
+  background: transparent;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+}
+
+.settings-accordion-body .settings-item--row:last-of-type {
+  border-bottom: none;
+}
+
+.settings-accordion-body .settings-item--row .settings-item-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e6edf3;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.settings-accordion-body .settings-item--row .settings-item-desc {
+  margin: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-ui, sans-serif);
+  line-height: 1.5;
+}
+
+.btn-mute {
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #fff;
+}
+
+.btn-mute--on {
+  background: #4caf50;
+}
+
+.btn-mute--off {
+  background: #666;
 }
 
 .settings-item {
@@ -801,26 +920,6 @@
   color: #3d444d;
   line-height: 1.6;
   margin: 0;
-}
-
-.settings-toggle {
-  flex-shrink: 0;
-  min-width: 52px;
-  height: 30px;
-  border-radius: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-.settings-toggle--on {
-  background: #f0b429;
-  border-color: #f0b429;
-  color: #0d1117;
 }
 
 .dev-tools {
@@ -1064,7 +1163,11 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 8px;
-  padding: 16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 8px;
+  /* ステータスバー直下に寄せる（図鑑の .zukan-header と同値） */
+  padding-top: max(0px, calc(var(--sat) - 14px));
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
   background: rgba(13, 17, 23, 0.8);

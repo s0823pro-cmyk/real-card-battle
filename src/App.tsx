@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Card, GameState, JobId } from './types/game';
 import type { BattleResult } from './types/run';
 import BattleScreen from './components/BattleScreen/BattleScreen';
@@ -20,7 +20,7 @@ import {
   CardUpgradeScreen,
   OmamoriRewardScreen,
 } from './components/RunFlow/RewardScreens';
-import { useAudio } from './hooks/useAudio';
+import { useAudio, type BgmType } from './hooks/useAudio';
 import { AudioCtx } from './contexts/AudioContext';
 import { useRunProgress, loadSavedProgress, clearSavedProgress } from './hooks/useRunProgress';
 import type { DevDestination } from './hooks/useRunProgress';
@@ -34,7 +34,6 @@ import {
 } from './data/stories/carpenterStory';
 import type { BossReward } from './data/bossRewards';
 import type { StoryScene } from './data/stories/carpenterStory';
-import { preloadAllImages } from './utils/preloadImages';
 import { loadBattleState, clearBattleState, restoreGameState } from './utils/battleSave';
 import type { BattleSaveData } from './utils/battleSave';
 import './App.css';
@@ -101,12 +100,6 @@ function App() {
   const [bossRewardArea, setBossRewardArea] = useState<number | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
   const transitionCleanupRef = useRef<number | null>(null);
-  const [preloadEnabled, setPreloadEnabled] = useState<boolean>(
-    () => localStorage.getItem('preload_images') === 'true',
-  );
-  const [preloadProgress, setPreloadProgress] = useState<{ loaded: number; total: number } | null>(null);
-  const preloadDoneRef = useRef(false);
-
   useEffect(() => {
     const allowMapScroll =
       state.currentScreen === 'map' ||
@@ -135,23 +128,21 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!preloadEnabled || preloadDoneRef.current) return;
-    preloadDoneRef.current = true;
-    preloadAllImages((loaded, total) => {
-      setPreloadProgress({ loaded, total });
-      if (loaded >= total) {
-        window.setTimeout(() => setPreloadProgress(null), 1200);
+    const snap = { bgm: 'none' as BgmType };
+    (window as any).__stopBgm = () => {
+      snap.bgm = audio.getCurrentBgm();
+      audio.stopBgm();
+    };
+    (window as any).__resumeBgm = () => {
+      if (snap.bgm !== 'none') {
+        audio.playBgm(snap.bgm);
       }
-    });
-  }, [preloadEnabled]);
-
-  const togglePreload = useCallback(() => {
-    setPreloadEnabled((prev) => {
-      const next = !prev;
-      localStorage.setItem('preload_images', String(next));
-      return next;
-    });
-  }, []);
+    };
+    return () => {
+      delete (window as any).__stopBgm;
+      delete (window as any).__resumeBgm;
+    };
+  }, [audio]);
 
   const clearAllSaveData = () => {
     clearBattleState();
@@ -321,8 +312,6 @@ function App() {
             }}
 
             savedProgress={savedProgress}
-            preloadEnabled={preloadEnabled}
-            onTogglePreload={togglePreload}
             onDevNavigate={handleDevNavigate}
           />
         );
@@ -523,17 +512,6 @@ function App() {
           onComplete={handleBossRewardComplete}
         />
       )}
-      {preloadProgress && (
-        <div className="preload-progress">
-          <div
-            className="preload-progress-bar"
-            style={{ width: `${(preloadProgress.loaded / Math.max(1, preloadProgress.total)) * 100}%` }}
-          />
-          <p className="preload-progress-text">
-            画像を読み込み中… {preloadProgress.loaded}/{preloadProgress.total}
-          </p>
-        </div>
-      )}
       {showBattleRestorePrompt && battleSave && (
         <div className="restore-overlay">
           <div className="restore-modal">
@@ -604,22 +582,5 @@ function App() {
     </div>
     </AudioCtx.Provider>
   );
-
-  useEffect(() => {
-    const snap = { bgm: 'none' as string };
-    (window as any).__stopBgm = () => {
-      snap.bgm = audio.getCurrentBgm();
-      audio.stopBgm();
-    };
-    (window as any).__resumeBgm = () => {
-      if (snap.bgm && snap.bgm !== 'none') {
-        audio.playBgm(snap.bgm as any);
-      }
-    };
-    return () => {
-      delete (window as any).__stopBgm;
-      delete (window as any).__resumeBgm;
-    };
-  }, [audio]);
 }
 export default App;

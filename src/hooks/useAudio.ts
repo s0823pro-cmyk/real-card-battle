@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 export type SeType = 'card' | 'attack' | 'damage' | 'block' | 'button';
 export type BgmType = 'menu' | 'battle' | 'boss' | 'victory' | 'defeat' | 'none';
@@ -38,6 +40,9 @@ function readStoredFloat(key: string, fallback: number): number {
 export const useAudio = () => {
   const bgmRef = useRef<HTMLAudioElement | null>(null);
   const currentBgmRef = useRef<BgmType>('none');
+  /** OS バックグラウンド等で一時停止したときの復帰用（stopBgm とは独立） */
+  const bgmSuspendedRef = useRef(false);
+  const bgmSnapBeforeSuspendRef = useRef<BgmType>('none');
 
   const bgmVolumeRef = useRef<number>(readStoredFloat('bgmVolume', 0.4));
   const seVolumeRef = useRef<number>(readStoredFloat('seVolume', 0.6));
@@ -87,7 +92,7 @@ export const useAudio = () => {
     audio.play().catch(() => {});
   }, []);
 
-  const stopBgm = useCallback(() => {
+  const stopBgmPlaybackOnly = useCallback(() => {
     if (bgmRef.current) {
       bgmRef.current.pause();
       bgmRef.current.currentTime = 0;
@@ -95,6 +100,12 @@ export const useAudio = () => {
     }
     currentBgmRef.current = 'none';
   }, []);
+
+  const stopBgm = useCallback(() => {
+    bgmSuspendedRef.current = false;
+    bgmSnapBeforeSuspendRef.current = 'none';
+    stopBgmPlaybackOnly();
+  }, [stopBgmPlaybackOnly]);
 
   const playBgm = useCallback(
     (type: BgmType) => {
@@ -115,6 +126,57 @@ export const useAudio = () => {
   useEffect(() => {
     ALL_PRELOAD_SRC.forEach(preloadAudio);
   }, []);
+
+  useEffect(() => {
+    const suspendForBackground = () => {
+      if (bgmSuspendedRef.current) return;
+      const cur = currentBgmRef.current;
+      if (cur === 'none') return;
+      bgmSnapBeforeSuspendRef.current = cur;
+      bgmSuspendedRef.current = true;
+      stopBgmPlaybackOnly();
+    };
+
+    const resumeAfterBackground = () => {
+      if (!bgmSuspendedRef.current) return;
+      bgmSuspendedRef.current = false;
+      const snap = bgmSnapBeforeSuspendRef.current;
+      bgmSnapBeforeSuspendRef.current = 'none';
+      if (snap !== 'none') {
+        playBgm(snap);
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        suspendForBackground();
+      } else {
+        resumeAfterBackground();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibility);
+
+    let removeAppListener: (() => void) | undefined;
+    if (Capacitor.isNativePlatform()) {
+      void App.addListener('appStateChange', ({ isActive }) => {
+        if (!isActive) {
+          suspendForBackground();
+        } else {
+          resumeAfterBackground();
+        }
+      }).then((handle) => {
+        removeAppListener = () => {
+          void handle.remove();
+        };
+      });
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      removeAppListener?.();
+    };
+  }, [playBgm, stopBgmPlaybackOnly]);
 
   useEffect(() => {
     return () => {

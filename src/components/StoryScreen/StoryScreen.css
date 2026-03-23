@@ -6,6 +6,21 @@
   user-select: none;
 }
 
+/* 初回ストーリー最終ページ: 「冒険を始める」のみ操作可能 */
+.story-screen--final-start-only {
+  cursor: default;
+  pointer-events: none;
+}
+
+.story-screen--final-start-only .story-textbox {
+  pointer-events: none;
+}
+
+.story-screen--final-start-only .story-btn-start {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 .story-bg {
   position: absolute;
   inset: 0;
@@ -71,7 +86,7 @@
 
 .story-progress {
   position: absolute;
-  top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 16px);
+  top: calc(var(--sat) + 2px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -180,7 +195,7 @@
 
 .story-btn-skip {
   position: absolute;
-  top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 12px);
+  top: calc(var(--sat) + 2px);
   right: 20px;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.2);

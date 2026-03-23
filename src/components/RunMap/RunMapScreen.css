@@ -36,7 +36,8 @@
   padding-left: 16px;
   padding-right: 16px;
   padding-bottom: 8px;
-  padding-top: max(env(safe-area-inset-top, 0px), 20px);
+  /* マップ上部ヘッダーをステータスバーに近づける（--sat よりさらに詰める） */
+  padding-top: max(0px, calc(var(--sat) - 8px));
   flex-shrink: 0;
 }
 

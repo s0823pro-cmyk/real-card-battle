@@ -93,15 +93,31 @@ export const StoryScreen = ({ scenes, onComplete, showStartButton = true }: Stor
       setLineIndex(0);
       return;
     }
+    if (showStartButton) {
+      return;
+    }
     onComplete();
-  }, [currentLine, currentScene.lines.length, isTyping, lineIndex, onComplete, sceneIndex, scenes.length]);
+  }, [
+    currentLine,
+    currentScene.lines.length,
+    isTyping,
+    lineIndex,
+    onComplete,
+    sceneIndex,
+    scenes.length,
+    showStartButton,
+  ]);
 
   const isLastScene = sceneIndex >= scenes.length - 1;
   const isLastLine = lineIndex >= currentScene.lines.length - 1;
   const isEnd = isLastScene && isLastLine && !isTyping;
+  const finalStartOnly = isEnd && showStartButton;
 
   return (
-    <div className="story-screen" onClick={handleTap}>
+    <div
+      className={`story-screen${finalStartOnly ? ' story-screen--final-start-only' : ''}`}
+      onClick={finalStartOnly ? undefined : handleTap}
+    >
       {previousBackground && (
         <div className="story-bg story-bg--prev" style={{ backgroundImage: `url(${previousBackground})` }} />
       )}
@@ -141,16 +157,18 @@ export const StoryScreen = ({ scenes, onComplete, showStartButton = true }: Stor
         )}
       </div>
 
-      <button
-        type="button"
-        className="story-btn-skip"
-        onClick={(event) => {
-          event.stopPropagation();
-          onComplete();
-        }}
-      >
-        スキップ
-      </button>
+      {!finalStartOnly && (
+        <button
+          type="button"
+          className="story-btn-skip"
+          onClick={(event) => {
+            event.stopPropagation();
+            onComplete();
+          }}
+        >
+          スキップ
+        </button>
+      )}
     </div>
   );
 };

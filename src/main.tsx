@@ -11,6 +11,11 @@ if (Capacitor.isNativePlatform()) {
   StatusBar.setBackgroundColor({ color: '#000000' })
 }
 
+/** Android WebView では env(safe-area-inset-top) が 0 のことが多い。MainActivity 注入までの一瞬の被りを減らす粗い既定値 */
+if (Capacitor.getPlatform() === 'android') {
+  document.documentElement.style.setProperty('--android-inset-top', '14px')
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

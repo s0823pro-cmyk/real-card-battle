@@ -1,6 +1,6 @@
 .zukan-overlay {
   position: fixed;
-  top: env(safe-area-inset-top, 0px);
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
@@ -30,7 +30,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px 16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 8px;
+  padding-top: max(0px, calc(var(--sat) - 14px));
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
 }

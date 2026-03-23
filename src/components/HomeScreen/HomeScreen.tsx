@@ -21,7 +21,6 @@ import letterEImage from '../../assets/title/letter_E.png';
 import letterSImage from '../../assets/title/letter_S.png';
 import letterS2Image from '../../assets/title/letter_S2.png';
 import './HomeScreen.css';
-import './SettingsScreen.css';
 import type { Achievement } from '../../utils/achievementSystem';
 import {
   ACHIEVEMENTS,
@@ -42,12 +41,10 @@ interface HomeScreenProps {
   onOpenZukan: () => void;
   onContinue?: (saved: GameProgress) => void;
   savedProgress?: GameProgress | null;
-  preloadEnabled?: boolean;
-  onTogglePreload?: () => void;
   onDevNavigate?: (destination: DevDestination) => void;
 }
 
-type ModalType = 'howto' | 'settings' | 'credits' | null;
+type ModalType = 'howto' | 'credits' | null;
 type HowtoTab = 'glossary' | 'story';
 type StoryJobKey = 'carpenter' | 'cook' | 'unemployed';
 type StoryEpisodeId =
@@ -257,11 +254,10 @@ const HomeScreen = ({
   onOpenZukan,
   onContinue,
   savedProgress,
-  preloadEnabled = false,
-  onTogglePreload,
   onDevNavigate,
 }: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [achievementRefreshKey, setAchievementRefreshKey] = useState(0);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
@@ -288,7 +284,6 @@ const HomeScreen = ({
 
   const modalTitles: Record<Exclude<ModalType, null>, string> = {
     howto: '遊び方',
-    settings: '設定',
     credits: 'クレジット',
   };
 
@@ -382,6 +377,11 @@ const HomeScreen = ({
   const [seVol, setSeVol] = useState(() => getSeVolume());
   const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
   const [seMuted, setSeMuted] = useState(() => isSeMuted());
+  const [openSettingsSection, setOpenSettingsSection] = useState<string | null>(null);
+
+  const toggleSettingsSection = (section: string) => {
+    setOpenSettingsSection((prev) => (prev === section ? null : section));
+  };
 
   useEffect(() => {
     playBgm('menu');
@@ -477,7 +477,7 @@ const HomeScreen = ({
     { label: 'ゲームスタート', className: 'btn-home-start', onClick: onStart },
     { label: '図鑑', className: 'btn-home-zukan', onClick: onOpenZukan },
     { label: '実績', className: 'btn-home-records', onClick: () => setShowRecords(true) },
-    { label: '設定', className: 'btn-home-settings', onClick: () => setModal('settings') },
+    { label: '設定', className: 'btn-home-settings', onClick: () => setShowSettings(true) },
     { label: 'クレジット', className: 'btn-home-credits', onClick: () => setModal('credits') },
   ] as const;
   const titleLetters = [
@@ -503,6 +503,272 @@ const HomeScreen = ({
     savedProgress.currentScreen !== 'job_select' &&
     savedProgress.currentScreen !== 'victory' &&
     savedProgress.currentScreen !== 'game_over';
+
+  const renderSettingsContent = () => (
+    <div className="settings-page-stack">
+      <div className="settings-accordion">
+        <button
+          type="button"
+          className={`settings-accordion-header ${openSettingsSection === 'sound' ? 'is-open' : ''}`}
+          onClick={() => toggleSettingsSection('sound')}
+        >
+          <span>🔊 音量設定</span>
+          <span className="settings-accordion-arrow">
+            {openSettingsSection === 'sound' ? '▲' : '▼'}
+          </span>
+        </button>
+        {openSettingsSection === 'sound' && (
+          <div className="settings-accordion-body">
+            <div className="settings-item settings-item--audio">
+              <div className="settings-item-header">
+                <span className="settings-item-label">BGM音量</span>
+                <button
+                  type="button"
+                  className={`btn-mute ${bgmMuted ? 'btn-mute--off' : 'btn-mute--on'}`}
+                  onClick={() => {
+                    const next = toggleBgmMute();
+                    setBgmMuted(next);
+                  }}
+                >
+                  {bgmMuted ? '🔇 OFF' : '🔊 ON'}
+                </button>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={bgmVol}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  setBgmVol(v);
+                  setBgmVolume(v);
+                }}
+                className="settings-slider"
+              />
+            </div>
+            <div className="settings-item settings-item--audio">
+              <div className="settings-item-header">
+                <span className="settings-item-label">SE音量</span>
+                <button
+                  type="button"
+                  className={`btn-mute ${seMuted ? 'btn-mute--off' : 'btn-mute--on'}`}
+                  onClick={() => {
+                    const next = toggleSeMute();
+                    setSeMuted(next);
+                  }}
+                >
+                  {seMuted ? '🔇 OFF' : '🔊 ON'}
+                </button>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={seVol}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  setSeVol(v);
+                  setSeVolume(v);
+                }}
+                className="settings-slider"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="settings-accordion">
+        <button
+          type="button"
+          className={`settings-accordion-header ${openSettingsSection === 'game' ? 'is-open' : ''}`}
+          onClick={() => toggleSettingsSection('game')}
+        >
+          <span>⚙️ データ</span>
+          <span className="settings-accordion-arrow">
+            {openSettingsSection === 'game' ? '▲' : '▼'}
+          </span>
+        </button>
+        {openSettingsSection === 'game' && (
+          <div className="settings-accordion-body">
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">データ初期化</p>
+                <p className="settings-item-desc">
+                  ゲームの進行・図鑑・チュートリアルをすべてリセットします。この操作は元に戻せません。
+                </p>
+              </div>
+              <button
+                type="button"
+                className="settings-btn-danger"
+                onClick={() => {
+                  const confirmed = window.confirm(
+                    'すべてのデータを初期化しますか？\nこの操作は元に戻せません。',
+                  );
+                  if (!confirmed) return;
+                  const keysToDelete = [
+                    'real-card-battle:save-data',
+                    'jobless_battle_save',
+                    'jobless_enemy_records',
+                    'jobless_enemy_defeat_counts',
+                    'real-card-battle:unlocked-card-names',
+                    'real-card-battle:tutorial-seen',
+                    'story_seen_carpenter',
+                    'story_seen_carpenter_e1',
+                    'story_seen_carpenter_e2',
+                    'story_seen_carpenter_e3',
+                  ];
+                  keysToDelete.forEach((key) => localStorage.removeItem(key));
+                  clearAchievements();
+                  window.alert('データを初期化しました。');
+                  window.location.reload();
+                }}
+              >
+                初期化
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="settings-accordion">
+        <button
+          type="button"
+          className={`settings-accordion-header ${openSettingsSection === 'purchase' ? 'is-open' : ''}`}
+          onClick={() => toggleSettingsSection('purchase')}
+        >
+          <span>💳 購入・課金</span>
+          <span className="settings-accordion-arrow">
+            {openSettingsSection === 'purchase' ? '▲' : '▼'}
+          </span>
+        </button>
+        {openSettingsSection === 'purchase' && (
+          <div className="settings-accordion-body">
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">広告を削除</p>
+                <p className="settings-item-desc">
+                  ¥250で広告を完全に削除します。（Capacitor移行後に有効化）
+                </p>
+              </div>
+              <button type="button" className="settings-btn-purchase" disabled>
+                ¥250
+              </button>
+            </div>
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">購入の復元</p>
+                <p className="settings-item-desc">以前に購入した広告削除を復元します。</p>
+              </div>
+              <button type="button" className="settings-btn-restore" disabled>
+                復元
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="settings-divider" />
+
+      <div className="settings-item">
+        <div className="settings-item-info">
+          <p className="settings-item-title">利用規約</p>
+        </div>
+        <button
+          type="button"
+          className="settings-btn-link"
+          onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/terms.html', '_self')}
+        >
+          確認 →
+        </button>
+      </div>
+
+      <div className="settings-item">
+        <div className="settings-item-info">
+          <p className="settings-item-title">プライバシーポリシー</p>
+        </div>
+        <button
+          type="button"
+          className="settings-btn-link"
+          onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/privacy.html', '_self')}
+        >
+          確認 →
+        </button>
+      </div>
+
+      <div className="settings-legal">
+        <p className="settings-legal-text">
+          広告削除（¥250）は買い切りです。購入後は同一Apple ID / Google アカウントで無制限にご利用いただけます。
+        </p>
+      </div>
+
+      {import.meta.env.DEV && (
+        <div className="dev-tools">
+          <p className="dev-tools-title">🛠️ 開発用ツール</p>
+          <div className="dev-tools-grid">
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_normal')}>
+              通常戦闘
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_elite')}>
+              エリート戦闘
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_1')}>
+              ボス1
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_2')}>
+              ボス2
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_3')}>
+              ボス3
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shop')}>
+              質屋
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shrine')}>
+              神社
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('hotel')}>
+              ホテル
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('event')}>
+              イベント
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('card_reward')}>
+              カード報酬
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('boss_reward')}>
+              ボス報酬
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('story')}>
+              ストーリー
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_all_cards')}>
+              全カード戦闘
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  if (showSettings) {
+    return (
+      <main className="home-screen" style={backgroundStyle}>
+        <Fireflies />
+        <div className="records-page">
+          <div className="records-page-header">
+            <button type="button" className="records-back-btn" onClick={() => setShowSettings(false)}>
+              ← 戻る
+            </button>
+            <h2 className="records-page-title">設定</h2>
+            <div />
+          </div>
+          <div className="records-page-content">{renderSettingsContent()}</div>
+        </div>
+      </main>
+    );
+  }
 
   if (showRecords) {
     return (
@@ -628,20 +894,10 @@ const HomeScreen = ({
           }}
         >
           <div
-            className={
-              modal === 'settings'
-                ? 'settings-screen'
-                : `home-modal-box ${modal === 'howto' ? 'home-modal-box--howto' : ''}`
-            }
+            className={`home-modal-box ${modal === 'howto' ? 'home-modal-box--howto' : ''}`}
             onClick={(event) => event.stopPropagation()}
           >
-            {modal === 'settings' ? (
-              <div className="settings-header">
-                <h2>{modalTitles[modal]}</h2>
-              </div>
-            ) : (
-              <h2>{modalTitles[modal]}</h2>
-            )}
+            <h2>{modalTitles[modal]}</h2>
             {modal === 'howto' ? (
               <div className="howto-panel">
                 <div className="howto-tabs">
@@ -763,262 +1019,6 @@ const HomeScreen = ({
                     </div>
                   </div>
                 )}
-              </div>
-            ) : modal === 'settings' ? (
-              <div className="settings-content">
-                <div className="settings-list">
-                {/* BGM音量 */}
-                <div style={{ marginBottom: 20 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 6,
-                    }}
-                  >
-                    <span style={{ fontWeight: 'bold' }}>BGM音量</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = toggleBgmMute();
-                        setBgmMuted(next);
-                      }}
-                      style={{
-                        background: bgmMuted ? '#666' : '#4caf50',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 4,
-                        padding: '2px 10px',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                      }}
-                    >
-                      {bgmMuted ? '🔇 OFF' : '🔊 ON'}
-                    </button>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={bgmVol}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value);
-                      setBgmVol(v);
-                      setBgmVolume(v);
-                    }}
-                    style={{ width: '100%', accentColor: '#c8a96e' }}
-                  />
-                </div>
-
-                {/* SE音量 */}
-                <div style={{ marginBottom: 20 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 6,
-                    }}
-                  >
-                    <span style={{ fontWeight: 'bold' }}>SE音量</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = toggleSeMute();
-                        setSeMuted(next);
-                      }}
-                      style={{
-                        background: seMuted ? '#666' : '#4caf50',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 4,
-                        padding: '2px 10px',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                      }}
-                    >
-                      {seMuted ? '🔇 OFF' : '🔊 ON'}
-                    </button>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={seVol}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value);
-                      setSeVol(v);
-                      setSeVolume(v);
-                    }}
-                    style={{ width: '100%', accentColor: '#c8a96e' }}
-                  />
-                </div>
-                <hr style={{ borderColor: '#444', marginBottom: 20 }} />
-
-                <div className="settings-item">
-                  <div className="settings-item-info">
-                    <p className="settings-item-title">データ初期化</p>
-                    <p className="settings-item-desc">
-                      ゲームの進行・図鑑・チュートリアルをすべてリセットします。この操作は元に戻せません。
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="settings-btn-danger"
-                    onClick={() => {
-                      const confirmed = window.confirm(
-                        'すべてのデータを初期化しますか？\nこの操作は元に戻せません。',
-                      );
-                      if (!confirmed) return;
-                      const keysToDelete = [
-                        'real-card-battle:save-data',
-                        'jobless_battle_save',
-                        'jobless_enemy_records',
-                        'jobless_enemy_defeat_counts',
-                        'real-card-battle:unlocked-card-names',
-                        'real-card-battle:tutorial-seen',
-                        'story_seen_carpenter',
-                        'story_seen_carpenter_e1',
-                        'story_seen_carpenter_e2',
-                        'story_seen_carpenter_e3',
-                      ];
-                      keysToDelete.forEach((key) => localStorage.removeItem(key));
-                      clearAchievements();
-                      window.alert('データを初期化しました。');
-                      window.location.reload();
-                    }}
-                  >
-                    初期化
-                  </button>
-                </div>
-                <div className="settings-item">
-                  <div className="settings-item-info">
-                    <p className="settings-item-title">広告を削除</p>
-                    <p className="settings-item-desc">
-                      ¥250で広告を完全に削除します。（Capacitor移行後に有効化）
-                    </p>
-                  </div>
-                  <button type="button" className="settings-btn-purchase" disabled>
-                    ¥250
-                  </button>
-                </div>
-                <div className="settings-item">
-                  <div className="settings-item-info">
-                    <p className="settings-item-title">カード画像を事前読み込み</p>
-                    <p className="settings-item-desc">
-                      起動時に全カード画像を読み込みます。通信量が増えますが表示が速くなります。
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={`settings-toggle ${preloadEnabled ? 'settings-toggle--on' : ''}`}
-                    onClick={onTogglePreload}
-                  >
-                    {preloadEnabled ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-
-                {/* 課金・法的情報 */}
-                <div className="settings-divider" />
-
-                <div className="settings-item">
-                  <div className="settings-item-info">
-                    <p className="settings-item-title">購入の復元</p>
-                    <p className="settings-item-desc">
-                      以前に購入した広告削除を復元します。
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="settings-btn-restore"
-                    disabled
-                  >
-                    復元
-                  </button>
-                </div>
-
-                <div className="settings-item">
-                  <div className="settings-item-info">
-                    <p className="settings-item-title">利用規約</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="settings-btn-link"
-                    onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/terms.html', '_self')}
-                  >
-                    確認 →
-                  </button>
-                </div>
-
-                <div className="settings-item">
-                  <div className="settings-item-info">
-                    <p className="settings-item-title">プライバシーポリシー</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="settings-btn-link"
-                    onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/privacy.html', '_self')}
-                  >
-                    確認 →
-                  </button>
-                </div>
-
-                <div className="settings-legal">
-                  <p className="settings-legal-text">
-                    広告削除（¥250）は買い切りです。購入後は同一Apple ID / Google アカウントで無制限にご利用いただけます。
-                  </p>
-                </div>
-
-                {import.meta.env.DEV && (
-                  <div className="dev-tools">
-                    <p className="dev-tools-title">🛠️ 開発用ツール</p>
-                    <div className="dev-tools-grid">
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_normal')}>
-                        通常戦闘
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_elite')}>
-                        エリート戦闘
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_1')}>
-                        ボス1
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_2')}>
-                        ボス2
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_3')}>
-                        ボス3
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shop')}>
-                        質屋
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shrine')}>
-                        神社
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('hotel')}>
-                        ホテル
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('event')}>
-                        イベント
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('card_reward')}>
-                        カード報酬
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('boss_reward')}>
-                        ボス報酬
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('story')}>
-                        ストーリー
-                      </button>
-                      <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_all_cards')}>
-                        全カード戦闘
-                      </button>
-                    </div>
-                  </div>
-                )}
-                </div>
               </div>
             ) : (
               <div className="credits-content">

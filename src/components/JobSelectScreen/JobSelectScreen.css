@@ -81,7 +81,7 @@
 /* ===== Back button ===== */
 .btn-job-back {
   position: absolute;
-  top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
+  top: max(2px, calc(var(--sat) - 2px));
   left: 20px;
   z-index: 20;
   background: rgba(0, 0, 0, 0.45);
