@@ -85,7 +85,20 @@ export const UNEMPLOYED_COMMON_POOL: Card[] = [
 ];
 
 export const UNEMPLOYED_UNCOMMON_POOL: Card[] = [
-  { id: 'welfare', name: '生活保護申請', type: 'skill', timeCost: 3, description: 'HP8回復', icon: '📄', sellValue: 12, effects: [{ type: 'heal', value: 8 }], imageUrl: welfareImage },
+  {
+    id: 'welfare',
+    name: '生活保護申請',
+    type: 'skill',
+    timeCost: 3,
+    description: 'メンタル+2、カード1枚ドロー',
+    icon: '📄',
+    sellValue: 12,
+    effects: [
+      { type: 'mental_boost', value: 2 },
+      { type: 'draw', value: 1 },
+    ],
+    imageUrl: welfareImage,
+  },
   { id: 'cardboard_house', name: '段ボールハウス', type: 'tool', timeCost: 2, description: '毎ターン3ブロック。覚醒中は8ブロック', block: 3, icon: '🏠', sellValue: 12, tags: ['awakened_boost'], imageUrl: cardboardHouseImage },
   { id: 'interview', name: '面接練習', type: 'skill', timeCost: 2, description: '次に使うカードを2回発動', icon: '👔', sellValue: 12, effects: [{ type: 'double_next', value: 1 }], imageUrl: interviewPracticeImage },
   { id: 'lighter', name: '100円ライター', type: 'tool', timeCost: 1, description: 'アタック使用時20%で火傷2付与', icon: '🔥', sellValue: 12, imageUrl: lighterImage },

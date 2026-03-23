@@ -9,18 +9,15 @@ interface Props {
   enemies: Enemy[];
   intents: Record<string, EnemyIntent>;
   hitEnemyId: string | null;
-  previewTargetEnemyId?: string | null;
-  previewDamage?: number;
-  previewHp?: number;
+  /** ドラッグ中の予測ダメージ／残りHP（全体攻撃時は全敵分） */
+  previewByEnemy?: Record<string, { damage: number; previewHp: number }> | null;
 }
 
 const EnemyDisplay = ({
   enemies,
   intents,
   hitEnemyId,
-  previewTargetEnemyId = null,
-  previewDamage = 0,
-  previewHp = 0,
+  previewByEnemy = null,
 }: Props) => {
   const [failedImageEnemyIds, setFailedImageEnemyIds] = useState<Set<string>>(() => new Set());
 
@@ -29,12 +26,18 @@ const EnemyDisplay = ({
       .filter((status) => status.type === type)
       .reduce((total, status) => total + status.value, 0);
 
+  const layoutClass =
+    enemies.length >= 3 ? 'enemy-list--3' : enemies.length === 2 ? 'enemy-list--2' : 'enemy-list--1';
+
   return (
-    <section className="enemy-list">
+    <section className={`enemy-list ${layoutClass}`}>
       {enemies.map((enemy) => {
+        const previewInfo = previewByEnemy?.[enemy.id];
+        const previewDamage = previewInfo?.damage ?? 0;
+        const previewHp = previewInfo?.previewHp ?? 0;
         const hpPercent = Math.max(0, (enemy.currentHp / enemy.maxHp) * 100);
         const hpClass = hpPercent < 33 ? 'low' : hpPercent < 66 ? 'mid' : 'high';
-        const isPreviewTarget = previewTargetEnemyId === enemy.id && previewDamage > 0;
+        const isPreviewTarget = Boolean(previewInfo && previewDamage > 0);
         const previewPercent = isPreviewTarget ? Math.max(0, (previewHp / enemy.maxHp) * 100) : hpPercent;
         const previewLossPercent = isPreviewTarget ? Math.max(0, hpPercent - previewPercent) : 0;
         const intent = intents[enemy.id];
@@ -48,7 +51,7 @@ const EnemyDisplay = ({
             key={enemy.id}
             className={`enemy-card ${enemy.currentHp <= 0 ? 'dead' : ''} ${
               hitEnemyId === enemy.id ? 'hit' : ''
-            } ${previewTargetEnemyId === enemy.id ? 'enemy-card--targeted' : ''}`}
+            } ${previewInfo ? 'enemy-card--targeted' : ''}`}
             data-enemy-id={enemy.id}
           >
             <h3 className="enemy-name">{enemy.name}</h3>
@@ -66,17 +69,30 @@ const EnemyDisplay = ({
                 )}
               </div>
               <div className="enemy-hp-text">
-                {enemy.block > 0 ? (
-                  <span style={{ color: '#60a5fa', fontWeight: 700 }}>
-                    <img src={ICONS.block} alt="Block" className="status-icon" /> {enemy.currentHp + enemy.block}/
-                    {enemy.maxHp}
+                <span className="enemy-hp-fraction">
+                  <img
+                    src={enemy.block > 0 ? ICONS.block : ICONS.hp}
+                    alt={enemy.block > 0 ? 'Block' : 'HP'}
+                    className="status-icon"
+                  />
+                  <span className="enemy-hp-num-left">{enemy.maxHp}</span>
+                  <span className="enemy-hp-sep">/</span>
+                  <span
+                    className={
+                      isPreviewTarget
+                        ? 'enemy-hp-num-right enemy-hp-num-right--preview'
+                        : enemy.block > 0
+                          ? 'enemy-hp-num-right enemy-hp-num-right--block'
+                          : 'enemy-hp-num-right'
+                    }
+                  >
+                    {isPreviewTarget
+                      ? previewHp
+                      : enemy.block > 0
+                        ? enemy.currentHp + enemy.block
+                        : enemy.currentHp}
                   </span>
-                ) : (
-                  <span>
-                    <img src={ICONS.hp} alt="HP" className="status-icon" /> {enemy.currentHp}/{enemy.maxHp}
-                  </span>
-                )}
-                {isPreviewTarget && <span className="enemy-hp-preview-text">→ {previewHp}</span>}
+                </span>
               </div>
             </div>
             <div className="enemy-buffs">

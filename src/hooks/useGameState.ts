@@ -4,7 +4,8 @@ import { getJobConfig } from '../data/jobs';
 import { createRandomEncounter } from '../data/enemies';
 import { useBattleLogic } from './useBattleLogic';
 import { useEnemyAI } from './useEnemyAI';
-import type { Card, EnemyIntent, GameState, JobId, PlayerState } from '../types/game';
+import type { Card, EnemyIntent, EnemyIntentType, GameState, JobId, PlayerState } from '../types/game';
+import { useAudioContext } from '../contexts/AudioContext';
 import type { BattleResult, BattleSetup, Omamori, RunItem } from '../types/run';
 import { drawCards } from '../utils/deckManager';
 import { getHungryState } from '../utils/hungrySystem';
@@ -20,7 +21,6 @@ const RESERVE_TIME_PENALTY = 1.5;
 const DRAW_COUNT = 5;
 const SELL_ANIMATION_MS = 220;
 const REWARD_AD_HEAL_AMOUNT = 20;
-const MAX_MENTAL = 10;
 const INITIAL_MENTAL = 7;
 const CARPENTER_CAN_SELL_IN_BATTLE = false;
 const ENEMY_GOLD_REWARDS: Record<string, number> = {
@@ -54,6 +54,14 @@ const ENEMY_GOLD_REWARDS: Record<string, number> = {
 };
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** 敵のデバフ・メンタル・呪い付与などに共通 SE */
+const ENEMY_DEBUFF_INTENT_TYPES: readonly EnemyIntentType[] = [
+  'debuff',
+  'random_debuff',
+  'mental_attack',
+  'add_curse',
+];
 
 interface CoinBurst {
   id: number;
@@ -100,7 +108,11 @@ export interface UseGameStateResult {
   playCardInstant: (
     cardId: string,
     target: { type: 'enemy'; enemyId: string | null } | { type: 'field' },
-  ) => { played: boolean; blockGained: number };
+  ) => {
+    played: boolean;
+    blockGained: number;
+    multiHitJabs?: { enemyId: string; damage: number }[];
+  };
   reserveCardById: (cardId: string) => boolean;
   sellCardById: (cardId: string) => boolean;
   useBattleItem: (itemId: string) => boolean;
@@ -266,6 +278,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
 export const useGameState = (options?: UseGameStateOptions): UseGameStateResult => {
   const { resolveCard, equipTool, applyToolEffects } = useBattleLogic();
   const { getEnemyIntent, executeEnemyTurn } = useEnemyAI();
+  const { playSe } = useAudioContext();
 
   const [gameState, setGameState] = useState<GameState>(
     () => options?.initialGameState ?? createInitialGameState(options?.setup),
@@ -497,7 +510,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const playCardInstant = (
     cardId: string,
     target: { type: 'enemy'; enemyId: string | null } | { type: 'field' },
-  ): { played: boolean; blockGained: number } => {
+  ): {
+    played: boolean;
+    blockGained: number;
+    multiHitJabs?: { enemyId: string; damage: number }[];
+  } => {
     if (gameState.phase !== 'player_turn') return { played: false, blockGained: 0 };
     if (activePendingHandUpgradeCount > 0) return { played: false, blockGained: 0 };
     const card = gameState.hand.find((item) => item.id === cardId);
@@ -720,6 +737,15 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           pushPopup(`-${dealt}`, enemy.id, 'damage');
         }
       }
+    } else if (result.multiHitJabs && result.multiHitJabs.length > 0) {
+      const multiHitStaggerMs = 280;
+      result.multiHitJabs.forEach((jab, i) => {
+        window.setTimeout(() => {
+          setHitEnemyId(jab.enemyId);
+          pushPopup(`-${jab.damage}`, jab.enemyId, 'damage');
+          window.setTimeout(() => setHitEnemyId(null), 260);
+        }, i * multiHitStaggerMs);
+      });
     } else if (result.damage > 0 && result.targetEnemyId) {
       setHitEnemyId(result.targetEnemyId);
       pushPopup(`-${result.damage}`, result.targetEnemyId, 'damage');
@@ -801,7 +827,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       setGameState((prev) => ({ ...prev, phase: 'executing' }));
       window.setTimeout(() => {
         const reward = result.enemies.reduce((sum, enemy) => sum + getEnemyReward(enemy.templateId), 0);
-        const nextMental = Math.min(MAX_MENTAL, playerAfterKill.mental + 1);
+        const nextMental = Math.min(
+          getJobConfig(playerAfterKill.jobId).maxMental,
+          playerAfterKill.mental + 1,
+        );
         setVictoryRewardGold(reward);
         setVictoryMentalRecovery(nextMental - playerAfterKill.mental);
         setGameState({
@@ -841,7 +870,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         });
       }, 500);
     }
-    return { played: true, blockGained: result.blockGained };
+    return { played: true, blockGained: result.blockGained, multiHitJabs: result.multiHitJabs };
   };
 
   const useBattleItem = (itemId: string): boolean => {
@@ -890,14 +919,17 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   };
 
   const reserveCardById = (cardId: string): boolean => {
-    let changed = false;
-    if (gameState.phase !== 'player_turn') return changed;
-    if (activePendingHandUpgradeCount > 0) return changed;
+    if (gameState.phase !== 'player_turn') return false;
+    if (activePendingHandUpgradeCount > 0) return false;
+
+    /** 手札の有無は古い gameState のクロージャではなく、更新関数の prev だけで判定する（取りこぼしで false になり温存SEが鳴らないのを防ぐ） */
+    let didReserve = false;
     setGameState((prev) => {
+      if (prev.phase !== 'player_turn') return prev;
       if (prev.reserved.length >= MAX_RESERVED) return prev;
       const card = prev.hand.find((item) => item.id === cardId);
       if (!card || card.type === 'status' || card.type === 'curse') return prev;
-      changed = true;
+      didReserve = true;
       const hasReserveDouble = card.effects?.some((e) => e.type === 'reserve_double_next') ?? false;
       const reservedCard: Card = {
         ...card,
@@ -925,10 +957,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         },
       };
     });
-    if (changed) {
+    if (didReserve) {
       setSelectedCardId((prev) => (prev === cardId ? null : prev));
     }
-    return changed;
+    return didReserve;
   };
 
   const spawnCoinBurst = (): void => {
@@ -1028,8 +1060,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       lastTurnDamageTaken: state.player.currentTurnDamageTaken,
       currentTurnDamageTaken: 0,
       firstIngredientUsedThisTurn: false,
-      nextAttackBoostValue: 0,
-      nextAttackBoostCount: 0,
       nextCardDoubleEffect: false,
       nextCardEffectBoost: state.player.nextCardEffectBoost ?? 0,
       statusEffects: tickedPlayerStatuses,
@@ -1085,7 +1115,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       ...gameState,
       phase: 'enemy_turn',
       executingIndex: -1,
-      player: { ...gameState.player },
+      player: {
+        ...gameState.player,
+        // 同ターン内のみ有効（ターン終了で失効）
+        nextAttackBoostValue: 0,
+        nextAttackBoostCount: 0,
+        nextAttackTimeReduce: 0,
+      },
       enemies: gameState.enemies.map((enemy) => ({ ...enemy, statusEffects: [...enemy.statusEffects] })),
       toolSlots: [...gameState.toolSlots],
       hand: [],
@@ -1101,7 +1137,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
     if (workingState.enemies.every((enemy) => enemy.currentHp <= 0)) {
       const reward = workingState.enemies.reduce((sum, enemy) => sum + getEnemyReward(enemy.templateId), 0);
-      const nextMental = Math.min(MAX_MENTAL, workingState.player.mental + 1);
+      const nextMental = Math.min(
+        getJobConfig(workingState.player.jobId).maxMental,
+        workingState.player.mental + 1,
+      );
       setVictoryRewardGold(reward);
       setVictoryMentalRecovery(nextMental - workingState.player.mental);
       setGameState({
@@ -1179,7 +1218,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       }
       if (workingState.enemies.every((enemy) => enemy.currentHp <= 0)) {
         const reward = workingState.enemies.reduce((sum, enemy) => sum + getEnemyReward(enemy.templateId), 0);
-        const nextMental = Math.min(MAX_MENTAL, workingState.player.mental + 1);
+        const nextMental = Math.min(
+          getJobConfig(workingState.player.jobId).maxMental,
+          workingState.player.mental + 1,
+        );
         setVictoryRewardGold(reward);
         setVictoryMentalRecovery(nextMental - workingState.player.mental);
         setGameState({
@@ -1230,6 +1272,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       const enemy = workingState.enemies[ei];
       if (enemy.currentHp <= 0) continue;
       const result = executeEnemyTurn(enemy, workingState.player);
+      if (ENEMY_DEBUFF_INTENT_TYPES.includes(result.intentType)) {
+        playSe('enemy_debuff');
+      }
       const revivalOutcome = applyRevivalIfNeeded(result.player);
       workingState = {
         ...workingState,

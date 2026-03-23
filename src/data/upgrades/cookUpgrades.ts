@@ -117,11 +117,8 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   '煮込み': {
     name: '煮込み+',
     timeCost: 1,
-    description: '調理+4、HP8回復（所要時間1秒）',
-    effects: [
-      { type: 'cooking_gauge', value: 4 },
-      { type: 'heal', value: 8 },
-    ],
+    description: '調理+6（所要時間1秒）',
+    effects: [{ type: 'cooking_gauge', value: 6 }],
   },
   '食材の仕入れ': {
     name: '食材の仕入れ+',
@@ -148,10 +145,10 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   '秘伝のスープ': {
     name: '秘伝のスープ+',
     timeCost: 2,
-    description: 'HP15回復、調理+4（所要時間2秒）',
+    description: '調理+8、カード2枚ドロー（所要時間2秒）',
     effects: [
-      { type: 'heal', value: 15 },
-      { type: 'cooking_gauge', value: 4 },
+      { type: 'cooking_gauge', value: 8 },
+      { type: 'draw', value: 2 },
     ],
   },
   '三ツ星の極意': {

@@ -6,6 +6,7 @@ import scaffoldBuildImage from '../assets/cards/carpenter/scaffold_build.png';
 import workClothesImage from '../assets/cards/carpenter/work_clothes.png';
 import driedLumberImage from '../assets/cards/carpenter/dried_lumber.png';
 import sharpenedSawImage from '../assets/cards/carpenter/sharpened_saw.png';
+import reinforcedWallImage from '../assets/cards/carpenter/reinforced_wall.png';
 import anxietyImage from '../assets/cards/enemy/anxiety.png';
 import curseImage from '../assets/cards/enemy/curse.png';
 
@@ -102,6 +103,7 @@ export const RESERVE_BONUS_CARDS: Card[] = [
       blockMultiplier: 2,
     },
     sellValue: 8,
+    imageUrl: reinforcedWallImage,
   },
 ];
 

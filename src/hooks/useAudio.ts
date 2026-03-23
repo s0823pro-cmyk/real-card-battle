@@ -2,26 +2,81 @@ import { useCallback, useEffect, useRef } from 'react';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 
-export type SeType = 'card' | 'attack' | 'damage' | 'block' | 'button';
-export type BgmType = 'menu' | 'battle' | 'boss' | 'victory' | 'defeat' | 'none';
+/**
+ * public/sounds 以下のファイルを、現在のページ（document.baseURI）基準で絶対 URL にする。
+ * `import.meta.env.BASE_URL` だけだと Capacitor / 一部 WebView で意図とずれることがある。
+ */
+function publicSoundUrl(filename: string): string {
+  const path = `sounds/${filename}`;
+  if (typeof document !== 'undefined' && document.baseURI) {
+    try {
+      return new URL(path, document.baseURI).href;
+    } catch {
+      /* fall through */
+    }
+  }
+  const base = import.meta.env.BASE_URL;
+  const prefix = base.endsWith('/') ? base : `${base}/`;
+  return `${prefix}${path}`;
+}
+
+const SE_CARD_SRC = publicSoundUrl('se-card.mp3');
+const SE_RESERVE_SRC = publicSoundUrl('se-reserve.mp3');
+
+export type SeType =
+  | 'card'
+  | 'attack'
+  | 'damage'
+  | 'block'
+  | 'button'
+  | 'reserve'
+  | 'shop_sell'
+  | 'shop_buy'
+  | 'upgrade'
+  /** 敵のデバフ・メンタル攻撃（文句を言う等） */
+  | 'enemy_debuff';
+export type BgmType =
+  | 'menu'
+  | 'battle'
+  | 'boss'
+  | 'victory'
+  | 'defeat'
+  | 'area1'
+  | 'area2'
+  | 'area3'
+  | 'story_area1'
+  | 'story_area2'
+  | 'story_area3'
+  | 'none';
 
 const SE_FILES: Record<SeType, string> = {
-  card: '/sounds/se-card.mp3',
-  attack: '/sounds/se-attack.mp3',
-  damage: '/sounds/se-damage.mp3',
-  block: '/sounds/se-block.mp3',
-  button: '/sounds/se-button.mp3',
+  card: SE_CARD_SRC,
+  attack: publicSoundUrl('se-attack.mp3'),
+  damage: publicSoundUrl('se-damage.mp3'),
+  block: publicSoundUrl('se-block.mp3'),
+  button: publicSoundUrl('se-button.mp3'),
+  reserve: SE_RESERVE_SRC,
+  shop_sell: publicSoundUrl('se-shop-sell.mp3'),
+  shop_buy: publicSoundUrl('se-shop-buy.mp3'),
+  upgrade: publicSoundUrl('se-upgrade.mp3'),
+  enemy_debuff: publicSoundUrl('se-enemy-debuff.mp3'),
 };
 
 const BGM_FILES: Record<Exclude<BgmType, 'none'>, string> = {
-  menu: '/sounds/bgm-menu.mp3',
-  battle: '/sounds/bgm-battle.mp3',
-  boss: '/sounds/bgm-boss.mp3',
-  victory: '/sounds/bgm-victory.mp3',
-  defeat: '/sounds/bgm-defeat.mp3',
+  menu: publicSoundUrl('bgm-menu.mp3'),
+  battle: publicSoundUrl('bgm-battle.mp3'),
+  boss: publicSoundUrl('bgm-boss.mp3'),
+  victory: publicSoundUrl('bgm-victory.mp3'),
+  defeat: publicSoundUrl('bgm-defeat.mp3'),
+  area1: publicSoundUrl('bgm-area1.mp3'),
+  area2: publicSoundUrl('bgm-area2.mp3'),
+  area3: publicSoundUrl('bgm-area3.mp3'),
+  story_area1: publicSoundUrl('bgm-story-area1.mp3'),
+  story_area2: publicSoundUrl('bgm-story-area2.mp3'),
+  story_area3: publicSoundUrl('bgm-story-area3.mp3'),
 };
 
-const LOOP_BGM: BgmType[] = ['menu', 'battle', 'boss'];
+const LOOP_BGM: BgmType[] = ['menu', 'battle', 'boss', 'area1', 'area2', 'area3'];
 
 /** ブラウザにデコードを先読みさせる（初回再生の遅延を減らす） */
 export function preloadAudio(src: string): void {
@@ -87,9 +142,20 @@ export const useAudio = () => {
 
   const playSe = useCallback((type: SeType) => {
     if (seMutedRef.current) return;
-    const audio = new Audio(SE_FILES[type]);
-    audio.volume = seVolumeRef.current;
-    audio.play().catch(() => {});
+    const tryPlay = (src: string) => {
+      const audio = new Audio(src);
+      audio.volume = seVolumeRef.current;
+      audio.addEventListener(
+        'ended',
+        () => {
+          audio.pause();
+          audio.currentTime = 0;
+        },
+        { once: true },
+      );
+      return audio.play();
+    };
+    void tryPlay(SE_FILES[type]).catch(() => {});
   }, []);
 
   const stopBgmPlaybackOnly = useCallback(() => {

@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
-import type { ShopItem } from '../../types/run';
-import type { Card, JobId } from '../../types/game';
 import type { CSSProperties } from 'react';
+import type { ShopItem } from '../../types/run';
+import { FLOW_BG_SHOP } from '../../data/flowBackgrounds';
+import { getSellPrice } from '../../data/runData';
+import type { Card, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
+import { useAudio } from '../../hooks/useAudio';
 import CardComponent from '../Hand/CardComponent';
 
 interface Props {
@@ -42,9 +45,11 @@ const ShopScreen = ({
   hasUsedSellThisVisit,
   onClose,
 }: Props) => {
+  const { playSe } = useAudio();
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [showCardRemove, setShowCardRemove] = useState(false);
   const [showCardSell, setShowCardSell] = useState(false);
+  const [sellConfirmCard, setSellConfirmCard] = useState<Card | null>(null);
   const [confirmItem, setConfirmItem] = useState<ShopItem | null>(null);
   const cards = useMemo(() => items.filter((item) => item.type === 'card'), [items]);
   const omamoris = useMemo(() => items.filter((item) => item.type === 'omamori'), [items]);
@@ -75,8 +80,12 @@ const ShopScreen = ({
     isHealDebuffed: false,
   });
 
+  const mainStyle = {
+    '--flow-bg-image': `url(${FLOW_BG_SHOP})`,
+  } as CSSProperties;
+
   return (
-    <main className="flow-screen">
+    <main className="flow-screen flow-screen--with-bg" style={mainStyle}>
       <section className="flow-card shop-flow-card">
         <div className="shop-header">
           <div className="shop-header-left">
@@ -251,17 +260,13 @@ const ShopScreen = ({
                 <div
                   key={`${card.id}_${idx}`}
                   className="shop-remove-card-item shop-sell-item card-display-item card-display-item--purchasable"
-                  onClick={() => {
-                    onSell(card.id);
-                    setShowCardSell(false);
-                  }}
+                  onClick={() => setSellConfirmCard(card)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      onSell(card.id);
-                      setShowCardSell(false);
+                      setSellConfirmCard(card);
                     }
                   }}
                 >
@@ -347,6 +352,32 @@ const ShopScreen = ({
           </div>
         </div>
       )}
+      {sellConfirmCard && (
+        <div className="reserve-confirm-overlay" onClick={() => setSellConfirmCard(null)}>
+          <div className="reserve-confirm-dialog" onClick={(event) => event.stopPropagation()}>
+            <p className="reserve-confirm-title" style={{ marginBottom: 16 }}>
+              【{sellConfirmCard.name}】を売却しますか？（+{getSellPrice(sellConfirmCard)}G）
+            </p>
+            <div className="reserve-confirm-buttons">
+              <button type="button" className="btn-reserve-cancel" onClick={() => setSellConfirmCard(null)}>
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="btn-reserve-ok"
+                onClick={() => {
+                  playSe('shop_sell');
+                  onSell(sellConfirmCard.id);
+                  setSellConfirmCard(null);
+                  setShowCardSell(false);
+                }}
+              >
+                売却する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmItem && (
         <div className="shop-remove-overlay" onClick={() => setConfirmItem(null)}>
           <div className="shop-remove-modal" onClick={(event) => event.stopPropagation()}>
@@ -403,6 +434,7 @@ const ShopScreen = ({
                   className="flow-btn"
                   style={{ flex: 1 }}
                   onClick={() => {
+                    playSe('shop_buy');
                     onBuy(confirmItem.id);
                     setConfirmItem(null);
                   }}

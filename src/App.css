@@ -1,6 +1,7 @@
 :root {
   /* Android WebView では env(safe-area-inset-top) が 0 のことが多い → MainActivity で --android-inset-top を注入 */
   --android-inset-top: 0px;
+  --android-inset-bottom: 0px;
   --sat: max(env(safe-area-inset-top, 0px), var(--android-inset-top));
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
@@ -17,26 +18,33 @@ body {
 }
 
 #root {
-  padding-bottom: var(--sab);
+  padding-bottom: max(var(--sab), var(--android-inset-bottom, 0px));
   padding-left: var(--sal);
   padding-right: var(--sar);
   min-height: 100dvh;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 /* デスクトップブラウザで不要な下余白を付けない（max(sab,12px) は PC で常に 12px 足していた） */
 @media (pointer: coarse) {
   #root {
-    padding-bottom: max(var(--sab), 12px);
+    padding-bottom: max(var(--sab), var(--android-inset-bottom, 0px), 12px);
   }
 }
 
 .app {
-  min-height: 100svh;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .app--map {
-  height: 100dvh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -105,7 +113,7 @@ body {
 }
 
 .restore-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 900;
   color: #e6edf3;
@@ -113,7 +121,7 @@ body {
 }
 
 .restore-desc {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
@@ -133,7 +141,7 @@ body {
   border: none;
   border-radius: 12px;
   color: #ffffff;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 15px;
   font-weight: 900;
   padding: 14px 0;
@@ -151,7 +159,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   color: rgba(255, 255, 255, 0.4);
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   padding: 10px 0;
   cursor: pointer;

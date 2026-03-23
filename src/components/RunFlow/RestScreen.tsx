@@ -1,3 +1,6 @@
+import type { CSSProperties } from 'react';
+import { FLOW_BG_HOTEL } from '../../data/flowBackgrounds';
+
 interface Props {
   onHeal: () => void;
   onUpgrade: () => void;
@@ -23,8 +26,12 @@ const RestScreen = ({
       ? '🎒 アイテムを入れ替える（ランダム1個）'
       : '🎁 アイテムをもらう（ランダム1個）';
 
+  const mainStyle = {
+    '--flow-bg-image': `url(${FLOW_BG_HOTEL})`,
+  } as CSSProperties;
+
   return (
-    <main className="flow-screen">
+    <main className="flow-screen flow-screen--with-bg" style={mainStyle}>
       <section className="flow-card">
         <h2>🏨 ホテル</h2>
         <div className="flow-list">

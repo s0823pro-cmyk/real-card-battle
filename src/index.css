@@ -24,8 +24,11 @@
   --color-dandori: #ffd700;
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-card: rgba(255, 255, 255, 0.1);
-  --font-ui: 'Noto Serif JP', serif;
   --font-display: 'Orbitron', sans-serif;
+  /* UI 全体を表示用フォントに統一 */
+  --font-ui: var(--font-display);
+  /* 図鑑・実績・設定などフルスクリーン副画面の中身をわずかに上へ */
+  --overlay-screen-nudge-up: 6px;
   font-family: var(--font-ui);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -80,7 +83,7 @@ body,
   align-items: center;
   justify-content: center;
   color: #e6edf3;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   gap: 16px;
   text-align: center;

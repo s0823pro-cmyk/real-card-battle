@@ -1,5 +1,10 @@
 import type { Card } from '../../types/game';
 import { RESERVE_BONUS_CARDS, buildStarterDeck } from '../carpenterDeck';
+import {
+  CARPENTER_EXPANSION_COMMON,
+  CARPENTER_EXPANSION_RARE,
+  CARPENTER_EXPANSION_UNCOMMON,
+} from './carpenterExpansion';
 import electricDrillImage from '../../assets/cards/carpenter/electric_drill.png';
 import woodBlockImage from '../../assets/cards/carpenter/wood_block.png';
 import blueprintImage from '../../assets/cards/carpenter/blueprint.png';
@@ -96,6 +101,7 @@ export const CARPENTER_COMMON_POOL: Card[] = [
     sellValue: 8,
     imageUrl: reinforcedWallImage,
   },
+  ...CARPENTER_EXPANSION_COMMON,
 ];
 
 export const CARPENTER_UNCOMMON_POOL: Card[] = [
@@ -171,6 +177,7 @@ export const CARPENTER_UNCOMMON_POOL: Card[] = [
     sellValue: 14,
     imageUrl: ironWallImage,
   },
+  ...CARPENTER_EXPANSION_UNCOMMON,
 ];
 
 /** 実績解放が必要なレアカード（ゲーム開始時は報酬・ショップ抽選に出現しない） */
@@ -246,6 +253,7 @@ export const CARPENTER_RARE_POOL: Card[] = [
     effects: [{ type: 'upgrade_random_hand_card', value: 1 }],
     imageUrl: renovationImage,
   },
+  ...CARPENTER_EXPANSION_RARE,
 ];
 
 /** 大工レア全件（通常プール＋実績ロック分。図鑑・実績報酬表示用） */

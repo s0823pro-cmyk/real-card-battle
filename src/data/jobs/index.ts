@@ -25,6 +25,8 @@ export interface JobConfig {
   id: JobId;
   initialHp: number;
   initialMental: number;
+  /** メンタルがこれ以上に増えない（UI・バトル・マップイベントで共通） */
+  maxMental: number;
   createStarterDeck: () => Card[];
 }
 
@@ -55,6 +57,7 @@ export const CARPENTER_CONFIG: JobConfig = {
   id: 'carpenter',
   initialHp: 80,
   initialMental: 7,
+  maxMental: 9,
   createStarterDeck: () => createCarpenterStarterDeck(),
 };
 
@@ -62,6 +65,7 @@ export const COOK_CONFIG: JobConfig = {
   id: 'cook',
   initialHp: 80,
   initialMental: 6,
+  maxMental: 8,
   createStarterDeck: () => createFixedStarterDeck(COOK_STARTER_DECK),
 };
 
@@ -69,6 +73,7 @@ export const UNEMPLOYED_CONFIG: JobConfig = {
   id: 'unemployed',
   initialHp: 70,
   initialMental: 10,
+  maxMental: 10,
   createStarterDeck: () => createFixedStarterDeck(UNEMPLOYED_STARTER_DECK),
 };
 

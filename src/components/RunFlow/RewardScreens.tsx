@@ -6,6 +6,7 @@ import type { Omamori } from '../../types/run';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import CardComponent from '../Hand/CardComponent';
 import { upgradeCardByJobId } from '../../utils/cardUpgrade';
+import { FLOW_BG_CARD_REWARD, FLOW_BG_REST } from '../../data/flowBackgrounds';
 
 function useVictoryRewardBgm() {
   const { playBgm } = useAudioContext();
@@ -73,9 +74,14 @@ export const CardRewardScreen = ({ cards, jobId, onPick, onSkip }: CardRewardPro
     };
   }, [cards.length]);
 
+  const cardRewardMainStyle = {
+    '--flow-bg-image': `url(${FLOW_BG_CARD_REWARD})`,
+    '--flow-bg-overlay': 'rgba(0, 0, 0, 0.22)',
+  } as CSSProperties;
+
   return (
-    <main className="flow-screen card-reward-screen">
-      <section className="flow-card card-reward-panel">
+    <main className="flow-screen card-reward-screen flow-screen--with-bg" style={cardRewardMainStyle}>
+      <section className="card-reward-panel">
         <h2 className="reward-heading">カードを1枚選んでください</h2>
         <div className="reward-card-list" ref={rewardListRef}>
           {cards.map((card, idx) => (
@@ -179,8 +185,9 @@ interface CardUpgradeProps {
 }
 
 export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onSkip }: CardUpgradeProps) => {
-  useVictoryRewardBgm();
+  const { playSe } = useAudioContext();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const upgradableCards = cards.filter(
     (card) => !card.upgraded && !card.name.endsWith('+') && card.type !== 'status',
   );
@@ -210,8 +217,12 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
   const paddedUpgradeRows = selectedUpgradeRows;
   const noop = () => {};
 
+  const upgradeMainStyle = {
+    '--flow-bg-image': `url(${FLOW_BG_REST})`,
+  } as CSSProperties;
+
   return (
-    <main className="flow-screen">
+    <main className="flow-screen flow-screen--with-bg" style={upgradeMainStyle}>
       <section className="flow-card upgrade-screen">
         <div className="upgrade-header">
           <h2 className="upgrade-title">{mode === 'upgrade' ? 'カードを強化する' : 'カードを削除する'}</h2>
@@ -222,7 +233,7 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
             {upgradableCards.length === 0 ? (
               <div className="upgrade-empty">
                 <p className="upgrade-empty-text">強化できるカードがありません</p>
-                <button type="button" className="btn-upgrade-skip" onClick={onSkip}>
+                <button type="button" className="btn-upgrade-skip" onClick={() => setShowSkipConfirm(true)}>
                   次へ進む
                 </button>
               </div>
@@ -315,12 +326,15 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
                     <button
                       type="button"
                       className="btn-upgrade-confirm"
-                      onClick={() => onUpgrade(selectedCard.id)}
+                      onClick={() => {
+                        playSe('upgrade');
+                        onUpgrade(selectedCard.id);
+                      }}
                     >
                       強化する
                     </button>
                   )}
-                  <button type="button" className="btn-upgrade-skip" onClick={onSkip}>
+                  <button type="button" className="btn-upgrade-skip" onClick={() => setShowSkipConfirm(true)}>
                     スキップ
                   </button>
                 </div>
@@ -382,6 +396,30 @@ export const CardUpgradeScreen = ({ mode, cards, jobId, onUpgrade, onRemove, onS
           </>
         )}
       </section>
+      {mode === 'upgrade' && showSkipConfirm && (
+        <div className="reserve-confirm-overlay" onClick={() => setShowSkipConfirm(false)}>
+          <div className="reserve-confirm-dialog" onClick={(event) => event.stopPropagation()}>
+            <p className="reserve-confirm-title" style={{ marginBottom: 16 }}>
+              カードを強化しないで進みますか？
+            </p>
+            <div className="reserve-confirm-buttons">
+              <button type="button" className="btn-reserve-cancel" onClick={() => setShowSkipConfirm(false)}>
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="btn-reserve-ok"
+                onClick={() => {
+                  setShowSkipConfirm(false);
+                  onSkip();
+                }}
+              >
+                進む
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

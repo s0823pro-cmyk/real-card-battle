@@ -1,4 +1,5 @@
 import type { CardEffect, LowHpBonus } from '../../types/game';
+import { CARPENTER_EXPANSION_UPGRADES } from './carpenterExpansionUpgrades';
 
 export interface CardUpgrade {
   name: string;
@@ -171,4 +172,6 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
     tags: ['scaffold_consume', 'exhaust'],
     description: '足場×6ダメージ、足場を全消費。使用後除外。段取り時：2秒',
   },
+
+  ...CARPENTER_EXPANSION_UPGRADES,
 };

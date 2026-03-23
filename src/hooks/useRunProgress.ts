@@ -19,6 +19,7 @@ import {
   generateShopCards,
   generateShopItems,
   getCardPrice,
+  getSellPrice,
   pickArea1Elite,
   pickArea1EncounterTemplateIds,
   pickArea2Encounter,
@@ -492,13 +493,6 @@ const applyCardGain = (deck: Card[], jobId: JobId, count = 1): Card[] => {
   return [...deck, ...gained];
 };
 
-const getSellPrice = (card: Card): number => {
-  const buyPrice = getCardPrice(card);
-  if (buyPrice >= 150) return 50;
-  if (buyPrice >= 80) return 25;
-  return 15;
-};
-
 const getRemoveCost = (removeCount: number): number => 50 + removeCount * 25;
 
 const advanceAfterAreaBossCore = (
@@ -531,9 +525,11 @@ const applySingleEffect = (
     case 'gold':
       next.player.gold = Math.max(0, next.player.gold + effect.value);
       break;
-    case 'mental':
-      next.player.mental = Math.max(0, Math.min(10, next.player.mental + effect.value));
+    case 'mental': {
+      const cap = getJobConfig(state.jobId).maxMental;
+      next.player.mental = Math.max(0, Math.min(cap, next.player.mental + effect.value));
       break;
+    }
     case 'card':
       next.deck = applyCardGain(next.deck, state.jobId, Math.max(1, effect.value));
       break;
@@ -670,7 +666,7 @@ export const useRunProgress = () => {
       return;
     }
     if (tile.type === 'event') {
-      dispatch({ type: 'set_event', event: pickEvent() });
+      dispatch({ type: 'set_event', event: pickEvent(stateRef.current.currentArea) });
       dispatch({ type: 'set_screen', screen: 'event' });
       return;
     }
@@ -811,6 +807,35 @@ export const useRunProgress = () => {
     const event = stateRef.current.activeEvent;
     if (!event) return;
 
+    if (event.id === 'gambling_invite' && choiceIndex === 0) {
+      let nextState = stateRef.current;
+      const effect =
+        Math.random() < 0.5
+          ? ({ type: 'gold', value: 80 } as const)
+          : ({ type: 'gold', value: -40 } as const);
+      nextState = applySingleEffect(nextState, effect);
+      dispatch({ type: 'set_player', player: nextState.player });
+      dispatch({ type: 'set_deck', deck: nextState.deck });
+      dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
+      dispatch({ type: 'set_event', event: null });
+      dispatch({ type: 'set_screen', screen: 'map' });
+      return;
+    }
+    if (event.id === 'mystery_medicine' && choiceIndex === 0) {
+      let nextState = stateRef.current;
+      const effect =
+        Math.random() < 0.5
+          ? ({ type: 'heal', value: 30 } as const)
+          : ({ type: 'damage', value: 20 } as const);
+      nextState = applySingleEffect(nextState, effect);
+      dispatch({ type: 'set_player', player: nextState.player });
+      dispatch({ type: 'set_deck', deck: nextState.deck });
+      dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
+      dispatch({ type: 'set_event', event: null });
+      dispatch({ type: 'set_screen', screen: 'map' });
+      return;
+    }
+
     // trainingイベント：受講する（choiceIndex=0）でカード強化画面へ
     if (event.id === 'training' && choiceIndex === 0) {
       dispatch({ type: 'set_event', event: null });
@@ -868,7 +893,10 @@ export const useRunProgress = () => {
       type: 'set_player',
       player: {
         ...stateRef.current.player,
-        mental: Math.min(10, stateRef.current.player.mental + 2),
+        mental: Math.min(
+          getJobConfig(stateRef.current.jobId).maxMental,
+          stateRef.current.player.mental + 2,
+        ),
       },
     });
     dispatch({ type: 'set_screen', screen: 'map' });
@@ -1030,8 +1058,6 @@ export const useRunProgress = () => {
     const card = stateRef.current.deck.find((entry) => entry.id === cardId);
     if (!card) return;
     const sellPrice = getSellPrice(card);
-    const confirmed = window.confirm(`${card.name} を ${sellPrice}G で売却しますか？`);
-    if (!confirmed) return;
     dispatch({ type: 'set_deck', deck: stateRef.current.deck.filter((entry) => entry.id !== cardId) });
     dispatch({
       type: 'set_player',
@@ -1491,7 +1517,7 @@ export const useRunProgress = () => {
       return;
     }
     if (destination === 'event') {
-      dispatch({ type: 'set_event', event: pickEvent() });
+      dispatch({ type: 'set_event', event: pickEvent(stateRef.current.currentArea) });
       dispatch({ type: 'set_screen', screen: 'event' });
       return;
     }

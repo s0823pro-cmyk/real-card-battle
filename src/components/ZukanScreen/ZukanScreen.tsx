@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import CardComponent from '../Hand/CardComponent';
 import type { Card, CardRarity, CardType, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
@@ -99,12 +99,6 @@ const STATIC_EFFECTIVE_VALUES: EffectiveCardValues = {
   isHealDebuffed: false,
 };
 
-type CardSizeStyle = CSSProperties & {
-  '--hand-card-width': string;
-  '--hand-card-height': string;
-  '--card-name-min-size'?: string;
-};
-
 const noopPointer = (event: ReactPointerEvent) => {
   void event;
   // 図鑑内カードは非操作のため no-op。
@@ -168,28 +162,6 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
       null,
     effectiveTimeCost: card.timeCost,
   });
-
-  const cardStyle: CardSizeStyle = {
-    width: '96px',
-    height: '154px',
-    position: 'relative',
-    transform: 'none',
-    transition: 'none',
-    '--hand-card-width': '96px',
-    '--hand-card-height': '154px',
-    '--card-name-min-size': '10px',
-  };
-
-  const detailCardStyle: CardSizeStyle = {
-    width: '210px',
-    height: '336px',
-    position: 'relative',
-    transform: 'none',
-    transition: 'none',
-    '--hand-card-width': '210px',
-    '--hand-card-height': '336px',
-    '--card-name-min-size': '11px',
-  };
 
   const openCardDetail = (index: number) => {
     suppressOverlayCloseRef.current = true;
@@ -452,7 +424,6 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     />
                     <div
                       className={`zukan-card-wrapper zukan-card-preview ${isUnlocked ? '' : 'zukan-card-wrapper--locked'}`}
-                      style={cardStyle}
                     >
                       <CardComponent
                         card={card}
@@ -509,7 +480,6 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                   </button>
                   <div
                     className={`zukan-detail-card-wrapper ${selectedCardUnlocked ? '' : 'zukan-card-wrapper--locked'}`}
-                    style={detailCardStyle}
                   >
                     <CardComponent
                       key={`zukan-detail-${selectedCard.id}-${activeSelectedIndex ?? 0}`}

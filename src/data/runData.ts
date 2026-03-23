@@ -54,18 +54,6 @@ export const TILE_LABELS: Record<TileType, { icon: string; iconImg: string; name
   area_boss: { icon: '👑', iconImg: ICONS.mapBoss, name: 'エリアボス' },
 };
 
-export const AREA1_ENCOUNTER_TEMPLATE_IDS: string[][] = [
-  ['claimer'],
-  ['drunk'],
-  ['wildCat', 'wildCat'],
-  ['claimer', 'drunk'],
-  ['wildCat', 'claimer'],
-  ['bicycle'],
-  ['solicitor'],
-  ['bicycle', 'drunk'],
-  ['solicitor', 'claimer'],
-];
-
 export const AREA1_ELITES: EnemyTemplateLike[] = [
   {
     templateId: 'biker_leader',
@@ -254,16 +242,17 @@ export const AREA1_EVENTS: GameEvent[] = [
     name: '怪しい自販機',
     description: '見たことのない飲み物が並ぶ自販機。何が出るかわからない。',
     choices: [
-      { text: '買ってみる（-10G、ランダム効果）', effects: [{ type: 'gold', value: -10 }] },
+      { text: '購入する（-10G、何が出るかはお楽しみ）', effects: [{ type: 'gold', value: -10 }] },
       { text: 'やめておく', effects: [] },
     ],
   },
   {
     id: 'training',
     name: '職業訓練校',
-    description: '短期講座の無料体験をやっている。カードを1枚強化できそうだ。',
+    description:
+      '短期講座の無料体験をやっている。受講するとカードを1枚強化できる。',
     choices: [
-      { text: '受講する（カード1枚強化）', effects: [] },
+      { text: '受講する（カード1枚を強化）', effects: [] },
       { text: '時間がないので断る', effects: [] },
     ],
   },
@@ -324,7 +313,221 @@ export const AREA1_EVENTS: GameEvent[] = [
     description: '段差に気づかず派手に転んでしまった。',
     choices: [{ text: 'HP-10', effects: [{ type: 'damage', value: 10 }] }],
   },
+  {
+    id: 'park_nap',
+    name: '公園でお昼寝',
+    description: 'ベンチが空いていた。少し休むか…',
+    choices: [
+      { text: '気持ちよく眠る（メンタル+2）', effects: [{ type: 'mental', value: 2 }] },
+      { text: '短く仮眠する（HP+5）', effects: [{ type: 'heal', value: 5 }] },
+    ],
+  },
+  {
+    id: 'stray_cat',
+    name: '野良猫に懐かれた',
+    description: '足元をグルグル回る猫が、しきりに擦り寄ってくる。',
+    choices: [{ text: '撫でる（メンタル+1）', effects: [{ type: 'mental', value: 1 }] }],
+  },
+  {
+    id: 'convenience_win',
+    name: 'コンビニでポイント当選',
+    description: 'レシートのキャンペーンに当たったようだ。',
+    choices: [{ text: '引き換える（+20G）', effects: [{ type: 'gold', value: 20 }] }],
+  },
+  {
+    id: 'lost_way',
+    name: '道に迷った',
+    description: '見慣れない路地に迷い込んでしまった。',
+    choices: [
+      { text: '歩き回る（HP-5）', effects: [{ type: 'damage', value: 5 }] },
+      { text: '地図アプリを買う（-10G）', effects: [{ type: 'gold', value: -10 }] },
+    ],
+  },
 ];
+
+/** エリア2専用（中盤・判断・リスク／リターン） */
+const AREA2_ONLY_EVENTS: GameEvent[] = [
+  {
+    id: 'friend_encounter',
+    name: '知人にばったり会う',
+    description: '昔の顔見知りと鉢合わせした。しばらく話が弾んだ。',
+    choices: [
+      {
+        text: '飲みに行く（-15G、メンタル+2）',
+        effects: [{ type: 'gold', value: -15 }, { type: 'mental', value: 2 }],
+      },
+      { text: '挨拶だけして断る', effects: [] },
+    ],
+  },
+  {
+    id: 'cheap_tools_sale',
+    name: '工具を安く売っている',
+    description: '路肩に並んだ品。本物かどうかはわからない。',
+    choices: [
+      {
+        text: '買う（-30G、カード1枚）',
+        effects: [{ type: 'gold', value: -30 }, { type: 'card', value: 1 }],
+      },
+      { text: 'スルーする', effects: [] },
+    ],
+  },
+  {
+    id: 'suspicious_parttime',
+    name: '不審なアルバイト',
+    description: 'チラシに「日給高め」と書いてある。詳細はあいまいだ。',
+    choices: [
+      {
+        text: '引き受ける（+50G、HP-15）',
+        effects: [{ type: 'gold', value: 50 }, { type: 'damage', value: 15 }],
+      },
+      { text: '断る', effects: [] },
+    ],
+  },
+  {
+    id: 'hungry_starving',
+    name: '空腹で倒れそう',
+    description: '胃がきしむ音がする。何か食べないと…',
+    choices: [
+      {
+        text: '飯を買う（-10G、HP+20）',
+        effects: [{ type: 'gold', value: -10 }, { type: 'heal', value: 20 }],
+      },
+      { text: '我慢する（HP-10）', effects: [{ type: 'damage', value: 10 }] },
+    ],
+  },
+];
+
+/** エリア3専用（終盤・高リスク高リターン）。賭け・謎の薬は chooseEventChoice で50%分岐 */
+const AREA3_ONLY_EVENTS: GameEvent[] = [
+  {
+    id: 'gambling_invite',
+    name: '賭け事の誘い',
+    description: '怪しげな男が声をかけてきた。一発逆転か、一発地獄か。',
+    choices: [
+      { text: '賭けに参加する（+80G or -40G、どちらかは運次第）', effects: [] },
+      { text: '断る', effects: [] },
+    ],
+  },
+  {
+    id: 'work_to_limit',
+    name: '限界まで働く',
+    description: '急ぎの仕事が山積みだ。身体を削れば報酬は大きい。',
+    choices: [
+      {
+        text: '受ける（+60G、HP-20、メンタル-2）',
+        effects: [{ type: 'gold', value: 60 }, { type: 'damage', value: 20 }, { type: 'mental', value: -2 }],
+      },
+      { text: '断る', effects: [] },
+    ],
+  },
+  {
+    id: 'mystery_medicine',
+    name: '謎の薬',
+    description: 'ラベルのない瓶が転がっている。飲めば…？',
+    choices: [
+      { text: '飲んでみる（HP+30 or HP-20、どちらかは運次第）', effects: [] },
+      { text: '捨てる', effects: [] },
+    ],
+  },
+  {
+    id: 'omamori_merchant',
+    name: 'お守りの行商人',
+    description: '巾着に詰まったお守りを売り歩いている。',
+    choices: [
+      {
+        text: '買う（-40G、お守り1）',
+        effects: [{ type: 'gold', value: -40 }, { type: 'omamori', value: 1 }],
+      },
+      { text: 'スルーする', effects: [] },
+    ],
+  },
+];
+
+const AREA2_EVENT_IDS_FROM_AREA1 = new Set([
+  'lost_item',
+  'cat_cafe',
+  'street_musician',
+  'vending_machine',
+  'training',
+  'shrine_lucky_charm',
+  'drinking_party',
+  'lost_wallet',
+  'bad_memory',
+]);
+
+const AREA3_EVENT_IDS_FROM_AREA1 = new Set([
+  'drinking_party',
+  'vending_machine',
+  'tripped',
+  'lost_wallet',
+  'bad_memory',
+  'health_checkup',
+  'cat_cafe',
+  'street_musician',
+  'found_money',
+]);
+
+export const AREA2_EVENTS: GameEvent[] = [
+  ...AREA2_ONLY_EVENTS,
+  ...AREA1_EVENTS.filter((e) => AREA2_EVENT_IDS_FROM_AREA1.has(e.id)),
+];
+
+export const AREA3_EVENTS: GameEvent[] = [
+  ...AREA3_ONLY_EVENTS,
+  ...AREA1_EVENTS.filter((e) => AREA3_EVENT_IDS_FROM_AREA1.has(e.id)),
+];
+
+/**
+ * イベント抽選の重み（未指定 id は 1.0）。
+ * - 高め: 選択なしで明確なプラス、または強い恒常報酬（強化・お守り・大きめ回復・ゴールド）
+ * - 基準 1.0: 判断が分かれる・コストとトレードのある選択肢
+ * - 低め: 純デメリット1択、極端なギャンブル（50%系）、身体に効くデバフ付き高額報酬
+ */
+const EVENT_SELECTION_WEIGHTS: Record<string, number> = {
+  // --- エリア1共有 ---
+  lost_item: 1.0,
+  cat_cafe: 1.0,
+  street_musician: 1.0,
+  vending_machine: 0.88,
+  training: 1.22,
+  shrine_lucky_charm: 1.22,
+  drinking_party: 0.94,
+  found_money: 1.32,
+  good_mood: 1.32,
+  health_checkup: 1.28,
+  lost_wallet: 0.56,
+  bad_memory: 0.58,
+  tripped: 0.58,
+  park_nap: 1.26,
+  stray_cat: 1.32,
+  convenience_win: 1.32,
+  lost_way: 0.94,
+  // --- エリア2専用 ---
+  friend_encounter: 1.0,
+  cheap_tools_sale: 1.0,
+  suspicious_parttime: 0.92,
+  hungry_starving: 1.0,
+  // --- エリア3専用 ---
+  gambling_invite: 0.68,
+  work_to_limit: 0.9,
+  mystery_medicine: 0.68,
+  omamori_merchant: 1.12,
+};
+
+const getEventSelectionWeight = (id: string): number => EVENT_SELECTION_WEIGHTS[id] ?? 1;
+
+const pickWeightedGameEvent = (pool: GameEvent[]): GameEvent => {
+  if (pool.length === 0) {
+    throw new Error('pickWeightedGameEvent: empty pool');
+  }
+  const total = pool.reduce((sum, e) => sum + getEventSelectionWeight(e.id), 0);
+  let r = Math.random() * total;
+  for (const e of pool) {
+    r -= getEventSelectionWeight(e.id);
+    if (r <= 0) return e;
+  }
+  return pool[pool.length - 1];
+};
 
 const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -424,19 +627,50 @@ export const getCardPrice = (card: Card): number => {
   return 50;
 };
 
+export const getSellPrice = (card: Card): number => {
+  const buyPrice = getCardPrice(card);
+  if (buyPrice >= 150) return 50;
+  if (buyPrice >= 80) return 25;
+  return 15;
+};
+
 export const generateShopItems = (count: number): RunItem[] => {
   const shuffled = [...ITEMS].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count).map((item, idx) => ({ ...item, id: `${item.id}_shop_${Date.now()}_${idx}` }));
 };
 
-export const pickArea1EncounterTemplateIds = (): string[] =>
-  AREA1_ENCOUNTER_TEMPLATE_IDS[Math.floor(Math.random() * AREA1_ENCOUNTER_TEMPLATE_IDS.length)];
+/** 3体は出現率を抑え、1体のときは中央大表示用レイアウトと組み合わせる */
+export const pickArea1EncounterTemplateIds = (): string[] => {
+  const r = Math.random();
+  if (r < 0.11) {
+    const triples = [
+      ['wildCat', 'wildCat', 'wildCat'],
+      ['wildCat', 'bicycle', 'claimer'],
+      ['solicitor', 'wildCat', 'bicycle'],
+    ];
+    return triples[Math.floor(Math.random() * triples.length)];
+  }
+  if (r < 0.11 + 0.36) {
+    const doubles = [
+      ['wildCat', 'wildCat'],
+      ['claimer', 'drunk'],
+      ['wildCat', 'claimer'],
+      ['bicycle', 'drunk'],
+      ['solicitor', 'claimer'],
+    ];
+    return doubles[Math.floor(Math.random() * doubles.length)];
+  }
+  const singles = [['claimer'], ['drunk'], ['bicycle'], ['solicitor']];
+  return singles[Math.floor(Math.random() * singles.length)];
+};
 
 export const pickArea1Elite = (): EnemyTemplateLike =>
   AREA1_ELITES[Math.floor(Math.random() * AREA1_ELITES.length)];
 
-export const pickEvent = (): GameEvent =>
-  AREA1_EVENTS[Math.floor(Math.random() * AREA1_EVENTS.length)];
+export const pickEvent = (area: number): GameEvent => {
+  const pool = area >= 3 ? AREA3_EVENTS : area >= 2 ? AREA2_EVENTS : AREA1_EVENTS;
+  return pickWeightedGameEvent(pool);
+};
 
 // ===== AREA 2 =====
 
@@ -547,13 +781,31 @@ export const AREA2_BOSS: EnemyTemplateLike = {
   ],
 };
 
+const AREA2_TRIPLE_INDEX_PATTERNS: number[][] = [
+  [0, 1, 2],
+  [1, 2, 3],
+  [2, 3, 4],
+  [0, 2, 4],
+  [0, 1, 4],
+];
+
 export const pickArea2Encounter = (): EnemyTemplateLike[] => {
-  const patterns = [
-    [0], [1], [2], [3], [4],
-    [0, 1], [2, 3], [1, 4],
-  ];
-  const pick = patterns[Math.floor(Math.random() * patterns.length)];
-  return pick.map((i) => AREA2_NORMAL_ENEMIES[i]);
+  const r = Math.random();
+  if (r < 0.12) {
+    const pick = AREA2_TRIPLE_INDEX_PATTERNS[Math.floor(Math.random() * AREA2_TRIPLE_INDEX_PATTERNS.length)];
+    return pick.map((i) => AREA2_NORMAL_ENEMIES[i]);
+  }
+  if (r < 0.12 + 0.35) {
+    const doubles = [
+      [0, 1],
+      [2, 3],
+      [1, 4],
+    ];
+    const pick = doubles[Math.floor(Math.random() * doubles.length)];
+    return pick.map((i) => AREA2_NORMAL_ENEMIES[i]);
+  }
+  const i = Math.floor(Math.random() * AREA2_NORMAL_ENEMIES.length);
+  return [AREA2_NORMAL_ENEMIES[i]];
 };
 
 export const pickArea2Elite = (): EnemyTemplateLike =>
@@ -673,13 +925,31 @@ export const AREA3_BOSS: EnemyTemplateLike = {
   ],
 };
 
+const AREA3_TRIPLE_INDEX_PATTERNS: number[][] = [
+  [0, 1, 2],
+  [1, 2, 3],
+  [2, 3, 4],
+  [0, 2, 4],
+  [0, 1, 4],
+];
+
 export const pickArea3Encounter = (): EnemyTemplateLike[] => {
-  const patterns = [
-    [0], [1], [2], [3], [4],
-    [0, 1], [2, 3], [1, 4],
-  ];
-  const pick = patterns[Math.floor(Math.random() * patterns.length)];
-  return pick.map((i) => AREA3_NORMAL_ENEMIES[i]);
+  const r = Math.random();
+  if (r < 0.12) {
+    const pick = AREA3_TRIPLE_INDEX_PATTERNS[Math.floor(Math.random() * AREA3_TRIPLE_INDEX_PATTERNS.length)];
+    return pick.map((i) => AREA3_NORMAL_ENEMIES[i]);
+  }
+  if (r < 0.12 + 0.35) {
+    const doubles = [
+      [0, 1],
+      [2, 3],
+      [1, 4],
+    ];
+    const pick = doubles[Math.floor(Math.random() * doubles.length)];
+    return pick.map((i) => AREA3_NORMAL_ENEMIES[i]);
+  }
+  const i = Math.floor(Math.random() * AREA3_NORMAL_ENEMIES.length);
+  return [AREA3_NORMAL_ENEMIES[i]];
 };
 
 export const pickArea3Elite = (): EnemyTemplateLike =>

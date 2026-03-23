@@ -7,10 +7,17 @@ interface StoryScreenProps {
   scenes: StoryScene[];
   onComplete: () => void;
   showStartButton?: boolean;
+  /** 開幕ストーリー（showStartButton=true）のストーリーBGM用。1〜3 を想定 */
+  currentArea?: number;
 }
 
-export const StoryScreen = ({ scenes, onComplete, showStartButton = true }: StoryScreenProps) => {
-  const { stopBgm } = useAudioContext();
+export const StoryScreen = ({
+  scenes,
+  onComplete,
+  showStartButton = true,
+  currentArea = 1,
+}: StoryScreenProps) => {
+  const { stopBgm, playBgm } = useAudioContext();
   const [sceneIndex, setSceneIndex] = useState(0);
   const [lineIndex, setLineIndex] = useState(0);
   const [displayed, setDisplayed] = useState('');
@@ -23,8 +30,23 @@ export const StoryScreen = ({ scenes, onComplete, showStartButton = true }: Stor
   const currentLine = currentScene.lines[lineIndex] ?? '';
 
   useEffect(() => {
+    if (showStartButton) {
+      const area = Math.min(3, Math.max(1, currentArea));
+      if (area === 1) playBgm('story_area1');
+      else if (area === 2) playBgm('story_area2');
+      else playBgm('story_area3');
+      return () => {
+        stopBgm();
+      };
+    }
     stopBgm();
-  }, [stopBgm]);
+    return undefined;
+  }, [showStartButton, currentArea, playBgm, stopBgm]);
+
+  const finishStory = useCallback(() => {
+    stopBgm();
+    onComplete();
+  }, [onComplete, stopBgm]);
 
   useEffect(() => {
     setDisplayed('');
@@ -96,13 +118,13 @@ export const StoryScreen = ({ scenes, onComplete, showStartButton = true }: Stor
     if (showStartButton) {
       return;
     }
-    onComplete();
+    finishStory();
   }, [
     currentLine,
     currentScene.lines.length,
+    finishStory,
     isTyping,
     lineIndex,
-    onComplete,
     sceneIndex,
     scenes.length,
     showStartButton,
@@ -149,7 +171,7 @@ export const StoryScreen = ({ scenes, onComplete, showStartButton = true }: Stor
             className="story-btn-start"
             onClick={(event) => {
               event.stopPropagation();
-              onComplete();
+              finishStory();
             }}
           >
             冒険を始める
@@ -163,7 +185,7 @@ export const StoryScreen = ({ scenes, onComplete, showStartButton = true }: Stor
           className="story-btn-skip"
           onClick={(event) => {
             event.stopPropagation();
-            onComplete();
+            finishStory();
           }}
         >
           スキップ

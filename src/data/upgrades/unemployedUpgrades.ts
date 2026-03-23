@@ -78,8 +78,11 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
   '生活保護申請': {
     name: '生活保護申請+',
     timeCost: 2,
-    description: 'HP12回復（所要時間2秒）',
-    effects: [{ type: 'heal', value: 12 }],
+    description: 'メンタル+3、カード2枚ドロー（所要時間2秒）',
+    effects: [
+      { type: 'mental_boost', value: 3 },
+      { type: 'draw', value: 2 },
+    ],
   },
   '段ボールハウス': {
     name: '段ボールハウス+',

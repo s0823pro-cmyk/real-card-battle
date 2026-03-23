@@ -24,6 +24,12 @@ import { calculateEffectiveDamage } from '../../utils/damage';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
 import { isEnemyTargetCard } from '../../utils/cardTarget';
 import { useAudioContext } from '../../contexts/AudioContext';
+import bgBattleArea1 from '../../assets/backgrounds/bg_battle_area1.png';
+import bgBattleArea2 from '../../assets/backgrounds/bg_battle_area2.png';
+import bgBattleArea3 from '../../assets/backgrounds/bg_battle_area3.png';
+import bgBossArea1 from '../../assets/backgrounds/bg_boss_area1.png';
+import bgBossArea2 from '../../assets/backgrounds/bg_boss_area2.png';
+import bgBossArea3 from '../../assets/backgrounds/bg_boss_area3.png';
 import '../Enemy/Enemy.css';
 import '../Effects/Effects.css';
 import '../PlayerStatus/PlayerStatus.css';
@@ -65,6 +71,8 @@ interface BattleScreenProps {
   onUseRewardAd?: () => void;
   /** 所持お守り（ヘッダー表示） */
   omamoris?: Omamori[];
+  /** マップの現在エリア（背景切り替え） */
+  currentArea?: number;
 }
 
 const DRAG_CARD_HEIGHT = 168;
@@ -145,9 +153,25 @@ const BattleScreen = ({
   rewardAdUsed = false,
   onUseRewardAd,
   omamoris,
+  currentArea = 1,
 }: BattleScreenProps) => {
   const noop = () => {};
-  const { playSe, playBgm } = useAudioContext();
+  const {
+    playSe,
+    playBgm,
+    setBgmVolume,
+    setSeVolume,
+    toggleBgmMute,
+    toggleSeMute,
+    getBgmVolume,
+    getSeVolume,
+    isBgmMuted,
+    isSeMuted,
+  } = useAudioContext();
+  const [bgmVol, setBgmVol] = useState(() => getBgmVolume());
+  const [seVol, setSeVol] = useState(() => getSeVolume());
+  const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
+  const [seMuted, setSeMuted] = useState(() => isSeMuted());
   const {
     gameState,
     selectedCardId,
@@ -193,6 +217,19 @@ const BattleScreen = ({
     [gameState.enemies],
   );
 
+  const battleBackgroundSrc = useMemo(() => {
+    const area = Math.min(3, Math.max(1, currentArea));
+    const isBossBattle = setup?.kind === 'boss';
+    if (isBossBattle) {
+      if (area === 1) return bgBossArea1;
+      if (area === 2) return bgBossArea2;
+      return bgBossArea3;
+    }
+    if (area === 1) return bgBattleArea1;
+    if (area === 2) return bgBattleArea2;
+    return bgBattleArea3;
+  }, [currentArea, setup?.kind]);
+
   const enemyAreaRef = useRef<HTMLElement | null>(null);
   const timebarRowRef = useRef<HTMLDivElement | null>(null);
   const reserveAreaRef = useRef<HTMLDivElement | null>(null);
@@ -217,6 +254,7 @@ const BattleScreen = ({
   const [showPile, setShowPile] = useState<PileView>(null);
   const [reserveConfirm, setReserveConfirm] = useState<ReserveConfirmState>(null);
   const [showBattleSettings, setShowBattleSettings] = useState(false);
+  const [battleVolumeOpen, setBattleVolumeOpen] = useState(false);
   const [showBattleGlossary, setShowBattleGlossary] = useState(false);
   /** タイムラインはゲージ型に固定 */
   const timelineGaugeStyle = 'bar' as const;
@@ -255,6 +293,15 @@ const BattleScreen = ({
   }, [gameState.phase]);
 
   useEffect(() => {
+    if (!showBattleSettings) return;
+    setBgmVol(getBgmVolume());
+    setSeVol(getSeVolume());
+    setBgmMuted(isBgmMuted());
+    setSeMuted(isSeMuted());
+    setBattleVolumeOpen(false);
+  }, [showBattleSettings, getBgmVolume, getSeVolume, isBgmMuted, isSeMuted]);
+
+  useEffect(() => {
     playBgm(isBoss ? 'boss' : 'battle');
     return () => {
       playBgm('none');
@@ -272,6 +319,47 @@ const BattleScreen = ({
     }
   }, [battlePopups, playSe]);
 
+  /** 立ち絵（.enemy-illustration）をヒットボックスに。エリア余白では反応しない */
+  const ENEMY_ILLUSTRATION_HIT_PADDING = 8;
+
+  const isPointOnEnemyIllustration = (clientX: number, clientY: number): boolean => {
+    const root = enemyAreaRef.current;
+    if (!root) return false;
+    const illustrations = root.querySelectorAll<HTMLElement>('.enemy-card:not(.dead) .enemy-illustration');
+    for (const el of illustrations) {
+      const rect = el.getBoundingClientRect();
+      if (
+        clientX >= rect.left - ENEMY_ILLUSTRATION_HIT_PADDING &&
+        clientX <= rect.right + ENEMY_ILLUSTRATION_HIT_PADDING &&
+        clientY >= rect.top - ENEMY_ILLUSTRATION_HIT_PADDING &&
+        clientY <= rect.bottom + ENEMY_ILLUSTRATION_HIT_PADDING
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const findEnemyIdAtIllustration = (clientX: number, clientY: number): string | null => {
+    const root = enemyAreaRef.current;
+    if (!root) return null;
+    const cards = root.querySelectorAll<HTMLElement>('.enemy-card:not(.dead)[data-enemy-id]');
+    for (const card of cards) {
+      const ill = card.querySelector<HTMLElement>('.enemy-illustration');
+      if (!ill) continue;
+      const rect = ill.getBoundingClientRect();
+      if (
+        clientX >= rect.left - ENEMY_ILLUSTRATION_HIT_PADDING &&
+        clientX <= rect.right + ENEMY_ILLUSTRATION_HIT_PADDING &&
+        clientY >= rect.top - ENEMY_ILLUSTRATION_HIT_PADDING &&
+        clientY <= rect.bottom + ENEMY_ILLUSTRATION_HIT_PADDING
+      ) {
+        return card.dataset.enemyId ?? null;
+      }
+    }
+    return null;
+  };
+
   const detectDropTarget = (
     clientX: number,
     clientY: number,
@@ -283,9 +371,8 @@ const BattleScreen = ({
       y >= rect.top - padding &&
       y <= rect.bottom + padding;
 
-    const enemyRect = enemyAreaRef.current?.getBoundingClientRect();
-    if (enemyRect && isInRect(clientX, clientY, enemyRect, 8)) {
-      if (isEnemyTargetCard(card)) return { target: 'enemy', index: null };
+    if (isEnemyTargetCard(card) && isPointOnEnemyIllustration(clientX, clientY)) {
+      return { target: 'enemy', index: null };
     }
 
     // タイムバーを温存より先に判定（重なり部分での誤反応を防ぐ）
@@ -371,18 +458,6 @@ const BattleScreen = ({
     if (nullFound) return nullFound;
     return { target: 'field' as const, index: null };
   };
-  const detectHoveredEnemyId = (clientX: number, clientY: number): string | null => {
-    const enemyNodes = enemyAreaRef.current?.querySelectorAll<HTMLElement>('.enemy-card[data-enemy-id]');
-    if (!enemyNodes?.length) return null;
-    for (const node of enemyNodes) {
-      const rect = node.getBoundingClientRect();
-      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
-        return node.dataset.enemyId ?? null;
-      }
-    }
-    return null;
-  };
-
   const getEnemyEffectPosition = (enemyId: string | null): { x: number; y: number } => {
     const node = enemyId
       ? enemyAreaRef.current?.querySelector<HTMLElement>(`.enemy-card[data-enemy-id="${enemyId}"]`)
@@ -497,11 +572,12 @@ const BattleScreen = ({
         )
       : false;
     setIsHoveringTimebar(isOverTimebar && !enemyTargetCard);
-    const hoveredProbe =
+    const nextHoveredEnemyId =
       detection.target === 'enemy' && enemyTargetCard
-        ? probes.find((probe) => detectHoveredEnemyId(probe.x, probe.y) !== null) ?? null
+        ? findEnemyIdAtIllustration(event.clientX, event.clientY) ||
+          probes.map((p) => findEnemyIdAtIllustration(p.x, p.y)).find((id) => id != null) ||
+          null
         : null;
-    const nextHoveredEnemyId = hoveredProbe ? detectHoveredEnemyId(hoveredProbe.x, hoveredProbe.y) : null;
     setHoveredEnemyId(nextHoveredEnemyId);
     setHandDrag({
       isDragging: true,
@@ -579,22 +655,40 @@ const BattleScreen = ({
 
       if (finalTarget === 'enemy') {
         if (!enemyTargetCard) {
+          // 自バフ系（金槌の響きの next_attack_boost 等）：敵エリアにドロップしてもタイムライン発動として扱う
+          const result = playCardInstant(handDrag.card.id, { type: 'field' });
+          if (result.played) {
+            lastCardPlayTimeRef.current = Date.now();
+            playSe('card');
+            if (handDrag.card.type === 'skill') triggerSkillEffect();
+            if (result.blockGained > 0) playSe('block');
+          }
           resetDragInteraction();
           return;
         }
         const aliveEnemies = gameState.enemies.filter((enemy) => enemy.currentHp > 0);
         const finalHoveredEnemyId =
-          probes
-            .map((probe) => detectHoveredEnemyId(probe.x, probe.y))
-            .find((enemyId) => enemyId !== null) ?? null;
+          findEnemyIdAtIllustration(event.clientX, event.clientY) ||
+          probes.map((probe) => findEnemyIdAtIllustration(probe.x, probe.y)).find((id) => id != null) ||
+          null;
         const preferred = finalHoveredEnemyId ?? hoveredEnemyId ?? aliveEnemies[0]?.id ?? null;
         const result = playCardInstant(handDrag.card.id, { type: 'enemy', enemyId: preferred });
         if (result.played) {
           lastCardPlayTimeRef.current = Date.now();
           playSe('card');
           if (handDrag.card.type === 'attack') {
-            playSe('attack');
-            triggerAttackEffect(preferred);
+            const multiHitStaggerMs = 280;
+            if (result.multiHitJabs && result.multiHitJabs.length > 0) {
+              result.multiHitJabs.forEach((jab, i) => {
+                window.setTimeout(() => {
+                  playSe('attack');
+                  triggerAttackEffect(jab.enemyId);
+                }, i * multiHitStaggerMs);
+              });
+            } else {
+              playSe('attack');
+              triggerAttackEffect(preferred);
+            }
           }
           if (result.blockGained > 0) playSe('block');
         }
@@ -657,44 +751,69 @@ const BattleScreen = ({
     if (handDrag.isDragging) return;
   };
 
+  const isAoeDamageDragPreview =
+    handDrag.card !== null &&
+    handDrag.card.tags?.includes('aoe') &&
+    (handDrag.card.type === 'attack' ||
+      ((handDrag.card.type === 'skill' || handDrag.card.type === 'power') &&
+        (handDrag.card.damage ?? 0) > 0));
+
   const isEnemyPreviewActive =
     handDrag.isDragging &&
     handDrag.card !== null &&
     handDrag.dropTarget === 'enemy' &&
     isEnemyTargetCard(handDrag.card) &&
-    hoveredEnemyId !== null;
+    (isAoeDamageDragPreview || hoveredEnemyId !== null);
 
-  const previewState = useMemo(() => {
-    if (!isEnemyPreviewActive || !handDrag.card || !hoveredEnemyId) {
-      return { enemyId: null, damage: 0, previewHp: 0 };
+  /** ドラッグ中の敵へのダメージ／予測HP（全体攻撃時は全員分） */
+  const previewByEnemy = useMemo(() => {
+    if (!isEnemyPreviewActive || !handDrag.card) return null;
+
+    const card = handDrag.card;
+    const dealsDamage =
+      card.type === 'attack' ||
+      ((card.type === 'skill' || card.type === 'power') && (card.damage ?? 0) > 0);
+    if (!dealsDamage) return null;
+
+    const enhanced = getEnhancedCardForPlay(card);
+    let previewCard = applyMultiplierAndBoostToCard(enhanced, gameState.player, doubleNextCharges);
+    if (attackItemBuff && attackItemBuff.charges > 0 && previewCard.type === 'attack') {
+      previewCard = { ...previewCard, damage: (previewCard.damage ?? 0) + attackItemBuff.value };
     }
-    const enemy = gameState.enemies.find((entry) => entry.id === hoveredEnemyId);
-    if (!enemy || enemy.currentHp <= 0) return { enemyId: null, damage: 0, previewHp: 0 };
+    let rawDamageBase = calculateEffectiveDamage(
+      previewCard,
+      lastPlayedCard,
+      gameState.player,
+      gameState.toolSlots,
+    );
+    if (card.type === 'attack' && gameState.player.nextAttackBoostCount > 0) {
+      rawDamageBase += gameState.player.nextAttackBoostValue;
+    }
 
-    let previewDamage = 0;
-    if (handDrag.card.type === 'attack') {
-      const enhanced = getEnhancedCardForPlay(handDrag.card);
-      let previewCard = applyMultiplierAndBoostToCard(enhanced, gameState.player, doubleNextCharges);
-      if (attackItemBuff && attackItemBuff.charges > 0 && previewCard.type === 'attack') {
-        previewCard = { ...previewCard, damage: (previewCard.damage ?? 0) + attackItemBuff.value };
-      }
-      let rawDamage = calculateEffectiveDamage(
-        previewCard,
-        lastPlayedCard,
-        gameState.player,
-        gameState.toolSlots,
-      );
+    const computeForEnemy = (enemy: (typeof gameState.enemies)[number]) => {
+      let rawDamage = rawDamageBase;
       const vulnerable = enemy.statusEffects.find((status) => status.type === 'vulnerable');
       if (vulnerable) {
         rawDamage = Math.floor(rawDamage * 1.5);
       }
-      previewDamage = Math.max(0, rawDamage - enemy.block);
-    }
-    return {
-      enemyId: enemy.id,
-      damage: previewDamage,
-      previewHp: Math.max(0, enemy.currentHp - previewDamage),
+      const previewDamage = Math.max(0, rawDamage - enemy.block);
+      const previewHp = Math.max(0, enemy.currentHp - previewDamage);
+      return { damage: previewDamage, previewHp };
     };
+
+    if (card.tags?.includes('aoe')) {
+      const out: Record<string, { damage: number; previewHp: number }> = {};
+      for (const enemy of gameState.enemies) {
+        if (enemy.currentHp <= 0) continue;
+        out[enemy.id] = computeForEnemy(enemy);
+      }
+      return Object.keys(out).length > 0 ? out : null;
+    }
+
+    if (!hoveredEnemyId) return null;
+    const enemy = gameState.enemies.find((entry) => entry.id === hoveredEnemyId);
+    if (!enemy || enemy.currentHp <= 0) return null;
+    return { [enemy.id]: computeForEnemy(enemy) };
   }, [
     gameState.enemies,
     gameState.player,
@@ -805,6 +924,11 @@ const BattleScreen = ({
         }
       }}
     >
+      <div className="battle-screen-bg-root" aria-hidden>
+        <img src={battleBackgroundSrc} alt="" className="battle-screen-bg-img" draggable={false} />
+        <div className="battle-screen-bg-dim" />
+        <div className="battle-screen-bg-gradient" />
+      </div>
       <div
         className={`battle-job-aura battle-job-aura--${jobId} ${isScaffoldHigh ? 'scaffold-high' : ''} ${
           isCookingHigh ? 'cooking-high' : ''
@@ -869,14 +993,7 @@ const BattleScreen = ({
         }`}
         ref={enemyAreaRef}
       >
-        <EnemyDisplay
-          enemies={gameState.enemies}
-          intents={enemyIntents}
-          hitEnemyId={hitEnemyId}
-          previewTargetEnemyId={previewState.enemyId}
-          previewDamage={previewState.damage}
-          previewHp={previewState.previewHp}
-        />
+        <EnemyDisplay enemies={gameState.enemies} intents={enemyIntents} hitEnemyId={hitEnemyId} previewByEnemy={previewByEnemy} />
       </section>
 
       <div className="battle-spacer" />
@@ -1163,6 +1280,77 @@ const BattleScreen = ({
             <div className="battle-settings-content">
               <button
                 type="button"
+                className={`battle-settings-volume-toggle ${battleVolumeOpen ? 'battle-settings-volume-toggle--open' : ''}`}
+                onClick={() => setBattleVolumeOpen((v) => !v)}
+                aria-expanded={battleVolumeOpen}
+              >
+                <span>🔊 音量</span>
+                <span className="battle-settings-volume-toggle-arrow" aria-hidden>
+                  {battleVolumeOpen ? '▲' : '▼'}
+                </span>
+              </button>
+              {battleVolumeOpen && (
+                <div className="battle-settings-audio">
+                  <div className="battle-settings-audio-item">
+                    <div className="battle-settings-audio-head">
+                      <span className="battle-settings-audio-title">BGM音量</span>
+                      <button
+                        type="button"
+                        className={`battle-settings-mute ${bgmMuted ? 'battle-settings-mute--off' : 'battle-settings-mute--on'}`}
+                        onClick={() => {
+                          const next = toggleBgmMute();
+                          setBgmMuted(next);
+                        }}
+                      >
+                        {bgmMuted ? '🔇 OFF' : '🔊 ON'}
+                      </button>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={bgmVol}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        setBgmVol(v);
+                        setBgmVolume(v);
+                      }}
+                      className="battle-settings-range"
+                    />
+                  </div>
+                  <div className="battle-settings-audio-item">
+                    <div className="battle-settings-audio-head">
+                      <span className="battle-settings-audio-title">SE音量</span>
+                      <button
+                        type="button"
+                        className={`battle-settings-mute ${seMuted ? 'battle-settings-mute--off' : 'battle-settings-mute--on'}`}
+                        onClick={() => {
+                          const next = toggleSeMute();
+                          setSeMuted(next);
+                        }}
+                      >
+                        {seMuted ? '🔇 OFF' : '🔊 ON'}
+                      </button>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={seVol}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        setSeVol(v);
+                        setSeVolume(v);
+                      }}
+                      className="battle-settings-range"
+                    />
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
                 className="btn-glossary"
                 onClick={() => {
                   setShowBattleSettings(false);
@@ -1194,11 +1382,15 @@ const BattleScreen = ({
                 type="button"
                 className="btn-reserve-ok"
                 onClick={() => {
-                  reserveCardById(reserveConfirm.card.id);
+                  const id = reserveConfirm.card.id;
+                  /** ユーザー操作と同一スタックで先に鳴らす（モバイルの音声制限・成否判定より前） */
+                  playSe('reserve');
+                  reserveCardById(id);
                   setReserveConfirm(null);
                 }}
               >
-                温存する              </button>
+                温存する
+              </button>
             </div>
           </div>
         </div>

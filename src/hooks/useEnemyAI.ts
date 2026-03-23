@@ -1,4 +1,4 @@
-import type { Enemy, EnemyIntent, PlayerState, StatusEffect } from '../types/game';
+import type { Enemy, EnemyIntent, EnemyIntentType, PlayerState, StatusEffect } from '../types/game';
 import { applyEnemyAttack } from '../utils/damage';
 
 export interface EnemyTurnResult {
@@ -9,6 +9,8 @@ export interface EnemyTurnResult {
   goldStolen: number;
   addCurse: boolean;
   log: string;
+  /** 今ターンに実行したインテント（SE 等に使用） */
+  intentType: EnemyIntentType;
 }
 
 const upsertStatus = (statuses: StatusEffect[], next: StatusEffect): StatusEffect[] => {
@@ -169,6 +171,7 @@ export const useEnemyAI = () => {
       mentalDamageToPlayer: mentalDamage,
       goldStolen,
       addCurse,
+      intentType: intent.type,
       log:
         intent.type === 'attack'
           ? `${enemy.name}：攻撃 ${damage}`

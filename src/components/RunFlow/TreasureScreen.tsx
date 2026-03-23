@@ -1,4 +1,6 @@
+import type { CSSProperties } from 'react';
 import type { Omamori } from '../../types/run';
+import { FLOW_BG_SHRINE } from '../../data/flowBackgrounds';
 
 interface Props {
   omamoris: Omamori[];
@@ -6,8 +8,12 @@ interface Props {
 }
 
 const ShrineScreen = ({ omamoris, onPick }: Props) => {
+  const mainStyle = {
+    '--flow-bg-image': `url(${FLOW_BG_SHRINE})`,
+  } as CSSProperties;
+
   return (
-    <main className="flow-screen">
+    <main className="flow-screen flow-screen--with-bg" style={mainStyle}>
       <section className="flow-card">
         <h2>⛩️ 神社を発見！</h2>
         <div className="flow-list">

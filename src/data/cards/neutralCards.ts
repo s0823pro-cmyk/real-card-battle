@@ -1,4 +1,5 @@
 import type { Card } from '../../types/game';
+import { NEUTRAL_EXPANSION_CARDS } from './neutralExpansion';
 import deepBreathImage from '../../assets/cards/neutral/deep_breath.png';
 import fullSprintImage from '../../assets/cards/neutral/full_sprint.png';
 import firstAidImage from '../../assets/cards/neutral/first_aid.png';
@@ -139,6 +140,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     effects: [{ type: 'draw_per_turn', value: 1 }],
     imageUrl: hiddenPowerImage,
   },
+  ...NEUTRAL_EXPANSION_CARDS,
 ];
 
 /** 実績解放が必要な無色レア */

@@ -9,24 +9,13 @@
   box-sizing: border-box;
 }
 
-.boss-reward-bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(13, 17, 23, 0.95) 0%,
-    rgba(13, 17, 23, 0.98) 100%
-  );
-  z-index: -1;
-}
-
 .boss-reward-header {
   text-align: center;
   margin-bottom: 24px;
 }
 
 .boss-reward-area {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   color: #f0b429;
   margin: 0 0 8px;
@@ -35,7 +24,7 @@
 }
 
 .boss-reward-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 18px;
   font-weight: 900;
   color: #ffffff;
@@ -84,7 +73,7 @@
 }
 
 .boss-reward-option-label {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 15px;
   font-weight: 700;
   color: #e6edf3;
@@ -92,7 +81,7 @@
 }
 
 .boss-reward-option-desc {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
@@ -110,7 +99,7 @@
   border: none;
   border-radius: 12px;
   color: #0d1117;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 900;
   padding: 14px 0;
@@ -130,7 +119,7 @@
 }
 
 .boss-reward-card-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
@@ -147,12 +136,24 @@
 .boss-reward-card-item {
   border-radius: 10px;
   border: 2px solid transparent;
-  transition: all 0.15s ease;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
+.boss-reward-card-item:hover,
+.boss-reward-card-item:focus-visible,
 .boss-reward-card-item:active {
-  transform: translateY(-4px);
-  border-color: #f0b429;
+  transform: translateY(-8px);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.42);
+  outline: none;
+}
+
+.boss-reward-card-item:focus-visible {
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.42),
+    0 0 0 2px rgba(255, 255, 255, 0.22);
 }
 
 .btn-boss-reward-back {
@@ -160,7 +161,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   color: rgba(255, 255, 255, 0.5);
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   padding: 8px 20px;
   cursor: pointer;
@@ -169,6 +170,6 @@
 .boss-reward-player-hp {
   margin-top: 14px;
   font-size: 12px;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   color: rgba(255, 255, 255, 0.55);
 }

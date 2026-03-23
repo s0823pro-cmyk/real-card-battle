@@ -44,6 +44,7 @@ type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 
 function App() {
   const audio = useAudio();
+  const { playBgm } = audio;
   const {
     state,
     pendingItemReplacement,
@@ -115,6 +116,20 @@ function App() {
       document.documentElement.style.overflow = 'hidden';
     };
   }, [state.currentScreen]);
+
+  /** マップ系画面のエリアBGM（子の unmount cleanup より後に確実に鳴らす。ストーリー表示中は鳴らさない） */
+  useEffect(() => {
+    if (showStory) return;
+    const screen = state.currentScreen;
+    if (screen !== 'map' && screen !== 'dice_rolling' && screen !== 'branch_select') return;
+    const id = window.setTimeout(() => {
+      const area = Math.min(3, Math.max(1, state.currentArea));
+      if (area === 1) playBgm('area1');
+      else if (area === 2) playBgm('area2');
+      else playBgm('area3');
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [state.currentScreen, state.currentArea, showStory, playBgm]);
 
   useEffect(() => {
     return () => {
@@ -343,6 +358,7 @@ function App() {
             omamoris={state.omamoris}
             rewardAdUsed={rewardAdUsed}
             onUseRewardAd={useRewardAd}
+            currentArea={state.currentArea}
           />
         );
       case 'event':
@@ -495,7 +511,11 @@ function App() {
         />
       )}
       {showStory && state.currentScreen === 'job_select' && !currentStoryId && (
-        <StoryScreen scenes={CARPENTER_STORY} onComplete={handleStoryComplete} />
+        <StoryScreen
+          scenes={CARPENTER_STORY}
+          onComplete={handleStoryComplete}
+          currentArea={state.currentArea}
+        />
       )}
       {showStory && currentStoryId && currentStoryScenes && (
         <StoryScreen

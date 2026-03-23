@@ -1,3 +1,4 @@
+import { getJobConfig } from '../data/jobs';
 import type { Card, Enemy, PlayerState, ToolSlot } from '../types/game';
 import { applyDamageToEnemy, calculateEffectiveDamage, getDandoriBonus } from '../utils/damage';
 import { getHungryState } from '../utils/hungrySystem';
@@ -15,6 +16,8 @@ export interface CardResolveResult {
   goldGained: number;
   lighterBurnApplied: boolean;
   attackBuff: { value: number; charges: number } | null;
+  /** multi_hit 時：各ヒットの敵IDと実ダメージ（演出用） */
+  multiHitJabs?: { enemyId: string; damage: number }[];
 }
 
 export const useBattleLogic = () => {
@@ -121,6 +124,7 @@ export const useBattleLogic = () => {
     let goldGained = 0;
     let lighterBurnApplied = false;
     let attackBuff: { value: number; charges: number } | null = null;
+    let multiHitJabs: { enemyId: string; damage: number }[] | undefined;
 
     // ダメージ処理（attack / skill / power 共通）
     if (card.type === 'attack' || ((card.type === 'skill' || card.type === 'power') && card.damage)) {
@@ -138,12 +142,17 @@ export const useBattleLogic = () => {
       const hitCountEffect = card.effects?.find((e) => e.type === 'hit_count');
       const effectiveHitCount = hitCountEffect?.value ?? card.hitCount ?? 0;
       if (card.tags?.includes('multi_hit') && effectiveHitCount > 0) {
+        multiHitJabs = [];
         for (let hit = 0; hit < effectiveHitCount; hit += 1) {
           const aliveEnemies = nextEnemies.filter((enemy) => enemy.currentHp > 0);
           if (aliveEnemies.length === 0) break;
           const randomEnemy = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
-          damage += applyDamageToEnemy(randomEnemy, boostedDamage);
+          const dealt = applyDamageToEnemy(randomEnemy, boostedDamage);
+          damage += dealt;
           targetEnemyId = randomEnemy.id;
+          if (dealt > 0) {
+            multiHitJabs.push({ enemyId: randomEnemy.id, damage: dealt });
+          }
         }
       } else if (card.tags?.includes('aoe')) {
         for (const enemy of nextEnemies) {
@@ -211,7 +220,8 @@ export const useBattleLogic = () => {
         nextPlayer.nextTurnTimePenalty += effect.value;
       }
       if (effect.type === 'mental_boost') {
-        nextPlayer.mental = Math.min(10, nextPlayer.mental + effect.value);
+        const cap = getJobConfig(nextPlayer.jobId).maxMental;
+        nextPlayer.mental = Math.min(cap, nextPlayer.mental + effect.value);
       }
       if (effect.type === 'low_hp_damage_boost') {
         nextPlayer.lowHpDamageBoost = Math.max(nextPlayer.lowHpDamageBoost, effect.value);
@@ -336,6 +346,7 @@ export const useBattleLogic = () => {
       goldGained,
       lighterBurnApplied,
       attackBuff,
+      multiHitJabs,
     };
   };
 

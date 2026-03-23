@@ -1,7 +1,8 @@
 .flow-screen {
   width: 100%;
   max-width: 430px;
-  min-height: 100dvh;
+  flex: 1;
+  min-height: 0;
   margin: 0 auto;
   display: grid;
   place-items: center;
@@ -16,6 +17,18 @@
   padding: 14px;
   display: grid;
   gap: 10px;
+}
+
+/* イベント画面：背景写真があるときだけパネルを半透明に */
+.flow-screen--with-bg .flow-card.event-screen-card {
+  background: rgba(22, 27, 34, 0.56);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* イベント以外のマス（宿・質屋・神社・鍛錬アップグレード等）：枠内を少し透過して背景が見えるように */
+.flow-screen--with-bg .flow-card:not(.event-screen-card) {
+  background: rgba(22, 27, 34, 0.72);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .flow-card h2,
@@ -187,28 +200,33 @@
   justify-content: center;
   width: 100%;
   height: 100vh;
-  padding: 24px 0;
+  padding: 12px 0;
   box-sizing: border-box;
 }
 
+/* 写真背景を広く見せる：半透明の全画面枠は使わず、見出し・カード・スキップだけを載せる */
 .card-reward-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100dvh - 24px);
-  background: #0d1117;
+  width: 100%;
+  min-height: auto;
+  background: transparent;
   border: none;
-  padding: 24px 16px;
+  border-radius: 0;
+  padding: 4px 12px 12px;
   gap: 0;
+  box-sizing: border-box;
 }
 
 .reward-heading {
   font-family: var(--font-ui);
   font-size: 13px;
-  color: #8b949e;
-  margin: 0 0 24px;
+  color: #f6f8fa;
+  margin: 0 0 14px;
   letter-spacing: 0.05em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85), 0 0 12px rgba(0, 0, 0, 0.5);
 }
 
 .reward-card-list {
@@ -231,16 +249,24 @@
   cursor: pointer;
   border-radius: 10px;
   border: 2px solid transparent;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.reward-card-wrapper:hover {
-  transform: translateY(-6px);
-  border-color: #f0b429;
-}
-
+/* ホバー／キーボード／タッチ押下いずれも同じ「浮き」演出（スマホは主に :active） */
+.reward-card-wrapper:hover,
+.reward-card-wrapper:focus-visible,
 .reward-card-wrapper:active {
-  transform: scale(0.97);
+  transform: translateY(-8px);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.42);
+  outline: none;
+}
+
+.reward-card-wrapper:focus-visible {
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.42),
+    0 0 0 2px rgba(255, 255, 255, 0.22);
 }
 
 .reward-card-wrapper .hand-card {
@@ -252,15 +278,16 @@
   border: none;
   font-family: var(--font-ui);
   font-size: 12px;
-  color: #8b949e;
+  color: #e6edf3;
   cursor: pointer;
-  padding: 8px;
-  margin-top: 16px;
+  padding: 6px 8px;
+  margin-top: 10px;
   transition: color 0.15s ease;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
 
 .btn-skip:hover {
-  color: #e6edf3;
+  color: #ffffff;
 }
 
 .upgrade-screen {
@@ -426,7 +453,7 @@
   border: none;
   border-radius: 12px;
   color: #ffffff;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 15px;
   font-weight: 900;
   padding: 14px 0;
@@ -447,7 +474,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   color: rgba(255, 255, 255, 0.5);
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 500;
   padding: 10px 0;
@@ -603,7 +630,7 @@
 }
 
 .shop-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 18px;
   font-weight: 900;
   color: #f0b429;
@@ -611,7 +638,7 @@
 }
 
 .shop-gold {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 14px;
   color: #e6edf3;
 }
@@ -621,7 +648,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 20px;
   color: rgba(255, 255, 255, 0.6);
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 12px;
   padding: 6px 16px;
   cursor: pointer;
@@ -696,4 +723,109 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
+}
+
+/* 写真背景（ホテル・神社・質屋・鍛錬・イベント・カード報酬・ボス報酬等） */
+.flow-screen.flow-screen--with-bg,
+.boss-reward-screen.boss-reward-screen--with-bg {
+  position: relative;
+  isolation: isolate;
+  background-color: transparent;
+}
+
+.flow-screen--with-bg::before,
+.boss-reward-screen--with-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--flow-bg-image);
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+}
+
+.flow-screen--with-bg::after,
+.boss-reward-screen--with-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--flow-bg-overlay, rgba(0, 0, 0, 0.45));
+  pointer-events: none;
+}
+
+.flow-screen--with-bg > .flow-card,
+.flow-screen--with-bg > section,
+.boss-reward-screen--with-bg > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* 質屋売却確認（BattleScreen の温存確認ダイアログと同一デザイン） */
+.reserve-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.reserve-confirm-dialog {
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 20px 24px;
+  width: 80%;
+  max-width: 280px;
+  text-align: center;
+}
+
+.reserve-confirm-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: #e6edf3;
+  margin: 0 0 8px;
+}
+
+.reserve-confirm-note {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: #e74c3c;
+  margin: 0 0 16px;
+}
+
+.reserve-confirm-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn-reserve-cancel {
+  flex: 1;
+  background: #21262d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #8b949e;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.btn-reserve-ok {
+  flex: 1;
+  background: #f0b429;
+  border: none;
+  border-radius: 8px;
+  color: #0d1117;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 900;
+  padding: 10px 0;
+  cursor: pointer;
 }

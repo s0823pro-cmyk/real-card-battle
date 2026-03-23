@@ -48,9 +48,21 @@ export const applyMultiplierAndBoostToCard = (
       enhancedCard.block !== undefined
         ? applyBoostWithMinOne(enhancedCard.block * reserveOrDoubleMultiplier)
         : enhancedCard.block,
-    effects: (enhancedCard.effects ?? []).map((effect) => ({
-      ...effect,
-      value: applyBoostWithMinOne(effect.value * reserveOrDoubleMultiplier),
-    })),
+    effects: (enhancedCard.effects ?? []).map((effect) => {
+      const baseValue = effect.value ?? 0;
+      if (effect.type === 'next_attack_boost') {
+        return {
+          ...effect,
+          value:
+            reserveOrDoubleMultiplier > 1
+              ? Math.floor(baseValue * reserveOrDoubleMultiplier)
+              : baseValue,
+        };
+      }
+      return {
+        ...effect,
+        value: applyBoostWithMinOne(baseValue * reserveOrDoubleMultiplier),
+      };
+    }),
   };
 };

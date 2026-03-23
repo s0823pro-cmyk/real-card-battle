@@ -110,6 +110,10 @@ export const getEffectiveCardValues = (
       const add = Math.max(1, Math.ceil(damage * nextCardEffectBoost));
       damage += add;
     }
+    // 金槌の響き等 next_attack_boost（実ダメージは resolveCard と同様に加算）
+    if (card.type === 'attack' && player.nextAttackBoostCount > 0 && damage !== null) {
+      damage += player.nextAttackBoostValue;
+    }
   }
 
   if (block !== null) {

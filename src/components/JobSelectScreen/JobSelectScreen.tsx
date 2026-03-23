@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { getJobConfig } from '../../data/jobs';
 import type { JobId } from '../../types/game';
 import carpenterSymbolImage from '../../assets/jobs/carpenter_symbol.png';
 import cookSymbolImage from '../../assets/jobs/cook_symbol.png';
@@ -328,6 +329,9 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   })();
   const topLightIntensity = isMelting ? 1 : dragProgress;
 
+  const expandedMentalCap =
+    expandedJob?.selectableJobId != null ? getJobConfig(expandedJob.selectableJobId).maxMental : 10;
+
   return (
     <main
       className="job-select-screen"
@@ -419,12 +423,14 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                   <div
                     className="job-detail-stat-fill"
                     style={{
-                      width: `${(expandedJob.mental / 10) * 100}%`,
+                      width: `${(expandedJob.mental / expandedMentalCap) * 100}%`,
                       background: '#8b5cf6',
                     }}
                   />
                 </div>
-                <span className="job-detail-stat-value">{expandedJob.mental}</span>
+                <span className="job-detail-stat-value">
+                  {expandedJob.mental}/{expandedMentalCap}
+                </span>
               </div>
             </div>
             <div

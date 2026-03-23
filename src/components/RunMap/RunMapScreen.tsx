@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { BranchPreview, GameProgress, TileType } from '../../types/run';
 import type { Card } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
+import { getJobConfig } from '../../data/jobs';
 import { getMapBackground } from '../../data/mapBackgrounds';
 import { TILE_LABELS } from '../../data/runData';
+import { useAudioContext } from '../../contexts/AudioContext';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
@@ -72,7 +74,22 @@ const getNodeSize = (type: TileType): number => {
 const NODE_SPACING_SCALE_X = 1.08;
 const NODE_SPACING_SCALE_Y = 1.08;
 
-const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
+const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
+  const {
+    setBgmVolume,
+    setSeVolume,
+    toggleBgmMute,
+    toggleSeMute,
+    getBgmVolume,
+    getSeVolume,
+    isBgmMuted,
+    isSeMuted,
+  } = useAudioContext();
+  const [bgmVol, setBgmVol] = useState(() => getBgmVolume());
+  const [seVol, setSeVol] = useState(() => getSeVolume());
+  const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
+  const [seMuted, setSeMuted] = useState(() => isSeMuted());
+  const [mapVolumeOpen, setMapVolumeOpen] = useState(false);
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [tooltip, setTooltip] = useState<TileTooltipState | null>(null);
   const [relicsOpen, setRelicsOpen] = useState(false);
@@ -80,8 +97,6 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
   const [showMapSettings, setShowMapSettings] = useState(false);
   const [showGiveUpConfirm, setShowGiveUpConfirm] = useState(false);
   const [showMapGlossary, setShowMapGlossary] = useState(false);
-  const [bgmEnabled, setBgmEnabled] = useState(true);
-  const [seEnabled, setSeEnabled] = useState(true);
   const [failedNodeImages, setFailedNodeImages] = useState<Set<TileType>>(new Set());
   const longPressTimerRef = useRef<number | null>(null);
   const touchStartXRef = useRef(0);
@@ -90,6 +105,17 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
   const prevAreaRef = useRef(progress.currentArea);
   const [isAreaFading, setIsAreaFading] = useState(true);
   const isSelecting = progress.currentScreen === 'branch_select' && progress.selectableTileIds.length > 0;
+
+  /** 分岐プレビュー上のノードはグレーアウトしない（分岐先の2マス目以降も通常表示） */
+  const branchRouteTileIds = useMemo(() => {
+    const set = new Set<number>();
+    for (const p of branchPreviews) {
+      for (const t of p.previewTiles) {
+        set.add(t.id);
+      }
+    }
+    return set;
+  }, [branchPreviews]);
 
   useEffect(() => {
     const currentEl = boardRef.current?.querySelector<HTMLButtonElement>(
@@ -126,6 +152,15 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
     },
     [],
   );
+
+  useEffect(() => {
+    if (!showMapSettings) return;
+    setBgmVol(getBgmVolume());
+    setSeVol(getSeVolume());
+    setBgmMuted(isBgmMuted());
+    setSeMuted(isSeMuted());
+    setMapVolumeOpen(false);
+  }, [showMapSettings, getBgmVolume, getSeVolume, isBgmMuted, isSeMuted]);
 
   const minX = Math.min(...progress.board.map((tile) => tile.x));
   const maxX = Math.max(...progress.board.map((tile) => tile.x));
@@ -172,6 +207,15 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
     return 'hp-high';
   };
 
+  const mentalMax = getJobConfig(progress.jobId).maxMental;
+
+  const getMentalClass = (): 'mental-high' | 'mental-mid' | 'mental-low' => {
+    const ratio = progress.player.mental / Math.max(1, mentalMax);
+    if (ratio <= 0.3) return 'mental-low';
+    if (ratio <= 0.6) return 'mental-mid';
+    return 'mental-high';
+  };
+
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
     damage: card.damage ?? null,
     block: card.block ?? null,
@@ -216,6 +260,9 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
           <div className="map-player-stats">
             <span className={`map-stat map-stat--hp ${getHpClass()}`}>
               ❤️ {progress.player.maxHp}/{progress.player.currentHp}
+            </span>
+            <span className={`map-stat map-stat--mental ${getMentalClass()}`}>
+              🧠 {progress.player.mental}/{mentalMax}
             </span>
             <span className="map-stat">💰 {progress.player.gold}G</span>
           </div>
@@ -336,7 +383,9 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
                 } ${
                   progress.currentScreen === 'branch_select' &&
                   progress.selectableTileIds.length > 0 &&
-                  !progress.selectableTileIds.includes(tile.id)
+                  !progress.selectableTileIds.includes(tile.id) &&
+                  !branchRouteTileIds.has(tile.id) &&
+                  !tile.isCurrentPosition
                     ? 'map-node--non-selectable'
                     : ''
                 }`}
@@ -457,28 +506,77 @@ const RunMapScreen = ({ progress, branchPreviews: _branchPreviews, onRollDice, o
         <div className="map-settings-overlay" onClick={() => setShowMapSettings(false)}>
           <div className="map-settings-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="map-settings-title">設定</h3>
-            <div className="map-settings-items">
-              <div className="map-settings-item">
-                <span className="map-settings-label">BGM</span>
-                <button
-                  type="button"
-                  className="settings-toggle"
-                  onClick={() => setBgmEnabled((prev) => !prev)}
-                >
-                  {bgmEnabled ? 'ON' : 'OFF'}
-                </button>
+            <button
+              type="button"
+              className={`map-settings-volume-toggle ${mapVolumeOpen ? 'map-settings-volume-toggle--open' : ''}`}
+              onClick={() => setMapVolumeOpen((v) => !v)}
+              aria-expanded={mapVolumeOpen}
+            >
+              <span>🔊 音量</span>
+              <span className="map-settings-volume-toggle-arrow" aria-hidden>
+                {mapVolumeOpen ? '▲' : '▼'}
+              </span>
+            </button>
+            {mapVolumeOpen && (
+              <div className="map-settings-audio">
+                <div className="map-settings-audio-item">
+                  <div className="map-settings-audio-head">
+                    <span className="map-settings-audio-title">BGM音量</span>
+                    <button
+                      type="button"
+                      className={`map-settings-mute ${bgmMuted ? 'map-settings-mute--off' : 'map-settings-mute--on'}`}
+                      onClick={() => {
+                        const next = toggleBgmMute();
+                        setBgmMuted(next);
+                      }}
+                    >
+                      {bgmMuted ? '🔇 OFF' : '🔊 ON'}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={bgmVol}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      setBgmVol(v);
+                      setBgmVolume(v);
+                    }}
+                    className="map-settings-range"
+                  />
+                </div>
+                <div className="map-settings-audio-item">
+                  <div className="map-settings-audio-head">
+                    <span className="map-settings-audio-title">SE音量</span>
+                    <button
+                      type="button"
+                      className={`map-settings-mute ${seMuted ? 'map-settings-mute--off' : 'map-settings-mute--on'}`}
+                      onClick={() => {
+                        const next = toggleSeMute();
+                        setSeMuted(next);
+                      }}
+                    >
+                      {seMuted ? '🔇 OFF' : '🔊 ON'}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={seVol}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      setSeVol(v);
+                      setSeVolume(v);
+                    }}
+                    className="map-settings-range"
+                  />
+                </div>
               </div>
-              <div className="map-settings-item">
-                <span className="map-settings-label">SE</span>
-                <button
-                  type="button"
-                  className="settings-toggle"
-                  onClick={() => setSeEnabled((prev) => !prev)}
-                >
-                  {seEnabled ? 'ON' : 'OFF'}
-                </button>
-              </div>
-            </div>
+            )}
             <div className="map-settings-divider" />
             <button
               type="button"

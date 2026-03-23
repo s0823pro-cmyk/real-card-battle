@@ -19,6 +19,72 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  width: 100%;
+}
+
+/* 1体：敵フィールド中央に大きく */
+.enemy-list--1 {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.enemy-list--1 .enemy-card {
+  /* 1体時は従来より一段小さく（立ち絵・UIともに一括で縮小）。やや上寄せ */
+  transform: translateY(-12px) scale(0.92);
+  transform-origin: top center;
+  max-width: min(100%, 280px);
+  width: 100%;
+}
+
+/* 1体のみやや大きめ。縦を詰めて自フィールド・ナビと干渉しにくくする（2体表示の見た目は共通スタイルのまま） */
+.enemy-list--1 .enemy-illustration {
+  height: 148px;
+  margin-top: 28px;
+}
+
+.enemy-list--1 .enemy-illustration-img {
+  transform: scale(1.32);
+  transform-origin: center bottom;
+}
+
+.enemy-list--1 .enemy-icon {
+  width: 96px;
+  height: 96px;
+  font-size: 56px;
+}
+
+/* 2体：従来どおり横並び */
+.enemy-list--2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* 3体：横一列 */
+.enemy-list--3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  align-items: start;
+  justify-items: center;
+}
+
+.enemy-list--3 .enemy-card {
+  transform: scale(0.72);
+  transform-origin: top center;
+  width: 100%;
+  max-width: 120px;
+}
+
+.enemy-list--3 .enemy-illustration {
+  height: 112px;
+  margin-top: 22px;
+}
+
+.enemy-list--3 .enemy-illustration-img {
+  transform: scale(1.14);
+  transform-origin: center bottom;
 }
 
 .enemy-card {
@@ -40,16 +106,27 @@
 .enemy-name {
   margin: 4px 0;
   font-size: 0.82rem;
+  position: relative;
+  z-index: 2;
+}
+
+.enemy-hp-top,
+.enemy-buffs {
+  position: relative;
+  z-index: 2;
 }
 
 .enemy-illustration {
   width: 100%;
-  height: 120px;
-  margin-top: 8px;
+  height: 136px;
+  /* scale で上方向にはみ出す分の余白（HP・名前と被らないように） */
+  margin-top: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: visible;
+  position: relative;
+  z-index: 0;
 }
 
 .enemy-illustration-img {
@@ -57,24 +134,24 @@
   height: 100%;
   object-fit: contain;
   object-position: center bottom;
-  transform: scale(1.28);
+  transform: scale(1.34);
   transform-origin: center bottom;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
 .enemy-icon {
-  width: 80px;
-  height: 80px;
+  width: 88px;
+  height: 88px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 48px;
+  font-size: 54px;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
 .enemy-hp-top {
   width: 100%;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 .enemy-next-action {
@@ -86,14 +163,16 @@
 }
 
 .enemy-action-label {
-  font-size: 10px;
-  color: #8b949e;
+  font-size: 11px;
+  font-weight: 600;
+  color: #d8dee9;
+  letter-spacing: 0.02em;
 }
 
 .enemy-action-value {
   font-size: 14px;
   font-weight: 700;
-  color: #e6edf3;
+  color: #f0f6fc;
 }
 
 .enemy-action--attack {
@@ -190,23 +269,59 @@
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #8b949e;
+  color: #c9d1d9;
   font-family: var(--font-display);
 }
 
-.enemy-hp-preview-text {
-  font-size: 10px;
-  color: #e74c3c;
+.enemy-hp-fraction {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.enemy-hp-num-left {
   font-weight: 700;
+  color: #8b949e;
+}
+
+.enemy-hp-sep {
+  color: #6e7681;
+  padding: 0 1px;
+}
+
+.enemy-hp-num-right {
+  font-weight: 700;
+  color: #e6edf3;
+}
+
+.enemy-hp-num-right--block {
+  color: #60a5fa;
+}
+
+.enemy-hp-num-right--preview {
+  color: #e74c3c;
+  animation: enemy-hp-preview-blink var(--enemy-preview-blink-duration, 0.6s) ease-in-out infinite;
+}
+
+@keyframes enemy-hp-preview-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.28;
+  }
 }
 
 .enemy-hp-bar-container {
   position: relative;
-  width: 60%;
-  max-width: 180px;
+  width: 36%;
+  max-width: 108px;
   margin: 0 auto;
-  height: 6px;
-  background: #1c2128;
+  height: 4.5px;
+  background: rgba(22, 27, 34, 0.65);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -237,40 +352,42 @@
   top: 0;
   height: 100%;
   background: #e74c3c;
-  opacity: 0.8;
   border-radius: 0 3px 3px 0;
-  animation: preview-pulse 0.6s ease-in-out infinite;
+  animation: preview-pulse var(--enemy-preview-blink-duration, 0.6s) ease-in-out infinite;
 }
 
 .enemy-card--targeted {
+  --enemy-preview-blink-duration: 0.6s;
   border: none !important;
   box-shadow: none !important;
 }
 
 .enemy-card--targeted .enemy-name {
   color: #ff6b6b;
-  animation: enemy-name-blink 0.65s ease-in-out infinite;
+  animation: enemy-name-blink var(--enemy-preview-blink-duration, 0.6s) ease-in-out infinite;
 }
 
+/* 数値・名前と同位相（端で強、中央で弱） */
 @keyframes preview-pulse {
   0%,
   100% {
-    opacity: 0.6;
+    opacity: 0.85;
   }
   50% {
-    opacity: 1;
+    opacity: 0.3;
   }
 }
 
+/* HP予測値（enemy-hp-preview-blink）と同位相：端で強く、中央50%で弱く */
 @keyframes enemy-name-blink {
   0%,
   100% {
-    opacity: 0.45;
-    text-shadow: 0 0 0 rgba(255, 107, 107, 0);
-  }
-  50% {
     opacity: 1;
     text-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
+  }
+  50% {
+    opacity: 0.45;
+    text-shadow: 0 0 0 rgba(255, 107, 107, 0);
   }
 }
 

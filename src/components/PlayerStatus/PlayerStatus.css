@@ -15,17 +15,17 @@
   --slot-frame-height: 56px;
   --item-slot-size: 36px;
   /* 下段「段取り＋アイテム」ブロックの横位置（大きいほど右） */
-  --item-slots-sub-nudge: 42px;
+  --item-slots-sub-nudge: 2px;
   /* 下段行全体をわずかに左へ（段取り・山札・終了などの見た目位置を揃える） */
-  --player-sub-row-shift-x: -40px;
-  /* 段取りアイコンを左へ（px を増やすほど左） */
-  --prep-bonus-nudge-left: 13px;
+  --player-sub-row-shift-x: -52px;
+  /* 段取りアイコン：大きいほど左、小さいほど右（.stat-preparation--next-to-items の translate） */
+  --prep-bonus-nudge-left: 5px;
   /* HP・ブロック列を少し左へ */
   --player-main-stats-nudge-left: -8px;
   /* 足場アイコン＋数値だけ右へ（relative+left：フレックス上の他要素の位置は変えない） */
   --scaffold-sub-visual-right: calc(-1 * var(--player-sub-row-shift-x));
-  /* ブロック数値・棟上げ・宮大工アイコンを少し下へ（盾アイコンはそのまま） */
-  --block-row-sub-nudge-y: 3px;
+  /* ブロック・棟上げ・宮大工・足場：HP 行との縦のリズムを揃えるためのわずかな下方向オフセット */
+  --block-row-sub-nudge-y: 5px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   border-left: none;
@@ -77,7 +77,7 @@
 .player-hp-block-column {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
   flex: 0 1 auto;
 }
@@ -187,6 +187,9 @@
   margin: 0;
   min-height: 0;
   min-width: max-content;
+  /* アイテム枠の .tooltip-wrapper 等より手前に描画し、重なりでタップ・ツールチップが奪われないようにする */
+  z-index: 3;
+  pointer-events: auto;
 }
 
 /* .stat-preparation の flex:1 が下段では幅を潰すため、ラッパー内では上書き */
@@ -200,7 +203,7 @@
 }
 
 .stat-preparation-text {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: 700;
   color: #f0b429;
@@ -266,7 +269,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ブロック：HP と同じ数値サイズ・アイコンサイズ（盾アイコン位置は維持し、数値側だけ詰める） */
+/* ブロック：HP と同じ数値サイズ。盾アイコン・数値は同じ下方向オフセットで揃える */
 .player-hp-block-column .block {
   font-size: clamp(1em, 2.55vw, 1.15em);
   font-weight: 700;
@@ -279,6 +282,8 @@
   width: 19px;
   height: 19px;
   flex-shrink: 0;
+  position: relative;
+  top: var(--block-row-sub-nudge-y);
 }
 
 /* ブロック数値：盾アイコンのすぐ右（左揃え）。4ch 固定で桁が増えても棟上げ等の横位置は一定 */
@@ -312,6 +317,7 @@
 .scaffold--sub-row {
   position: relative;
   left: var(--scaffold-sub-visual-right);
+  top: var(--block-row-sub-nudge-y);
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -371,12 +377,12 @@
   font-size: 14px;
 }
 
-/* 棟上げ・宮大工：ブロック盾アイコン（19px）一個分左へ */
+/* 棟上げ・宮大工：ブロック数値の少し右横 */
 .player-block-trailing-icons {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: calc(6px - 19px);
+  margin-left: 8px;
   flex-shrink: 0;
   position: relative;
   top: var(--block-row-sub-nudge-y);
@@ -562,6 +568,8 @@
 }
 
 .player-sub-item-slots-wrap {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   display: flex;
   align-items: center;

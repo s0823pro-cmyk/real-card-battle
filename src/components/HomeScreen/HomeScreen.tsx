@@ -762,7 +762,6 @@ const HomeScreen = ({
               ← 戻る
             </button>
             <h2 className="records-page-title">設定</h2>
-            <div />
           </div>
           <div className="records-page-content">{renderSettingsContent()}</div>
         </div>
@@ -780,7 +779,6 @@ const HomeScreen = ({
               ← 戻る
             </button>
             <h2 className="records-page-title">実績</h2>
-            <div />
           </div>
           <div className="records-page-content">
             {import.meta.env.DEV && (
@@ -1023,11 +1021,6 @@ const HomeScreen = ({
             ) : (
               <div className="credits-content">
                 <div className="credits-section">
-                  <p className="credits-game-title">JOBLESS</p>
-                  <p className="credits-version">ver 0.1.0</p>
-                </div>
-
-                <div className="credits-section">
                   <p className="credits-label">Development</p>
                   <p className="credits-value">Aramanchu</p>
                 </div>
@@ -1035,7 +1028,19 @@ const HomeScreen = ({
                 <div className="credits-section">
                   <p className="credits-label">Tools</p>
                   <p className="credits-value">React / Vite / TypeScript</p>
-                  <p className="credits-value">Cursor / Claude (Anthropic)</p>
+                </div>
+
+                <div className="credits-section">
+                  <p className="credits-label">■ 使用ツール</p>
+                  <p className="credits-value">開発支援 AI：Claude (Anthropic)</p>
+                  <p className="credits-value">AI コーディング：Cursor</p>
+                  <p className="credits-value">画像生成：Midjourney</p>
+                  <p className="credits-value">BGM/SE 生成：Suno</p>
+                </div>
+
+                <div className="credits-section">
+                  <p className="credits-label">■ 素材提供</p>
+                  <p className="credits-value">SE：効果音ラボ (soundeffect-lab.info)</p>
                 </div>
 
                 <div className="credits-section">
@@ -1045,7 +1050,7 @@ const HomeScreen = ({
 
                 <div className="credits-section">
                   <p className="credits-label">Fonts</p>
-                  <p className="credits-value">Noto Serif JP / Orbitron</p>
+                  <p className="credits-value">Orbitron</p>
                 </div>
 
                 <div className="credits-section">

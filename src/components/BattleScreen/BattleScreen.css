@@ -1,7 +1,9 @@
 .battle-screen {
   width: 100%;
   max-width: 430px;
-  height: 100dvh;
+  flex: 1;
+  min-height: 0;
+  height: auto;
   margin: 0 auto;
   padding-top: 0;
   /* #root に --sab があるため、ここでさらに足すとステータス枠の下に二重の空白になる */
@@ -14,11 +16,45 @@
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
-  background-color: var(--bg-primary);
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-color: #0d1117;
+  /* RunMap 等と同様、--sat より詰めて広告・設定行をステータスバー直下に寄せる */
+  --battle-header-top: max(0px, calc(var(--sat) - 56px));
+}
+
+.battle-screen-bg-root {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.battle-screen-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.88;
+  filter: saturate(0.92);
+}
+
+/* 柄・コントラストを抑えてUIを読みやすく */
+.battle-screen-bg-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(13, 17, 23, 0.38);
+  pointer-events: none;
+}
+
+.battle-screen-bg-gradient {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(to bottom, rgba(13, 17, 23, 0.2) 0%, transparent 42%, transparent 55%, #0d1117 100%);
+  pointer-events: none;
 }
 
 .battle-job-aura {
@@ -135,7 +171,7 @@
   top: 35%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--font-display);
   font-weight: 900;
   letter-spacing: 0.1em;
   pointer-events: none;
@@ -170,7 +206,7 @@
 }
 
 .revival-text {
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--font-display);
   font-size: 32px;
   font-weight: 900;
   color: #f0b429;
@@ -187,8 +223,8 @@
   border: none !important;
   box-shadow: none !important;
   padding: 12px 16px 8px;
-  /* 絶対配置の広告・お守り・設定行（約 sat+1〜+31px）の下に敵名が来るよう余白を確保 */
-  padding-top: max(44px, calc(var(--sat) + 40px));
+  /* 絶対配置ヘッダー行（高さ約30px）の下に敵エリアが来るよう余白（--battle-header-top と連動） */
+  padding-top: max(32px, calc(var(--battle-header-top) + 34px));
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
   position: relative;
 }
@@ -222,7 +258,7 @@
 
 .battle-reward-ad-btn {
   position: absolute;
-  top: max(2px, calc(var(--sat) + 1px));
+  top: var(--battle-header-top);
   left: 8px;
   z-index: 30;
   min-width: 80px;
@@ -244,7 +280,7 @@
 
 .battle-omamori-list {
   position: absolute;
-  top: max(2px, calc(var(--sat) + 1px));
+  top: var(--battle-header-top);
   left: 115px; /* 他はそのまま */
   right: 55px;
   display: flex;
@@ -291,7 +327,7 @@
 
 .battle-omamori-tooltip {
   position: fixed;
-  top: 52px;
+  top: calc(var(--battle-header-top) + 38px);
   left: auto;
   background: #161b22;
   border: 1px solid rgba(240, 180, 41, 0.4);
@@ -316,7 +352,7 @@
 }
 
 .battle-omamori-tooltip-name {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: 700;
   color: #f0b429;
@@ -327,7 +363,7 @@
 }
 
 .battle-omamori-tooltip-desc {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 10px;
   color: #8b949e;
   margin: 0;
@@ -336,7 +372,7 @@
 
 .battle-settings-trigger {
   position: absolute;
-  top: max(2px, calc(var(--sat) + 1px));
+  top: var(--battle-header-top);
   right: 8px;
   z-index: 30;
   min-width: 56px;
@@ -387,11 +423,90 @@
   padding: 14px;
 }
 
-.battle-settings-label {
-  margin: 0 0 8px;
+.battle-settings-volume-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 0 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6edf3;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.battle-settings-volume-toggle--open {
+  margin-bottom: 8px;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.battle-settings-volume-toggle-arrow {
+  flex-shrink: 0;
+  font-size: 11px;
   color: #8b949e;
+}
+
+.battle-settings-audio {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.battle-settings-audio-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.battle-settings-audio-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.battle-settings-audio-title {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  color: #e6edf3;
+}
+
+.battle-settings-mute {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #fff;
+  font-family: var(--font-ui);
+}
+
+.battle-settings-mute--on {
+  background: #4caf50;
+}
+
+.battle-settings-mute--off {
+  background: #666;
+}
+
+.battle-settings-range {
+  width: 100%;
+  accent-color: #f0b429;
 }
 
 .battle-settings-gauge-options {
@@ -924,7 +1039,7 @@
 }
 
 .reserve-confirm-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 14px;
   font-weight: 700;
   color: #e6edf3;
@@ -932,7 +1047,7 @@
 }
 
 .reserve-confirm-note {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 12px;
   color: #e74c3c;
   margin: 0 0 16px;
@@ -950,7 +1065,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   color: #8b949e;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   padding: 10px 0;
@@ -963,7 +1078,7 @@
   border: none;
   border-radius: 8px;
   color: #0d1117;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 900;
   padding: 10px 0;

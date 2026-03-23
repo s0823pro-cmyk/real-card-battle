@@ -41,7 +41,7 @@ interface LayoutItem {
 
 const calcHandLayout = (cardCount: number, areaWidth: number): LayoutItem[] => {
   if (cardCount <= 0) return [];
-  const cardWidth = 105;
+  const cardWidth = 100;
   const cardHeight = cardWidth * 1.6;
   const anglePerCard = cardCount > 1 ? Math.min(20 / (cardCount - 1), 5) : 0;
   const totalAngle = anglePerCard * (cardCount - 1);
@@ -125,8 +125,8 @@ const Hand = ({
           const style: CSSProperties = {
             left: `${current?.x ?? 0}px`,
             bottom: `${-30 - (current?.yOffset ?? 0)}px`,
-            '--hand-card-width': `${current?.width ?? 82}px`,
-            '--hand-card-height': `${current?.height ?? 114}px`,
+            '--hand-card-width': `${current?.width ?? 78}px`,
+            '--hand-card-height': `${current?.height ?? 110}px`,
             '--card-angle': `${current?.angle ?? 0}deg`,
             transform: isDraggingCard
               ? 'rotate(0deg) translateY(-50px) scale(1.15)'

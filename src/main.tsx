@@ -14,6 +14,8 @@ if (Capacitor.isNativePlatform()) {
 /** Android WebView では env(safe-area-inset-top) が 0 のことが多い。MainActivity 注入までの一瞬の被りを減らす粗い既定値 */
 if (Capacitor.getPlatform() === 'android') {
   document.documentElement.style.setProperty('--android-inset-top', '14px')
+  /* env(safe-area-inset-bottom) が 0 でもナビゲーション／ジェスチャー帯と被らないよう確保 */
+  document.documentElement.style.setProperty('--android-inset-bottom', '20px')
 }
 
 createRoot(document.getElementById('root')!).render(

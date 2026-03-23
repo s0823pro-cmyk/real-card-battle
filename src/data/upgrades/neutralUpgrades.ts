@@ -1,4 +1,5 @@
 import type { CardUpgrade } from './carpenterUpgrades';
+import { NEUTRAL_EXPANSION_UPGRADES } from './neutralExpansionUpgrades';
 
 export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
   深呼吸: {
@@ -56,4 +57,6 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
     description: '毎ターンカード+2枚ドロー（所要時間4秒）',
     effects: [{ type: 'draw_per_turn', value: 2 }],
   },
+
+  ...NEUTRAL_EXPANSION_UPGRADES,
 };

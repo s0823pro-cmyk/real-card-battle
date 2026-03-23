@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
 import CardComponent from '../Hand/CardComponent';
+import { FLOW_BG_BOSS_REWARD } from '../../data/flowBackgrounds';
 import { BOSS_REWARDS } from '../../data/bossRewards';
 import type { BossReward } from '../../data/bossRewards';
 import { pickRandomRareCard } from '../../data/runData';
@@ -92,9 +93,13 @@ export const BossRewardScreen = ({ area, jobId, player, onComplete }: BossReward
     onComplete(selectedReward, selectedCard);
   };
 
+  const bossRewardRootStyle = {
+    '--flow-bg-image': `url(${FLOW_BG_BOSS_REWARD})`,
+    '--flow-bg-overlay': 'rgba(0, 0, 0, 0.18)',
+  } as CSSProperties;
+
   return (
-    <div className="boss-reward-screen">
-      <div className="boss-reward-bg" />
+    <div className="boss-reward-screen boss-reward-screen--with-bg" style={bossRewardRootStyle}>
       <div className="boss-reward-header">
         <p className="boss-reward-area">エリア{area} クリア！</p>
         <h2 className="boss-reward-title">報酬を選択してください</h2>
