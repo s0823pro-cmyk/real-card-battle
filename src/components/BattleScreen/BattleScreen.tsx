@@ -1139,8 +1139,8 @@ const BattleScreen = ({
       )}
       {gameState.phase === 'defeat' && <DefeatScreen onRetry={retryBattle} />}
       {showPile && (
-        <div className="battle-deck-overlay" onClick={() => setShowPile(null)}>
-          <div className="battle-deck-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="battle-deck-overlay battle-deck-overlay--fullscreen" onClick={() => setShowPile(null)}>
+          <div className="battle-deck-modal battle-deck-modal--fullscreen" onClick={(event) => event.stopPropagation()}>
             <div className="battle-deck-modal-header">
               <h2 className="battle-deck-modal-title">
                 {showPile === 'draw'
@@ -1175,17 +1175,11 @@ const BattleScreen = ({
                 除外 ({gameState.exhaustedCards.length})
               </button>
             </div>
-            <div className="battle-deck-card-grid card-display-grid">
+            <div className="battle-deck-card-grid battle-deck-card-grid--pile card-display-grid">
               {currentPileCards.map((card, idx) => (
                 <div
                   key={`${card.id}_${idx}`}
-                  className="battle-deck-card-item card-display-item"
-                  style={
-                    {
-                      '--hand-card-width': '90px',
-                      '--hand-card-height': '144px',
-                    } as CSSProperties
-                  }
+                  className="battle-deck-card-item battle-deck-card-item--pile card-display-item"
                 >
                   <CardComponent
                     card={card}

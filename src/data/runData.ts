@@ -62,9 +62,10 @@ export const AREA1_ELITES: EnemyTemplateLike[] = [
     imageUrl: bikerLeaderImage,
     maxHp: 90,
     intents: [
-      { type: 'attack', value: 20, description: '攻撃 20', icon: '⚔️' },
-      { type: 'buff', value: 3, description: '仲間を呼ぶ', icon: '📢' },
-      { type: 'attack', value: 16, description: '特攻 16', icon: '💥' },
+      { type: 'attack', value: 18, description: '囲み込んで威圧', icon: '⚔️' },
+      { type: 'buff', value: 3, description: '走りを呼ぶ', icon: '📢' },
+      { type: 'attack', value: 20, description: 'マフラー音で牽制', icon: '🏍️' },
+      { type: 'attack', value: 22, description: '特攻突っ込み', icon: '💥' },
     ],
   },
   {
@@ -74,9 +75,10 @@ export const AREA1_ELITES: EnemyTemplateLike[] = [
     imageUrl: badRealtorImage,
     maxHp: 75,
     intents: [
-      { type: 'attack', value: 15, description: '攻撃 15', icon: '⚔️' },
-      { type: 'mental_attack', value: 0, mentalDamage: 2, description: '悪質な契約', icon: '📋' },
-      { type: 'attack', value: 15, description: '追い出し 15', icon: '🚪' },
+      { type: 'attack', value: 14, description: '解約を拒否する', icon: '⚔️' },
+      { type: 'mental_attack', value: 0, mentalDamage: 1, description: '小さな字の説明書攻撃', icon: '📋' },
+      { type: 'attack', value: 16, description: '立ち退き迫る', icon: '🚪' },
+      { type: 'debuff', value: 2, debuffType: 'weak', description: '抜け穴だらけの条項', icon: '📄' },
     ],
   },
 ];
@@ -88,14 +90,11 @@ export const AREA1_BOSS: EnemyTemplateLike = {
   imageUrl: monsterCustomerImage,
   maxHp: 200,
   intents: [
-    { type: 'attack', value: 14, description: '攻撃 14', icon: '⚔️' },
-    { type: 'mental_attack', value: 0, mentalDamage: 1, description: 'クレーム', icon: '😤' },
-    { type: 'attack', value: 22, description: '激怒の攻撃 22', icon: '💢' },
-    { type: 'buff', value: 3, description: 'SNSに投稿', icon: '📱' },
+    { type: 'attack', value: 14, description: '応対のフリをして踏み込む', icon: '⚔️' },
+    { type: 'mental_attack', value: 0, mentalDamage: 1, description: 'クレームの種をまく', icon: '😤' },
+    { type: 'attack', value: 22, description: '要求エスカレート', icon: '💢' },
+    { type: 'debuff', value: 2, debuffType: 'vulnerable', description: '炎上を煽る投稿', icon: '📱' },
     { type: 'mental_attack', value: 0, mentalDamage: 2, description: 'レビュー爆撃', icon: '⭐' },
-    { type: 'attack', value: 28, description: '暴走 28', icon: '💥' },
-    { type: 'attack', value: 18, description: '攻撃 18', icon: '⚔️' },
-    { type: 'mental_attack', value: 0, mentalDamage: 3, description: '土下座要求', icon: '🙇' },
   ],
 };
 
@@ -682,9 +681,9 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: collectorImage,
     maxHp: 45,
     intents: [
-      { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
-      { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
-      { type: 'steal_gold', value: 5, description: 'ゴールド盗取 -5', icon: '💰' },
+      { type: 'attack', value: 8, description: '督促状を叩きつける', icon: '⚔️' },
+      { type: 'steal_gold', value: 5, description: '財布を狙う', icon: '💰' },
+      { type: 'attack', value: 9, description: '深夜の呼び出し', icon: '⚔️' },
     ],
   },
   {
@@ -694,8 +693,9 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: sloppyWorkerImage,
     maxHp: 40,
     intents: [
-      { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
-      { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
+      { type: 'attack', value: 7, description: '適当な釘打ち', icon: '⚔️' },
+      { type: 'defend', value: 0, description: 'サボって煙草', icon: '💫' },
+      { type: 'attack', value: 8, description: '材料の切り落としで殴る', icon: '🔧' },
     ],
   },
   {
@@ -705,9 +705,9 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: yakuzaMinionImage,
     maxHp: 55,
     intents: [
-      { type: 'attack', value: 10, description: '攻撃 10', icon: '⚔️' },
-      { type: 'debuff', value: 2, debuffType: 'vulnerable', description: '脆弱付与', icon: '💢' },
-      { type: 'attack', value: 10, description: '攻撃 10', icon: '⚔️' },
+      { type: 'attack', value: 10, description: '組の看板を振り回す', icon: '⚔️' },
+      { type: 'debuff', value: 2, debuffType: 'vulnerable', description: '睨みで足をすくう', icon: '💢' },
+      { type: 'attack', value: 11, description: '鉄パイプを振る', icon: '⚔️' },
     ],
   },
   {
@@ -717,9 +717,9 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: evilSalesImage,
     maxHp: 38,
     intents: [
-      { type: 'attack', value: 6, description: '攻撃 6', icon: '⚔️' },
-      { type: 'add_curse', value: 1, description: '呪いカード追加', icon: '🌑' },
-      { type: 'attack', value: 6, description: '攻撃 6', icon: '⚔️' },
+      { type: 'attack', value: 6, description: '長話の押し売り', icon: '⚔️' },
+      { type: 'add_curse', value: 1, description: '謎の契約書を押しつける', icon: '🌑' },
+      { type: 'attack', value: 7, description: 'サンプルを投げつける', icon: '⚔️' },
     ],
   },
   {
@@ -729,9 +729,9 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: rogueDumpImage,
     maxHp: 65,
     intents: [
-      { type: 'attack', value: 12, description: '攻撃 12', icon: '⚔️' },
-      { type: 'attack', value: 12, description: '攻撃 12', icon: '⚔️' },
-      { type: 'buff', value: 1, description: '攻撃力+1', icon: '⬆️' },
+      { type: 'attack', value: 12, description: '荷台で体当たり', icon: '⚔️' },
+      { type: 'buff', value: 1, description: 'アクセル全開', icon: '⬆️' },
+      { type: 'attack', value: 13, description: '排気ガスを浴びせる', icon: '💨' },
     ],
   },
 ];
@@ -744,10 +744,10 @@ export const AREA2_ELITES: EnemyTemplateLike[] = [
     imageUrl: evilSupervisorImage,
     maxHp: 110,
     intents: [
-      { type: 'attack', value: 14, description: '攻撃 14', icon: '⚔️' },
-      { type: 'buff', value: 2, description: '部下を呼ぶ', icon: '📢' },
-      { type: 'attack', value: 14, description: '攻撃 14', icon: '⚔️' },
-      { type: 'defend', value: 12, description: '防御 12', icon: '🛡️' },
+      { type: 'attack', value: 14, description: '現場で怒鳴り散らす', icon: '⚔️' },
+      { type: 'buff', value: 2, description: '作業員を差し向ける', icon: '📢' },
+      { type: 'attack', value: 16, description: '図面を叩きつける', icon: '⚔️' },
+      { type: 'defend', value: 14, description: '責任を部下になすりつける', icon: '🛡️' },
     ],
   },
   {
@@ -757,10 +757,10 @@ export const AREA2_ELITES: EnemyTemplateLike[] = [
     imageUrl: landSharkImage,
     maxHp: 95,
     intents: [
-      { type: 'attack', value: 16, description: '攻撃 16', icon: '⚔️' },
-      { type: 'debuff', value: 3, debuffType: 'burn', description: '炎上付与', icon: '🔥' },
-      { type: 'debuff', value: 2, debuffType: 'weak', description: '弱体付与', icon: '💢' },
-      { type: 'attack', value: 16, description: '攻撃 16', icon: '⚔️' },
+      { type: 'attack', value: 16, description: '空き家に警告文を貼る', icon: '⚔️' },
+      { type: 'debuff', value: 3, debuffType: 'burn', description: '嫌がらせの火の手', icon: '🔥' },
+      { type: 'debuff', value: 2, debuffType: 'weak', description: '住民を脅す噂話', icon: '💢' },
+      { type: 'attack', value: 18, description: '解体業者を差し向ける', icon: '⚔️' },
     ],
   },
 ];
@@ -772,12 +772,11 @@ export const AREA2_BOSS: EnemyTemplateLike = {
   imageUrl: evilCeoImage,
   maxHp: 280,
   intents: [
-    { type: 'defend', value: 20, description: '防御 20', icon: '🛡️' },
-    { type: 'attack', value: 12, description: '攻撃 12', icon: '⚔️' },
-    { type: 'debuff', value: 2, debuffType: 'weak', description: '弱体付与', icon: '💢' },
-    { type: 'attack', value: 20, description: '猛攻撃 20', icon: '💥' },
-    { type: 'attack', value: 20, description: '猛攻撃 20', icon: '💥' },
-    { type: 'debuff', value: 3, debuffType: 'vulnerable', description: '脆弱付与', icon: '💢' },
+    { type: 'defend', value: 20, description: '会見で誤魔化す', icon: '🛡️' },
+    { type: 'attack', value: 14, description: '責任転嫁の唾飛沫', icon: '⚔️' },
+    { type: 'attack', value: 22, description: '下請けを蹴る', icon: '💥' },
+    { type: 'debuff', value: 2, debuffType: 'weak', description: 'パワハラ叱責', icon: '💢' },
+    { type: 'attack', value: 26, description: 'リストラ宣告', icon: '✂️' },
   ],
 };
 
@@ -821,9 +820,9 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: worldTreeRootImage,
     maxHp: 55,
     intents: [
-      { type: 'attack', value: 9, description: '攻撃 9', icon: '⚔️' },
-      { type: 'regen', value: 5, description: '再生 +5HP', icon: '💚' },
-      { type: 'attack', value: 9, description: '攻撃 9', icon: '⚔️' },
+      { type: 'attack', value: 9, description: '根を這わせて絡みつく', icon: '⚔️' },
+      { type: 'regen', value: 5, description: '大地から養分を吸う', icon: '💚' },
+      { type: 'attack', value: 10, description: '地割れを起こす', icon: '⚔️' },
     ],
   },
   {
@@ -833,9 +832,9 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: lostSoulImage,
     maxHp: 45,
     intents: [
-      { type: 'attack', value: 11, description: '攻撃 11', icon: '⚔️' },
-      { type: 'attack', value: 11, description: '攻撃 11', icon: '⚔️' },
-      { type: 'random_debuff', value: 2, description: 'ランダムデバフ', icon: '🎲' },
+      { type: 'attack', value: 11, description: 'すり抜ける一撃', icon: '⚔️' },
+      { type: 'attack', value: 11, description: '怨嗟のさざ波', icon: '⚔️' },
+      { type: 'random_debuff', value: 2, description: '呪いの囁き', icon: '🎲' },
     ],
   },
   {
@@ -845,10 +844,9 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: stoneSoldierImage,
     maxHp: 68,
     intents: [
-      { type: 'defend', value: 15, description: '防御 15', icon: '🛡️' },
-      { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
-      { type: 'defend', value: 15, description: '防御 15', icon: '🛡️' },
-      { type: 'attack', value: 8, description: '攻撃 8', icon: '⚔️' },
+      { type: 'defend', value: 15, description: '石壁の構え', icon: '🛡️' },
+      { type: 'attack', value: 10, description: '石斧の一閃', icon: '⚔️' },
+      { type: 'attack', value: 9, description: '石化の粉塵', icon: '⚔️' },
     ],
   },
   {
@@ -858,9 +856,9 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: lightGuardianImage,
     maxHp: 50,
     intents: [
-      { type: 'attack', value: 13, description: '攻撃 13', icon: '⚔️' },
-      { type: 'buff', value: 2, description: '攻撃力+2', icon: '⬆️' },
-      { type: 'attack', value: 13, description: '攻撃 13', icon: '⚔️' },
+      { type: 'attack', value: 13, description: '閃光の斬撃', icon: '⚔️' },
+      { type: 'buff', value: 2, description: '聖域の加護', icon: '⬆️' },
+      { type: 'attack', value: 14, description: '逆光で眩ます', icon: '⚔️' },
     ],
   },
   {
@@ -870,10 +868,9 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     imageUrl: cursedTreeImage,
     maxHp: 72,
     intents: [
-      { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
-      { type: 'add_curse', value: 1, description: '呪いカード追加', icon: '🌑' },
-      { type: 'attack', value: 7, description: '攻撃 7', icon: '⚔️' },
-      { type: 'defend', value: 10, description: '防御 10', icon: '🛡️' },
+      { type: 'attack', value: 8, description: '枝を鞭のように振る', icon: '⚔️' },
+      { type: 'add_curse', value: 1, description: '呪いの実を落とす', icon: '🌑' },
+      { type: 'defend', value: 12, description: '樹皮を鎧にする', icon: '🛡️' },
     ],
   },
 ];
@@ -886,10 +883,10 @@ export const AREA3_ELITES: EnemyTemplateLike[] = [
     imageUrl: worldTreeGuardianImage,
     maxHp: 130,
     intents: [
-      { type: 'defend', value: 20, description: '防御 20', icon: '🛡️' },
-      { type: 'attack', value: 15, description: '攻撃 15', icon: '⚔️' },
-      { type: 'defend', value: 20, description: '防御 20', icon: '🛡️' },
-      { type: 'attack', value: 15, description: '攻撃 15', icon: '⚔️' },
+      { type: 'defend', value: 22, description: '樹冠の大盾', icon: '🛡️' },
+      { type: 'attack', value: 16, description: '枝槍の突き', icon: '⚔️' },
+      { type: 'attack', value: 18, description: '根の足止め', icon: '⚔️' },
+      { type: 'defend', value: 20, description: '樹液の膜', icon: '🛡️' },
     ],
   },
   {
@@ -899,9 +896,10 @@ export const AREA3_ELITES: EnemyTemplateLike[] = [
     imageUrl: ancientGhostImage,
     maxHp: 115,
     intents: [
-      { type: 'attack', value: 18, description: '攻撃 18', icon: '⚔️' },
-      { type: 'debuff', value: 2, debuffType: 'vulnerable', description: '脆弱付与', icon: '💢' },
-      { type: 'attack', value: 18, description: '攻撃 18', icon: '⚔️' },
+      { type: 'attack', value: 18, description: '墓場からの手招き', icon: '⚔️' },
+      { type: 'debuff', value: 2, debuffType: 'vulnerable', description: '怨念の呪縛', icon: '💢' },
+      { type: 'attack', value: 20, description: '魂を削る悲鳴', icon: '⚔️' },
+      { type: 'defend', value: 0, description: '霧に溶ける（牽制）', icon: '👻' },
     ],
   },
 ];
@@ -913,15 +911,11 @@ export const AREA3_BOSS: EnemyTemplateLike = {
   imageUrl: worldTreeWardenImage,
   maxHp: 350,
   intents: [
-    { type: 'defend', value: 18, description: '防御 18', icon: '🛡️' },
-    { type: 'attack', value: 15, description: '攻撃 15', icon: '⚔️' },
-    { type: 'debuff', value: 2, debuffType: 'weak', description: '弱体付与', icon: '💢' },
-    { type: 'attack', value: 20, description: '攻撃 20', icon: '⚔️' },
-    { type: 'random_debuff', value: 3, description: 'ランダムデバフ', icon: '🎲' },
-    { type: 'debuff', value: 3, debuffType: 'vulnerable', description: '脆弱付与', icon: '💢' },
-    { type: 'attack', value: 25, description: '猛攻撃 25', icon: '💥' },
-    { type: 'attack', value: 25, description: '猛攻撃 25', icon: '💥' },
-    { type: 'attack', value: 25, description: '猛攻撃 25', icon: '💥' },
+    { type: 'defend', value: 22, description: '世界樹の根壁', icon: '🛡️' },
+    { type: 'attack', value: 18, description: '樹海の薙ぎ払い', icon: '⚔️' },
+    { type: 'debuff', value: 2, debuffType: 'weak', description: '年輪の呪い', icon: '💢' },
+    { type: 'attack', value: 24, description: '巨枝の落下', icon: '💥' },
+    { type: 'random_debuff', value: 3, description: '瘴気の渦', icon: '🎲' },
   ],
 };
 

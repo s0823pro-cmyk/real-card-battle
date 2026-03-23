@@ -29,22 +29,22 @@ const upsertStatus = (statuses: StatusEffect[], next: StatusEffect): StatusEffec
 
 export const useEnemyAI = () => {
   const getAvailableIntents = (enemy: Enemy): EnemyIntent[] => {
-    // エリア1ボス：monster_customer (HP200) フェーズ切り替え
-    if (enemy.templateId === 'monster_customer' && enemy.intentHistory.length >= 8) {
+    // エリア1ボス：monster_customer — 技5種。序盤は穏やか、終盤は全パターン
+    if (enemy.templateId === 'monster_customer' && enemy.intentHistory.length >= 5) {
       if (enemy.currentHp > 130) return enemy.intentHistory.slice(0, 2);
       if (enemy.currentHp > 60) return enemy.intentHistory.slice(2, 5);
-      return enemy.intentHistory.slice(5, 8);
+      return enemy.intentHistory.slice(0, 5);
     }
-    // エリア2ボス：evil_ceo (HP280) フェーズ切り替え
-    if (enemy.templateId === 'evil_ceo' && enemy.intentHistory.length >= 6) {
+    // エリア2ボス：evil_ceo — 技5種
+    if (enemy.templateId === 'evil_ceo' && enemy.intentHistory.length >= 5) {
       if (enemy.currentHp > 140) return enemy.intentHistory.slice(0, 3);
-      return enemy.intentHistory.slice(3, 6);
+      return enemy.intentHistory.slice(2, 5);
     }
-    // エリア3ボス：world_tree_warden (HP350) フェーズ切り替え
-    if (enemy.templateId === 'world_tree_warden' && enemy.intentHistory.length >= 9) {
+    // エリア3ボス：world_tree_warden — 技5種
+    if (enemy.templateId === 'world_tree_warden' && enemy.intentHistory.length >= 5) {
       if (enemy.currentHp > 220) return enemy.intentHistory.slice(0, 3);
-      if (enemy.currentHp > 100) return enemy.intentHistory.slice(3, 6);
-      return enemy.intentHistory.slice(6, 9);
+      if (enemy.currentHp > 100) return enemy.intentHistory.slice(2, 5);
+      return enemy.intentHistory.slice(0, 5);
     }
     return enemy.intentHistory;
   };

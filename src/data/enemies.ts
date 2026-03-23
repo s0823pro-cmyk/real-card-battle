@@ -31,8 +31,9 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
     imageUrl: claimerImage,
     maxHp: 30,
     intents: [
-      intent('attack', 8, '攻撃 8', '⚔️'),
-      { type: 'mental_attack', value: 0, mentalDamage: 1, description: '文句を言う', icon: '😤' },
+      intent('attack', 8, '大声で詰め寄る', '⚔️'),
+      { type: 'mental_attack', value: 0, mentalDamage: 1, description: '文句のオンパレード', icon: '😤' },
+      { type: 'debuff', value: 1, debuffType: 'weak', description: '上げ足取り', icon: '👆' },
     ],
   },
   drunk: {
@@ -40,21 +41,33 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
     icon: '🍺',
     imageUrl: drunkImage,
     maxHp: 35,
-    intents: [intent('attack', 11, '攻撃 11', '⚔️'), intent('defend', 0, '千鳥足...', '💫')],
+    intents: [
+      intent('attack', 11, '空き缶を投げつける', '⚔️'),
+      intent('defend', 0, '千鳥足で空振り', '💫'),
+      { type: 'regen', value: 2, description: '路肩で一服（HP+2）', icon: '🍺' },
+    ],
   },
   wildCat: {
     name: '野良猫',
     icon: '🐱',
     imageUrl: strayCatImage,
     maxHp: 20,
-    intents: [intent('attack', 3, '引っかく ×3', '🐱'), intent('attack', 3, '引っかく ×3', '🐱')],
+    intents: [
+      intent('defend', 0, 'ひなたぼっこ（何もしない）', '☀️'),
+      { type: 'regen', value: 2, description: '毛づくろい（HP+2）', icon: '🐱' },
+      intent('attack', 3, '肉球パンチ ×3', '🐾'),
+    ],
   },
   bicycle: {
     name: '放置自転車',
     icon: '🚲',
     imageUrl: abandonedBikeImage,
     maxHp: 24,
-    intents: [intent('attack', 6, '転倒アタック 6', '💥'), intent('defend', 0, 'ガタガタ…', '🛞')],
+    intents: [
+      intent('attack', 6, '転倒アタック', '💥'),
+      intent('defend', 5, 'スタンドを盾にする', '🛡️'),
+      intent('attack', 5, 'ペダルで薙ぎ払い', '🚲'),
+    ],
   },
   solicitor: {
     name: '勧誘員',
@@ -62,8 +75,9 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
     imageUrl: solicitorImage,
     maxHp: 28,
     intents: [
-      intent('attack', 7, '押し売り 7', '📄'),
-      { type: 'mental_attack', value: 0, mentalDamage: 1, description: 'しつこい勧誘', icon: '🗣️' },
+      intent('attack', 7, 'チラシの束で殴る', '📄'),
+      { type: 'debuff', value: 1, debuffType: 'weak', description: 'しつこい追いかけ話', icon: '🗣️' },
+      intent('attack', 6, '契約書を突きつける', '⚔️'),
     ],
   },
 };

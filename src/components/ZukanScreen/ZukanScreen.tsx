@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import CardComponent from '../Hand/CardComponent';
 import type { Card, CardRarity, CardType, JobId } from '../../types/game';
@@ -25,6 +25,7 @@ import { StoryScreen } from '../StoryScreen/StoryScreen';
 import { ENEMY_ZUKAN_DATA } from '../../data/enemyZukanData';
 import type { EnemyZukanEntry } from '../../data/enemyZukanData';
 import { getEnemyDefeatCount, getEnemyStatus } from '../../utils/enemyRecord';
+import { formatZukanIntentDetail, getEnemyIntentsForZukan } from '../../utils/enemyIntentCatalog';
 import './ZukanScreen.css';
 
 type MainTab = 'cards' | 'stories' | 'enemies';
@@ -135,7 +136,12 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [playingStory, setPlayingStory] = useState<StoryEntry | null>(null);
   const [selectedEnemy, setSelectedEnemy] = useState<EnemyZukanEntry | null>(null);
+  const [enemySkillsOpen, setEnemySkillsOpen] = useState(false);
   const suppressOverlayCloseRef = useRef(false);
+
+  useEffect(() => {
+    setEnemySkillsOpen(false);
+  }, [selectedEnemy]);
 
   const filteredCards = useMemo(() => {
     const cards = deduplicateCards(ALL_CARDS[activeTab]);
@@ -535,7 +541,21 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                 alt={selectedEnemy.name}
               />
               <div className="zukan-enemy-modal-info">
-                <h3 className="zukan-enemy-modal-name">{selectedEnemy.name}</h3>
+                <div className="zukan-enemy-modal-name-row">
+                  <h3 className="zukan-enemy-modal-name">{selectedEnemy.name}</h3>
+                  {getEnemyIntentsForZukan(selectedEnemy.id).length > 0 && (
+                    <button
+                      type="button"
+                      className={`zukan-enemy-skills-btn ${enemySkillsOpen ? 'zukan-enemy-skills-btn--active' : ''}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setEnemySkillsOpen(true);
+                      }}
+                    >
+                      技
+                    </button>
+                  )}
+                </div>
                 <div className="zukan-enemy-modal-stats">
                   <span>HP: {selectedEnemy.hp}</span>
                   <span>エリア{selectedEnemy.area}</span>
@@ -553,9 +573,56 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
               <button
                 type="button"
                 className="zukan-enemy-modal-close"
-                onClick={() => setSelectedEnemy(null)}
+                onClick={() => {
+                  setEnemySkillsOpen(false);
+                  setSelectedEnemy(null);
+                }}
               >
                 ✕
+              </button>
+            </div>
+          </div>
+        )}
+        {selectedEnemy && enemySkillsOpen && getEnemyIntentsForZukan(selectedEnemy.id).length > 0 && (
+          <div
+            className="zukan-enemy-skills-overlay"
+            onClick={() => setEnemySkillsOpen(false)}
+            role="presentation"
+          >
+            <div className="zukan-enemy-skills-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="zukan-enemy-skills-modal-header">
+                <h3 className="zukan-enemy-skills-modal-title">使用する技</h3>
+                <p className="zukan-enemy-skills-modal-sub">{selectedEnemy.name}</p>
+              </div>
+              <div className="zukan-enemy-skills-modal-body">
+                {getEnemyStatus(selectedEnemy.id) === 'defeated' ? (
+                  <ul className="zukan-enemy-skills-list">
+                    {getEnemyIntentsForZukan(selectedEnemy.id).map((intent, idx) => (
+                      <li key={`${selectedEnemy.id}-intent-${idx}`} className="zukan-enemy-skill-row">
+                        <span className="zukan-enemy-skill-icon" aria-hidden>
+                          {intent.icon}
+                        </span>
+                        <div className="zukan-enemy-skill-text">
+                          <span className="zukan-enemy-skill-name">{intent.description}</span>
+                          <span className="zukan-enemy-skill-detail">
+                            {formatZukanIntentDetail(intent, selectedEnemy.id)}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="zukan-enemy-skills-locked">
+                    この敵を撃破すると、使用する技一覧が確認できます。
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                className="zukan-enemy-skills-modal-close"
+                onClick={() => setEnemySkillsOpen(false)}
+              >
+                閉じる
               </button>
             </div>
           </div>

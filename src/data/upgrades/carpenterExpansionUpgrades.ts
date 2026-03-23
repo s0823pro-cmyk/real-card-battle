@@ -1,0 +1,231 @@
+import type { CardUpgrade } from './carpenterUpgrades';
+
+/** carpenterExpansion.ts 追加カードの強化定義 */
+export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
+  基礎足場: {
+    name: '基礎足場+',
+    block: 4,
+    description: '4ブロック、足場+2',
+    effects: [{ type: 'scaffold', value: 2 }],
+  },
+  墨の補足: {
+    name: '墨の補足+',
+    description: '次のアタックの所要時間-3秒',
+    effects: [{ type: 'next_attack_time_reduce', value: 3 }],
+  },
+  小釘打ち: { name: '小釘打ち+', damage: 7, description: '7ダメージ' },
+  角材: { name: '角材+', block: 10, description: '10ブロック' },
+  仮囲い: {
+    name: '仮囲い+',
+    block: 5,
+    description: '5ブロック。敵に弱体3ターン',
+    effects: [{ type: 'weak', value: 1, duration: 3 }],
+  },
+  水平器: {
+    name: '水平器+',
+    timeCost: 1,
+    description: 'メンタル+2（所要時間1秒）',
+    effects: [{ type: 'mental_boost', value: 2 }],
+  },
+  木屑払い: { name: '木屑払い+', damage: 8, description: '8ダメージ' },
+  下見板: {
+    name: '下見板+',
+    block: 6,
+    description: '6ブロック、足場+2',
+    effects: [{ type: 'scaffold', value: 2 }],
+  },
+  金槌タップ: { name: '金槌タップ+', damage: 9, timeCost: 2, description: '9ダメージ（所要時間2秒）' },
+  墨つぼと巻尺: {
+    name: '墨つぼと巻尺+',
+    timeCost: 1,
+    description: 'カード2枚ドロー。次のアタックの所要時間-1秒',
+    effects: [
+      { type: 'draw', value: 2 },
+      { type: 'next_attack_time_reduce', value: 1 },
+    ],
+  },
+  養生テープ: {
+    name: '養生テープ+',
+    block: 5,
+    description: '5ブロック、カード1枚ドロー',
+    effects: [{ type: 'draw', value: 1 }],
+  },
+  杭打ち: { name: '杭打ち+', damage: 11, timeCost: 2.5, description: '11ダメージ（所要時間2.5秒）' },
+  仕口チェック: {
+    name: '仕口チェック+',
+    description: '足場+2、カード1枚ドロー',
+    effects: [
+      { type: 'scaffold', value: 2 },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  曲尺あて: {
+    name: '曲尺あて+',
+    damage: 8,
+    description: '8ダメージ。敵に脆弱3ターン',
+    effects: [{ type: 'vulnerable', value: 1, duration: 3 }],
+  },
+  大工鑿の目印: {
+    name: '大工鑿の目印+',
+    description: '次のアタックのダメージ+7',
+    effects: [{ type: 'next_attack_damage_boost', value: 7 }],
+  },
+  作業台: { name: '作業台+', block: 6, description: '6ブロック（段取り扱い）' },
+  屋根裏確認: { name: '屋根裏確認+', damage: 10, timeCost: 3, description: '10ダメージ（所要時間3秒）' },
+  釘袋整理: {
+    name: '釘袋整理+',
+    timeCost: 1.5,
+    description: 'カード3枚ドロー（所要時間1.5秒）',
+    effects: [{ type: 'draw', value: 3 }],
+  },
+  木粉払い: { name: '木粉払い+', damage: 7, description: '7ダメージ' },
+  垂木の下: { name: '垂木の下+', block: 9, timeCost: 2, description: '9ブロック（所要時間2秒）' },
+  墨付け直し: {
+    name: '墨付け直し+',
+    timeCost: 1,
+    description: '次のアタックの所要時間-4秒',
+    effects: [{ type: 'next_attack_time_reduce', value: 4 }],
+  },
+  現場掃き: {
+    name: '現場掃き+',
+    damage: 9,
+    timeCost: 2,
+    description: '9ダメージ（所要時間2秒）',
+  },
+
+  柱を立てる: {
+    name: '柱を立てる+',
+    block: 18,
+    timeCost: 3.5,
+    description: '18ブロック、足場+3（所要時間3.5秒）',
+    effects: [{ type: 'scaffold', value: 3 }],
+  },
+  梁の継ぎ手: {
+    name: '梁の継ぎ手+',
+    damage: 10,
+    scaffoldMultiplier: 0.75,
+    description: '10ダメージ+足場×0.75ダメージ',
+  },
+  大工ばしご: {
+    name: '大工ばしご+',
+    damage: 18,
+    description: '18ダメージ。段取り時：2秒',
+  },
+  かんな屑飛ばし: {
+    name: 'かんな屑飛ばし+',
+    damage: 10,
+    timeCost: 3.5,
+    description: '全体10ダメージ',
+  },
+  金槌の響き: {
+    name: '金槌の響き+',
+    timeCost: 3.5,
+    description: 'このターンのアタック2回まで+6ダメージ（ターン終了で失効）',
+    effects: [{ type: 'next_attack_boost', value: 6, count: 2 }],
+  },
+  土台固め: {
+    name: '土台固め+',
+    block: 12,
+    timeCost: 3,
+    description: '12ブロック。次のターンブロックが消えない',
+    effects: [{ type: 'block_persist', value: 1 }],
+  },
+  通し柱: {
+    name: '通し柱+',
+    damage: 14,
+    reserveBonus: { description: '温存時：28ダメージ', damageMultiplier: 2 },
+    description: '14ダメージ。温存時：28ダメージ',
+  },
+  屋根葺き: {
+    name: '屋根葺き+',
+    damage: 16,
+    description: '全体16ダメージ。段取り時：3秒',
+  },
+  玄関枠取り付け: {
+    name: '玄関枠取り付け+',
+    block: 10,
+    description: '10ブロック。敵に脆弱3ターン',
+    effects: [{ type: 'vulnerable', value: 1, duration: 3 }],
+  },
+  のこぎり連打: {
+    name: 'のこぎり連打+',
+    damage: 5,
+    description: '5ダメージを4回、ランダムな敵へ',
+    effects: [{ type: 'hit_count', value: 4 }],
+  },
+  内装下地: {
+    name: '内装下地+',
+    description: 'メンタル+3、足場+2',
+    effects: [
+      { type: 'mental_boost', value: 3 },
+      { type: 'scaffold', value: 2 },
+    ],
+  },
+  床張り: {
+    name: '床張り+',
+    timeCost: 2.5,
+    description: 'HP半分以下のとき、このターンの攻撃ダメージ+7',
+    effects: [{ type: 'low_hp_damage_boost', value: 7 }],
+  },
+  検査合格: { name: '検査合格+', timeCost: 1, description: '次に使うカードを2回発動（所要時間1秒）' },
+  メジャー測定: {
+    name: 'メジャー測定+',
+    description: 'カード2枚ドロー。最大時間+1.5秒',
+    effects: [
+      { type: 'draw', value: 2 },
+      { type: 'time_boost', value: 1.5 },
+    ],
+  },
+  仕上げ鉋: {
+    name: '仕上げ鉋+',
+    damage: 12,
+    scaffoldMultiplier: 1.25,
+    description: '12ダメージ+足場×1.25ダメージ',
+  },
+
+  超間柱: {
+    name: '超間柱+',
+    timeCost: 3,
+    damage: 3,
+    scaffoldMultiplier: 2.5,
+    description: '3ダメージ+足場×2.5ダメージ',
+  },
+  全面改装: {
+    name: '全面改装+',
+    timeCost: 1,
+    description: '手札のカード4枚をランダムで強化。使用後除外',
+    effects: [{ type: 'upgrade_random_hand_card', value: 4 }],
+  },
+  鋼梁接合: {
+    name: '鋼梁接合+',
+    block: 26,
+    timeCost: 3.5,
+    description: '26ブロック。3ターンブロックが消えない',
+    effects: [{ type: 'block_persist', value: 3 }],
+  },
+  二重足場: {
+    name: '二重足場+',
+    timeCost: 4,
+    description: '毎ターン足場+3',
+    effects: [{ type: 'scaffold_per_turn', value: 3 }],
+  },
+  点検車: {
+    name: '点検車+',
+    timeCost: 3,
+    description: 'このターン受けるダメージを無効化（所要時間3秒）',
+  },
+  名匠の鑿: {
+    name: '名匠の鑿+',
+    timeCost: 4,
+    description: '毎ターン足場+2、カード+1枚ドロー',
+    effects: [
+      { type: 'scaffold_per_turn', value: 2 },
+      { type: 'draw_per_turn', value: 1 },
+    ],
+  },
+  礎の一撃: {
+    name: '礎の一撃+',
+    damage: 22,
+    description: '22ダメージ。段取り時：2秒。使用後除外',
+  },
+};

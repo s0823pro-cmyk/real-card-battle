@@ -913,6 +913,14 @@
   align-items: flex-end;
 }
 
+/* 山札・捨て札・除外一覧：全画面 */
+.battle-deck-overlay--fullscreen {
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  background: #0d1117;
+}
+
 .battle-deck-modal {
   width: 100%;
   max-height: 80vh;
@@ -922,6 +930,43 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.battle-deck-modal--fullscreen {
+  flex: 1;
+  max-height: none;
+  min-height: 100dvh;
+  border-radius: 0;
+  border-top: none;
+  box-sizing: border-box;
+  padding-top: max(0px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
+}
+
+.battle-deck-modal--fullscreen .battle-deck-card-grid {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 山札・捨て札一覧：左上詰め、横3列固定（cqw 依存をやめて Grid で確実に3列） */
+.battle-deck-card-grid.battle-deck-card-grid--pile {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  justify-content: stretch;
+  justify-items: stretch;
+}
+
+.battle-deck-card-item--pile {
+  min-width: 0;
+  width: 100%;
+}
+
+.battle-deck-card-item--pile .hand-card {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 90 / 144;
+  max-width: 100%;
 }
 
 .battle-deck-modal-header {
