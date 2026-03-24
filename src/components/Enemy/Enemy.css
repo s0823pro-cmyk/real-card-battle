@@ -175,8 +175,48 @@
   color: #f0f6fc;
 }
 
+/* ドラッグ中のデバフ付与後の行動数値（PlayerStatus の stat-value-preview と同系） */
+@keyframes enemy-intent-preview-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+
+.enemy-action-value--preview {
+  animation: enemy-intent-preview-pulse 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enemy-action-value--preview {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 .enemy-action--attack {
   color: var(--color-attack);
+}
+
+/* 攻撃力が weak / 攻撃デバフで下がっているとき（数値は既に補正済み） */
+.enemy-action-value.enemy-action--attack-debuffed {
+  color: #b8bcc4 !important;
+  text-shadow:
+    0 0 2px rgba(255, 255, 255, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.enemy-action-value.enemy-action--attack-debuffed .intent-icon--attack-debuffed {
+  filter: brightness(0.85) saturate(0.35) drop-shadow(0 0 1px rgba(255, 255, 255, 0.35));
+}
+
+/* 敵の物理攻撃がこのターン無効化されるときの数値（盗金の黄と誤認しないようブロック系の青） */
+.enemy-action--damage-immune {
+  color: #74b9ff;
+  text-shadow: 0 0 6px rgba(59, 130, 246, 0.45);
 }
 
 .enemy-action--mental {
@@ -362,9 +402,30 @@
   box-shadow: none !important;
 }
 
-.enemy-card--targeted .enemy-name {
+/* ダメージプレビュー（脆弱を付与しないカード）：敵ネームは赤点滅 */
+.enemy-card--targeted-damage .enemy-name {
   color: #ff6b6b;
-  animation: enemy-name-blink var(--enemy-preview-blink-duration, 0.6s) ease-in-out infinite;
+  animation: enemy-name-blink-red var(--enemy-preview-blink-duration, 0.6s) ease-in-out infinite;
+}
+
+/* 脆弱のみ（ダメージ予測0）のカード：ネームは赤点滅しない（通常色のまま） */
+.enemy-card--targeted-vulnerable-card .enemy-name {
+  color: inherit;
+  animation: none;
+  text-shadow: none;
+}
+
+/* ダメージ予測がない敵向けデバフ（脆弱・攻撃デバフ等）：ターゲット判別用にネームだけ灰色点滅 */
+.enemy-card--targeted-debuff-hint .enemy-name {
+  color: #b0b5bd;
+  animation: enemy-name-blink-gray var(--enemy-preview-blink-duration, 0.6s) ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enemy-card--targeted-damage .enemy-name,
+  .enemy-card--targeted-debuff-hint .enemy-name {
+    animation: none;
+  }
 }
 
 /* 数値・名前と同位相（端で強、中央で弱） */
@@ -378,8 +439,7 @@
   }
 }
 
-/* HP予測値（enemy-hp-preview-blink）と同位相：端で強く、中央50%で弱く */
-@keyframes enemy-name-blink {
+@keyframes enemy-name-blink-red {
   0%,
   100% {
     opacity: 1;
@@ -388,6 +448,18 @@
   50% {
     opacity: 0.45;
     text-shadow: 0 0 0 rgba(255, 107, 107, 0);
+  }
+}
+
+@keyframes enemy-name-blink-gray {
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(200, 205, 215, 0.75);
+  }
+  50% {
+    opacity: 0.45;
+    text-shadow: 0 0 0 rgba(200, 205, 215, 0);
   }
 }
 

@@ -178,7 +178,14 @@ export const useBattleLogic = () => {
     }
 
     if (card.block && nextPlayer.canBlock) {
-      const boostedBlock = isDandoriActive ? Math.floor(card.block * bonus.damageMultiplier) : card.block;
+      let blockFromCard = card.block;
+      if ((nextPlayer.nextCardBlockMultiplier ?? 1) > 1) {
+        blockFromCard = Math.floor(blockFromCard * (nextPlayer.nextCardBlockMultiplier ?? 1));
+        nextPlayer.nextCardBlockMultiplier = 1;
+      }
+      const boostedBlock = isDandoriActive
+        ? Math.floor(blockFromCard * bonus.damageMultiplier)
+        : blockFromCard;
       nextPlayer.block += boostedBlock;
       blockGained += boostedBlock;
     }
@@ -226,6 +233,10 @@ export const useBattleLogic = () => {
       if (effect.type === 'low_hp_damage_boost') {
         nextPlayer.lowHpDamageBoost = Math.max(nextPlayer.lowHpDamageBoost, effect.value);
       }
+      if (effect.type === 'attack_damage_all_attacks') {
+        nextPlayer.attackDamageBonusAllAttacks =
+          (nextPlayer.attackDamageBonusAllAttacks ?? 0) + effect.value;
+      }
       if (effect.type === 'first_cooking_multiplier_boost') {
         nextPlayer.kitchenDemonActive = true;
       }
@@ -235,6 +246,9 @@ export const useBattleLogic = () => {
       if (effect.type === 'next_attack_boost') {
         nextPlayer.nextAttackBoostValue = effect.value;
         nextPlayer.nextAttackBoostCount = effect.count ?? 2;
+      }
+      if (effect.type === 'next_card_block_multiplier') {
+        nextPlayer.nextCardBlockMultiplier = Math.max(1, effect.value);
       }
       if (
         effect.type === 'vulnerable' ||

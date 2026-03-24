@@ -10,7 +10,7 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   墨の補足: {
     name: '墨の補足+',
-    description: '次のアタックの所要時間-3秒',
+    description: '次のアタックの所要時間-3秒（ターン終了で失効）',
     effects: [{ type: 'next_attack_time_reduce', value: 3 }],
   },
   小釘打ち: { name: '小釘打ち+', damage: 7, description: '7ダメージ' },
@@ -37,8 +37,8 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   金槌タップ: { name: '金槌タップ+', damage: 9, timeCost: 2, description: '9ダメージ（所要時間2秒）' },
   墨つぼと巻尺: {
     name: '墨つぼと巻尺+',
-    timeCost: 1,
-    description: 'カード2枚ドロー。次のアタックの所要時間-1秒',
+    timeCost: 1.5,
+    description: 'カード2枚ドロー。次のアタックの所要時間-1秒（ターン終了で失効）',
     effects: [
       { type: 'draw', value: 2 },
       { type: 'next_attack_time_reduce', value: 1 },
@@ -67,10 +67,10 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   大工鑿の目印: {
     name: '大工鑿の目印+',
-    description: '次のアタックのダメージ+7',
+    description: '次のアタックのダメージ+7（ターン終了で失効）',
     effects: [{ type: 'next_attack_damage_boost', value: 7 }],
   },
-  作業台: { name: '作業台+', block: 6, description: '6ブロック（段取り扱い）' },
+  作業台: { name: '作業台+', block: 6, description: '6ブロック' },
   屋根裏確認: { name: '屋根裏確認+', damage: 10, timeCost: 3, description: '10ダメージ（所要時間3秒）' },
   釘袋整理: {
     name: '釘袋整理+',
@@ -82,9 +82,8 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   垂木の下: { name: '垂木の下+', block: 9, timeCost: 2, description: '9ブロック（所要時間2秒）' },
   墨付け直し: {
     name: '墨付け直し+',
-    timeCost: 1,
-    description: '次のアタックの所要時間-4秒',
-    effects: [{ type: 'next_attack_time_reduce', value: 4 }],
+    description: '次のアタックの所要時間-3秒（ターン終了で失効）（所要時間1.5秒）',
+    effects: [{ type: 'next_attack_time_reduce', value: 3 }],
   },
   現場掃き: {
     name: '現場掃き+',
@@ -102,6 +101,7 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   梁の継ぎ手: {
     name: '梁の継ぎ手+',
+    timeCost: 2.5,
     damage: 10,
     scaffoldMultiplier: 0.75,
     description: '10ダメージ+足場×0.75ダメージ',
@@ -119,9 +119,9 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   金槌の響き: {
     name: '金槌の響き+',
-    timeCost: 3.5,
-    description: 'このターンのアタック2回まで+6ダメージ（ターン終了で失効）',
-    effects: [{ type: 'next_attack_boost', value: 6, count: 2 }],
+    timeCost: 2,
+    description: 'このターンのアタック2回まで+5ダメージ（ターン終了で失効）',
+    effects: [{ type: 'next_attack_boost', value: 5, count: 2 }],
   },
   土台固め: {
     name: '土台固め+',
@@ -149,8 +149,9 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   のこぎり連打: {
     name: 'のこぎり連打+',
+    timeCost: 3,
     damage: 5,
-    description: '5ダメージを4回、ランダムな敵へ',
+    description: '5ダメージを4回、ランダムな敵へ（所要時間3秒）',
     effects: [{ type: 'hit_count', value: 4 }],
   },
   内装下地: {
@@ -167,7 +168,12 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
     description: 'HP半分以下のとき、このターンの攻撃ダメージ+7',
     effects: [{ type: 'low_hp_damage_boost', value: 7 }],
   },
-  検査合格: { name: '検査合格+', timeCost: 1, description: '次に使うカードを2回発動（所要時間1秒）' },
+  検査合格: {
+    name: '検査合格+',
+    timeCost: 3,
+    description: '次に使うカードのブロック値を3倍にする（ターン終了で失効）',
+    effects: [{ type: 'next_card_block_multiplier', value: 3 }],
+  },
   メジャー測定: {
     name: 'メジャー測定+',
     description: 'カード2枚ドロー。最大時間+1.5秒',
@@ -178,22 +184,22 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   仕上げ鉋: {
     name: '仕上げ鉋+',
+    timeCost: 2.5,
     damage: 12,
-    scaffoldMultiplier: 1.25,
-    description: '12ダメージ+足場×1.25ダメージ',
+    description: '12ダメージ、足場+2',
+    effects: [{ type: 'scaffold', value: 2 }],
   },
 
   超間柱: {
     name: '超間柱+',
-    timeCost: 3,
     damage: 3,
     scaffoldMultiplier: 2.5,
-    description: '3ダメージ+足場×2.5ダメージ',
+    description: '3ダメージ+足場×2.5ダメージ（所要時間3.5秒）',
   },
   全面改装: {
     name: '全面改装+',
-    timeCost: 1,
-    description: '手札のカード4枚をランダムで強化。使用後除外',
+    timeCost: 2,
+    description: '手札のカード4枚をランダムで強化。使用後除外（所要時間2秒）',
     effects: [{ type: 'upgrade_random_hand_card', value: 4 }],
   },
   鋼梁接合: {

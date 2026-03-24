@@ -28,7 +28,15 @@ import {
   getUnlockedAchievementIds,
   unlockAllAchievements,
 } from '../../utils/achievementSystem';
+import type { AchievementTier } from '../../utils/achievementTypes';
+
+const TIER_LABEL: Record<AchievementTier, string> = {
+  easy: '（アンコモン×2）',
+  medium: '（アンコモン+レア）',
+  hard: '（レア×2）',
+};
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
+import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 
 const JOB_NAMES: Record<string, string> = {
   carpenter: '大工',
@@ -42,6 +50,8 @@ interface HomeScreenProps {
   onContinue?: (saved: GameProgress) => void;
   savedProgress?: GameProgress | null;
   onDevNavigate?: (destination: DevDestination) => void;
+  /** 開発のみ: 拡張カードを各2枚デッキに追加 */
+  onDevAddExpansionCards?: () => void;
 }
 
 type ModalType = 'howto' | 'credits' | null;
@@ -97,7 +107,6 @@ const Fireflies = () => {
     const setSize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      console.log('canvas size:', canvas.width, canvas.height);
     };
 
     setSize();
@@ -255,9 +264,11 @@ const HomeScreen = ({
   onContinue,
   savedProgress,
   onDevNavigate,
+  onDevAddExpansionCards,
 }: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHomeGlossary, setShowHomeGlossary] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [achievementRefreshKey, setAchievementRefreshKey] = useState(0);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
@@ -592,6 +603,12 @@ const HomeScreen = ({
         </button>
         {openSettingsSection === 'game' && (
           <div className="settings-accordion-body">
+            <button type="button" className="settings-btn-block" onClick={() => setShowHomeGlossary(true)}>
+              <span className="settings-btn-block-title">用語集</span>
+              <span className="settings-btn-block-desc">
+                用語・カードバッジ・ステータス表示などの説明を表示します。
+              </span>
+            </button>
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
                 <p className="settings-item-title">データ初期化</p>
@@ -603,10 +620,14 @@ const HomeScreen = ({
                 type="button"
                 className="settings-btn-danger"
                 onClick={() => {
-                  const confirmed = window.confirm(
+                  const firstOk = window.confirm(
                     'すべてのデータを初期化しますか？\nこの操作は元に戻せません。',
                   );
-                  if (!confirmed) return;
+                  if (!firstOk) return;
+                  const secondOk = window.confirm(
+                    '再度確認します。\n進行・図鑑・チュートリアルなどがすべて削除されます。本当に初期化しますか？',
+                  );
+                  if (!secondOk) return;
                   const keysToDelete = [
                     'real-card-battle:save-data',
                     'jobless_battle_save',
@@ -671,29 +692,20 @@ const HomeScreen = ({
 
       <div className="settings-divider" />
 
-      <div className="settings-item">
-        <div className="settings-item-info">
-          <p className="settings-item-title">利用規約</p>
-        </div>
+      <div className="settings-block-actions">
         <button
           type="button"
-          className="settings-btn-link"
+          className="settings-btn-block"
           onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/terms.html', '_self')}
         >
-          確認 →
+          <span className="settings-btn-block-title">利用規約</span>
         </button>
-      </div>
-
-      <div className="settings-item">
-        <div className="settings-item-info">
-          <p className="settings-item-title">プライバシーポリシー</p>
-        </div>
         <button
           type="button"
-          className="settings-btn-link"
+          className="settings-btn-block"
           onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/privacy.html', '_self')}
         >
-          確認 →
+          <span className="settings-btn-block-title">プライバシーポリシー</span>
         </button>
       </div>
 
@@ -746,6 +758,12 @@ const HomeScreen = ({
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_all_cards')}>
               全カード戦闘
             </button>
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_expansion_x2')}>
+              初期＋拡張バトル開始
+            </button>
+            <button type="button" className="btn-dev" onClick={() => onDevAddExpansionCards?.()}>
+              拡張カード全追加（×2）
+            </button>
           </div>
         </div>
       )}
@@ -754,18 +772,28 @@ const HomeScreen = ({
 
   if (showSettings) {
     return (
-      <main className="home-screen" style={backgroundStyle}>
-        <Fireflies />
-        <div className="records-page">
-          <div className="records-page-header">
-            <button type="button" className="records-back-btn" onClick={() => setShowSettings(false)}>
-              ← 戻る
-            </button>
-            <h2 className="records-page-title">設定</h2>
+      <>
+        <main className="home-screen" style={backgroundStyle}>
+          <Fireflies />
+          <div className="records-page">
+            <div className="records-page-header">
+              <button
+                type="button"
+                className="records-back-btn"
+                onClick={() => {
+                  setShowHomeGlossary(false);
+                  setShowSettings(false);
+                }}
+              >
+                ← 戻る
+              </button>
+              <h2 className="records-page-title">設定</h2>
+            </div>
+            <div className="records-page-content">{renderSettingsContent()}</div>
           </div>
-          <div className="records-page-content">{renderSettingsContent()}</div>
-        </div>
-      </main>
+        </main>
+        {showHomeGlossary && <GlossaryModal onClose={() => setShowHomeGlossary(false)} />}
+      </>
     );
   }
 
@@ -808,14 +836,15 @@ const HomeScreen = ({
                   >
                     <span className="achievement-icon">{isUnlocked ? a.icon : '🔒'}</span>
                     <div className="achievement-info">
-                      <p className="achievement-name">{isUnlocked ? a.name : '???'}</p>
-                      <p className="achievement-desc">{isUnlocked ? a.description : '未達成'}</p>
-                      {isUnlocked && (
-                        <p className="achievement-reward">
-                          {a.rewardIcon} {a.rewardName} 解放済み
-                          <span className="victory-achievement-tap"> タップで確認</span>
-                        </p>
-                      )}
+                      <p className="achievement-name">{a.name}</p>
+                      <p className="achievement-desc">{a.description}</p>
+                      <p className="achievement-tier">{TIER_LABEL[a.tier]}</p>
+                      <p className="achievement-reward">
+                        {isUnlocked
+                          ? '報酬: カード2枚（タップで表示）'
+                          : '報酬: ？？？（未達成のため内容は不明）'}
+                        {isUnlocked && <span className="victory-achievement-tap"> タップで確認</span>}
+                      </p>
                     </div>
                   </button>
                 );

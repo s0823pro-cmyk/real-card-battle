@@ -1,4 +1,5 @@
 import type { Card } from '../../types/game';
+import { ACHIEVEMENT_LOCKED_CARD_IDS } from '../achievementDefinitions';
 import knifeSkillImage from '../../assets/cards/cook/knife_skill.png';
 import apronGuardImage from '../../assets/cards/cook/apron_guard.png';
 import onionCutImage from '../../assets/cards/cook/onion_cut.png';
@@ -60,11 +61,11 @@ export const COOK_COMMON_POOL: Card[] = [
   },
 ];
 
-export const COOK_UNCOMMON_POOL: Card[] = [
+export const COOK_UNCOMMON_POOL_UNFILTERED: Card[] = [
   { id: 'hot_sauce', name: '激辛ソース', type: 'skill', timeCost: 1, description: '敵に火傷3付与、調理+1', icon: '🌶️', tags: ['ingredient'], effects: [{ type: 'cooking_gauge', value: 1 }, { type: 'burn', value: 3 }], sellValue: 12, imageUrl: hotSauceImage },
   { id: 'recipe_study', name: 'レシピ研究', type: 'power', timeCost: 4, description: '食材カード使用ごとに全アタック+2', icon: '📖', sellValue: 12, imageUrl: recipeBookImage },
   { id: 'knife_set', name: '包丁セット', type: 'tool', timeCost: 4, description: '全アタック+2ダメージ', icon: '🔪', sellValue: 12, imageUrl: knifeSetImage },
-  { id: 'aged_dough', name: '寝かせた生地', type: 'attack', timeCost: 2, description: '8ダメージ', damage: 8, icon: '🫓', tags: ['ingredient'], effects: [{ type: 'cooking_gauge', value: 1 }], reserveBonus: { description: '温存時：16ダメージ、調理+2', damageMultiplier: 2.0, extraEffects: [{ type: 'cooking_gauge', value: 2 }] }, sellValue: 12, imageUrl: agedDoughImage },
+  { id: 'aged_dough', name: '寝かせた生地', type: 'attack', timeCost: 2, description: '8ダメージ', damage: 8, icon: '🫓', tags: ['ingredient'], effects: [{ type: 'cooking_gauge', value: 1 }], reserveBonus: { description: '温存時：16ダメージ、調理+2', damageMultiplier: 2.0, extraEffects: [{ type: 'cooking_gauge', value: 2 }] }, badges: ['reserve'], sellValue: 12, imageUrl: agedDoughImage },
   {
     id: 'delivery',
     name: '出前配達',
@@ -118,7 +119,12 @@ export const COOK_UNCOMMON_POOL: Card[] = [
   },
 ];
 
-export const COOK_RARE_POOL: Card[] = [
+export const COOK_UNCOMMON_POOL: Card[] = COOK_UNCOMMON_POOL_UNFILTERED.filter(
+  (c) => !ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id),
+);
+
+/** 実績ロック分を含む（参照用） */
+export const COOK_RARE_POOL_UNFILTERED: Card[] = [
   {
     id: 'full_course',
     name: 'フルコース',
@@ -166,3 +172,7 @@ export const COOK_RARE_POOL: Card[] = [
     imageUrl: flameFlambe2Image,
   },
 ];
+
+export const COOK_RARE_POOL: Card[] = COOK_RARE_POOL_UNFILTERED.filter(
+  (c) => !ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id),
+);

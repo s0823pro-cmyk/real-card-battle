@@ -10,6 +10,16 @@ import {
   CARPENTER_UNCOMMON_POOL,
 } from '../data/jobs/carpenter';
 import {
+  CARPENTER_EXPANSION_COMMON,
+  CARPENTER_EXPANSION_RARE,
+  CARPENTER_EXPANSION_UNCOMMON,
+} from '../data/jobs/carpenterExpansion';
+import {
+  NEUTRAL_EXPANSION_COMMON_POOL,
+  NEUTRAL_EXPANSION_RARE_POOL,
+  NEUTRAL_EXPANSION_UNCOMMON_POOL,
+} from '../data/cards/neutralExpansion';
+import {
   AREA1_BOSS,
   AREA2_BOSS,
   AREA3_BOSS,
@@ -53,10 +63,52 @@ import { upgradeCardByJobId } from '../utils/cardUpgrade';
 import { clearBattleState, saveBattleState } from '../utils/battleSave';
 import type { Achievement } from '../utils/achievementSystem';
 import {
-  getUnlockedAchievementIds,
-  incrementDefeatCount,
-  unlockAchievements,
+  evaluateAchievementsAfterBattle,
+  recordBattleEndForAchievements,
+  recordDiceRollForAchievements,
+  recordEventResolvedForAchievements,
+  recordHotelVisitForAchievements,
+  recordShrineVisitForAchievements,
+  recordShopCardBuyForAchievements,
 } from '../utils/achievementSystem';
+
+/** 開発用: 拡張プールの全カード（各1枚分の定義） */
+const DEV_EXPANSION_CARD_POOLS_LIST: Card[] = [
+  ...CARPENTER_EXPANSION_COMMON,
+  ...CARPENTER_EXPANSION_UNCOMMON,
+  ...CARPENTER_EXPANSION_RARE,
+  ...NEUTRAL_EXPANSION_COMMON_POOL,
+  ...NEUTRAL_EXPANSION_UNCOMMON_POOL,
+  ...NEUTRAL_EXPANSION_RARE_POOL,
+];
+
+/**
+ * 「初期＋拡張バトル開始」用: チェックリストで [o] 済みの拡張カードは積まず、
+ * [効果調整]のみ（再確認向け）を各1枚。
+ */
+const DEV_BATTLE_EXPANSION_RECHECK_ONLY_IDS: readonly string[] = [
+  'sumitsubo_makijaku',
+  'daiku_nomi_mejirushi',
+  'sagyo_dai',
+  'sumitsuke_naoshi',
+  'hari_tsugite',
+  'kanazuchi_hibiki',
+  'nokogiri_renda',
+  'kensa_gokaku',
+  'shiage_kanna',
+  'zenmen_kaiso',
+  'kiai_ireru',
+  'shinshin_choritu',
+  'gyakkyou_sainou',
+];
+
+const cloneExpansionCardsOnceForDevBattleRecheckOnly = (): Card[] =>
+  DEV_EXPANSION_CARD_POOLS_LIST.filter((card) => DEV_BATTLE_EXPANSION_RECHECK_ONLY_IDS.includes(card.id)).map(
+    (card) => cloneRewardCard(card),
+  );
+
+const cloneExpansionCardsTwiceForDev = (): Card[] =>
+  DEV_EXPANSION_CARD_POOLS_LIST.flatMap((card) => [cloneRewardCard(card), cloneRewardCard(card)]);
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
@@ -80,6 +132,8 @@ export type DevDestination =
   | 'battle_boss_2'
   | 'battle_boss_3'
   | 'battle_all_cards'
+  /** 初期デッキ + 拡張のうちチェックリスト [効果調整] のみ各1枚（[o] 済みは含めない）で戦闘開始 */
+  | 'battle_expansion_x2'
   | 'shop'
   | 'shrine'
   | 'hotel'
@@ -250,9 +304,11 @@ const initialPlayer: PlayerState = {
   firstIngredientUsedThisTurn: false,
   nextAttackBoostValue: 0,
   nextAttackBoostCount: 0,
+  nextCardBlockMultiplier: 1,
   timeBonusPerTurn: 0,
   nextCardDoubleEffect: false,
   nextCardEffectBoost: 0,
+  attackDamageBonusAllAttacks: 0,
 };
 
 const makeInitialProgress = (): GameProgress => {
@@ -301,41 +357,6 @@ const updateBoardPosition = (board: BoardTile[], tileId: number): BoardTile[] =>
     isCurrentPosition: tile.id === tileId,
     visited: tile.visited || tile.id === tileId,
   }));
-
-const evaluateBattleAchievements = (
-  result: BattleResult,
-  currentArea: number,
-): Achievement[] => {
-  const achievementIds: string[] = [];
-
-  if (result.outcome === 'victory') {
-    const already = getUnlockedAchievementIds();
-    if (!already.has('first_win')) achievementIds.push('first_win');
-  }
-
-  if (result.outcome === 'victory' && result.kind === 'boss') {
-    if (currentArea === 1) achievementIds.push('area1_clear');
-    if (currentArea === 2) achievementIds.push('area2_clear');
-    if (currentArea === 3) achievementIds.push('area3_clear');
-  }
-
-  if (result.outcome === 'defeat') {
-    const count = incrementDefeatCount();
-    if (count >= 3) achievementIds.push('defeat_3');
-  }
-
-  if (result.player.scaffold >= 10) achievementIds.push('scaffold_10');
-
-  if (result.outcome === 'victory' && result.player.currentHp <= 10) {
-    achievementIds.push('low_hp_kill');
-  }
-
-  if (result.outcome === 'victory' && result.player.mental <= 0) {
-    achievementIds.push('zero_mental_survive');
-  }
-
-  return unlockAchievements(achievementIds);
-};
 
 const pruneUnselectedBranchRoutes = (
   board: BoardTile[],
@@ -671,6 +692,7 @@ export const useRunProgress = () => {
       return;
     }
     if (tile.type === 'shrine') {
+      recordShrineVisitForAchievements();
       dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'shrine' });
       dispatch({ type: 'set_screen', screen: 'shrine' });
       return;
@@ -709,6 +731,7 @@ export const useRunProgress = () => {
       return;
     }
     if (tile.type === 'hotel') {
+      recordHotelVisitForAchievements();
       dispatch({ type: 'set_hotel_item_received', used: false });
       dispatch({ type: 'set_screen', screen: 'hotel' });
       return;
@@ -730,6 +753,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_dice', value, rolling: false });
     await wait(500);
     dispatch({ type: 'set_dice', value: null, rolling: false });
+    recordDiceRollForAchievements();
     dispatch({ type: 'set_screen', screen: 'map' });
     const after = stateRef.current;
     const move = movePlayerBySteps(after.board, after.currentTileId, value, after.selectedBranchTileId);
@@ -818,6 +842,7 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_deck', deck: nextState.deck });
       dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
       dispatch({ type: 'set_event', event: null });
+      recordEventResolvedForAchievements();
       dispatch({ type: 'set_screen', screen: 'map' });
       return;
     }
@@ -832,6 +857,7 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_deck', deck: nextState.deck });
       dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
       dispatch({ type: 'set_event', event: null });
+      recordEventResolvedForAchievements();
       dispatch({ type: 'set_screen', screen: 'map' });
       return;
     }
@@ -864,6 +890,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_deck', deck: nextState.deck });
     dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
     dispatch({ type: 'set_event', event: null });
+    recordEventResolvedForAchievements();
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
@@ -1003,6 +1030,9 @@ export const useRunProgress = () => {
         item.id === shopId ? { ...item, purchased: true } : item,
       ),
     });
+    if (shop.type === 'card') {
+      recordShopCardBuyForAchievements();
+    }
   };
 
   const resolvePendingItemReplacement = (discardIndex: number | null) => {
@@ -1104,15 +1134,18 @@ export const useRunProgress = () => {
     firstIngredientUsedThisTurn: false,
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
+    nextCardBlockMultiplier: 1,
     nextCardDoubleEffect: false,
     nextCardEffectBoost: 0,
+    attackDamageBonusAllAttacks: 0,
     fullSprintUsedCount: 0,
   });
 
   const onBattleEnd = (result: BattleResult) => {
     clearBattleState();
     const battleArea = stateRef.current.currentArea;
-    const newAchievements = evaluateBattleAchievements(result, battleArea);
+    recordBattleEndForAchievements(result);
+    const newAchievements = evaluateAchievementsAfterBattle(result, battleArea);
     const cleanedDeck = result.deck.filter(
       (card) => card.type !== 'status' && card.type !== 'curse',
     );
@@ -1272,6 +1305,7 @@ export const useRunProgress = () => {
       firstIngredientUsedThisTurn: false,
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
+      nextCardBlockMultiplier: 1,
       timeBonusPerTurn: 0,
       nextCardDoubleEffect: false,
       nextCardEffectBoost: 0,
@@ -1354,6 +1388,13 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_unlocked_card_names', names: new Set(names) });
   };
 
+  /** 開発のみ: 拡張カードを各2枚ずつ現在のデッキに追加 */
+  const addExpansionCardsTwiceToDeckDev = () => {
+    if (!import.meta.env.DEV) return;
+    const added = cloneExpansionCardsTwiceForDev();
+    dispatch({ type: 'set_deck', deck: [...stateRef.current.deck, ...added] });
+  };
+
   const startDevNavigation = (destination: Exclude<DevDestination, 'boss_reward' | 'story'>) => {
     const jobId: JobId = 'carpenter';
     const jobConfig = getJobConfig(jobId);
@@ -1396,11 +1437,13 @@ export const useRunProgress = () => {
       firstIngredientUsedThisTurn: false,
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
+      nextCardBlockMultiplier: 1,
       timeBonusPerTurn: 0,
       nextCardDoubleEffect: false,
       nextCardEffectBoost: 0,
+      attackDamageBonusAllAttacks: 0,
     };
-    const devDeck = jobConfig.createStarterDeck();
+    const devDeck = stateRef.current.deck.map((card) => cloneRewardCard(card));
     const devBoard = updateBoardPosition(generateBoard(), 1);
 
     dispatch({ type: 'set_job', jobId });
@@ -1438,6 +1481,24 @@ export const useRunProgress = () => {
       const allNeutralCards = [...NEUTRAL_CARD_POOL];
       const allCards = [...allCarpenterCards, ...allNeutralCards];
       const deck: Card[] = allCards.flatMap((card) => [cloneRewardCard(card), cloneRewardCard(card)]);
+      const setup: BattleSetup = {
+        jobId,
+        kind: 'battle',
+        enemies: createEncounterFromTemplateIds(['claimer']),
+        deck,
+        player: devPlayer,
+        omamoris: [],
+        items: [],
+      };
+      dispatch({ type: 'set_deck', deck });
+      dispatch({ type: 'set_battle_setup', setup, tileType: 'enemy' });
+      dispatch({ type: 'set_screen', screen: 'battle' });
+      return;
+    }
+
+    if (destination === 'battle_expansion_x2') {
+      const starter = jobConfig.createStarterDeck().map((card) => cloneRewardCard(card));
+      const deck = [...starter, ...cloneExpansionCardsOnceForDevBattleRecheckOnly()];
       const setup: BattleSetup = {
         jobId,
         kind: 'battle',
@@ -1566,6 +1627,7 @@ export const useRunProgress = () => {
       firstIngredientUsedThisTurn: false,
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
+      nextCardBlockMultiplier: 1,
       timeBonusPerTurn: 0,
       nextCardDoubleEffect: false,
       nextCardEffectBoost: 0,
@@ -1633,6 +1695,7 @@ export const useRunProgress = () => {
     backToHomeFromJobSelect,
     backToHomeFromZukan,
     unlockAllCardsForDebug,
+    addExpansionCardsTwiceToDeckDev,
     startDevNavigation,
     startRunFromJobSelect,
     resetRun,

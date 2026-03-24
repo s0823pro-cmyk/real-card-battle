@@ -77,6 +77,7 @@ function App() {
     backToHomeFromJobSelect,
     backToHomeFromZukan,
     unlockAllCardsForDebug,
+    addExpansionCardsTwiceToDeckDev,
     startDevNavigation,
     startRunFromJobSelect,
     resetRun,
@@ -144,18 +145,18 @@ function App() {
 
   useEffect(() => {
     const snap = { bgm: 'none' as BgmType };
-    (window as any).__stopBgm = () => {
+    window.__stopBgm = () => {
       snap.bgm = audio.getCurrentBgm();
       audio.stopBgm();
     };
-    (window as any).__resumeBgm = () => {
+    window.__resumeBgm = () => {
       if (snap.bgm !== 'none') {
         audio.playBgm(snap.bgm);
       }
     };
     return () => {
-      delete (window as any).__stopBgm;
-      delete (window as any).__resumeBgm;
+      delete window.__stopBgm;
+      delete window.__resumeBgm;
     };
   }, [audio]);
 
@@ -328,6 +329,7 @@ function App() {
 
             savedProgress={savedProgress}
             onDevNavigate={handleDevNavigate}
+            onDevAddExpansionCards={addExpansionCardsTwiceToDeckDev}
           />
         );
       case 'zukan':

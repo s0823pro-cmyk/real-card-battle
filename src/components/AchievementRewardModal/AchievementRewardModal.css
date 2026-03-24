@@ -1,3 +1,11 @@
+.achievement-reward-cards-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin: 12px 0;
+}
+
 .achievement-omamori-img {
   width: 96px;
   height: 96px;

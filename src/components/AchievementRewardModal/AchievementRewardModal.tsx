@@ -1,9 +1,9 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
-import type { JobId } from '../../types/game';
+import type { Card, JobId } from '../../types/game';
 import CardComponent from '../Hand/CardComponent';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
-import type { Achievement } from '../../utils/achievementSystem';
-import { getAchievementRewardCard, getAchievementRewardOmamori } from '../../utils/achievementRewardLookup';
+import type { Achievement } from '../../utils/achievementTypes';
+import { getAchievementRewardCards } from '../../utils/achievementRewardLookup';
 import './AchievementRewardModal.css';
 
 const STATIC_VALUES: EffectiveCardValues = {
@@ -19,6 +19,7 @@ const STATIC_VALUES: EffectiveCardValues = {
   isBlockDebuffed: false,
   isHealBuffed: false,
   isHealDebuffed: false,
+  isAttackDamageWeakDebuffed: false,
 };
 
 const noop = (): void => {};
@@ -32,8 +33,19 @@ interface AchievementRewardModalProps {
   jobId: JobId;
 }
 
+const cardToValues = (card: Card): EffectiveCardValues => ({
+  ...STATIC_VALUES,
+  damage: card.damage ?? null,
+  block: card.block ?? null,
+  heal:
+    (card.effects ?? []).filter((e) => e.type === 'heal').reduce((s, e) => s + e.value, 0) || null,
+  effectiveTimeCost: card.timeCost,
+});
+
 export const AchievementRewardModal = ({ selected, onClose, jobId }: AchievementRewardModalProps) => {
   if (!selected) return null;
+
+  const [cardA, cardB] = getAchievementRewardCards(selected.rewardCardIds[0], selected.rewardCardIds[1]);
 
   return (
     <div className="achievement-reward-overlay" onClick={onClose}>
@@ -41,63 +53,38 @@ export const AchievementRewardModal = ({ selected, onClose, jobId }: Achievement
         <h3 className="achievement-reward-modal-title">
           {selected.icon} {selected.name}
         </h3>
-        <p className="achievement-reward-modal-sub">解放された報酬</p>
-        {selected.rewardType === 'card' ? (() => {
-          const card = getAchievementRewardCard(selected.rewardId);
-          if (!card) return null;
-          const values: EffectiveCardValues = {
-            ...STATIC_VALUES,
-            damage: card.damage ?? null,
-            block: card.block ?? null,
-            heal:
-              (card.effects ?? [])
-                .filter((e) => e.type === 'heal')
-                .reduce((s, e) => s + e.value, 0) || null,
-            effectiveTimeCost: card.timeCost,
-          };
-          return (
-            <div style={{ '--hand-card-width': '160px', '--hand-card-height': '256px' } as CSSProperties}>
-              <CardComponent
-                card={card}
-                jobId={jobId}
-                selected={false}
-                disabled={false}
-                locked={false}
-                isSelling={false}
-                isReturning={false}
-                isGhost={false}
-                isDragging={false}
-                isDragUnavailable={false}
-                effectiveValues={values}
-                onSelect={noop}
-                onPointerDown={noopPointer}
-                onPointerMove={noopPointer}
-                onPointerUp={noopPointer}
-                onPointerCancel={noop}
-                onMouseEnter={noop}
-                onMouseLeave={noop}
-              />
-            </div>
-          );
-        })() : (() => {
-          const omamori = getAchievementRewardOmamori(selected.rewardId);
-          if (!omamori) return null;
-          return (
-            <div className="achievement-omamori-detail">
-              {omamori.imageUrl ? (
-                <img
-                  src={omamori.imageUrl}
-                  alt={omamori.name}
-                  className="achievement-omamori-img"
+        <p className="achievement-reward-modal-sub">解放された報酬（カード2枚）</p>
+        <div className="achievement-reward-cards-row">
+          {[cardA, cardB].map((card, idx) =>
+            card ? (
+              <div
+                key={`${card.id}_${idx}`}
+                style={{ '--hand-card-width': '140px', '--hand-card-height': '224px' } as CSSProperties}
+              >
+                <CardComponent
+                  card={card}
+                  jobId={jobId}
+                  selected={false}
+                  disabled={false}
+                  locked={false}
+                  isSelling={false}
+                  isReturning={false}
+                  isGhost={false}
+                  isDragging={false}
+                  isDragUnavailable={false}
+                  effectiveValues={cardToValues(card)}
+                  onSelect={noop}
+                  onPointerDown={noopPointer}
+                  onPointerMove={noopPointer}
+                  onPointerUp={noopPointer}
+                  onPointerCancel={noop}
+                  onMouseEnter={noop}
+                  onMouseLeave={noop}
                 />
-              ) : (
-                <span className="achievement-omamori-icon">{omamori.icon}</span>
-              )}
-              <p className="achievement-omamori-name">{omamori.name}</p>
-              <p className="achievement-omamori-desc">{omamori.description}</p>
-            </div>
-          );
-        })()}
+              </div>
+            ) : null,
+          )}
+        </div>
         <button type="button" className="achievement-reward-close" onClick={onClose}>
           閉じる
         </button>

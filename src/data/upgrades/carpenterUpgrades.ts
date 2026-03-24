@@ -67,13 +67,12 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   '設計図を描く': {
     name: '設計図を描く+',
-    timeCost: 0,
-    description: 'カード3枚ドロー（所要時間0秒）',
+    description: 'カード3枚ドロー（所要時間1秒）',
     effects: [{ type: 'draw', value: 3 }],
   },
   '墨出し': {
     name: '墨出し+',
-    description: '次のアタックの所要時間-3秒',
+    description: '次のアタックの所要時間-3秒（ターン終了で失効）',
     effects: [{ type: 'next_attack_time_reduce', value: 3 }],
   },
   '速打ち': {
@@ -161,16 +160,14 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   'リフォーム': {
     name: 'リフォーム+',
-    timeCost: 1,
-    description: '手札のカード2枚をランダムで強化。使用後除外',
+    description: '手札のカード2枚をランダムで強化。使用後除外（所要時間2秒）',
     effects: [{ type: 'upgrade_random_hand_card', value: 2 }],
   },
   '匠の一撃': {
     name: '匠の一撃+',
-    timeCost: 3,
     scaffoldMultiplier: 6,
     tags: ['scaffold_consume', 'exhaust'],
-    description: '足場×6ダメージ、足場を全消費。使用後除外。段取り時：2秒',
+    description: '足場×6ダメージ、足場を全消費。使用後除外。段取り時：3秒',
   },
 
   ...CARPENTER_EXPANSION_UPGRADES,

@@ -23,7 +23,7 @@ export const NEUTRAL_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   気合を入れる: {
     name: '気合を入れる+',
-    description: '次の攻撃3回+3ダメージ',
+    description: '次の攻撃3回+3ダメージ。このカードの効果は次のターンまで引き継ぐ。',
     effects: [{ type: 'attack_buff', value: 3, duration: 3 }],
   },
   牽制: {
@@ -116,8 +116,7 @@ export const NEUTRAL_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
 
   心身の調律: {
     name: '心身の調律+',
-    timeCost: 5,
-    description: '毎ターンカード+2枚ドロー、メンタル+1（プレイ時）',
+    description: '毎ターンカード+2枚ドロー。使用時メンタル+1（所要時間6秒）',
     effects: [
       { type: 'draw_per_turn', value: 2 },
       { type: 'mental_boost', value: 1 },
@@ -126,13 +125,12 @@ export const NEUTRAL_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   逆境の才能: {
     name: '逆境の才能+',
     timeCost: 4,
-    description: 'HP半分以下のとき、このターンの攻撃ダメージ+11（プレイ時に付与）',
-    effects: [{ type: 'low_hp_damage_boost', value: 11 }],
+    description: 'HPが半分以下のときのみ使用可能。すべてのアタックカードのダメージ+8',
+    effects: [{ type: 'attack_damage_all_attacks', value: 8 }],
   },
   ラストワード: {
     name: 'ラストワード+',
     damage: 40,
-    timeCost: 5,
-    description: '40ダメージ。使用後除外（所要時間5秒）',
+    description: '40ダメージ。使用後除外（所要時間6秒）',
   },
 };

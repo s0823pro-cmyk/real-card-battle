@@ -1,4 +1,5 @@
 import type { Card } from '../../types/game';
+import { ACHIEVEMENT_LOCKED_CARD_IDS } from '../achievementDefinitions';
 import { RESERVE_BONUS_CARDS, buildStarterDeck } from '../carpenterDeck';
 import {
   CARPENTER_EXPANSION_COMMON,
@@ -67,7 +68,7 @@ export const CARPENTER_COMMON_POOL: Card[] = [
     name: '墨出し',
     type: 'skill',
     timeCost: 1,
-    description: '次のアタックの所要時間-2秒',
+    description: '次のアタックの所要時間-2秒（ターン終了で失効）',
     icon: '✏️',
     sellValue: 5,
     tags: ['preparation'],
@@ -98,13 +99,14 @@ export const CARPENTER_COMMON_POOL: Card[] = [
       description: '温存時：12ブロック',
       blockMultiplier: 2,
     },
+    badges: ['reserve'],
     sellValue: 8,
     imageUrl: reinforcedWallImage,
   },
   ...CARPENTER_EXPANSION_COMMON,
 ];
 
-export const CARPENTER_UNCOMMON_POOL: Card[] = [
+export const CARPENTER_UNCOMMON_POOL_UNFILTERED: Card[] = [
   ...RESERVE_BONUS_CARDS.filter((card) => card.id !== 'reinforced_wall'),
   {
     id: 'large_crane',
@@ -140,6 +142,7 @@ export const CARPENTER_UNCOMMON_POOL: Card[] = [
     description: '毎ターン足場+1',
     icon: '👷',
     sellValue: 12,
+    tags: ['preparation'],
     badges: ['setup'],
     effects: [{ type: 'scaffold_per_turn', value: 1 }],
     imageUrl: foremanImage,
@@ -180,8 +183,9 @@ export const CARPENTER_UNCOMMON_POOL: Card[] = [
   ...CARPENTER_EXPANSION_UNCOMMON,
 ];
 
-/** 実績解放が必要なレアカード（ゲーム開始時は報酬・ショップ抽選に出現しない） */
-export const ACHIEVEMENT_LOCKED_RARE_IDS = new Set(['ridgepole', 'temple_carpenter', 'master_strike']);
+export const CARPENTER_UNCOMMON_POOL: Card[] = CARPENTER_UNCOMMON_POOL_UNFILTERED.filter(
+  (c) => !ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id),
+);
 
 /** 実績達成後にプールへ追加される大工レア */
 export const CARPENTER_ACHIEVEMENT_RARE_CARDS: Card[] = [
@@ -201,7 +205,7 @@ export const CARPENTER_ACHIEVEMENT_RARE_CARDS: Card[] = [
     name: '宮大工の技',
     type: 'power',
     timeCost: 6,
-    description: '段取りボーナスが1.5倍に強化（通常1.3倍）',
+    description: '段取りボーナスが1.5倍に強化（通常1.2倍）',
     icon: '🏯',
     rarity: 'rare',
     sellValue: 25,
@@ -250,6 +254,7 @@ export const CARPENTER_RARE_POOL: Card[] = [
     rarity: 'rare',
     sellValue: 25,
     tags: ['exhaust'],
+    badges: ['exhaust'],
     effects: [{ type: 'upgrade_random_hand_card', value: 1 }],
     imageUrl: renovationImage,
   },

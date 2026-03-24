@@ -1,4 +1,5 @@
 import type { Card } from '../../types/game';
+import { ACHIEVEMENT_LOCKED_CARD_IDS } from '../achievementDefinitions';
 import { NEUTRAL_EXPANSION_CARDS } from './neutralExpansion';
 import deepBreathImage from '../../assets/cards/neutral/deep_breath.png';
 import fullSprintImage from '../../assets/cards/neutral/full_sprint.png';
@@ -70,7 +71,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     name: '集中力',
     type: 'skill',
     timeCost: 2,
-    description: '通常使用で次のカード効果+10%（捨て札）。温存すると次のカード効果が2倍で、使用後は除外。',
+    description: '通常使用で次のカード効果+10%（捨て札）。温存するとその時点で次のカード効果が2倍となり、次ターン開始時に温存枠から手札に戻さず除外。',
     icon: '🎯',
     rarity: 'uncommon',
     sellValue: 12,
@@ -143,15 +144,10 @@ export const NEUTRAL_CARD_POOL: Card[] = [
   ...NEUTRAL_EXPANSION_CARDS,
 ];
 
-/** 実績解放が必要な無色レア */
-export const ACHIEVEMENT_LOCKED_NEUTRAL_IDS = new Set(['miracle', 'hidden_power']);
-
-export const NEUTRAL_ACHIEVEMENT_RARE_CARDS: Card[] = NEUTRAL_CARD_POOL.filter((card) =>
-  ACHIEVEMENT_LOCKED_NEUTRAL_IDS.has(card.id),
-);
-
 export const NEUTRAL_COMMON_POOL = NEUTRAL_CARD_POOL.filter((card) => card.rarity === 'common');
-export const NEUTRAL_UNCOMMON_POOL = NEUTRAL_CARD_POOL.filter((card) => card.rarity === 'uncommon');
+export const NEUTRAL_UNCOMMON_POOL = NEUTRAL_CARD_POOL.filter(
+  (card) => card.rarity === 'uncommon' && !ACHIEVEMENT_LOCKED_CARD_IDS.has(card.id),
+);
 export const NEUTRAL_RARE_POOL = NEUTRAL_CARD_POOL.filter(
-  (card) => card.rarity === 'rare' && !ACHIEVEMENT_LOCKED_NEUTRAL_IDS.has(card.id),
+  (card) => card.rarity === 'rare' && !ACHIEVEMENT_LOCKED_CARD_IDS.has(card.id),
 );

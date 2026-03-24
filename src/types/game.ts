@@ -1,5 +1,5 @@
 export type CardType = 'attack' | 'skill' | 'power' | 'tool' | 'status' | 'curse';
-export type CardBadge = 'exhaust' | 'setup' | 'self_damage';
+export type CardBadge = 'exhaust' | 'setup' | 'self_damage' | 'reserve';
 export type JobId = 'carpenter' | 'cook' | 'unemployed';
 export type GamePhase =
   | 'battle_start'
@@ -22,6 +22,7 @@ export type EffectType =
   | 'self_damage'
   | 'time_boost'
   | 'double_next'
+  | 'double_next_replay'
   | 'attack_buff'
   | 'draw_per_turn'
   | 'next_attack_time_reduce'
@@ -35,6 +36,7 @@ export type EffectType =
   | 'next_turn_time_penalty'
   | 'mental_boost'
   | 'low_hp_damage_boost'
+  | 'attack_damage_all_attacks'
   | 'first_cooking_multiplier_boost'
   | 'ridgepole_threshold'
   | 'ridgepole_damage'
@@ -44,6 +46,7 @@ export type EffectType =
   | 'block_per_turn_awakened'
   | 'lighter_chance'
   | 'next_attack_boost'
+  | 'next_card_block_multiplier'
   | 'reserve_double_next';
 
 export type CardRarity = 'common' | 'uncommon' | 'rare';
@@ -174,8 +177,12 @@ export interface PlayerState {
   firstIngredientUsedThisTurn: boolean;
   nextAttackBoostValue: number;
   nextAttackBoostCount: number;
+  /** 次にプレイするブロック付きカードの block を乗算（1で無効）。ターン終了で1にリセット */
+  nextCardBlockMultiplier: number;
   timeBonusPerTurn: number;
   nextCardDoubleEffect: boolean;
+  /** 逆境の才能など：パワーで付与された全アタックダメージ加算 */
+  attackDamageBonusAllAttacks: number;
   nextCardEffectBoost: number;
   fullSprintUsedCount?: number;
 }
@@ -201,6 +208,8 @@ export interface GameState {
   timeline: TimelineSlot[];
   reserved: Card[];
   drawPile: Card[];
+  /** 山札一覧の表示順（インデックスの並び）。シャッフル／ターン開始ドロー時に更新 */
+  drawPileDisplayOrder: number[];
   discardPile: Card[];
   exhaustedCards: Card[];
   activePowers: Card[];

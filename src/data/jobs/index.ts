@@ -1,7 +1,6 @@
 import type { Card, JobId } from '../../types/game';
-import { getUnlockedCardIds } from '../../utils/achievementSystem';
+import { getUnlockedAchievementCardsForJob } from '../../utils/achievementRewardLookup';
 import {
-  CARPENTER_ACHIEVEMENT_RARE_CARDS,
   CARPENTER_COMMON_POOL,
   CARPENTER_RARE_POOL,
   CARPENTER_UNCOMMON_POOL,
@@ -14,12 +13,7 @@ import {
   UNEMPLOYED_STARTER_DECK,
   UNEMPLOYED_UNCOMMON_POOL,
 } from './unemployed';
-import {
-  NEUTRAL_ACHIEVEMENT_RARE_CARDS,
-  NEUTRAL_COMMON_POOL,
-  NEUTRAL_RARE_POOL,
-  NEUTRAL_UNCOMMON_POOL,
-} from '../cards/neutralCards';
+import { NEUTRAL_COMMON_POOL, NEUTRAL_RARE_POOL, NEUTRAL_UNCOMMON_POOL } from '../cards/neutralCards';
 
 export interface JobConfig {
   id: JobId;
@@ -83,58 +77,54 @@ export const getJobConfig = (jobId: JobId): JobConfig => {
   return CARPENTER_CONFIG;
 };
 
-const withUnlockedAchievementRares = (jobId: JobId, carpenterRare: Card[], neutralRare: Card[]): Card[] => {
-  const unlocked = getUnlockedCardIds();
-  const extraNeutral = NEUTRAL_ACHIEVEMENT_RARE_CARDS.filter((c) => unlocked.has(c.id)).map((c) => ({
-    ...c,
-    rarity: 'rare' as const,
-  }));
-  if (jobId === 'carpenter') {
-    const extraJob = CARPENTER_ACHIEVEMENT_RARE_CARDS.filter((c) => unlocked.has(c.id)).map((c) => ({
-      ...c,
-      rarity: 'rare' as const,
-    }));
-    return [...carpenterRare, ...neutralRare, ...extraJob, ...extraNeutral];
+const mergeUnlockedAchievementCards = (jobId: JobId, uncommon: Card[], rare: Card[]): { uncommon: Card[]; rare: Card[] } => {
+  const extra = getUnlockedAchievementCardsForJob(jobId);
+  const eu: Card[] = [];
+  const er: Card[] = [];
+  for (const c of extra) {
+    const rr = c.rarity ?? 'common';
+    if (rr === 'uncommon') eu.push({ ...c, rarity: 'uncommon' });
+    if (rr === 'rare') er.push({ ...c, rarity: 'rare' });
   }
-  return [...carpenterRare, ...neutralRare, ...extraNeutral];
+  return { uncommon: [...uncommon, ...eu], rare: [...rare, ...er] };
 };
 
 export const getCardPoolsByJob = (jobId: JobId): JobCardPools => {
   if (jobId === 'cook') {
-    const rare = withUnlockedAchievementRares(
+    const merged = mergeUnlockedAchievementCards(
       'cook',
-      [...withRarity(COOK_RARE_POOL, 'rare')],
-      [...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+      [...withRarity(COOK_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
+      [...withRarity(COOK_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
     );
     return {
       common: [...withRarity(COOK_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
-      uncommon: [...withRarity(COOK_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
-      rare,
+      uncommon: merged.uncommon,
+      rare: merged.rare,
     };
   }
   if (jobId === 'unemployed') {
-    const rare = withUnlockedAchievementRares(
+    const merged = mergeUnlockedAchievementCards(
       'unemployed',
-      [...withRarity(UNEMPLOYED_RARE_POOL, 'rare')],
-      [...withRarity(NEUTRAL_RARE_POOL, 'rare')],
-    );
-    return {
-      common: [...withRarity(UNEMPLOYED_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
-      uncommon: [
+      [
         ...withRarity(UNEMPLOYED_UNCOMMON_POOL, 'uncommon'),
         ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon'),
       ],
-      rare,
+      [...withRarity(UNEMPLOYED_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+    );
+    return {
+      common: [...withRarity(UNEMPLOYED_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
+      uncommon: merged.uncommon,
+      rare: merged.rare,
     };
   }
-  const rare = withUnlockedAchievementRares(
+  const merged = mergeUnlockedAchievementCards(
     'carpenter',
-    [...withRarity(CARPENTER_RARE_POOL, 'rare')],
-    [...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+    [...withRarity(CARPENTER_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
+    [...withRarity(CARPENTER_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
   );
   return {
     common: [...withRarity(CARPENTER_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
-    uncommon: [...withRarity(CARPENTER_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
-    rare,
+    uncommon: merged.uncommon,
+    rare: merged.rare,
   };
 };

@@ -4,8 +4,7 @@ import { NEUTRAL_EXPANSION_UPGRADES } from './neutralExpansionUpgrades';
 export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
   深呼吸: {
     name: '深呼吸+',
-    timeCost: 0,
-    description: 'カード3枚ドロー（所要時間0秒）',
+    description: 'カード3枚ドロー（所要時間0.5秒）',
     effects: [{ type: 'draw', value: 3 }],
   },
   全力疾走: {
@@ -29,7 +28,7 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
   集中力: {
     name: '集中力+',
     timeCost: 1,
-    description: '通常使用で次のカード効果+20%（捨て札）。温存すると次のカード効果が2倍で、使用後は除外。（所要時間1秒）',
+    description: '通常使用で次のカード効果+20%（捨て札）。温存するとその時点で次のカード効果が2倍となり、次ターン開始時に温存枠から手札に戻さず除外。（所要時間1秒）',
   },
   根性見せろ: {
     name: '根性見せろ+',
@@ -48,13 +47,11 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
   奇跡の一手: {
     name: '奇跡の一手+',
     damage: 40,
-    timeCost: 5,
-    description: '40ダメージ（所要時間5秒）',
+    description: '40ダメージ（所要時間6秒）',
   },
   底力: {
     name: '底力+',
-    timeCost: 4,
-    description: '毎ターンカード+2枚ドロー（所要時間4秒）',
+    description: '毎ターンカード+2枚ドロー（所要時間5秒）',
     effects: [{ type: 'draw_per_turn', value: 2 }],
   },
 

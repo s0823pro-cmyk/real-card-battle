@@ -95,7 +95,7 @@ export const DefeatScreen = ({
                 <div className="victory-achievement-info">
                   <p className="victory-achievement-name">{a.name}</p>
                   <p className="victory-achievement-reward">
-                    {a.rewardIcon} {a.rewardName} 解放！{' '}
+                    🃏 カード2枚 解放！{' '}
                     <span className="victory-achievement-tap">タップで確認</span>
                   </p>
                 </div>

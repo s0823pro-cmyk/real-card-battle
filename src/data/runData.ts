@@ -1,12 +1,8 @@
 import { ICONS } from '../assets/icons';
 import { cloneRewardCard, getCardPoolsByJob } from './jobs';
-import {
-  NEUTRAL_ACHIEVEMENT_RARE_CARDS,
-  NEUTRAL_COMMON_POOL,
-  NEUTRAL_RARE_POOL,
-  NEUTRAL_UNCOMMON_POOL,
-} from './cards/neutralCards';
-import { getUnlockedCardIds, getUnlockedOmamoriIds } from '../utils/achievementSystem';
+import { NEUTRAL_CARD_POOL, NEUTRAL_COMMON_POOL } from './cards/neutralCards';
+import { ACHIEVEMENT_LOCKED_CARD_IDS } from './achievementDefinitions';
+import { getUnlockedCardIds } from '../utils/achievementSystem';
 import type {
   EnemyTemplateLike,
   GameEvent,
@@ -537,14 +533,18 @@ export const pickRandomUncommonCard = (jobId: JobId = 'carpenter'): Card =>
 export const pickRandomRareCard = (jobId: JobId = 'carpenter'): Card =>
   cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).rare.filter((card) => !card.neutral)));
 
-const getNeutralRarePoolForPick = (): Card[] => {
+const getNeutralPoolForPick = (rarity: 'uncommon' | 'rare'): Card[] => {
   const unlocked = getUnlockedCardIds();
-  return [...NEUTRAL_RARE_POOL, ...NEUTRAL_ACHIEVEMENT_RARE_CARDS.filter((c) => unlocked.has(c.id))];
+  return NEUTRAL_CARD_POOL.filter(
+    (c) =>
+      c.rarity === rarity &&
+      (!ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id) || unlocked.has(c.id)),
+  );
 };
 
 const pickRandomNeutralByRarity = (rarity: 'common' | 'uncommon' | 'rare'): Card => {
-  if (rarity === 'rare') return cloneRewardCard(pickRandom(getNeutralRarePoolForPick()));
-  if (rarity === 'uncommon') return cloneRewardCard(pickRandom(NEUTRAL_UNCOMMON_POOL));
+  if (rarity === 'rare') return cloneRewardCard(pickRandom(getNeutralPoolForPick('rare')));
+  if (rarity === 'uncommon') return cloneRewardCard(pickRandom(getNeutralPoolForPick('uncommon')));
   return cloneRewardCard(pickRandom(NEUTRAL_COMMON_POOL));
 };
 
@@ -585,15 +585,8 @@ export const generateOmamoriChoices = (
   currentOmamoris: Omamori[] = [],
 ): Omamori[] => {
   const ownedIds = new Set(currentOmamoris.map((o) => o.id));
-  const unlockedIds = getUnlockedOmamoriIds();
-  const ACHIEVEMENT_OMAMORI_IDS = new Set(['alarm_clock', 'hard_hat', 'victory_charm']);
-  const available = RELICS.filter((relic) => {
-    if (ownedIds.has(relic.id)) return false;
-    if (ACHIEVEMENT_OMAMORI_IDS.has(relic.id)) return unlockedIds.has(relic.id);
-    return true;
-  });
-  const pool = available.length > 0 ? available : RELICS.filter((r) => !ACHIEVEMENT_OMAMORI_IDS.has(r.id));
-  const shuffled = pool.sort(() => Math.random() - 0.5);
+  const available = RELICS.filter((relic) => !ownedIds.has(relic.id));
+  const shuffled = available.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, shuffled.length));
 };
 

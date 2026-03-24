@@ -1,4 +1,5 @@
 import type { Card, JobId, PlayerState, TimelineSlot } from '../types/game';
+import { prevCardGrantsDandori } from './cardBadgeRules';
 import { getHungryState } from './hungrySystem';
 
 export const getEffectiveTimeCost = (
@@ -8,7 +9,7 @@ export const getEffectiveTimeCost = (
   jobId?: JobId,
 ): number => {
   let cost = card.timeCost;
-  const usesPreparationCost = prevCard?.tags?.includes('preparation') && card.preparationTimeCost !== undefined;
+  const usesPreparationCost = prevCardGrantsDandori(prevCard) && card.preparationTimeCost !== undefined;
   if (usesPreparationCost) {
     cost = card.preparationTimeCost ?? cost;
   }

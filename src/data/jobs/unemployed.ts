@@ -1,4 +1,5 @@
 import type { Card } from '../../types/game';
+import { ACHIEVEMENT_LOCKED_CARD_IDS } from '../achievementDefinitions';
 import bareFistImage from '../../assets/cards/unemployed/bare_fist.png';
 import cardboardShieldImage from '../../assets/cards/unemployed/cardboard_shield.png';
 import dogezaImage from '../../assets/cards/unemployed/dogeza.png';
@@ -84,7 +85,7 @@ export const UNEMPLOYED_COMMON_POOL: Card[] = [
   },
 ];
 
-export const UNEMPLOYED_UNCOMMON_POOL: Card[] = [
+export const UNEMPLOYED_UNCOMMON_POOL_UNFILTERED: Card[] = [
   {
     id: 'welfare',
     name: '生活保護申請',
@@ -100,7 +101,7 @@ export const UNEMPLOYED_UNCOMMON_POOL: Card[] = [
     imageUrl: welfareImage,
   },
   { id: 'cardboard_house', name: '段ボールハウス', type: 'tool', timeCost: 2, description: '毎ターン3ブロック。覚醒中は8ブロック', block: 3, icon: '🏠', sellValue: 12, tags: ['awakened_boost'], imageUrl: cardboardHouseImage },
-  { id: 'interview', name: '面接練習', type: 'skill', timeCost: 2, description: '次に使うカードを2回発動', icon: '👔', sellValue: 12, effects: [{ type: 'double_next', value: 1 }], imageUrl: interviewPracticeImage },
+  { id: 'interview', name: '面接練習', type: 'skill', timeCost: 2, description: '次に使うカードを2回発動（ターン終了で失効）', icon: '👔', sellValue: 12, effects: [{ type: 'double_next', value: 1 }], imageUrl: interviewPracticeImage },
   { id: 'lighter', name: '100円ライター', type: 'tool', timeCost: 1, description: 'アタック使用時20%で火傷2付与', icon: '🔥', sellValue: 12, imageUrl: lighterImage },
   { id: 'konjou', name: '根性', type: 'skill', timeCost: 1, description: '自分にダメージ10、次2回のアタック+5', icon: '😤', sellValue: 12, badges: ['self_damage'], effects: [{ type: 'self_damage', value: 10 }, { type: 'attack_buff', value: 5, duration: 2 }], imageUrl: gutsImage },
   { id: 'kajiba', name: '火事場の馬鹿力', type: 'attack', timeCost: 3, description: '減っているHP×0.5ダメージ。覚醒中：×0.8', damage: 0, icon: '💪', tags: ['missing_hp_damage_scaled'], sellValue: 12, imageUrl: emergencyPowerImage },
@@ -132,10 +133,18 @@ export const UNEMPLOYED_UNCOMMON_POOL: Card[] = [
   },
 ];
 
-export const UNEMPLOYED_RARE_POOL: Card[] = [
+export const UNEMPLOYED_UNCOMMON_POOL: Card[] = UNEMPLOYED_UNCOMMON_POOL_UNFILTERED.filter(
+  (c) => !ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id),
+);
+
+export const UNEMPLOYED_RARE_POOL_UNFILTERED: Card[] = [
   { id: 'gamble', name: '一発逆転ギャンブル', type: 'skill', timeCost: 2, description: '50%で敵に25ダメージ、50%で自分に10ダメージ', icon: '🎰', rarity: 'rare', sellValue: 25, imageUrl: gambleImage },
   { id: 'revival', name: '七転び八起き', type: 'power', timeCost: 4, description: '戦闘不能時HP1で1回復活', icon: '🔄', rarity: 'rare', sellValue: 25, imageUrl: revivalImage },
   { id: 'death_wish', name: 'デスウィッシュ', type: 'power', timeCost: 3, description: 'HP回復を全て無効化。毎ターン全カード+4ダメージ', icon: '💀', rarity: 'rare', sellValue: 25, imageUrl: deathWishImage },
   { id: 'cliff_edge', name: '崖っぷちの底力', type: 'power', timeCost: 5, description: '覚醒中：毎ターンカード2枚追加ドロー＋タイムバー+1秒', icon: '⚡', rarity: 'rare', sellValue: 25, imageUrl: cliffEdgeImage },
   { id: 'revenge', name: 'リベンジ', type: 'attack', timeCost: 2, description: '前ターンに受けたダメージ分の攻撃。覚醒中：1.5倍', damage: 0, icon: '🔥', tags: ['revenge_damage'], rarity: 'rare', sellValue: 25, imageUrl: revengeImage },
 ];
+
+export const UNEMPLOYED_RARE_POOL: Card[] = UNEMPLOYED_RARE_POOL_UNFILTERED.filter(
+  (c) => !ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id),
+);

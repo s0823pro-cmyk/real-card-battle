@@ -32,6 +32,7 @@ const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
   isBlockDebuffed: false,
   isHealBuffed: false,
   isHealDebuffed: false,
+  isAttackDamageWeakDebuffed: false,
 });
 
 const generateRareRewardCards = (jobId: JobId): Card[] => {

@@ -13,6 +13,9 @@ export interface EnemyTurnResult {
   intentType: EnemyIntentType;
 }
 
+/** 敵がプレイヤーに付与するデバフの最低ターン数（duration / value のベース） */
+const MIN_PLAYER_DEBUFF_TURNS_FROM_ENEMY = 2;
+
 const upsertStatus = (statuses: StatusEffect[], next: StatusEffect): StatusEffect[] => {
   const found = statuses.find((status) => status.type === next.type);
   if (!found) return [...statuses, next];
@@ -116,10 +119,11 @@ export const useEnemyAI = () => {
       };
     } else if (intent.type === 'debuff') {
       const statusType = intent.debuffType ?? 'vulnerable';
+      const turns = Math.max(MIN_PLAYER_DEBUFF_TURNS_FROM_ENEMY, intent.value);
       updatedPlayer.statusEffects = upsertStatus(updatedPlayer.statusEffects, {
         type: statusType,
-        duration: intent.value,
-        value: intent.value,
+        duration: turns,
+        value: turns,
       });
     }
 

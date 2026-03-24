@@ -35,6 +35,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
     isBlockDebuffed: false,
     isHealBuffed: false,
     isHealDebuffed: false,
+    isAttackDamageWeakDebuffed: false,
   });
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = e.currentTarget.children[0] as HTMLElement;

@@ -1,5 +1,6 @@
 import type { Card, Enemy, GameState, PlayerState, ToolSlot } from '../types/game';
 import type { GameProgress } from '../types/run';
+import { createShuffledDrawPileDisplayOrder } from './deckManager';
 
 const BATTLE_SAVE_KEY = 'jobless_battle_save';
 
@@ -8,6 +9,8 @@ export interface BattleSaveData {
   player: PlayerState;
   enemies: Enemy[];
   drawPile: Card[];
+  /** 省略時は復帰時にランダム生成 */
+  drawPileDisplayOrder?: number[];
   hand: Card[];
   discardPile: Card[];
   exhaustedCards: Card[];
@@ -41,6 +44,7 @@ export function saveBattleState(gameState: GameState, runProgress: GameProgress)
     player: gameState.player,
     enemies: gameState.enemies,
     drawPile: gameState.drawPile,
+    drawPileDisplayOrder: gameState.drawPileDisplayOrder,
     hand: gameState.hand,
     discardPile: gameState.discardPile,
     exhaustedCards: gameState.exhaustedCards,
@@ -88,6 +92,11 @@ export function hasBattleSave(): boolean {
 }
 
 export function restoreGameState(data: BattleSaveData): GameState {
+  const drawPileDisplayOrder =
+    data.drawPileDisplayOrder &&
+    data.drawPileDisplayOrder.length === data.drawPile.length
+      ? data.drawPileDisplayOrder
+      : createShuffledDrawPileDisplayOrder(data.drawPile.length);
   return {
     phase: 'player_turn',
     turn: data.turn,
@@ -98,6 +107,7 @@ export function restoreGameState(data: BattleSaveData): GameState {
     timeline: [],
     reserved: data.reserved,
     drawPile: data.drawPile,
+    drawPileDisplayOrder,
     discardPile: data.discardPile,
     exhaustedCards: data.exhaustedCards,
     activePowers: data.activePowers,

@@ -911,6 +911,47 @@
   flex-shrink: 0;
 }
 
+.settings-block-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+
+.settings-btn-block {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.settings-btn-block:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.settings-btn-block-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e6edf3;
+}
+
+.settings-btn-block-desc {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+}
+
 .settings-legal {
   padding: 8px 4px;
 }
@@ -1139,6 +1180,13 @@
   font-size: 11px;
   color: #8b949e;
   margin: 0 0 2px;
+}
+
+.achievement-tier {
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: #6e7681;
+  margin: 0 0 4px;
 }
 
 .achievement-reward {

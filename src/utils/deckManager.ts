@@ -1,6 +1,10 @@
 import type { Card } from '../types/game';
 import { shuffle } from './shuffle';
 
+/** 不安カード（createAnxietyCards は anxiety_<suffix> のID）。シャッフル時に山札から除去する */
+export const isAnxietyCard = (card: Card): boolean =>
+  card.id === 'anxiety' || card.id.startsWith('anxiety_');
+
 interface DrawResult {
   drawn: Card[];
   drawPile: Card[];
@@ -39,7 +43,8 @@ export const drawCards = (
 
   for (let i = 0; i < count; i += 1) {
     if (drawPile.length === 0 && discardPile.length > 0) {
-      drawPile.push(...shuffle(discardPile));
+      const kept = discardPile.filter((c) => !isAnxietyCard(c));
+      drawPile.push(...shuffle(kept));
       discardPile = [];
       shuffled = true;
     }
@@ -59,3 +64,47 @@ export const drawCards = (
 
   return { drawn, drawPile, discardPile, shuffled };
 };
+
+function isOnlyPopsFromEnd(oldPile: Card[], newPile: Card[]): boolean {
+  if (newPile.length > oldPile.length) return false;
+  for (let i = 0; i < newPile.length; i += 1) {
+    if (newPile[i] !== oldPile[i]) return false;
+  }
+  return true;
+}
+
+/** 山札モーダル用：ランダムな表示順（インデックスの並び） */
+export function createShuffledDrawPileDisplayOrder(length: number): number[] {
+  if (length <= 0) return [];
+  return shuffle(Array.from({ length }, (_, i) => i));
+}
+
+/**
+ * ドロー後の山札表示順。捨て札から戻したシャッフル時は全振り直し。
+ * 末尾からのドローのみなら、取り除いたインデックスを表示順から除去。
+ */
+export function nextDrawPileDisplayOrder(
+  prevPerm: number[] | undefined,
+  oldPile: Card[],
+  newPile: Card[],
+  shuffled: boolean,
+): number[] {
+  const len = newPile.length;
+  if (len === 0) return [];
+  if (shuffled) {
+    return createShuffledDrawPileDisplayOrder(len);
+  }
+  if (!prevPerm || prevPerm.length !== oldPile.length) {
+    return createShuffledDrawPileDisplayOrder(len);
+  }
+  if (!isOnlyPopsFromEnd(oldPile, newPile)) {
+    return createShuffledDrawPileDisplayOrder(len);
+  }
+  const drawn = oldPile.length - newPile.length;
+  let p = [...prevPerm];
+  for (let k = 0; k < drawn; k += 1) {
+    const removedIdx = oldPile.length - 1 - k;
+    p = p.filter((idx) => idx !== removedIdx);
+  }
+  return p;
+}

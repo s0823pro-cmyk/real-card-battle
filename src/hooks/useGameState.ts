@@ -3,17 +3,29 @@ import { ANXIETY_CARD, CURSE_CARD } from '../data/carpenterDeck';
 import { getJobConfig } from '../data/jobs';
 import { createRandomEncounter } from '../data/enemies';
 import { useBattleLogic } from './useBattleLogic';
+import type { CardResolveResult } from './useBattleLogic';
 import { useEnemyAI } from './useEnemyAI';
 import type { Card, EnemyIntent, EnemyIntentType, GameState, JobId, PlayerState } from '../types/game';
 import { useAudioContext } from '../contexts/AudioContext';
 import type { BattleResult, BattleSetup, Omamori, RunItem } from '../types/run';
-import { drawCards } from '../utils/deckManager';
+import {
+  createShuffledDrawPileDisplayOrder,
+  drawCards,
+  isAnxietyCard,
+  nextDrawPileDisplayOrder,
+} from '../utils/deckManager';
 import { getHungryState } from '../utils/hungrySystem';
 import { shuffle } from '../utils/shuffle';
 import { isEnemyTargetCard } from '../utils/cardTarget';
 import { getEffectiveTimeCost } from '../utils/timeline';
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
 import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord';
+import {
+  canPlaySelfDamageBadgeCard,
+  cardExhaustsWhenPlayed,
+  exhaustsWhenIdleInReserveAtTurnStart,
+  reserveBonusActiveForCard,
+} from '../utils/cardBadgeRules';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../utils/playCardMultipliers';
 
 const MAX_RESERVED = 2;
@@ -103,6 +115,7 @@ export interface UseGameStateResult {
   pendingHandUpgradeCount: number;
   upgradeableHandCards: Card[];
   doubleNextCharges: number;
+  doubleNextReplayCharges: number;
   attackItemBuff: { value: number; charges: number } | null;
   selectCard: (cardId: string) => void;
   playCardInstant: (
@@ -142,6 +155,32 @@ const createAnxietyCards = (count: number): Card[] =>
     ...ANXIETY_CARD,
     id: `${ANXIETY_CARD.id}_${Date.now()}_${idx}_${Math.floor(Math.random() * 9999)}`,
   }));
+
+/** メンタル最低時、ドロー1枚ごとに独立して10%で不安1枚（同一ドロー処理内は最大 drawCount 枚） */
+const rollAnxietyCardsForDrawCount = (drawCount: number, mentalAtMin: boolean): Card[] => {
+  if (!mentalAtMin || drawCount <= 0) return [];
+  const hits = Array.from({ length: drawCount }).filter(() => Math.random() < 0.1).length;
+  return hits > 0 ? createAnxietyCards(hits) : [];
+};
+
+const mergeCardResolveResults = (a: CardResolveResult, b: CardResolveResult): CardResolveResult => ({
+  player: b.player,
+  enemies: b.enemies,
+  targetEnemyId: b.targetEnemyId ?? a.targetEnemyId,
+  damage: a.damage + b.damage,
+  blockGained: a.blockGained + b.blockGained,
+  scaffoldGained: a.scaffoldGained + b.scaffoldGained,
+  cookingGaugeGained: a.cookingGaugeGained + b.cookingGaugeGained,
+  equippedTool: b.equippedTool ?? a.equippedTool,
+  isDandoriActive: b.isDandoriActive,
+  goldGained: a.goldGained + b.goldGained,
+  lighterBurnApplied: a.lighterBurnApplied || b.lighterBurnApplied,
+  attackBuff: b.attackBuff ?? a.attackBuff,
+  multiHitJabs:
+    a.multiHitJabs && b.multiHitJabs
+      ? [...a.multiHitJabs, ...b.multiHitJabs]
+      : b.multiHitJabs ?? a.multiHitJabs,
+});
 
 const getEnemyReward = (templateId: string): number => ENEMY_GOLD_REWARDS[templateId] ?? 5;
 
@@ -186,7 +225,9 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   firstIngredientUsedThisTurn: player.firstIngredientUsedThisTurn ?? false,
   nextAttackBoostValue: player.nextAttackBoostValue ?? 0,
   nextAttackBoostCount: player.nextAttackBoostCount ?? 0,
+  nextCardBlockMultiplier: player.nextCardBlockMultiplier ?? 1,
   timeBonusPerTurn: player.timeBonusPerTurn ?? 0,
+  attackDamageBonusAllAttacks: player.attackDamageBonusAllAttacks ?? 0,
   fullSprintUsedCount: 0,
 });
 
@@ -245,10 +286,17 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     firstIngredientUsedThisTurn: false,
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
+    nextCardBlockMultiplier: 1,
     timeBonusPerTurn: 0,
     nextCardDoubleEffect: false,
+    attackDamageBonusAllAttacks: 0,
     nextCardEffectBoost: 0,
   };
+
+  const initialAnxietyHand = rollAnxietyCardsForDrawCount(
+    drawResult.drawn.length,
+    (basePlayer.mental ?? 0) <= 0,
+  );
 
   return {
     phase: 'battle_start',
@@ -256,10 +304,11 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     maxTime: getMaxTime(basePlayer.mental, basePlayer.timeBonusPerTurn ?? 0) + Math.max(0, startTimeBonus),
     usedTime: 0,
     shuffleAnimation: false,
-    hand: drawResult.drawn,
+    hand: [...drawResult.drawn, ...initialAnxietyHand],
     timeline: [],
     reserved: [],
     drawPile: drawResult.drawPile,
+    drawPileDisplayOrder: createShuffledDrawPileDisplayOrder(drawResult.drawPile.length),
     discardPile: drawResult.discardPile,
     exhaustedCards: [],
     activePowers: [],
@@ -300,6 +349,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const [battleItems, setBattleItems] = useState<RunItem[]>(options?.setup?.items ?? []);
   const [attackItemBuff, setAttackItemBuff] = useState<{ value: number; charges: number } | null>(null);
   const [doubleNextCharges, setDoubleNextCharges] = useState(0);
+  const [doubleNextReplayCharges, setDoubleNextReplayCharges] = useState(0);
   const [hungryFlash, setHungryFlash] = useState<'hungry' | 'awakened' | null>(null);
   const [showRevivalEffect, setShowRevivalEffect] = useState(false);
   const [pendingHandUpgradeCount, setPendingHandUpgradeCount] = useState(0);
@@ -338,6 +388,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setVictoryMentalRecovery(0);
     setAttackItemBuff(null);
     setDoubleNextCharges(0);
+    setDoubleNextReplayCharges(0);
     setHungryFlash(null);
     setShowRevivalEffect(false);
     setPendingHandUpgradeCount(0);
@@ -465,8 +516,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     firstIngredientUsedThisTurn: false,
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
+    nextCardBlockMultiplier: 1,
     nextCardDoubleEffect: false,
     nextCardEffectBoost: 0,
+    attackDamageBonusAllAttacks: 0,
     fullSprintUsedCount: 0,
   });
 
@@ -477,6 +530,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const remainingTime = gameState.maxTime - gameState.usedTime;
   const canPlayCard = (card: Card): boolean => {
     if (card.type === 'status' || card.type === 'curse') return false;
+    if (card.tags?.includes('require_below_half_hp')) {
+      if (gameState.player.currentHp > Math.floor(gameState.player.maxHp / 2)) return false;
+    }
+    if (!canPlaySelfDamageBadgeCard(card, gameState.player.currentHp)) return false;
     if (!canPlayWithHandCondition(card, gameState.hand)) return false;
     return (
       gameState.usedTime + getEffectiveTimeCost(card, lastPlayedCard, gameState.player, gameState.player.jobId) <=
@@ -494,7 +551,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     return intents;
   }, [gameState.enemies, getEnemyIntent]);
 
-  const isDandoriReady = Boolean(lastPlayedCard?.tags?.includes('preparation'));
+  const isDandoriReady = Boolean(lastPlayedCard?.badges?.includes('setup'));
   const upgradeableHandCards = useMemo(
     () => gameState.hand.filter((card) => !card.upgraded && card.type !== 'status' && card.type !== 'curse'),
     [gameState.hand],
@@ -524,13 +581,21 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const cardWasReserved = Boolean(card.wasReserved);
 
     const enhancedCard = getEnhancedCardForPlay(card);
-    const reserveOrDoubleMultiplier = doubleNextCharges > 0 || gameState.player.nextCardDoubleEffect ? 2 : 1;
+    const replayActive = doubleNextReplayCharges > 0;
+    const reserveOrDoubleMultiplier =
+      replayActive
+        ? 1
+        : doubleNextCharges > 0 || gameState.player.nextCardDoubleEffect
+          ? 2
+          : 1;
     const nextCardEffectBoostRate = Math.max(0, gameState.player.nextCardEffectBoost ?? 0);
     const isReserveDoubleNextPlay =
       (enhancedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false;
     const shouldUseTenBoost =
       reserveOrDoubleMultiplier <= 1 && nextCardEffectBoostRate > 0 && !isReserveDoubleNextPlay;
-    const multipliedCard = applyMultiplierAndBoostToCard(enhancedCard, gameState.player, doubleNextCharges);
+    const multipliedCard = applyMultiplierAndBoostToCard(enhancedCard, gameState.player, doubleNextCharges, {
+      ignoreDoubleMultiplier: replayActive,
+    });
 
     const enemiesBefore = gameState.enemies.map((enemy) => ({ id: enemy.id, hp: enemy.currentHp, templateId: enemy.templateId }));
 
@@ -542,7 +607,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     // 捨て札/除外には温存ボーナス適用前の基礎値を保持する
     const cardForDiscard: Card = { ...card, wasReserved: false, reservedThisTurn: false };
 
-    const result = resolveCard(
+    let result = resolveCard(
       playedCard,
       lastPlayedCard,
       gameState.player,
@@ -550,6 +615,22 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       target.type === 'enemy' ? target.enemyId : null,
       gameState.toolSlots,
     );
+    if (replayActive && result.enemies.some((e) => e.currentHp > 0)) {
+      const toolSlotsAfterFirst = result.equippedTool
+        ? equipTool(result.equippedTool, gameState.toolSlots)
+        : gameState.toolSlots;
+      result = mergeCardResolveResults(
+        result,
+        resolveCard(
+          playedCard,
+          lastPlayedCard,
+          result.player,
+          result.enemies,
+          target.type === 'enemy' ? target.enemyId : null,
+          toolSlotsAfterFirst,
+        ),
+      );
+    }
     const playerAfterPowerFlags: PlayerState = (() => {
       if (playedCard.type !== 'power') return result.player;
       if (isCardVariantId(playedCard.id, 'revival')) {
@@ -603,9 +684,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return p;
     })();
 
-    const drawAmount = (playedCard.effects ?? [])
+    const drawAmountBase = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'draw')
       .reduce((sum, effect) => sum + effect.value, 0);
+    const drawAmount = replayActive ? drawAmountBase * 2 : drawAmountBase;
     const timeBoost = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'time_boost')
       .reduce((sum, effect) => sum + effect.value, 0);
@@ -644,15 +726,25 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const gainedDoubleNext = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'double_next')
       .reduce((sum, effect) => sum + effect.value, 0);
-    const shouldExhaust = Boolean(playedCard.tags?.includes('exhaust'));
+    const gainedDoubleReplay = (playedCard.effects ?? [])
+      .filter((effect) => effect.type === 'double_next_replay')
+      .reduce((sum, effect) => sum + effect.value, 0);
+    const shouldExhaust = cardExhaustsWhenPlayed(card, cardWasReserved);
     const activePowers =
       playedCard.type === 'power' && !shouldExhaust
         ? [...gameState.activePowers, { ...playedCard }]
         : gameState.activePowers;
-    const upgradeRandomHandCardCount = (playedCard.effects ?? [])
+    const upgradeRandomHandCardCountBase = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'upgrade_random_hand_card')
       .reduce((sum, effect) => sum + effect.value, 0);
-    let handAfterPlay = [...gameState.hand.filter((item) => item.id !== cardId), ...drawResult.drawn];
+    const upgradeRandomHandCardCount = replayActive
+      ? upgradeRandomHandCardCountBase * 2
+      : upgradeRandomHandCardCountBase;
+    let handAfterPlay = [
+      ...gameState.hand.filter((item) => item.id !== cardId),
+      ...drawResult.drawn,
+      ...rollAnxietyCardsForDrawCount(drawResult.drawn.length, playerAfterCard.mental <= 0),
+    ];
     if (upgradeRandomHandCardCount > 0) {
       const upgradableCards = handAfterPlay.filter((entry) => !entry.upgraded && entry.type !== 'status' && entry.type !== 'curse');
       if (upgradableCards.length === 0) {
@@ -679,10 +771,17 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       playedCard.type === 'tool' || playedCard.type === 'power' || shouldExhaust
         ? drawResult.discardPile
         : [...drawResult.discardPile, cardForDiscard];
+    const drawPileDisplayOrder = nextDrawPileDisplayOrder(
+      gameState.drawPileDisplayOrder,
+      gameState.drawPile,
+      drawResult.drawPile,
+      drawResult.shuffled,
+    );
     const postCardState: GameState = {
       ...gameState,
       discardPile,
       drawPile: drawResult.drawPile,
+      drawPileDisplayOrder,
       exhaustedCards,
       player: playerAfterKill,
       enemies: result.enemies,
@@ -709,6 +808,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       hand: handAfterPlay,
       discardPile,
       drawPile: drawResult.drawPile,
+      drawPileDisplayOrder: nextDrawPileDisplayOrder(
+        prev.drawPileDisplayOrder,
+        prev.drawPile,
+        drawResult.drawPile,
+        drawResult.shuffled,
+      ),
       exhaustedCards,
       player: {
         ...playerAfterKill,
@@ -724,6 +829,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     }));
     setDoubleNextCharges(
       (prev) => Math.max(0, prev - (doubleNextCharges > 0 && reserveOrDoubleMultiplier > 1 ? 1 : 0)) + gainedDoubleNext,
+    );
+    setDoubleNextReplayCharges(
+      (prev) => Math.max(0, prev - (replayActive ? 1 : 0)) + gainedDoubleReplay,
     );
 
     setLastPlayedCard(playedCard);
@@ -792,12 +900,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (result.isDandoriActive) {
       pushPopup('⚡段取り！', 'player', 'dandori');
     }
-    if (cardWasReserved && card.reserveBonus) {
+    if (reserveBonusActiveForCard(card)) {
       pushPopup('✨温存ボーナス！', 'player', 'buff');
     }
     if (attackItemBuff && playedCard.type === 'attack') {
+      const dec = replayActive ? 2 : 1;
       setAttackItemBuff((prev) =>
-        prev ? { ...prev, charges: Math.max(0, prev.charges - 1) } : prev,
+        prev ? { ...prev, charges: Math.max(0, prev.charges - dec) } : prev,
       );
       pushPopup(`+${attackItemBuff.value}💪`, 'player', 'buff');
     }
@@ -903,10 +1012,20 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       setGameState((prev) => {
         const equippedIdsItem = prev.toolSlots.filter((t) => t !== null).map((t) => t!.card.id);
         const drawResult = drawCards(prev.drawPile, prev.discardPile, effect.value, equippedIdsItem);
+        const anxietyFromDraw = rollAnxietyCardsForDrawCount(
+          drawResult.drawn.length,
+          prev.player.mental <= 0,
+        );
         return {
           ...prev,
-          hand: [...prev.hand, ...drawResult.drawn],
+          hand: [...prev.hand, ...drawResult.drawn, ...anxietyFromDraw],
           drawPile: drawResult.drawPile,
+          drawPileDisplayOrder: nextDrawPileDisplayOrder(
+            prev.drawPileDisplayOrder,
+            prev.drawPile,
+            drawResult.drawPile,
+            drawResult.shuffled,
+          ),
           discardPile: drawResult.discardPile,
           shuffleAnimation: drawResult.shuffled,
         };
@@ -1064,21 +1183,19 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       nextCardEffectBoost: state.player.nextCardEffectBoost ?? 0,
       statusEffects: tickedPlayerStatuses,
     });
-    const anxietyCount = playerAfterReset.mental <= 0 ? 2 : playerAfterReset.mental <= 2 ? 1 : 0;
-    const anxietyCards = anxietyCount > 0 ? createAnxietyCards(anxietyCount) : [];
     const powerDrawPerTurn = state.activePowers
       .flatMap((power) => power.effects ?? [])
       .filter((effect) => effect.type === 'draw_per_turn')
       .reduce((sum, effect) => sum + effect.value, 0);
     const equippedCardIds = state.toolSlots.filter((t) => t !== null).map((t) => t!.card.id);
     const drawResult = drawCards(
-      shuffle([...state.drawPile, ...anxietyCards]),
+      shuffle([...state.drawPile].filter((c) => !isAnxietyCard(c))),
       state.discardPile,
       DRAW_COUNT + powerDrawPerTurn + cliffEdgeDrawBonus + Math.max(0, onTurnStartDrawBonus),
       equippedCardIds,
     );
-    const exhaustedReserved = state.reserved.filter((card) => card.badges?.includes('exhaust'));
-    const keptReserved = state.reserved.filter((card) => !card.badges?.includes('exhaust'));
+    const exhaustedReserved = state.reserved.filter((c) => exhaustsWhenIdleInReserveAtTurnStart(c));
+    const keptReserved = state.reserved.filter((c) => !exhaustsWhenIdleInReserveAtTurnStart(c));
     const reservedToHand = keptReserved.map((card) => ({
       ...card,
       wasReserved: Boolean(card.reservedThisTurn),
@@ -1089,6 +1206,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       wasReserved: false,
       reservedThisTurn: false,
     }));
+    const anxietyHandBonus = rollAnxietyCardsForDrawCount(
+      drawResult.drawn.length,
+      playerAfterReset.mental <= 0,
+    );
     return {
       ...state,
       phase: 'player_turn',
@@ -1096,10 +1217,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       maxTime: nextMaxTime,
       usedTime: 0,
       shuffleAnimation: drawResult.shuffled,
-      hand: [...reservedToHand, ...drawResult.drawn],
+      hand: [...reservedToHand, ...drawResult.drawn, ...anxietyHandBonus],
       reserved: [],
       timeline: [],
       drawPile: drawResult.drawPile,
+      drawPileDisplayOrder: createShuffledDrawPileDisplayOrder(drawResult.drawPile.length),
       discardPile: drawResult.discardPile,
       exhaustedCards: [...state.exhaustedCards, ...exhaustedFromReserve],
       player: playerAfterReset,
@@ -1121,6 +1243,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         nextAttackBoostValue: 0,
         nextAttackBoostCount: 0,
         nextAttackTimeReduce: 0,
+        nextCardBlockMultiplier: 1,
       },
       enemies: gameState.enemies.map((enemy) => ({ ...enemy, statusEffects: [...enemy.statusEffects] })),
       toolSlots: [...gameState.toolSlots],
@@ -1490,6 +1613,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setBattleItems(options?.setup?.items ?? []);
     setAttackItemBuff(null);
     setDoubleNextCharges(0);
+    setDoubleNextReplayCharges(0);
     setHungryFlash(null);
     setShowRevivalEffect(false);
     setPendingHandUpgradeCount(0);
@@ -1561,6 +1685,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     pendingHandUpgradeCount: activePendingHandUpgradeCount,
     upgradeableHandCards,
     doubleNextCharges,
+    doubleNextReplayCharges,
     attackItemBuff,
     selectCard,
     playCardInstant,

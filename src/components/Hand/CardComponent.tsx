@@ -3,7 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
-
+import { reserveBonusActiveForCard } from '../../utils/cardBadgeRules';
 interface Props {
   card: Card;
   jobId: JobId;
@@ -135,6 +135,7 @@ const CardComponent = ({
     exhaust: '消耗',
     setup: '準備',
     self_damage: '自傷',
+    reserve: '温存',
   };
   const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const replaceChangedValue = (
@@ -143,12 +144,18 @@ const CardComponent = ({
     nextValue: number | null | undefined,
     unit: string,
     keyPrefix: string,
+    forceWeakStyle?: boolean,
   ): ReactNode[] => {
     if (baseValue == null || nextValue == null || baseValue === nextValue) {
       return source;
     }
     const tokenPattern = new RegExp(`${escapeRegExp(String(baseValue))}(?=${escapeRegExp(unit)})`, 'g');
-    const valueClass = nextValue > baseValue ? 'card-inline-value--buffed' : 'card-inline-value--debuffed';
+    const valueClass =
+      forceWeakStyle && keyPrefix === 'damage'
+        ? 'card-inline-value--weak'
+        : nextValue > baseValue
+          ? 'card-inline-value--buffed'
+          : 'card-inline-value--debuffed';
     return source.flatMap((node, nodeIdx) => {
       if (typeof node !== 'string') return [node];
       const matches = Array.from(node.matchAll(tokenPattern));
@@ -170,7 +177,14 @@ const CardComponent = ({
   };
   const getRenderedDescription = (description: string): ReactNode => {
     let nodes: ReactNode[] = [description];
-    nodes = replaceChangedValue(nodes, card.damage, effectiveValues.damage, 'ダメージ', 'damage');
+    nodes = replaceChangedValue(
+      nodes,
+      card.damage,
+      effectiveValues.damage,
+      'ダメージ',
+      'damage',
+      effectiveValues.isAttackDamageWeakDebuffed,
+    );
     nodes = replaceChangedValue(nodes, card.block, effectiveValues.block, 'ブロック', 'block');
     const baseHeal = (card.effects ?? [])
       .filter((effect) => effect.type === 'heal')
@@ -182,7 +196,7 @@ const CardComponent = ({
   const typeColor = TYPE_COLORS[card.type] ?? TYPE_COLORS.status;
   const rarity = getRarity(card);
   const rarityStyle = RARITY_STYLES[rarity];
-  const reserveBonusReady = Boolean(card.wasReserved && card.reserveBonus);
+  const reserveBonusReady = reserveBonusActiveForCard(card);
   const getJobColor = (targetCard: Card, targetJobId: JobId): string => {
     if (targetCard.neutral) return NEUTRAL_COLOR;
     return JOB_COLORS[targetJobId] ?? '#3d444d';
@@ -222,8 +236,8 @@ const CardComponent = ({
     >
       <div
         className={`hand-card-inner card-frame card-frame--${rarity} ${
-          reserveBonusReady ? 'card-frame--reserved' : ''
-        } ${zukanMode === 'list' ? 'card-frame--no-animation' : ''}`}
+          zukanMode === 'list' ? 'card-frame--no-animation' : ''
+        }`}
         style={innerStyle}
         ref={headerRef}
       >

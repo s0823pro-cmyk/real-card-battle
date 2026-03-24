@@ -33,7 +33,7 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
     intents: [
       intent('attack', 8, '大声で詰め寄る', '⚔️'),
       { type: 'mental_attack', value: 0, mentalDamage: 1, description: '文句のオンパレード', icon: '😤' },
-      { type: 'debuff', value: 1, debuffType: 'weak', description: '上げ足取り', icon: '👆' },
+      { type: 'debuff', value: 2, debuffType: 'weak', description: '上げ足取り', icon: '👆' },
     ],
   },
   drunk: {
@@ -76,7 +76,7 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
     maxHp: 28,
     intents: [
       intent('attack', 7, 'チラシの束で殴る', '📄'),
-      { type: 'debuff', value: 1, debuffType: 'weak', description: 'しつこい追いかけ話', icon: '🗣️' },
+      { type: 'debuff', value: 2, debuffType: 'weak', description: 'しつこい追いかけ話', icon: '🗣️' },
       intent('attack', 6, '契約書を突きつける', '⚔️'),
     ],
   },

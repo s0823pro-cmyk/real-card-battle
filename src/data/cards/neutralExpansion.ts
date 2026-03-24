@@ -71,7 +71,7 @@ export const NEUTRAL_EXPANSION_CARDS: Card[] = [
     name: '気合を入れる',
     type: 'skill',
     timeCost: 2,
-    description: '次の攻撃2回+2ダメージ',
+    description: '次の攻撃2回+2ダメージ。このカードの効果は次のターンまで引き継ぐ。',
     icon: '💪',
     rarity: 'common',
     sellValue: 5,
@@ -281,7 +281,7 @@ export const NEUTRAL_EXPANSION_CARDS: Card[] = [
     name: '心身の調律',
     type: 'power',
     timeCost: 6,
-    description: '毎ターンカード+1枚ドロー、メンタル+1（プレイ時）',
+    description: '毎ターンカード+1枚ドロー。使用時メンタル+1',
     icon: '☯️',
     rarity: 'rare',
     sellValue: 25,
@@ -297,12 +297,13 @@ export const NEUTRAL_EXPANSION_CARDS: Card[] = [
     name: '逆境の才能',
     type: 'power',
     timeCost: 5,
-    description: 'HP半分以下のとき、このターンの攻撃ダメージ+8（プレイ時に付与）',
+    description: 'HPが半分以下のときのみ使用可能。すべてのアタックカードのダメージ+5',
     icon: '🌩️',
     rarity: 'rare',
     sellValue: 25,
     neutral: true,
-    effects: [{ type: 'low_hp_damage_boost', value: 8 }],
+    tags: ['require_below_half_hp'],
+    effects: [{ type: 'attack_damage_all_attacks', value: 5 }],
     imageUrl: gyakkyouSainouImage,
   },
   {
@@ -321,3 +322,8 @@ export const NEUTRAL_EXPANSION_CARDS: Card[] = [
     imageUrl: lastWordImage,
   },
 ];
+
+/** 無色拡張をレアリティ別に分割（開発ツール・抽選など） */
+export const NEUTRAL_EXPANSION_COMMON_POOL = NEUTRAL_EXPANSION_CARDS.filter((c) => c.rarity === 'common');
+export const NEUTRAL_EXPANSION_UNCOMMON_POOL = NEUTRAL_EXPANSION_CARDS.filter((c) => c.rarity === 'uncommon');
+export const NEUTRAL_EXPANSION_RARE_POOL = NEUTRAL_EXPANSION_CARDS.filter((c) => c.rarity === 'rare');

@@ -1,6 +1,12 @@
-import type { Card, PlayerState } from '../types/game';
+import type { Card, PlayerState, ToolSlot } from '../types/game';
+import { DANDORI_BASE_MULTIPLIER, prevCardGrantsDandori, reserveBonusActiveForCard } from './cardBadgeRules';
 import { getHungryDamageBonus, getHungryState } from './hungrySystem';
+import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from './playCardMultipliers';
 import { getEffectiveTimeCost } from './timeline';
+
+/** このターンの被ダメージ無効（居直り・点検車など） */
+export const cardHasDamageImmunityThisTurn = (card: Card): boolean =>
+  Boolean(card.effects?.some((e) => e.type === 'damage_immunity_this_turn'));
 
 export interface EffectiveCardValues {
   damage: number | null;
@@ -15,6 +21,8 @@ export interface EffectiveCardValues {
   isBlockDebuffed: boolean;
   isHealBuffed: boolean;
   isHealDebuffed: boolean;
+  /** 弱体中のアタック：説明文のダメージ数値を青色で優先表示 */
+  isAttackDamageWeakDebuffed: boolean;
 }
 
 const hasWeak = (player: PlayerState): boolean =>
@@ -30,6 +38,9 @@ export const getEffectiveCardValues = (
   player: PlayerState,
   lastPlayedCard: Card | null,
   doubleNextCharges: number = 0,
+  attackItemBuff: { value: number; charges: number } | null | undefined = undefined,
+  toolSlots: ToolSlot[] | undefined = undefined,
+  doubleNextReplayCharges: number = 0,
 ): EffectiveCardValues => {
   let damage = card.damage ?? null;
   let block = card.block ?? null;
@@ -38,11 +49,14 @@ export const getEffectiveCardValues = (
     .reduce((sum, effect) => sum + effect.value, 0);
   let heal = baseHeal > 0 ? baseHeal : null;
   const effectiveTimeCost = getEffectiveTimeCost(card, lastPlayedCard, player, player.jobId);
-  const dandoriMultiplier = lastPlayedCard?.tags?.includes('preparation')
-    ? (player.templeCarpenterActive ? (player.templeCarpenterMultiplier ?? 1.5) : 1.3)
+  const dandoriMultiplier = prevCardGrantsDandori(lastPlayedCard)
+    ? player.templeCarpenterActive
+      ? (player.templeCarpenterMultiplier ?? 1.5)
+      : DANDORI_BASE_MULTIPLIER
     : 1;
   const nextCardEffectBoost = Math.max(0, player.nextCardEffectBoost ?? 0);
-  const reserveOrDoubleMultiplierPreview = doubleNextCharges > 0 || player.nextCardDoubleEffect ? 2 : 1;
+  const reserveOrDoubleMultiplierPreview =
+    doubleNextReplayCharges > 0 || doubleNextCharges > 0 || player.nextCardDoubleEffect ? 2 : 1;
   const isReserveDoubleNextCard =
     (card.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false;
   const shouldApplyNextCardEffectBoost =
@@ -53,6 +67,9 @@ export const getEffectiveCardValues = (
   const baseTimeCost = card.timeCost;
 
   if (damage !== null) {
+    if (card.type === 'attack' && attackItemBuff && attackItemBuff.charges > 0) {
+      damage += attackItemBuff.value;
+    }
     if (player.jobId === 'carpenter' && card.tags?.includes('scaffold_bonus')) {
       const scaffoldMultiplier = card.scaffoldMultiplier ?? 2;
       damage += player.scaffold * scaffoldMultiplier;
@@ -87,7 +104,7 @@ export const getEffectiveCardValues = (
     if (card.tags?.includes('cooking') && card.name === '闇鍋') {
       damage = 15;
     }
-    if (card.wasReserved && card.reserveBonus?.damageMultiplier) {
+    if (reserveBonusActiveForCard(card) && card.reserveBonus?.damageMultiplier) {
       damage = Math.floor(damage * card.reserveBonus.damageMultiplier);
     }
     if (isDandoriActive) {
@@ -96,11 +113,43 @@ export const getEffectiveCardValues = (
     if (player.deathWishActive && card.type === 'attack') {
       damage += 4;
     }
+    // calculateCardDamage と同順（弱体前）：次アタック+damage・逆境・レシピ・具材・ナイフ
+    if (card.type === 'attack' && player.nextAttackDamageBoost > 0) {
+      damage += player.nextAttackDamageBoost;
+    }
+    if (card.type === 'attack' && player.lowHpDamageBoost > 0) {
+      const ratio = player.currentHp / Math.max(1, player.maxHp);
+      if (ratio <= 0.5) {
+        damage += player.lowHpDamageBoost;
+      }
+    }
+    if (card.type === 'attack' && (player.attackDamageBonusAllAttacks ?? 0) > 0) {
+      damage += player.attackDamageBonusAllAttacks ?? 0;
+    }
+    if (card.type === 'attack' && player.recipeStudyBonus > 0) {
+      damage += player.recipeStudyBonus;
+    }
+    if (card.type === 'attack' && player.nextIngredientBonus > 0 && card.tags?.includes('ingredient')) {
+      damage += player.nextIngredientBonus;
+    }
+    if (card.type === 'attack') {
+      const knifeSetCount = (toolSlots ?? []).filter((slot) => slot.card.id === 'knife_set').length;
+      if (knifeSetCount > 0) {
+        damage += knifeSetCount * 2;
+      }
+    }
     const strengthBonus = getStrengthBonus(player);
     if (strengthBonus > 0) {
       damage += strengthBonus;
     }
-    if (hasWeak(player)) {
+    if (
+      (card.damage ?? 0) > 0 ||
+      card.tags?.includes('missing_hp_damage') ||
+      card.tags?.includes('missing_hp_damage_scaled')
+    ) {
+      damage = Math.max(1, damage);
+    }
+    if (card.type === 'attack' && hasWeak(player)) {
       damage = Math.floor(damage * 0.75);
     }
     if (damage > 0) {
@@ -117,8 +166,11 @@ export const getEffectiveCardValues = (
   }
 
   if (block !== null) {
-    if (card.wasReserved && card.reserveBonus?.blockMultiplier) {
+    if (reserveBonusActiveForCard(card) && card.reserveBonus?.blockMultiplier) {
       block = Math.floor(block * card.reserveBonus.blockMultiplier);
+    }
+    if ((player.nextCardBlockMultiplier ?? 1) > 1 && block > 0) {
+      block = Math.floor(block * (player.nextCardBlockMultiplier ?? 1));
     }
     if (isDandoriActive && block > 0) {
       block = Math.floor(block * dandoriMultiplier);
@@ -126,9 +178,6 @@ export const getEffectiveCardValues = (
     const strengthBonus = getStrengthBonus(player);
     if (strengthBonus > 0) {
       block += strengthBonus;
-    }
-    if (hasWeak(player)) {
-      block = Math.floor(block * 0.75);
     }
     if (block > 0) {
       block = Math.floor(block * reserveOrDoubleMultiplierPreview);
@@ -154,6 +203,9 @@ export const getEffectiveCardValues = (
     }
   }
 
+  const attackWeakDebuffed =
+    card.type === 'attack' && hasWeak(player) && damage !== null && damage > 0;
+
   return {
     damage,
     block,
@@ -161,11 +213,48 @@ export const getEffectiveCardValues = (
     effectiveTimeCost,
     isTimeBuffed: effectiveTimeCost < baseTimeCost,
     isTimeDebuffed: effectiveTimeCost > baseTimeCost,
-    isDamageBuffed: damage !== null && damage > baseDamage,
-    isDamageDebuffed: damage !== null && damage < baseDamage,
+    isDamageBuffed: damage !== null && damage > baseDamage && !attackWeakDebuffed,
+    isDamageDebuffed: damage !== null && damage < baseDamage && !attackWeakDebuffed,
     isBlockBuffed: block !== null && block > baseBlock,
     isBlockDebuffed: block !== null && block < baseBlock,
     isHealBuffed: heal !== null && heal > baseHeal,
     isHealDebuffed: heal !== null && heal < baseHeal,
+    isAttackDamageWeakDebuffed: attackWeakDebuffed,
   };
 };
+
+/**
+ * ドラッグ中プレビュー用：カード使用後の足場（playCardInstant と同じ強化・倍率を反映）
+ */
+export function getPreviewScaffoldAfterPlay(
+  card: Card,
+  player: PlayerState,
+  doubleNextCharges: number,
+  doubleNextReplayCharges: number = 0,
+): number | null {
+  if (player.jobId !== 'carpenter') return null;
+  const enhanced = getEnhancedCardForPlay(card);
+  const replayActive = doubleNextReplayCharges > 0;
+  const multiplied = applyMultiplierAndBoostToCard(enhanced, player, doubleNextCharges, {
+    ignoreDoubleMultiplier: replayActive,
+  });
+
+  let next = player.scaffold;
+  const entersDamageBlock =
+    multiplied.type === 'attack' ||
+    ((multiplied.type === 'skill' || multiplied.type === 'power') && multiplied.damage);
+  if (entersDamageBlock && multiplied.tags?.includes('scaffold_consume')) {
+    next = 0;
+  }
+  for (const effect of multiplied.effects ?? []) {
+    if (effect.type === 'scaffold') {
+      next += effect.value * (replayActive ? 2 : 1);
+    }
+  }
+
+  const hasScaffoldGain = (multiplied.effects ?? []).some((e) => e.type === 'scaffold');
+  const hasConsume = Boolean(entersDamageBlock && multiplied.tags?.includes('scaffold_consume'));
+  if (!hasScaffoldGain && !hasConsume) return null;
+  if (next === player.scaffold) return null;
+  return next;
+}

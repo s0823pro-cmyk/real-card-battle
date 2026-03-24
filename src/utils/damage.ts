@@ -1,4 +1,5 @@
 import type { Card, Enemy, EnemyIntent, PlayerState, StatusEffect, ToolSlot } from '../types/game';
+import { DANDORI_BASE_MULTIPLIER, prevCardGrantsDandori, reserveBonusActiveForCard } from './cardBadgeRules';
 import { getHungryDamageBonus, getHungryState } from './hungrySystem';
 
 const findStatus = (list: StatusEffect[], type: StatusEffect['type']) =>
@@ -93,6 +94,10 @@ export const calculateCardDamage = (
     }
   }
 
+  if (card.type === 'attack' && (player.attackDamageBonusAllAttacks ?? 0) > 0) {
+    damage += player.attackDamageBonusAllAttacks ?? 0;
+  }
+
   if (card.id === 'mystery_pot') {
     damage = 15 + Math.floor(Math.random() * 16);
   }
@@ -181,6 +186,26 @@ export const applyEnemyAttack = (
   return actualDamage;
 };
 
+/** 敵インテント表示用：プレイヤーが受ける物理攻撃の合計表示値（野良猫は3連分、脆弱で1.5倍） */
+export const getIncomingPhysicalAttackDisplayNumber = (
+  intent: EnemyIntent,
+  enemy: Enemy,
+  player: PlayerState,
+): { text: string; hasPlayerVulnerable: boolean } => {
+  if (intent.type !== 'attack') return { text: '', hasPlayerVulnerable: false };
+  const perHit = getEnemyAttackValue(intent, enemy);
+  const isWildCat = enemy.templateId === 'wildCat' || enemy.name === '野良猫';
+  let total = isWildCat ? perHit * 3 : perHit;
+  const playerVulnerable = findStatus(player.statusEffects, 'vulnerable');
+  if (playerVulnerable && total > 0) {
+    total = Math.floor(total * 1.5);
+  }
+  return {
+    text: String(total),
+    hasPlayerVulnerable: Boolean(playerVulnerable && total > 0),
+  };
+};
+
 export const getDandoriBonus = (
   timelineCards: Card[],
   index: number,
@@ -189,9 +214,11 @@ export const getDandoriBonus = (
   if (index === 0) return { damageMultiplier: 1, timeCostReduction: 0 };
 
   const prevCard = timelineCards[index - 1];
-  if (prevCard?.tags?.includes('preparation')) {
+  if (prevCardGrantsDandori(prevCard)) {
     return {
-      damageMultiplier: player?.templeCarpenterActive ? (player.templeCarpenterMultiplier ?? 1.5) : 1.3,
+      damageMultiplier: player?.templeCarpenterActive
+        ? (player.templeCarpenterMultiplier ?? 1.5)
+        : DANDORI_BASE_MULTIPLIER,
       timeCostReduction: 1,
     };
   }
@@ -208,8 +235,8 @@ export const calculateEffectiveDamage = (
   player: PlayerState,
   toolSlots?: ToolSlot[],
 ): number => {
-  // 温存ボーナス適用
-  const reservedBonusActive = Boolean(card.wasReserved && card.reserveBonus);
+  // 温存ボーナス適用（【温存】バッジがあるときのみ）
+  const reservedBonusActive = reserveBonusActiveForCard(card);
   const cardForCalc: Card = reservedBonusActive
     ? {
         ...card,

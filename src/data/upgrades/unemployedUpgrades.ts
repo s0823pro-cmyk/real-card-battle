@@ -92,7 +92,7 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
   '面接練習': {
     name: '面接練習+',
     timeCost: 1,
-    description: '次に使うカードを2回発動（所要時間1秒）',
+    description: '次に使うカードを2回発動（ターン終了で失効）（所要時間1秒）',
   },
   '100円ライター': {
     name: '100円ライター+',

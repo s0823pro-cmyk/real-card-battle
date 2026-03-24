@@ -40,6 +40,7 @@ const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
   isBlockDebuffed: false,
   isHealBuffed: false,
   isHealDebuffed: false,
+  isAttackDamageWeakDebuffed: false,
 });
 
 export const CardRewardScreen = ({ cards, jobId, onPick, onSkip }: CardRewardProps) => {

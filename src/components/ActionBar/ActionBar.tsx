@@ -46,6 +46,7 @@ const ActionBar = ({
     isBlockDebuffed: false,
     isHealBuffed: false,
     isHealDebuffed: false,
+    isAttackDamageWeakDebuffed: false,
   });
 
   return (

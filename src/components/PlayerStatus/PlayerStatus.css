@@ -132,6 +132,26 @@
   color: #60a5fa !important;
 }
 
+/* ダメージ無効スキルドラッグ中：数値はそのまま、金色で「このターン無敵」 */
+.stat-value-preview--immunity {
+  color: var(--color-gold) !important;
+  text-shadow:
+    0 0 8px rgba(251, 191, 36, 0.55),
+    0 0 2px rgba(120, 80, 0, 0.35);
+}
+
+.block.block--immunity-preview {
+  color: var(--color-gold);
+}
+
+.block.block--immunity-preview .status-icon {
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.55));
+}
+
+.stat-value-preview--scaffold {
+  color: #ffffff !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stat-value-preview {
     animation: none;
@@ -309,7 +329,7 @@
 }
 
 .scaffold {
-  color: #4fc3f7;
+  color: #ffffff;
 }
 
 /* 下段の足場：ブロック行と同じ「アイコン列 + 2px + 数値」で数値左端を一致 */

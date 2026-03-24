@@ -10,7 +10,10 @@ import './PlayerStatus.css';
 interface Props {
   player: PlayerState;
   previewBlock?: number | null;
+  /** ダメージ無効カードをドラッグ中：ブロック数はそのまま、金色で無敵プレビュー */
+  previewBlockImmunity?: boolean;
   previewHp?: number | null;
+  previewScaffold?: number | null;
   toolSlots: ToolSlot[];
   activePowers: Card[];
   battleItems: RunItem[];
@@ -30,7 +33,9 @@ interface Props {
 const PlayerStatus = ({
   player,
   previewBlock = null,
+  previewBlockImmunity = false,
   previewHp = null,
+  previewScaffold = null,
   toolSlots,
   activePowers,
   battleItems,
@@ -60,6 +65,9 @@ const PlayerStatus = ({
         ? 'hungry-state'
         : 'normal-awake-state';
   const blockClass = player.block > 0 ? 'status-block--active' : 'status-block--zero';
+  const showBlockImmunityPreview = previewBlockImmunity;
+  const showBlockNumberPreview = previewBlock != null;
+  const blockPreviewActive = showBlockNumberPreview || showBlockImmunityPreview;
   const [itemConfirm, setItemConfirm] = useState<RunItem | null>(null);
   const itemSlotsRow = (
     <div className="stat-items stat-items--sub-row">
@@ -117,12 +125,22 @@ const PlayerStatus = ({
             </div>
             <div className="player-block-row">
               <Tooltip tooltipKey="block">
-                <span className={`block ${blockClass} ${previewBlock != null ? 'block--preview' : ''}`}>
+                <span
+                  className={`block ${blockClass} ${blockPreviewActive ? 'block--preview' : ''}${
+                    showBlockImmunityPreview ? ' block--immunity-preview' : ''
+                  }`}
+                >
                   <img src={ICONS.block} alt="Block" className="status-icon" />
                   <span
-                    className={`block-value${previewBlock != null ? ' stat-value-preview stat-value-preview--block' : ''}`}
+                    className={`block-value${
+                      showBlockImmunityPreview
+                        ? ' stat-value-preview stat-value-preview--immunity'
+                        : showBlockNumberPreview
+                          ? ' stat-value-preview stat-value-preview--block'
+                          : ''
+                    }`}
                   >
-                    {previewBlock != null ? previewBlock : player.block}
+                    {showBlockNumberPreview ? previewBlock : player.block}
                   </span>
                 </span>
               </Tooltip>
@@ -172,11 +190,18 @@ const PlayerStatus = ({
       <div className="player-row player-row--sub">
         {player.jobId === 'carpenter' && (
           <Tooltip tooltipKey="scaffold">
-            <span key={`scaffold-${player.scaffold}`} className="scaffold scaffold-bounce scaffold--sub-row">
+            <span
+              key={`scaffold-${player.scaffold}`}
+              className={`scaffold scaffold-bounce scaffold--sub-row${previewScaffold != null ? ' scaffold--preview' : ''}`}
+            >
               <span className="scaffold-icon" aria-hidden>
                 🏗️
               </span>
-              <span className="scaffold-value">{player.scaffold}</span>
+              <span
+                className={`scaffold-value${previewScaffold != null ? ' stat-value-preview stat-value-preview--scaffold' : ''}`}
+              >
+                {previewScaffold != null ? previewScaffold : player.scaffold}
+              </span>
             </span>
           </Tooltip>
         )}
@@ -188,7 +213,7 @@ const PlayerStatus = ({
             <div className="stat-preparation stat-preparation--next-to-items">
               <Tooltip
                 label="⚡ 段取りボーナス"
-                description="直前に【準備】バッジのカードを使用。次のカードのダメージ・ブロック・回復が1.3倍"
+                description="直前に【準備】バッジのカードを使用。次のカードのダメージ・ブロック・回復が1.2倍"
               >
                 <span className="stat-preparation-text" aria-label="段取りボーナス">
                   ⚡

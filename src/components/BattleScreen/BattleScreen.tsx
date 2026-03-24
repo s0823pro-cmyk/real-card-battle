@@ -8,21 +8,33 @@ import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 import ActionBar from '../ActionBar/ActionBar';
 import DamagePopup from '../Effects/DamagePopup';
 import ShieldEffect from '../Effects/ShieldEffect';
+import Tooltip from '../Tooltip/Tooltip';
 import EnemyDisplay from '../Enemy/EnemyDisplay';
 import CardComponent from '../Hand/CardComponent';
 import Hand from '../Hand/Hand';
 import PlayerStatus from '../PlayerStatus/PlayerStatus';
-import DefeatScreen from '../Result/DefeatScreen';
-import VictoryScreen from '../Result/VictoryScreen';
+import BattleDefeatOverlay from '../Result/BattleDefeatOverlay';
+import BattleVictoryOverlay from '../Result/BattleVictoryOverlay';
 import Timeline from '../Timeline/Timeline';
 import { useGameState } from '../../hooks/useGameState';
+import { ICONS } from '../../assets/icons';
 import type { Card, GameState } from '../../types/game';
 import type { BattleResult, BattleSetup, Omamori } from '../../types/run';
-import { getEffectiveCardValues } from '../../utils/cardPreview';
+import {
+  cardHasDamageImmunityThisTurn,
+  getEffectiveCardValues,
+  getPreviewScaffoldAfterPlay,
+} from '../../utils/cardPreview';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
 import { isEnemyTargetCard } from '../../utils/cardTarget';
+import {
+  applyPendingDebuffPreviewToEnemy,
+  cardAppliesVulnerableToEnemy,
+  cardDealsDamageForEnemyPreview,
+  cardHasEnemyDebuffPreviewEffects,
+} from '../../utils/enemyDebuffPreview';
 import { useAudioContext } from '../../contexts/AudioContext';
 import bgBattleArea1 from '../../assets/backgrounds/bg_battle_area1.png';
 import bgBattleArea2 from '../../assets/backgrounds/bg_battle_area2.png';
@@ -197,6 +209,7 @@ const BattleScreen = ({
     pendingHandUpgradeCount,
     upgradeableHandCards,
     doubleNextCharges,
+    doubleNextReplayCharges,
     attackItemBuff,
     canPlayCard,
     selectCard,
@@ -761,6 +774,7 @@ const BattleScreen = ({
   const isEnemyPreviewActive =
     handDrag.isDragging &&
     handDrag.card !== null &&
+    canPlayCard(handDrag.card) &&
     handDrag.dropTarget === 'enemy' &&
     isEnemyTargetCard(handDrag.card) &&
     (isAoeDamageDragPreview || hoveredEnemyId !== null);
@@ -776,7 +790,10 @@ const BattleScreen = ({
     if (!dealsDamage) return null;
 
     const enhanced = getEnhancedCardForPlay(card);
-    let previewCard = applyMultiplierAndBoostToCard(enhanced, gameState.player, doubleNextCharges);
+    const replayActive = doubleNextReplayCharges > 0;
+    let previewCard = applyMultiplierAndBoostToCard(enhanced, gameState.player, doubleNextCharges, {
+      ignoreDoubleMultiplier: replayActive,
+    });
     if (attackItemBuff && attackItemBuff.charges > 0 && previewCard.type === 'attack') {
       previewCard = { ...previewCard, damage: (previewCard.damage ?? 0) + attackItemBuff.value };
     }
@@ -788,6 +805,9 @@ const BattleScreen = ({
     );
     if (card.type === 'attack' && gameState.player.nextAttackBoostCount > 0) {
       rawDamageBase += gameState.player.nextAttackBoostValue;
+    }
+    if (replayActive) {
+      rawDamageBase *= 2;
     }
 
     const computeForEnemy = (enemy: (typeof gameState.enemies)[number]) => {
@@ -823,8 +843,54 @@ const BattleScreen = ({
     isEnemyPreviewActive,
     lastPlayedCard,
     doubleNextCharges,
+    doubleNextReplayCharges,
     attackItemBuff,
+    canPlayCard,
   ]);
+
+  /** ドラッグ中：デバフ付与後の敵インテント数値（虎の視線など） */
+  const previewIntentEnemyById = useMemo(() => {
+    if (!handDrag.isDragging || !handDrag.card || handDrag.dropTarget !== 'enemy') return null;
+    if (!canPlayCard(handDrag.card)) return null;
+    if (cardHasDamageImmunityThisTurn(handDrag.card)) return null;
+    if (!isEnemyTargetCard(handDrag.card)) return null;
+    if (!cardHasEnemyDebuffPreviewEffects(handDrag.card)) return null;
+
+    const card = handDrag.card;
+    if (!card.tags?.includes('aoe') && !hoveredEnemyId) return null;
+
+    const applyOne = (enemy: (typeof gameState.enemies)[number]) =>
+      applyPendingDebuffPreviewToEnemy(enemy, card);
+
+    if (card.tags?.includes('aoe')) {
+      const out: Record<string, (typeof gameState.enemies)[number]> = {};
+      for (const enemy of gameState.enemies) {
+        if (enemy.currentHp <= 0) continue;
+        out[enemy.id] = applyOne(enemy);
+      }
+      return Object.keys(out).length > 0 ? out : null;
+    }
+
+    const enemy = gameState.enemies.find((e) => e.id === hoveredEnemyId);
+    if (!enemy || enemy.currentHp <= 0) return null;
+    return { [enemy.id]: applyOne(enemy) };
+  }, [
+    canPlayCard,
+    handDrag.isDragging,
+    handDrag.card,
+    handDrag.dropTarget,
+    hoveredEnemyId,
+    gameState.enemies,
+  ]);
+
+  /** 敵の物理攻撃がこのターン無効化される見た目（カード使用後のみ0表示。無効化カードドラッグ中は敵攻撃表示は変えない） */
+  const intentAttackDamageImmunityInfo = useMemo(() => {
+    const playerImmune = gameState.player.damageImmunityThisTurn;
+    return {
+      show: playerImmune,
+      pulse: false,
+    };
+  }, [gameState.player.damageImmunityThisTurn]);
 
   const timeUsagePreview = useMemo(() => {
     if (!handDrag.isDragging || !handDrag.card) return null;
@@ -836,6 +902,9 @@ const BattleScreen = ({
       gameState.player,
       lastPlayedCard,
       doubleNextCharges,
+      attackItemBuff,
+      gameState.toolSlots,
+      doubleNextReplayCharges,
     ).effectiveTimeCost;
     const previewCost = Math.max(0, effective);
     const previewRemaining = Math.max(0, remainingTime - previewCost);
@@ -849,21 +918,96 @@ const BattleScreen = ({
     lastPlayedCard,
     remainingTime,
     doubleNextCharges,
+    doubleNextReplayCharges,
+    attackItemBuff,
+    gameState.toolSlots,
   ]);
   const previewBlockValue = useMemo(() => {
     if (!handDrag.isDragging || !handDrag.card) return null;
     const card = handDrag.card;
     if (!card.block || card.block <= 0) return null;
-    const effective = getEffectiveCardValues(card, gameState.player, lastPlayedCard, doubleNextCharges);
+    if (!canPlayCard(card)) {
+      return gameState.player.block + card.block;
+    }
+    const effective = getEffectiveCardValues(
+      card,
+      gameState.player,
+      lastPlayedCard,
+      doubleNextCharges,
+      attackItemBuff,
+      gameState.toolSlots,
+      doubleNextReplayCharges,
+    );
     if (effective.block == null) return null;
     return gameState.player.block + effective.block;
-  }, [handDrag.isDragging, handDrag.card, gameState.player, lastPlayedCard, doubleNextCharges]);
+  }, [
+    canPlayCard,
+    handDrag.isDragging,
+    handDrag.card,
+    gameState.player,
+    lastPlayedCard,
+    doubleNextCharges,
+    doubleNextReplayCharges,
+    attackItemBuff,
+    gameState.toolSlots,
+  ]);
   const previewHpValue = useMemo(() => {
     if (!handDrag.isDragging || !handDrag.card) return null;
+    if (!canPlayCard(handDrag.card)) return null;
     const selfDamageEffect = handDrag.card.effects?.find((effect) => effect.type === 'self_damage');
     if (!selfDamageEffect) return null;
     return Math.max(0, gameState.player.currentHp - selfDamageEffect.value);
-  }, [handDrag.isDragging, handDrag.card, gameState.player.currentHp]);
+  }, [canPlayCard, handDrag.isDragging, handDrag.card, gameState.player.currentHp]);
+
+  const previewScaffoldValue = useMemo(() => {
+    if (!handDrag.isDragging || !handDrag.card) return null;
+    if (!canPlayCard(handDrag.card)) return null;
+    return getPreviewScaffoldAfterPlay(handDrag.card, gameState.player, doubleNextCharges, doubleNextReplayCharges);
+  }, [canPlayCard, handDrag.isDragging, handDrag.card, gameState.player, doubleNextCharges, doubleNextReplayCharges]);
+
+  /** ダメージ無効スキル（居直り・点検車等）ドラッグ中：ブロック数値はそのまま、金色で「このターン無敵」を示す */
+  const previewBlockImmunityDrag = useMemo(
+    () =>
+      Boolean(handDrag.isDragging && handDrag.card && cardHasDamageImmunityThisTurn(handDrag.card)),
+    [handDrag.isDragging, handDrag.card],
+  );
+
+  const dragCardAppliesEnemyVulnerable = useMemo(
+    () => Boolean(handDrag.card && cardAppliesVulnerableToEnemy(handDrag.card)),
+    [handDrag.card],
+  );
+
+  /** ダメージ予測がない敵向けデバフ（脆弱・攻撃デバフ・弱体・火傷等）：ホバー中の敵ネームを灰色点滅 */
+  const enemyDebuffHintEnemyId = useMemo(() => {
+    const card = handDrag.card;
+    if (!handDrag.isDragging || !card || handDrag.dropTarget !== 'enemy') return null;
+    if (!canPlayCard(card)) return null;
+    if (!isEnemyTargetCard(card)) return null;
+    if (!cardHasEnemyDebuffPreviewEffects(card)) return null;
+    if (cardDealsDamageForEnemyPreview(card)) return null;
+    return hoveredEnemyId;
+  }, [
+    handDrag.isDragging,
+    handDrag.card,
+    handDrag.dropTarget,
+    hoveredEnemyId,
+    canPlayCard,
+  ]);
+
+  const playerDebuffStrip = useMemo(() => {
+    const p = gameState.player;
+    const vulnerable = p.statusEffects
+      .filter((s) => s.type === 'vulnerable' && s.duration > 0)
+      .reduce((sum, s) => sum + s.value, 0);
+    const weak = p.statusEffects
+      .filter((s) => s.type === 'weak' && s.duration > 0)
+      .reduce((sum, s) => sum + s.value, 0);
+    const burnFx = p.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
+    const burnDamage = burnFx.reduce((a, s) => a + s.value, 0);
+    const burnTurns = burnFx.length ? Math.max(...burnFx.map((s) => s.duration)) : 0;
+    if (vulnerable === 0 && weak === 0 && burnDamage === 0) return null;
+    return { vulnerable, weak, burnDamage, burnTurns };
+  }, [gameState.player.statusEffects]);
 
   const reserveFull = gameState.reserved.length >= 2;
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
@@ -881,13 +1025,19 @@ const BattleScreen = ({
     isBlockDebuffed: false,
     isHealBuffed: false,
     isHealDebuffed: false,
+    isAttackDamageWeakDebuffed: false,
   });
   const currentPileCards = useMemo(() => {
-    if (showPile === 'draw') return gameState.drawPile;
-    if (showPile === 'discard') return gameState.discardPile;
+    if (showPile === 'draw') {
+      const pile = gameState.drawPile;
+      const perm = gameState.drawPileDisplayOrder;
+      if (!perm || perm.length !== pile.length || pile.length === 0) return pile;
+      return perm.map((idx) => pile[idx]);
+    }
+    if (showPile === 'discard') return [...gameState.discardPile].reverse();
     if (showPile === 'exhaust') return gameState.exhaustedCards;
     return [];
-  }, [showPile, gameState.drawPile, gameState.discardPile, gameState.exhaustedCards]);
+  }, [showPile, gameState.drawPile, gameState.discardPile, gameState.exhaustedCards, gameState.drawPileDisplayOrder]);
   const startTitle = useMemo(
     () => `── ${gameState.enemies.map((enemy) => enemy.name).join(' / ')} 現れ──`,
     [gameState.enemies],
@@ -993,17 +1143,31 @@ const BattleScreen = ({
         }`}
         ref={enemyAreaRef}
       >
-        <EnemyDisplay enemies={gameState.enemies} intents={enemyIntents} hitEnemyId={hitEnemyId} previewByEnemy={previewByEnemy} />
+        <EnemyDisplay
+          enemies={gameState.enemies}
+          intents={enemyIntents}
+          hitEnemyId={hitEnemyId}
+          previewByEnemy={previewByEnemy}
+          intentPreviewEnemyById={previewIntentEnemyById}
+          intentAttackDamageImmunity={intentAttackDamageImmunityInfo.show}
+          intentAttackDamageImmunityPulse={intentAttackDamageImmunityInfo.pulse}
+          player={gameState.player}
+          dragCardAppliesEnemyVulnerable={dragCardAppliesEnemyVulnerable}
+          enemyDebuffHintEnemyId={enemyDebuffHintEnemyId}
+        />
       </section>
 
       <div className="battle-spacer" />
 
       <section className="player-area">
-        <div className="battle-hand-area battle-hand-area--bar-align">
+        <div className="battle-hand-area">
           <Hand
             hand={gameState.hand}
             player={gameState.player}
             doubleNextCharges={doubleNextCharges}
+            doubleNextReplayCharges={doubleNextReplayCharges}
+            attackItemBuff={attackItemBuff}
+            toolSlots={gameState.toolSlots}
             usedTime={gameState.usedTime}
             lastPlayedCard={lastPlayedCard}
             selectedCardId={selectedCardId}
@@ -1039,15 +1203,51 @@ const BattleScreen = ({
             className={`battle-timebar-row ${isHoveringTimebar ? 'timebar-row--active' : ''}`}
             ref={timebarRowRef}
           >
-            <Timeline
-              maxTime={gameState.maxTime}
-              remainingTime={remainingTime}
-              isDropActive={Boolean(timeUsagePreview)}
-              previewRemainingTime={timeUsagePreview?.previewRemaining ?? null}
-              previewCost={timeUsagePreview?.previewCost ?? null}
-              gaugeStyle={timelineGaugeStyle}
-              timelineBarRef={timelineBarRef}
-            />
+            <div className="battle-timebar-wrap">
+              {playerDebuffStrip && (
+                <div className="battle-timebar-debuff-overlay" aria-label="プレイヤーのデバフ">
+                  {playerDebuffStrip.vulnerable > 0 && (
+                    <Tooltip
+                      label="脆弱"
+                      description={`受けるダメージ+50%。敵の攻撃表示は1.5倍で表示されます。残り${playerDebuffStrip.vulnerable}ターン`}
+                    >
+                      <span className="status-badge status-badge--vulnerable">
+                        <img src={ICONS.badgeVulnerable} alt="" className="status-icon" />
+                        {playerDebuffStrip.vulnerable}
+                      </span>
+                    </Tooltip>
+                  )}
+                  {playerDebuffStrip.weak > 0 && (
+                    <Tooltip label="弱体" description={`与えるダメージが25％減少。残り${playerDebuffStrip.weak}ターン`}>
+                      <span className="status-badge status-badge--weak">
+                        <img src={ICONS.badgeWeak} alt="" className="status-icon" />
+                        {playerDebuffStrip.weak}
+                      </span>
+                    </Tooltip>
+                  )}
+                  {playerDebuffStrip.burnDamage > 0 && (
+                    <Tooltip
+                      label="炎上"
+                      description={`ターン終了時に${playerDebuffStrip.burnDamage}ダメージ。残り${playerDebuffStrip.burnTurns}ターン`}
+                    >
+                      <span className="status-badge status-badge--burn">
+                        <img src={ICONS.badgeBurn} alt="" className="status-icon" />
+                        {playerDebuffStrip.burnDamage}
+                      </span>
+                    </Tooltip>
+                  )}
+                </div>
+              )}
+              <Timeline
+                maxTime={gameState.maxTime}
+                remainingTime={remainingTime}
+                isDropActive={Boolean(timeUsagePreview)}
+                previewRemainingTime={timeUsagePreview?.previewRemaining ?? null}
+                previewCost={timeUsagePreview?.previewCost ?? null}
+                gaugeStyle={timelineGaugeStyle}
+                timelineBarRef={timelineBarRef}
+              />
+            </div>
           </div>
         </div>
 
@@ -1055,7 +1255,9 @@ const BattleScreen = ({
           <PlayerStatus
             player={gameState.player}
             previewBlock={previewBlockValue}
+            previewBlockImmunity={previewBlockImmunityDrag}
             previewHp={previewHpValue}
+            previewScaffold={previewScaffoldValue}
             toolSlots={gameState.toolSlots}
             activePowers={gameState.activePowers}
             battleItems={battleItems}
@@ -1111,6 +1313,9 @@ const BattleScreen = ({
               gameState.player,
               lastPlayedCard,
               doubleNextCharges,
+              attackItemBuff,
+              gameState.toolSlots,
+              doubleNextReplayCharges,
             )}
             onSelect={noop}
             onPointerDown={noop}
@@ -1130,14 +1335,14 @@ const BattleScreen = ({
         </div>
       )}
       {gameState.phase === 'victory' && (
-        <VictoryScreen
+        <BattleVictoryOverlay
           onRetry={retryBattle}
           rewardGold={victoryRewardGold}
           totalGold={gameState.player.gold}
           mentalRecovery={victoryMentalRecovery}
         />
       )}
-      {gameState.phase === 'defeat' && <DefeatScreen onRetry={retryBattle} />}
+      {gameState.phase === 'defeat' && <BattleDefeatOverlay onRetry={retryBattle} />}
       {showPile && (
         <div className="battle-deck-overlay battle-deck-overlay--fullscreen" onClick={() => setShowPile(null)}>
           <div className="battle-deck-modal battle-deck-modal--fullscreen" onClick={(event) => event.stopPropagation()}>

@@ -574,36 +574,97 @@
   flex-direction: column;
   gap: 0;
   flex-shrink: 0;
-  padding-top: 10px;
+  /* 下の UI ブロック全体を少し下げる（タイムバー行の margin-top だけでは spacer が縮み画面上の Y がほぼ変わらない） */
+  padding-top: 4px;
 }
 
+/* 手札エリア(z-index:10)より手前に描画（margin だけではカードに隠れて見えない問題の対策） */
 .battle-timebar-reserve-row {
   display: flex;
   flex-direction: row;
   align-items: center;
   width: 100%;
   position: relative;
-  /* 以前の -20px は全体を上に寄せていた → 下方向へ */
-  transform: translateY(6px);
+  z-index: 25;
   gap: 4px;
   box-sizing: border-box;
+  /* レイアウト上の手札との間隔。画面でタイムバーを下げるには transform かプレイヤー領域の高さ削減が必要 */
+  margin-top: 24px;
+  /* 温存とタイムバーの相対位置は子の translate のまま、行全体を同じだけ下げる */
+  transform: translateY(9px);
 }
 
 .battle-timebar-reserve-row .battle-reserve-area {
   flex-shrink: 0;
-  transform: translateY(12px);
   padding: 0 0 0 4px;
   width: auto;
   min-height: unset;
+  transform: none;
+}
+
+.battle-timebar-reserve-row .battle-reserve-area--gauge-expand {
+  transform: none;
 }
 
 .battle-timebar-reserve-row .battle-timebar-row {
   flex: 1;
   min-width: 0;
-  transform: none;
+  /* 温存枠は動かさず、タイムバー列だけ描画を下げる（親に translate すると両方動く） */
+  transform: translateY(12px);
   padding: 0 8px 0 4px;
   margin-top: 0;
   margin-bottom: 0;
+}
+
+.battle-timebar-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+
+/* タイムバー枠の上（枠外）にデバフ（脆弱・弱体・炎上） */
+.battle-timebar-debuff-overlay {
+  position: absolute;
+  top: auto;
+  bottom: 100%;
+  left: 4px;
+  margin-bottom: 4px;
+  z-index: 130;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-width: calc(100% - 8px);
+  pointer-events: auto;
+  line-height: 1;
+}
+
+.battle-timebar-debuff-overlay .tooltip-wrapper {
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.battle-timebar-debuff-overlay .status-badge {
+  cursor: default;
+  padding: 0 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  line-height: 1;
+  font-size: 10px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65));
+}
+
+.battle-timebar-debuff-overlay .status-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+  flex-shrink: 0;
 }
 
 .battle-timebar-row {
@@ -613,16 +674,12 @@
   gap: 8px;
   padding: 0 12px;
   margin-bottom: 2px;
-  transform: translateY(6px);
+  transform: none;
   width: 100%;
   box-sizing: border-box;
   pointer-events: none;
   position: relative;
   z-index: 120;
-}
-
-.battle-timebar-row:not(.battle-timebar-row--clock) {
-  transform: translateY(23px);
 }
 
 .battle-timebar-row.timebar-row--active .timeline-bar {
@@ -661,7 +718,7 @@
 .battle-status-row {
   flex-shrink: 0;
   padding-top: 2px;
-  margin-top: 20px;
+  margin-top: 12px;
   position: relative;
   z-index: 10;
   touch-action: auto;
@@ -682,14 +739,9 @@
   z-index: 10;
 }
 
-.battle-hand-area--clock-align,
-.battle-hand-area--bar-align {
+/* 時計ゲージ時のみ手札を下げる。バー表示時は手札の translate をいじらない（タイムバー位置は .battle-timebar-reserve-row の margin-top のみ） */
+.battle-hand-area--clock-align {
   transform: translateY(32px);
-}
-
-.battle-hand-area--bar-align {
-  /* 負の値が大きいほど手札が上に寄る → 下げる */
-  transform: translateY(-17px);
 }
 
 .battle-hand-area .hand-area {
@@ -953,7 +1005,6 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-content: start;
-  justify-content: stretch;
   justify-items: stretch;
 }
 

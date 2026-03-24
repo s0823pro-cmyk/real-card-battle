@@ -460,7 +460,8 @@
 
 .card-badge--exhaust,
 .card-badge--setup,
-.card-badge--self_damage {
+.card-badge--self_damage,
+.card-badge--reserve {
   font-family: var(--font-display);
   font-size: 7px !important;
   font-weight: 500 !important;
@@ -493,11 +494,13 @@
 .card-reserve-bonus {
   margin: 0;
   font-size: 7px;
-  color: #7dd3fc;
+  color: #eef4ff;
   text-align: center;
   padding: 0;
   line-height: 1.2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  text-shadow:
+    0 0 6px rgba(255, 255, 255, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
 .card-frame--uncommon {
@@ -585,26 +588,28 @@
   animation-delay: 1.2s;
 }
 
-.card-frame--reserved {
-  border-color: #f0b429 !important;
-  animation: reserved-shine 1.5s ease-in-out infinite;
-}
-
+/* 温存ボーナス：枠はレアリティそのまま。イラスト上にオーバーレイしないよう、枠外の box-shadow のみ点滅 */
 .hand-card.reserve-ready {
-  box-shadow: 0 0 12px rgba(240, 180, 41, 0.5);
+  overflow: visible;
 }
 
 .hand-card.reserve-ready .hand-card-inner {
-  border-color: #f0b429;
+  position: relative;
+  z-index: 1;
 }
 
-.hand-card.reserve-ready::after {
-  content: '✨';
+/* カードと同じ外形の背面レイヤにぼかしシャドウのみ（1px スプレッドは額縁状に見えるので使わない） */
+.hand-card.reserve-ready:not(.disabled)::before {
+  content: '';
   position: absolute;
-  top: -8px;
-  right: -4px;
-  font-size: 14px;
-  animation: sparkle 1.5s ease-in-out infinite;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  animation: reserve-ring-glow 3.2s ease-in-out infinite;
 }
 
 .card-value--buffed {
@@ -629,6 +634,13 @@
 .card-inline-value--debuffed {
   color: #ff6b81;
   font-weight: 700;
+}
+
+/* プレイヤー弱体：アタックの実効ダメージ（バフより優先で青色） */
+.card-inline-value--weak {
+  color: #38bdf8;
+  font-weight: 800;
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.45);
 }
 
 .time-shortage {
@@ -661,18 +673,6 @@
   to {
     transform: translateY(0);
     opacity: 1;
-  }
-}
-
-@keyframes sparkle {
-  0%,
-  100% {
-    opacity: 0.6;
-    transform: scale(0.9);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
   }
 }
 
@@ -759,16 +759,26 @@
   }
 }
 
-@keyframes reserved-shine {
+@keyframes reserve-ring-glow {
   0%,
   100% {
     box-shadow:
-      0 0 8px rgba(240, 180, 41, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      0 0 5px rgba(255, 255, 255, 0.22),
+      0 0 14px rgba(255, 255, 255, 0.12);
   }
   50% {
     box-shadow:
-      0 0 20px rgba(240, 180, 41, 0.8),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      0 0 14px rgba(255, 255, 255, 0.72),
+      0 0 26px rgba(255, 255, 255, 0.4),
+      0 0 38px rgba(255, 255, 255, 0.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hand-card.reserve-ready:not(.disabled)::before {
+    animation: none !important;
+    box-shadow:
+      0 0 12px rgba(255, 255, 255, 0.45),
+      0 0 22px rgba(255, 255, 255, 0.22);
   }
 }

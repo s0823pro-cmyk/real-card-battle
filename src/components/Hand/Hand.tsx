@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Card, PlayerState } from '../../types/game';
+import type { Card, PlayerState, ToolSlot } from '../../types/game';
 import type { CSSProperties, RefObject } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { getEffectiveCardValues } from '../../utils/cardPreview';
@@ -12,6 +12,12 @@ interface Props {
   player: PlayerState;
   /** playCardInstant と同じ倍撃チャージ（プレビュー用） */
   doubleNextCharges?: number;
+  /** 二重発動系カードのプレビュー用 */
+  doubleNextReplayCharges?: number;
+  /** 気合を入れる等の次アタック加算（カード上ダメージ予測と整合） */
+  attackItemBuff?: { value: number; charges: number } | null;
+  /** ナイフセット等（calculateCardDamage と整合） */
+  toolSlots?: ToolSlot[];
   usedTime: number;
   lastPlayedCard: Card | null;
   selectedCardId: string | null;
@@ -66,6 +72,9 @@ const Hand = ({
   hand,
   player,
   doubleNextCharges = 0,
+  doubleNextReplayCharges = 0,
+  attackItemBuff = null,
+  toolSlots,
   usedTime,
   lastPlayedCard,
   selectedCardId,
@@ -118,7 +127,15 @@ const Hand = ({
             card.type === 'status' ||
             violatesSoloPlayCondition ||
             usedTime + getEffectiveTimeCost(card, lastPlayedCard, player, player.jobId) > maxTime;
-          const effectiveValues = getEffectiveCardValues(card, player, lastPlayedCard, doubleNextCharges);
+          const effectiveValues = getEffectiveCardValues(
+            card,
+            player,
+            lastPlayedCard,
+            doubleNextCharges,
+            attackItemBuff,
+            toolSlots,
+            doubleNextReplayCharges,
+          );
           const isExpanded = expandedCardId === card.id;
           const isDraggingCard = draggedCardId === card.id;
           const current = layout[cardIndex];
