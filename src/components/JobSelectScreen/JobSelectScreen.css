@@ -88,7 +88,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 20px;
   color: rgba(255, 255, 255, 0.6);
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 12px;
   padding: 6px 14px;
   cursor: pointer;
@@ -110,7 +110,7 @@
 }
 
 .job-select-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 22px;
   font-weight: 900;
   color: #f0b429;
@@ -119,7 +119,7 @@
 }
 
 .job-select-sub {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 12px;
   color: rgba(255, 255, 255, 0.45);
   margin: 0;
@@ -160,7 +160,7 @@
 }
 
 .job-drag-hint p {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.38);
   margin: 4px 0 0;
@@ -259,7 +259,7 @@
 }
 
 .job-detail-name {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 20px;
   font-weight: 900;
   color: #ffffff;
@@ -268,7 +268,7 @@
 }
 
 .job-detail-catch {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.48);
   text-align: center;
@@ -294,7 +294,7 @@
 }
 
 .job-detail-stat-label {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 10px;
   color: rgba(255, 255, 255, 0.48);
   width: 62px;
@@ -316,7 +316,7 @@
 }
 
 .job-detail-stat-value {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 10px;
   color: rgba(255, 255, 255, 0.7);
   width: 30px;
@@ -334,7 +334,7 @@
 }
 
 .job-detail-mechanic-label {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 9px;
   color: rgba(255, 255, 255, 0.38);
   letter-spacing: 0.1em;
@@ -343,7 +343,7 @@
 }
 
 .job-detail-mechanic-text {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.8);
   margin: 0;
@@ -426,7 +426,7 @@
   top: 40%;
   left: 50%;
   transform: translateX(-50%);
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -478,7 +478,7 @@
 }
 
 .job-hand-card-name {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: 700;
   color: #ffffff;
@@ -493,7 +493,7 @@
 }
 
 .job-hand-card-coming-soon span {
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--font-display);
   font-size: 8px;
   font-weight: 900;
   color: rgba(255, 255, 255, 0.38);

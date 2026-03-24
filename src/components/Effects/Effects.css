@@ -9,7 +9,7 @@
   position: absolute;
   left: 50%;
   top: 42%;
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--font-display);
   font-size: 24px;
   font-weight: 900;
   transform: translateX(-50%);

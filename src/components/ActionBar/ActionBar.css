@@ -84,7 +84,7 @@
 
 .reserve-penalty-inline {
   min-width: 80px;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: #e74c3c;
   margin: 0;

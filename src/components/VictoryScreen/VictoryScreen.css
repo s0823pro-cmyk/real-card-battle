@@ -38,7 +38,7 @@
 }
 
 .victory-job {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 14px;
   font-weight: 700;
   margin: 0 0 8px;
@@ -46,7 +46,7 @@
 }
 
 .victory-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 48px;
   font-weight: 900;
   color: #f0b429;
@@ -72,7 +72,7 @@
 }
 
 .victory-sub {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 14px;
   color: rgba(255, 255, 255, 0.6);
   margin: 0;
@@ -118,14 +118,14 @@
 }
 
 .victory-stat-label {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.4);
   margin: 0 0 2px;
 }
 
 .victory-stat-value {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
   color: #e6edf3;
@@ -138,7 +138,7 @@
   border: none;
   border-radius: 12px;
   color: #0d1117;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 900;
   padding: 16px 0;
@@ -155,7 +155,7 @@
 }
 
 .victory-achievements-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 14px;
   color: #f0b429;
   margin: 0 0 10px;
@@ -207,7 +207,7 @@
 }
 
 .achievement-reward-modal-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
   color: #f0b429;
@@ -216,7 +216,7 @@
 }
 
 .achievement-reward-modal-sub {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: #8b949e;
   margin: 0;
@@ -238,7 +238,7 @@
 }
 
 .achievement-omamori-name {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
   color: #e6edf3;
@@ -246,7 +246,7 @@
 }
 
 .achievement-omamori-desc {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 12px;
   color: #8b949e;
   margin: 0;
@@ -259,7 +259,7 @@
   border: none;
   border-radius: 8px;
   color: #0d1117;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   padding: 10px 32px;
@@ -272,7 +272,7 @@
 }
 
 .victory-achievement-name {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   color: #e6edf3;
@@ -280,7 +280,7 @@
 }
 
 .victory-achievement-reward {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: #f0b429;
   margin: 0;

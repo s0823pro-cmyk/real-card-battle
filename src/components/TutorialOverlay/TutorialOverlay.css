@@ -70,7 +70,7 @@
 }
 
 .tutorial-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
   color: #e6edf3;
@@ -78,7 +78,7 @@
 }
 
 .tutorial-description {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   color: #c9d1d9;
   line-height: 1.6;

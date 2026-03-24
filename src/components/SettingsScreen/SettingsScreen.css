@@ -206,14 +206,14 @@
   font-size: 13px;
   font-weight: 700;
   color: #e6edf3;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
 }
 
 .settings-item--row .settings-item-desc {
   margin: 0;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
-  font-family: var(--font-ui, sans-serif);
+  font-family: var(--font-display, sans-serif);
   line-height: 1.5;
 }
 
@@ -309,7 +309,7 @@
 }
 
 .settings-legal-text {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 10px;
   color: #3d444d;
   line-height: 1.6;
@@ -346,7 +346,7 @@
 }
 
 .dev-tools-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: rgba(255, 255, 0, 0.6);
   margin: 0 0 8px;
@@ -364,7 +364,7 @@
   border: 1px solid rgba(255, 255, 0, 0.3);
   border-radius: 6px;
   color: rgba(255, 255, 0, 0.8);
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 10px;
   padding: 6px 4px;
   cursor: pointer;

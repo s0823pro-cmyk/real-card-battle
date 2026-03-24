@@ -30,7 +30,7 @@
 }
 
 .defeat-job {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   color: rgba(255, 255, 255, 0.4);
   margin: 0 0 8px;
@@ -38,7 +38,7 @@
 }
 
 .defeat-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 40px;
   font-weight: 900;
   color: #e74c3c;
@@ -66,14 +66,14 @@
 }
 
 .defeat-enemy-label {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.3);
   letter-spacing: 0.1em;
 }
 
 .defeat-enemy-name {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
   color: #e74c3c;
@@ -95,13 +95,13 @@
 }
 
 .defeat-progress-label {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .defeat-progress-value {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.6);
 }
@@ -122,7 +122,7 @@
 }
 
 .defeat-progress-percent {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
   text-align: right;
@@ -139,7 +139,7 @@
 }
 
 .defeat-message-text {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 15px;
   font-style: italic;
   color: rgba(255, 255, 255, 0.7);
@@ -160,7 +160,7 @@
   border: none;
   border-radius: 12px;
   color: #ffffff;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 15px;
   font-weight: 900;
   padding: 14px 0;
@@ -175,7 +175,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   color: rgba(255, 255, 255, 0.5);
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 14px;
   padding: 12px 0;
   cursor: pointer;
@@ -192,7 +192,7 @@
 }
 
 .victory-achievements-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 14px;
   color: #f0b429;
   margin: 0 0 10px;
@@ -226,7 +226,7 @@
 }
 
 .victory-achievement-name {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   color: #e6edf3;
@@ -234,7 +234,7 @@
 }
 
 .victory-achievement-reward {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: #f0b429;
   margin: 0;
@@ -263,7 +263,7 @@
 }
 
 .achievement-reward-modal-title {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
   color: #f0b429;
@@ -272,7 +272,7 @@
 }
 
 .achievement-reward-modal-sub {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 11px;
   color: #8b949e;
   margin: 0;
@@ -294,7 +294,7 @@
 }
 
 .achievement-omamori-name {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
   color: #e6edf3;
@@ -302,7 +302,7 @@
 }
 
 .achievement-omamori-desc {
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 12px;
   color: #8b949e;
   margin: 0;
@@ -315,7 +315,7 @@
   border: none;
   border-radius: 8px;
   color: #0d1117;
-  font-family: 'Noto Serif JP', serif;
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   padding: 10px 32px;
