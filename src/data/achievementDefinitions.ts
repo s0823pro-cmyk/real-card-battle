@@ -1,0 +1,175 @@
+import type { Achievement } from '../utils/achievementTypes';
+
+/**
+ * 実績20件。各実績でアンコモン／レアカード2枚が解放される（計40枚は実績までプールから除外）。
+ * tier: easy=アンコモン2枚 / medium=アンコモン+レア / hard=レア2枚
+ */
+export const ACHIEVEMENTS: Achievement[] = [
+  // --- easy（アンコモン×2）---
+  {
+    id: 'first_win',
+    name: '初陣の誉れ',
+    description: 'はじめてバトルに勝利する',
+    icon: '🔨',
+    tier: 'easy',
+    rewardCardIds: ['focus', 'guts'],
+  },
+  {
+    id: 'defeat_3',
+    name: '不屈の学び',
+    description: '累計3回バトルに敗北する',
+    icon: '💀',
+    tier: 'easy',
+    rewardCardIds: ['comeback', 'honki_mode'],
+  },
+  {
+    id: 'elite_first',
+    name: '強敵との初対面',
+    description: 'はじめてエリート戦に勝利する',
+    icon: '👹',
+    tier: 'easy',
+    rewardCardIds: ['tetsu_ishi', 'yomiai'],
+  },
+  {
+    id: 'win_10',
+    name: '連戦の慣れ',
+    description: '累計10回バトルに勝利する',
+    icon: '⚔️',
+    tier: 'easy',
+    rewardCardIds: ['counter_kamae', 'shizuka_kakugo'],
+  },
+  {
+    id: 'dice_25',
+    name: '歩みを重ねて',
+    description: 'サイコロを累計25回振る',
+    icon: '🎲',
+    tier: 'easy',
+    rewardCardIds: ['hot_sauce', 'recipe_study'],
+  },
+  {
+    id: 'shrine_5',
+    name: '神社の常連',
+    description: '神社マスを累計5回訪れる',
+    icon: '⛩️',
+    tier: 'easy',
+    rewardCardIds: ['welfare', 'cardboard_house'],
+  },
+  {
+    id: 'shop_cards_8',
+    name: '質屋の顧客',
+    description: '質屋でカードを累計8回購入する',
+    icon: '🏪',
+    tier: 'easy',
+    rewardCardIds: ['knife_set', 'aged_dough'],
+  },
+  {
+    id: 'gold_lifetime_500',
+    name: '小金が貯まる',
+    description: '累計でゴールドを500以上獲得する（バトル報酬など）',
+    icon: '💰',
+    tier: 'easy',
+    rewardCardIds: ['delivery', 'simmering'],
+  },
+  // --- medium（アンコモン+レア）---
+  {
+    id: 'area1_clear',
+    name: '一区切り',
+    description: 'エリア1のエリアボスに勝利する',
+    icon: '🏗️',
+    tier: 'medium',
+    rewardCardIds: ['shizuka_shoheki', 'ridgepole'],
+  },
+  {
+    id: 'scaffold_10',
+    name: '足場の鬼',
+    description: '1バトルで足場を10以上積んだ状態で勝利する',
+    icon: '🏗️',
+    tier: 'medium',
+    rewardCardIds: ['tora_shisen', 'master_strike'],
+  },
+  {
+    id: 'low_hp_kill',
+    name: '綱渡りの勝利',
+    description: 'HPが10以下の状態で敵にとどめを刺す',
+    icon: '😤',
+    tier: 'medium',
+    rewardCardIds: ['saikido', 'miracle'],
+  },
+  {
+    id: 'events_10',
+    name: 'イベントマスター',
+    description: 'イベントを累計10回完了する',
+    icon: '❓',
+    tier: 'medium',
+    rewardCardIds: ['ingredient_sourcing', 'hidden_power'],
+  },
+  {
+    id: 'hotel_5',
+    name: 'ホテル常宿',
+    description: 'ホテルマスを累計5回訪れる',
+    icon: '🏨',
+    tier: 'medium',
+    rewardCardIds: ['interview', 'temple_carpenter'],
+  },
+  {
+    id: 'elite_wins_5',
+    name: '強敵狩り',
+    description: 'エリート戦に累計5回勝利する',
+    icon: '⚡',
+    tier: 'medium',
+    rewardCardIds: ['kitchen_demon', 'shinshin_choritu'],
+  },
+  // --- hard（レア×2）---
+  {
+    id: 'area2_clear',
+    name: 'さらなる高み',
+    description: 'エリア2のエリアボスに勝利する',
+    icon: '🏆',
+    tier: 'hard',
+    rewardCardIds: ['full_course', 'three_star'],
+  },
+  {
+    id: 'area3_clear',
+    name: '伝説の職人',
+    description: 'エリア3のエリアボスに勝利する（ゲームクリア）',
+    icon: '👑',
+    tier: 'hard',
+    rewardCardIds: ['secret_soup', 'mystery_pot'],
+  },
+  {
+    id: 'zero_mental_survive',
+    name: '底力覚醒',
+    description: 'メンタルが0以下の状態でバトルに勝利する',
+    icon: '🌟',
+    tier: 'hard',
+    rewardCardIds: ['flame_flambe', 'gamble'],
+  },
+  {
+    id: 'win_25',
+    name: '百戦錬磨',
+    description: '累計25回バトルに勝利する',
+    icon: '🛡️',
+    tier: 'hard',
+    rewardCardIds: ['revival', 'death_wish'],
+  },
+  {
+    id: 'gold_lifetime_2000',
+    name: '財が成る',
+    description: '累計でゴールドを2000以上獲得する',
+    icon: '💎',
+    tier: 'hard',
+    rewardCardIds: ['cliff_edge', 'revenge'],
+  },
+  {
+    id: 'dice_80',
+    name: '果てまで歩く',
+    description: 'サイコロを累計80回振る',
+    icon: '🎲',
+    tier: 'hard',
+    rewardCardIds: ['gyakkyou_sainou', 'last_word'],
+  },
+];
+
+export const ACHIEVEMENT_LOCKED_CARD_IDS = new Set(
+  ACHIEVEMENTS.flatMap((a) => [a.rewardCardIds[0], a.rewardCardIds[1]] as string[]),
+);
