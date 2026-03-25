@@ -89,7 +89,7 @@ const PlayerStatus = ({
             >
               {item ? (
                 item.imageUrl ? (
-                  <img className="item-slot-image" src={item.imageUrl} alt={item.name} />
+                  <img className="item-slot-image" src={item.imageUrl} alt={item.name} draggable={false} />
                 ) : (
                   <span className="item-emoji">{item.icon ?? '🧪'}</span>
                 )
@@ -111,9 +111,8 @@ const PlayerStatus = ({
             <div className="player-hp-row">
               <Tooltip tooltipKey="hp">
                 <span className={`hp ${hpClass}`}>
-                  <img src={ICONS.hp} alt="HP" className="status-icon" />
+                  <img src={ICONS.hp} alt="HP" className="status-icon" draggable={false} />
                   <span className="hp-value">
-                    {player.maxHp}/
                     <span
                       className={`hp-value-current${previewHp != null ? ' stat-value-preview stat-value-preview--hp' : ''}`}
                     >
@@ -130,7 +129,7 @@ const PlayerStatus = ({
                     showBlockImmunityPreview ? ' block--immunity-preview' : ''
                   }`}
                 >
-                  <img src={ICONS.block} alt="Block" className="status-icon" />
+                  <img src={ICONS.block} alt="Block" className="status-icon" draggable={false} />
                   <span
                     className={`block-value${
                       showBlockImmunityPreview

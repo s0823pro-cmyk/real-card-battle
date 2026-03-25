@@ -1,4 +1,4 @@
-import { getJobConfig } from '../data/jobs';
+import { getEffectiveMaxMental } from '../utils/mentalLimits';
 import type { Card, Enemy, PlayerState, ToolSlot } from '../types/game';
 import { applyDamageToEnemy, calculateEffectiveDamage, getDandoriBonus } from '../utils/damage';
 import { getHungryState } from '../utils/hungrySystem';
@@ -19,6 +19,48 @@ export interface CardResolveResult {
   /** multi_hit 時：各ヒットの敵IDと実ダメージ（演出用） */
   multiHitJabs?: { enemyId: string; damage: number }[];
 }
+
+export type ApplyOneToolSlotOptions = {
+  /**
+   * resolveCard がプレイ時に既に card.block を加算している場合は true。
+   * ターン開始時の applyToolEffects では false のまま（毎ターンの装備ブロックを加算）。
+   */
+  omitStaticCardBlock?: boolean;
+};
+
+/** 装備1枠分のターン開始時相当の効果（プレイ直後にも適用する） */
+export const applyOneToolSlotToPlayer = (
+  player: PlayerState,
+  tool: ToolSlot,
+  options?: ApplyOneToolSlotOptions,
+): PlayerState => {
+  const nextPlayer = { ...player };
+  const hungryState = getHungryState(nextPlayer);
+  if (tool.card.id === 'cardboard_house') {
+    if (nextPlayer.canBlock) {
+      const hasAwakeningEffect = tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened');
+      if (!hasAwakeningEffect) {
+        nextPlayer.block += hungryState === 'awakened' ? 8 : 3;
+      }
+    }
+    if (!tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened')) {
+      return nextPlayer;
+    }
+  }
+  if (!options?.omitStaticCardBlock && tool.card.block && nextPlayer.canBlock) {
+    nextPlayer.block += tool.card.block;
+  }
+  for (const effect of tool.card.effects ?? []) {
+    if (effect.type === 'block_per_turn' && nextPlayer.canBlock) {
+      nextPlayer.block += effect.value;
+    }
+    if (effect.type === 'block_per_turn_awakened' && nextPlayer.canBlock) {
+      const blockAmount = hungryState === 'awakened' ? effect.value : (effect.normalValue ?? effect.value);
+      nextPlayer.block += blockAmount;
+    }
+  }
+  return nextPlayer;
+};
 
 export const useBattleLogic = () => {
   const upsertEnemyStatus = (
@@ -65,37 +107,8 @@ export const useBattleLogic = () => {
     return [...toolSlots, { card }];
   };
 
-  const applyToolEffects = (toolSlots: ToolSlot[], player: PlayerState): PlayerState => {
-    const nextPlayer = { ...player };
-    const hungryState = getHungryState(nextPlayer);
-    for (const tool of toolSlots) {
-      if (tool.card.id === 'cardboard_house') {
-        if (nextPlayer.canBlock) {
-          // アップグレード済みはblock_per_turn_awakenedエフェクトで処理するためスキップ
-          const hasAwakeningEffect = tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened');
-          if (!hasAwakeningEffect) {
-            nextPlayer.block += hungryState === 'awakened' ? 8 : 3;
-          }
-        }
-        if (!tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened')) {
-          continue;
-        }
-      }
-      if (tool.card.block && nextPlayer.canBlock) {
-        nextPlayer.block += tool.card.block;
-      }
-      for (const effect of tool.card.effects ?? []) {
-        if (effect.type === 'block_per_turn' && nextPlayer.canBlock) {
-          nextPlayer.block += effect.value;
-        }
-        if (effect.type === 'block_per_turn_awakened' && nextPlayer.canBlock) {
-          const blockAmount = hungryState === 'awakened' ? effect.value : (effect.normalValue ?? effect.value);
-          nextPlayer.block += blockAmount;
-        }
-      }
-    }
-    return nextPlayer;
-  };
+  const applyToolEffects = (toolSlots: ToolSlot[], player: PlayerState): PlayerState =>
+    toolSlots.reduce((p, tool) => applyOneToolSlotToPlayer(p, tool), { ...player });
 
   const resolveCard = (
     card: Card,
@@ -227,7 +240,7 @@ export const useBattleLogic = () => {
         nextPlayer.nextTurnTimePenalty += effect.value;
       }
       if (effect.type === 'mental_boost') {
-        const cap = getJobConfig(nextPlayer.jobId).maxMental;
+        const cap = getEffectiveMaxMental(nextPlayer);
         nextPlayer.mental = Math.min(cap, nextPlayer.mental + effect.value);
       }
       if (effect.type === 'low_hp_damage_boost') {

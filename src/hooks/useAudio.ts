@@ -33,6 +33,8 @@ export type SeType =
   | 'shop_sell'
   | 'shop_buy'
   | 'upgrade'
+  /** HP 回復・メンタル回復など */
+  | 'heal'
   /** 敵のデバフ・メンタル攻撃（文句を言う等） */
   | 'enemy_debuff';
 export type BgmType =
@@ -59,6 +61,7 @@ const SE_FILES: Record<SeType, string> = {
   shop_sell: publicSoundUrl('se-shop-sell.mp3'),
   shop_buy: publicSoundUrl('se-shop-buy.mp3'),
   upgrade: publicSoundUrl('se-upgrade.mp3'),
+  heal: publicSoundUrl('se-heal.mp3'),
   enemy_debuff: publicSoundUrl('se-enemy-debuff.mp3'),
 };
 
@@ -90,6 +93,15 @@ const ALL_PRELOAD_SRC = [...new Set([...Object.values(SE_FILES), ...Object.value
 function readStoredFloat(key: string, fallback: number): number {
   const v = parseFloat(localStorage.getItem(key) ?? String(fallback));
   return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
+}
+
+/** フック外（useRunProgress 等）から SE を鳴らす。mute / volume は localStorage の現在値を参照 */
+export function playSeByType(type: SeType): void {
+  if (typeof localStorage !== 'undefined' && localStorage.getItem('seMuted') === 'true') return;
+  const vol = readStoredFloat('seVolume', 0.6);
+  const audio = new Audio(SE_FILES[type]);
+  audio.volume = vol;
+  void audio.play().catch(() => {});
 }
 
 export const useAudio = () => {

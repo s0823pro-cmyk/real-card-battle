@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { ShopItem } from '../../types/run';
+import type { Omamori, RunItem, ShopItem } from '../../types/run';
 import { FLOW_BG_SHOP } from '../../data/flowBackgrounds';
 import { getSellPrice } from '../../data/runData';
 import type { Card, JobId } from '../../types/game';
@@ -390,33 +390,44 @@ const ShopScreen = ({
             </div>
             <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               {confirmItem.type === 'card' ? (
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <CardComponent
-                    card={confirmItem.item as Card}
-                    jobId={jobId}
-                    selected={false}
-                    disabled={false}
-                    locked={false}
-                    isSelling={false}
-                    isReturning={false}
-                    isGhost={false}
-                    isDragging={false}
-                    isDragUnavailable={false}
-                    effectiveValues={getBaseEffectiveValues(confirmItem.item as Card)}
-                    onSelect={noop}
-                    onPointerDown={noop}
-                    onPointerMove={noop}
-                    onPointerUp={noop}
-                    onPointerCancel={noop}
-                    onMouseEnter={noop}
-                    onMouseLeave={noop}
-                    style={shopCardStyle}
-                  />
-                </div>
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <CardComponent
+                      card={confirmItem.item as Card}
+                      jobId={jobId}
+                      selected={false}
+                      disabled={false}
+                      locked={false}
+                      isSelling={false}
+                      isReturning={false}
+                      isGhost={false}
+                      isDragging={false}
+                      isDragUnavailable={false}
+                      effectiveValues={getBaseEffectiveValues(confirmItem.item as Card)}
+                      onSelect={noop}
+                      onPointerDown={noop}
+                      onPointerMove={noop}
+                      onPointerUp={noop}
+                      onPointerCancel={noop}
+                      onMouseEnter={noop}
+                      onMouseLeave={noop}
+                      style={shopCardStyle}
+                    />
+                  </div>
+                  <p className="shop-confirm-effect-desc">{(confirmItem.item as Card).description}</p>
+                </>
               ) : (
-                <p style={{ textAlign: 'center', fontSize: 14 }}>
-                  {renderIcon(confirmItem)} {renderName(confirmItem)}
-                </p>
+                <>
+                  <p style={{ textAlign: 'center', fontSize: 14 }}>
+                    {renderIcon(confirmItem)} {renderName(confirmItem)}
+                  </p>
+                  {confirmItem.type === 'omamori' && confirmItem.item && (
+                    <p className="shop-confirm-effect-desc">{(confirmItem.item as Omamori).description}</p>
+                  )}
+                  {confirmItem.type === 'item' && confirmItem.item && (
+                    <p className="shop-confirm-effect-desc">{(confirmItem.item as RunItem).description}</p>
+                  )}
+                </>
               )}
               <p style={{ textAlign: 'center', color: '#f0b429', fontWeight: 700 }}>
                 {confirmItem.price}G

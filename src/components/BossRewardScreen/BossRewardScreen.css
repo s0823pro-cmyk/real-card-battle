@@ -1,7 +1,8 @@
 .boss-reward-screen {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  /* マップ本体・モーダル（1100 帯）より必ず上（Slay系の報酬オーバーレイ想定） */
+  z-index: 20000;
   display: flex;
   flex-direction: column;
   align-items: center;

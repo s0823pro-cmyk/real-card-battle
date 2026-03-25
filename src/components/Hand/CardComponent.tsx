@@ -248,6 +248,7 @@ const CardComponent = ({
               className="card-bg-img"
               src={card.imageUrl}
               alt={card.name}
+              draggable={false}
               onError={() => setImageLoadFailed(true)}
             />
           ) : (

@@ -9,6 +9,11 @@ interface StoryScreenProps {
   showStartButton?: boolean;
   /** 開幕ストーリー（showStartButton=true）のストーリーBGM用。1〜3 を想定 */
   currentArea?: number;
+  /**
+   * ポストボス等で showStartButton=false でも BGM を鳴らすとき指定。
+   * エリア1ボス後ストーリー→2（bgm-story-area2）、エリア2ボス後→3（area3）など。
+   */
+  storyBgmArea?: number;
 }
 
 export const StoryScreen = ({
@@ -16,6 +21,7 @@ export const StoryScreen = ({
   onComplete,
   showStartButton = true,
   currentArea = 1,
+  storyBgmArea,
 }: StoryScreenProps) => {
   const { stopBgm, playBgm } = useAudioContext();
   const [sceneIndex, setSceneIndex] = useState(0);
@@ -30,8 +36,9 @@ export const StoryScreen = ({
   const currentLine = currentScene.lines[lineIndex] ?? '';
 
   useEffect(() => {
-    if (showStartButton) {
-      const area = Math.min(3, Math.max(1, currentArea));
+    const bgmArea = storyBgmArea ?? (showStartButton ? currentArea : undefined);
+    if (bgmArea != null) {
+      const area = Math.min(3, Math.max(1, bgmArea));
       if (area === 1) playBgm('story_area1');
       else if (area === 2) playBgm('story_area2');
       else playBgm('story_area3');
@@ -41,7 +48,7 @@ export const StoryScreen = ({
     }
     stopBgm();
     return undefined;
-  }, [showStartButton, currentArea, playBgm, stopBgm]);
+  }, [storyBgmArea, showStartButton, currentArea, playBgm, stopBgm]);
 
   const finishStory = useCallback(() => {
     stopBgm();

@@ -378,7 +378,9 @@ export const movePlayerBySteps = (
 
     passedTileIds.push(currentId);
     remaining -= 1;
-    if (map.get(currentId)?.type === 'area_boss') break;
+    const landed = map.get(currentId);
+    // エリート・エリアボスは Slay the Spire 同様、踏んだら出目に余りがあっても必ず停止
+    if (landed?.type === 'area_boss' || landed?.type === 'unique_boss') break;
   }
 
   return {

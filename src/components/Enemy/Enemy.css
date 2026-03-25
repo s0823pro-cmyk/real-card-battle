@@ -345,6 +345,20 @@
   animation: enemy-hp-preview-blink var(--enemy-preview-blink-duration, 0.6s) ease-in-out infinite;
 }
 
+.enemy-hp-num-single {
+  font-weight: 700;
+  color: #e6edf3;
+}
+
+.enemy-hp-num-single--block {
+  color: #60a5fa;
+}
+
+.enemy-hp-num-single--preview {
+  color: #e74c3c;
+  animation: enemy-hp-preview-blink var(--enemy-preview-blink-duration, 0.6s) ease-in-out infinite;
+}
+
 @keyframes enemy-hp-preview-blink {
   0%,
   100% {

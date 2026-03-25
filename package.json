@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "postinstall": "patch-package",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
@@ -11,14 +12,17 @@
     "cap:build": "npm run build && npx cap sync",
     "cap:ios": "npm run cap:build && npx cap open ios",
     "cap:android": "npm run cap:build && npx cap open android",
-    "android:clean-gradle": "powershell -ExecutionPolicy Bypass -File ./scripts/clean-android-gradle.ps1"
+    "android:clean-gradle": "powershell -ExecutionPolicy Bypass -File ./scripts/clean-android-gradle.ps1",
+    "compress:images": "node scripts/compress-images.cjs"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
     "@capacitor/android": "^8.2.0",
     "@capacitor/app": "^8.0.1",
     "@capacitor/browser": "^8.0.2",
     "@capacitor/core": "^8.2.0",
     "@capacitor/ios": "^8.2.0",
+    "@capacitor/screen-orientation": "^8.0.1",
     "@capacitor/status-bar": "^8.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
@@ -34,6 +38,8 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "patch-package": "^8.0.1",
+    "sharp": "^0.34.5",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.0"

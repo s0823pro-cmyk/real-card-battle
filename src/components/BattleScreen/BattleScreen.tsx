@@ -27,6 +27,8 @@ import {
 } from '../../utils/cardPreview';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
+import { getAdsRemoved } from '../../utils/adsRemoved';
+import { showInterstitialIfAllowed } from '../../utils/adMobClient';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
 import { isEnemyTargetCard } from '../../utils/cardTarget';
 import {
@@ -77,14 +79,13 @@ interface BattleScreenProps {
   onTurnStart?: (state: GameState) => void;
   onBattleFinished?: () => void;
   initialGameState?: GameState | null;
-  /** 1ラン1回のリワード広告使用済み */
-  rewardAdUsed?: boolean;
-  /** リワード使用時（HP回復後にラン状態を更新） */
-  onUseRewardAd?: () => void;
   /** 所持お守り（ヘッダー表示） */
   omamoris?: Omamori[];
   /** マップの現在エリア（背景切り替え） */
   currentArea?: number;
+  /** このランでまだ敗北復活を使っていなければ true（親の RunState） */
+  canOfferDefeatRevive?: boolean;
+  onDefeatReviveConsumed?: () => void;
 }
 
 const DRAG_CARD_HEIGHT = 168;
@@ -162,15 +163,16 @@ const BattleScreen = ({
   onTurnStart,
   onBattleFinished,
   initialGameState,
-  rewardAdUsed = false,
-  onUseRewardAd,
   omamoris,
   currentArea = 1,
+  canOfferDefeatRevive = false,
+  onDefeatReviveConsumed,
 }: BattleScreenProps) => {
   const noop = () => {};
   const {
     playSe,
     playBgm,
+    stopBgm,
     setBgmVolume,
     setSeVolume,
     toggleBgmMute,
@@ -222,8 +224,19 @@ const BattleScreen = ({
     endTurn,
     concedeBattle,
     retryBattle,
-    applyRewardAdHeal,
-  } = useGameState({ setup, onBattleEnd, onConsumeItem, onTurnStart, onBattleFinished, initialGameState });
+    giveUpDefeatOffer,
+    reviveAfterDefeatOffer,
+    showDefeatReviveModal,
+  } = useGameState({
+    setup,
+    onBattleEnd,
+    onConsumeItem,
+    onTurnStart,
+    onBattleFinished,
+    initialGameState,
+    canOfferDefeatRevive,
+    onDefeatReviveConsumed,
+  });
 
   const isBoss = useMemo(
     () => gameState.enemies.some((e) => BOSS_IDS.includes(e.templateId)),
@@ -271,9 +284,7 @@ const BattleScreen = ({
   const [showBattleGlossary, setShowBattleGlossary] = useState(false);
   /** タイムラインはゲージ型に固定 */
   const timelineGaugeStyle = 'bar' as const;
-  const [attackEffect, setAttackEffect] = useState<{ x: number; y: number } | null>(null);
   const [skillEffect, setSkillEffect] = useState(false);
-  const attackEffectTimerRef = useRef<number | null>(null);
   const skillEffectTimerRef = useRef<number | null>(null);
   const lastCardPlayTimeRef = useRef<number>(0);
   const CARD_PLAY_COOLDOWN = 600;
@@ -293,7 +304,6 @@ const BattleScreen = ({
 
   useEffect(
     () => () => {
-      if (attackEffectTimerRef.current !== null) window.clearTimeout(attackEffectTimerRef.current);
       if (skillEffectTimerRef.current !== null) window.clearTimeout(skillEffectTimerRef.current);
     },
     [],
@@ -471,34 +481,6 @@ const BattleScreen = ({
     if (nullFound) return nullFound;
     return { target: 'field' as const, index: null };
   };
-  const getEnemyEffectPosition = (enemyId: string | null): { x: number; y: number } => {
-    const node = enemyId
-      ? enemyAreaRef.current?.querySelector<HTMLElement>(`.enemy-card[data-enemy-id="${enemyId}"]`)
-      : null;
-    if (node) {
-      const rect = node.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    }
-    const enemyAreaRect = enemyAreaRef.current?.getBoundingClientRect();
-    if (enemyAreaRect) {
-      return {
-        x: enemyAreaRect.left + enemyAreaRect.width / 2,
-        y: enemyAreaRect.top + enemyAreaRect.height / 2,
-      };
-    }
-    return { x: window.innerWidth / 2, y: window.innerHeight * 0.35 };
-  };
-
-  const triggerAttackEffect = (enemyId: string | null) => {
-    const position = getEnemyEffectPosition(enemyId);
-    setAttackEffect(position);
-    if (attackEffectTimerRef.current !== null) window.clearTimeout(attackEffectTimerRef.current);
-    attackEffectTimerRef.current = window.setTimeout(() => {
-      setAttackEffect(null);
-      attackEffectTimerRef.current = null;
-    }, 500);
-  };
-
   const triggerSkillEffect = () => {
     setSkillEffect(true);
     if (skillEffectTimerRef.current !== null) window.clearTimeout(skillEffectTimerRef.current);
@@ -692,15 +674,13 @@ const BattleScreen = ({
           if (handDrag.card.type === 'attack') {
             const multiHitStaggerMs = 280;
             if (result.multiHitJabs && result.multiHitJabs.length > 0) {
-              result.multiHitJabs.forEach((jab, i) => {
+              result.multiHitJabs.forEach((_, i) => {
                 window.setTimeout(() => {
                   playSe('attack');
-                  triggerAttackEffect(jab.enemyId);
                 }, i * multiHitStaggerMs);
               });
             } else {
               playSe('attack');
-              triggerAttackEffect(preferred);
             }
           }
           if (result.blockGained > 0) playSe('block');
@@ -1095,30 +1075,6 @@ const BattleScreen = ({
           <span className="revival-text">🔄 七転び八起き！</span>
         </div>
       )}
-      {canOpenBattleSettings && !rewardAdUsed && (
-        <button
-          type="button"
-          className="battle-reward-ad-btn"
-          onClick={() => {
-            // Capacitor移行後に AdMob リワード広告を表示
-            const ok = applyRewardAdHeal();
-            if (ok) onUseRewardAd?.();
-          }}
-          aria-label="広告を見てHP回復"
-        >
-          📺 広告でHP回復
-        </button>
-      )}
-      {rewardAdUsed && (
-        <button
-          type="button"
-          className="battle-reward-ad-btn battle-reward-ad-btn--used"
-          disabled
-          aria-label="使用済み"
-        >
-          📺 使用済み
-        </button>
-      )}
       {/* お守りリスト */}
       {omamoris && omamoris.length > 0 && (
         <div className="battle-omamori-list">
@@ -1279,11 +1235,6 @@ const BattleScreen = ({
       <div className="effects-layer">
         <DamagePopup popups={battlePopups} />
         <ShieldEffect active={shieldEffect} />
-        {attackEffect && (
-          <div className="effect-attack" style={{ left: attackEffect.x, top: attackEffect.y }}>
-            <div className="effect-slash" />
-          </div>
-        )}
         {skillEffect && <div className="effect-skill" />}
       </div>
 
@@ -1336,11 +1287,39 @@ const BattleScreen = ({
       )}
       {gameState.phase === 'victory' && (
         <BattleVictoryOverlay
-          onRetry={retryBattle}
+          onContinue={noop}
           rewardGold={victoryRewardGold}
           totalGold={gameState.player.gold}
           mentalRecovery={victoryMentalRecovery}
         />
+      )}
+      {showDefeatReviveModal && (
+        <div className="defeat-revive-overlay" role="dialog" aria-modal="true">
+          <div className="defeat-revive-dialog">
+            <p className="defeat-revive-title">復活しますか？</p>
+            <p className="defeat-revive-desc">HPが最大の50%まで回復します（このランは1回のみ）</p>
+            <div className="defeat-revive-actions">
+              <button
+                type="button"
+                className="defeat-revive-btn defeat-revive-btn--primary"
+                onClick={() => {
+                  void (async () => {
+                    await showInterstitialIfAllowed(getAdsRemoved(), () => {
+                      stopBgm();
+                      playBgm(isBoss ? 'boss' : 'battle');
+                    });
+                    reviveAfterDefeatOffer();
+                  })();
+                }}
+              >
+                {getAdsRemoved() ? '広告なしで復活' : '広告を見て復活'}
+              </button>
+              <button type="button" className="defeat-revive-btn defeat-revive-btn--ghost" onClick={giveUpDefeatOffer}>
+                あきらめる
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {gameState.phase === 'defeat' && <BattleDefeatOverlay onRetry={retryBattle} />}
       {showPile && (

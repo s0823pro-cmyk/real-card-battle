@@ -25,7 +25,7 @@
   /* 足場アイコン＋数値だけ右へ（relative+left：フレックス上の他要素の位置は変えない） */
   --scaffold-sub-visual-right: calc(-1 * var(--player-sub-row-shift-x));
   /* ブロック・棟上げ・宮大工・足場：HP 行との縦のリズムを揃えるためのわずかな下方向オフセット */
-  --block-row-sub-nudge-y: 5px;
+  --block-row-sub-nudge-y: 1px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   border-left: none;
@@ -104,7 +104,7 @@
   margin-left: -2px;
 }
 
-/* HP「最大/現在」：右が現在HP（プレビュー時は予測の現在HP） */
+/* HP：現在値のみ（プレビュー時は予測の現在HP） */
 .hp-value-current {
   font-weight: 700;
 }

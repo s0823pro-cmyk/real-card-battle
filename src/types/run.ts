@@ -19,6 +19,7 @@ export type GameScreen =
   | 'map'
   | 'dice_rolling'
   | 'battle'
+  | 'battle_victory'
   | 'card_reward'
   | 'omamori_reward'
   | 'shrine'
@@ -201,4 +202,9 @@ export interface GameProgress {
   lastBattleNewAchievements: Achievement[];
   /** リワード広告を使用済みか（1ラン1回） */
   rewardAdUsed: boolean;
+  /** 敗北時の広告復活をこのランで既に使用したか（1ラン1回） */
+  defeatReviveUsedThisRun: boolean;
+  /** 直近の勝利バトル表示用（VICTORY 画面用・セーブ可） */
+  lastVictoryRewardGold: number;
+  lastVictoryMentalRecovery: number;
 }

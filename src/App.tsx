@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { useEffect, useRef, useState } from 'react';
 import type { Card, GameState, JobId } from './types/game';
 import type { BattleResult } from './types/run';
@@ -20,6 +22,7 @@ import {
   CardUpgradeScreen,
   OmamoriRewardScreen,
 } from './components/RunFlow/RewardScreens';
+import { BattleVictoryScreen } from './components/RunFlow/BattleVictoryScreen';
 import { useAudio, type BgmType } from './hooks/useAudio';
 import { AudioCtx } from './contexts/AudioContext';
 import { useRunProgress, loadSavedProgress, clearSavedProgress } from './hooks/useRunProgress';
@@ -39,12 +42,20 @@ import type { BattleSaveData } from './utils/battleSave';
 import './App.css';
 import './components/RunMap/RunMapScreen.css';
 import './components/RunFlow/RunFlow.css';
+import {
+  clearPendingDefeatInterstitial,
+  getAdsRemoved,
+  getPendingDefeatInterstitial,
+  isAdRemoved,
+  setPendingDefeatInterstitial,
+} from './utils/adsRemoved';
+import { ensureAdMobInitialized, showInterstitialIfAllowed } from './utils/adMobClient';
 
 type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 
 function App() {
   const audio = useAudio();
-  const { playBgm } = audio;
+  const { playBgm, stopBgm } = audio;
   const {
     state,
     pendingItemReplacement,
@@ -71,6 +82,8 @@ function App() {
     pickOmamoriReward,
     applyBossReward,
     advanceAfterAreaBoss,
+    proceedFromBattleVictory,
+    pendingArea3RunVictoryStoryRef,
     continueFromSave,
     startRunFromHome,
     openZukanFromHome,
@@ -81,8 +94,7 @@ function App() {
     startDevNavigation,
     startRunFromJobSelect,
     resetRun,
-    rewardAdUsed,
-    useRewardAd,
+    consumeDefeatRevive,
   } = useRunProgress();
   const [savedProgress, setSavedProgress] = useState(() => loadSavedProgress());
   const [battleSave, setBattleSave] = useState<BattleSaveData | null>(() => loadBattleState());
@@ -97,7 +109,6 @@ function App() {
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
   const [currentStoryScenes, setCurrentStoryScenes] = useState<StoryScene[] | null>(null);
   const pendingAreaTransitionRef = useRef<(() => void) | null>(null);
-  const bossRewardHandledByStoryRef = useRef(false);
   const [showBossReward, setShowBossReward] = useState(false);
   const [bossRewardArea, setBossRewardArea] = useState<number | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
@@ -116,6 +127,20 @@ function App() {
       document.body.style.overflow = 'hidden';
       document.documentElement.style.overflow = 'hidden';
     };
+  }, [state.currentScreen]);
+
+  /** 敗北でランセーブを消した直後に、ホーム用の続き判定 state をストレージと一致させる */
+  useEffect(() => {
+    if (state.currentScreen === 'game_over') {
+      setSavedProgress(loadSavedProgress());
+    }
+  }, [state.currentScreen]);
+
+  /** 敗北画面表示時点で未視聴フラグを立てる（アプリ終了で広告スキップされないように） */
+  useEffect(() => {
+    if (state.currentScreen === 'game_over' && !isAdRemoved()) {
+      setPendingDefeatInterstitial(true);
+    }
   }, [state.currentScreen]);
 
   /** マップ系画面のエリアBGM（子の unmount cleanup より後に確実に鳴らす。ストーリー表示中は鳴らさない） */
@@ -144,6 +169,16 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    void ensureAdMobInitialized();
+  }, []);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    void ScreenOrientation.lock({ orientation: 'portrait' }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const snap = { bgm: 'none' as BgmType };
     window.__stopBgm = () => {
       snap.bgm = audio.getCurrentBgm();
@@ -164,6 +199,66 @@ function App() {
     clearBattleState();
     clearSavedProgress();
     setSavedProgress(null);
+  };
+
+  const resumeMenuBgmAfterAd = () => {
+    stopBgm();
+    playBgm('menu');
+  };
+
+  const goHomeWithInterstitial = () => {
+    void (async () => {
+      await showInterstitialIfAllowed(getAdsRemoved(), resumeMenuBgmAfterAd);
+      clearAllSaveData();
+      runScreenTransition(resetRun, 350, 350);
+    })();
+  };
+
+  /** 敗北画面の「ホームに戻る」— 押下時にインタースティシャル（未完了時は次回スタートで回収） */
+  const defeatHomeWithInterstitial = () => {
+    void (async () => {
+      if (!isAdRemoved() && Capacitor.isNativePlatform()) {
+        setPendingDefeatInterstitial(true);
+      }
+      await showInterstitialIfAllowed(getAdsRemoved(), resumeMenuBgmAfterAd);
+      clearAllSaveData();
+      runScreenTransition(resetRun, 350, 350);
+    })();
+  };
+
+  /** 敗北画面の「もう一度挑戦」 */
+  const defeatRetryWithInterstitial = () => {
+    void (async () => {
+      if (!isAdRemoved() && Capacitor.isNativePlatform()) {
+        setPendingDefeatInterstitial(true);
+      }
+      await showInterstitialIfAllowed(getAdsRemoved(), resumeMenuBgmAfterAd);
+      runScreenTransition(() => {
+        clearAllSaveData();
+        resetRun();
+        startRunFromHome();
+      }, 350, 350);
+    })();
+  };
+
+  /** ホーム「ゲームスタート」— 保留中の敗北広告があれば先に表示 */
+  const handleStartFromHomeWithPendingAd = () => {
+    void (async () => {
+      if (isAdRemoved()) {
+        clearPendingDefeatInterstitial();
+        runScreenTransition(startRunFromHome, 1000, 1000);
+        return;
+      }
+      if (!Capacitor.isNativePlatform()) {
+        clearPendingDefeatInterstitial();
+        runScreenTransition(startRunFromHome, 1000, 1000);
+        return;
+      }
+      if (getPendingDefeatInterstitial()) {
+        await showInterstitialIfAllowed(getAdsRemoved(), resumeMenuBgmAfterAd);
+      }
+      runScreenTransition(startRunFromHome, 1000, 1000);
+    })();
   };
 
   const runScreenTransition = (action: () => void, fadeOutMs: number, fadeInMs: number) => {
@@ -232,29 +327,14 @@ function App() {
 
   const handleBattleResult = (result: BattleResult) => {
     setRestoredBattleState(null);
-    const isBossVictory = result.outcome === 'victory' && result.kind === 'boss';
-    const area = state.currentArea;
-
-    // エリア3ボス撃破時はストーリーを先に表示してからクリア画面へ
-    if (isBossVictory && state.jobId === 'carpenter' && area >= 3) {
-      onBattleEnd(result);
-      showAreaStory(3, () => {});
-      return;
-    }
-
-    // エリア1・2ボス撃破時はストーリー未見なら先にストーリーを表示してからカード報酬へ
-    if (isBossVictory && state.jobId === 'carpenter') {
-      const storyId = `carpenter_e${area}`;
-      if (!hasSeenStory(storyId)) {
-        showAreaStory(area as 1 | 2, () => {
-          onBattleEnd(result);
-          bossRewardHandledByStoryRef.current = true;
-        });
-        return;
+    onBattleEnd(result);
+    // ランクリア（onBattleEnd が実際に nextScreen: victory を積んだ）ときだけ e3 ストーリー。App の currentArea だけではエリア1・2ボス後に誤被せしうる
+    if (pendingArea3RunVictoryStoryRef.current) {
+      pendingArea3RunVictoryStoryRef.current = false;
+      if (state.jobId === 'carpenter') {
+        showAreaStory(3, () => {});
       }
     }
-
-    onBattleEnd(result);
   };
 
   const handlePickCardReward = (cardId: string | null) => {
@@ -266,10 +346,9 @@ function App() {
     }
     const hasOmamoriChoices = (state.omamoriRewardChoices?.length ?? 0) > 0;
     pickCardReward(cardId, { deferBossTransition: true });
-    if (!hasOmamoriChoices && !bossRewardHandledByStoryRef.current) {
+    if (!hasOmamoriChoices) {
       startPostAreaBossFlow(area);
     }
-    bossRewardHandledByStoryRef.current = false;
   };
 
   const handlePickOmamoriReward = (omamoriId: string) => {
@@ -280,17 +359,24 @@ function App() {
       return;
     }
     pickOmamoriReward(omamoriId, { deferBossTransition: true });
-    if (!bossRewardHandledByStoryRef.current) {
-      startPostAreaBossFlow(area);
-    }
-    bossRewardHandledByStoryRef.current = false;
+    startPostAreaBossFlow(area);
   };
 
   const handleBossRewardComplete = (reward: BossReward, selectedCard?: Card) => {
-    applyBossReward(reward.type, selectedCard);
+    const area = bossRewardArea;
+    const updatedPlayer = applyBossReward(reward.type, selectedCard);
     setShowBossReward(false);
     setBossRewardArea(null);
-    advanceAfterAreaBoss();
+    if (state.jobId === 'carpenter' && area !== null && area >= 1 && area <= 2) {
+      const storyId = `carpenter_e${area}`;
+      if (!hasSeenStory(storyId)) {
+        showAreaStory(area as 1 | 2, () => {
+          advanceAfterAreaBoss(updatedPlayer);
+        });
+        return;
+      }
+    }
+    advanceAfterAreaBoss(updatedPlayer);
   };
 
   const handleDevNavigate = (destination: DevDestination) => {
@@ -320,7 +406,7 @@ function App() {
       case 'title':
         return (
           <HomeScreen
-            onStart={() => runScreenTransition(startRunFromHome, 1000, 1000)}
+            onStart={handleStartFromHomeWithPendingAd}
             onOpenZukan={() => runScreenTransition(openZukanFromHome, 1000, 1000)}
             onContinue={(saved) => {
               clearAllSaveData();
@@ -358,9 +444,9 @@ function App() {
             onBattleFinished={() => clearBattleState()}
             initialGameState={restoredBattleState}
             omamoris={state.omamoris}
-            rewardAdUsed={rewardAdUsed}
-            onUseRewardAd={useRewardAd}
             currentArea={state.currentArea}
+            canOfferDefeatRevive={!state.defeatReviveUsedThisRun}
+            onDefeatReviveConsumed={consumeDefeatRevive}
           />
         );
       case 'event':
@@ -401,6 +487,16 @@ function App() {
             onPick={pickOmamoriReward}
           />
         );
+      case 'battle_victory':
+        return (
+          <BattleVictoryScreen
+            key={`bv-${state.lastVictoryRewardGold}-${state.lastVictoryMentalRecovery}-${state.totalTurns}`}
+            rewardGold={state.lastVictoryRewardGold}
+            mentalRecovery={state.lastVictoryMentalRecovery}
+            totalGold={state.player.gold}
+            onContinue={proceedFromBattleVictory}
+          />
+        );
       case 'card_reward':
         return (
           <CardRewardScreen
@@ -408,6 +504,7 @@ function App() {
             jobId={state.player.jobId}
             onPick={handlePickCardReward}
             onSkip={() => handlePickCardReward(null)}
+            adsRemoved={getAdsRemoved()}
           />
         );
       case 'omamori_reward':
@@ -436,10 +533,8 @@ function App() {
             turnCount={state.totalTurns}
             cardsAcquired={state.cardsAcquired}
             newAchievements={state.lastBattleNewAchievements}
-            onHome={() => {
-              clearAllSaveData();
-              runScreenTransition(resetRun, 350, 350);
-            }}
+            adsRemoved={getAdsRemoved()}
+            onHome={goHomeWithInterstitial}
           />
         );
       case 'game_over':
@@ -451,17 +546,8 @@ function App() {
             totalFloors={totalFloors}
             defeatedBy={state.lastDefeatedBy}
             newAchievements={state.lastBattleNewAchievements}
-            onHome={() => {
-              clearAllSaveData();
-              runScreenTransition(resetRun, 350, 350);
-            }}
-            onRetry={() =>
-              runScreenTransition(() => {
-                clearAllSaveData();
-                resetRun();
-                startRunFromHome();
-              }, 350, 350)
-            }
+            onHome={defeatHomeWithInterstitial}
+            onRetry={defeatRetryWithInterstitial}
           />
         );
       case 'map':
@@ -474,10 +560,7 @@ function App() {
             branchPreviews={branchPreviews}
             onRollDice={rollDiceAndMove}
             onSelectTile={chooseBranch}
-            onGiveUp={() => {
-              clearAllSaveData();
-              runScreenTransition(resetRun, 350, 350);
-            }}
+            onGiveUp={goHomeWithInterstitial}
           />
         );
     }
@@ -524,6 +607,9 @@ function App() {
           scenes={currentStoryScenes}
           onComplete={handleAreaStoryComplete}
           showStartButton={false}
+          storyBgmArea={
+            currentStoryId === 'carpenter_e1' ? 2 : currentStoryId === 'carpenter_e2' ? 3 : 3
+          }
         />
       )}
       {showBossReward && bossRewardArea !== null && (
@@ -558,6 +644,7 @@ function App() {
                 type="button"
                 className="btn-restore-abandon"
                 onClick={() => {
+                  if (!isAdRemoved()) setPendingDefeatInterstitial(true);
                   clearAllSaveData();
                   setBattleSave(null);
                   setShowBattleRestorePrompt(false);

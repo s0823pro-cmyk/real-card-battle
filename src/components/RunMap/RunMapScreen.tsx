@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import type { BranchPreview, GameProgress, TileType } from '../../types/run';
 import type { Card } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
-import { getJobConfig } from '../../data/jobs';
+import { getEffectiveMaxMental } from '../../utils/mentalLimits';
 import { getMapBackground } from '../../data/mapBackgrounds';
 import { TILE_LABELS } from '../../data/runData';
 import { useAudioContext } from '../../contexts/AudioContext';
@@ -207,7 +207,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
     return 'hp-high';
   };
 
-  const mentalMax = getJobConfig(progress.jobId).maxMental;
+  const mentalMax = getEffectiveMaxMental(progress.player);
 
   const getMentalClass = (): 'mental-high' | 'mental-mid' | 'mental-low' => {
     const ratio = progress.player.mental / Math.max(1, mentalMax);

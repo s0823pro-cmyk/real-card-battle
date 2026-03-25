@@ -1,5 +1,6 @@
 import type { Enemy, EnemyIntent, PlayerState } from '../../types/game';
 import { ICONS } from '../../assets/icons';
+import { stripEnemyIntentParenthetical } from '../../utils/enemyIntentDisplay';
 import { getEnemyAttackValue, getIncomingPhysicalAttackDisplayNumber } from '../../utils/damage';
 import Tooltip from '../Tooltip/Tooltip';
 
@@ -88,10 +89,6 @@ const getIntentValueText = (intent: EnemyIntent, enemy: Enemy): string => {
   return '休み';
 };
 
-/** 行動名から（効果説明）等のカッコ補足を除く（数値行は enemy-action-value に表示） */
-const stripParentheticalSupplements = (text: string): string =>
-  text.replace(/[（(][^）)]*[）)]/g, '').replace(/\s+/g, ' ').trim();
-
 /** 敵のデバフ付与行動：ホバー／タップで各デバフの説明（BattleScreen のプレイヤーデバフ表記と揃える） */
 const getDebuffIntentTooltip = (intent: EnemyIntent): { label: string; description: string } => {
   const turns = intent.value;
@@ -128,7 +125,7 @@ const getIntentLabelText = (intent: EnemyIntent): string => {
   } else {
     label = intent.description;
   }
-  return stripParentheticalSupplements(label);
+  return stripEnemyIntentParenthetical(label);
 };
 
 const EnemyIntentView = ({

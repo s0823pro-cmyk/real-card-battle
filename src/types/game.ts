@@ -7,7 +7,8 @@ export type GamePhase =
   | 'executing'
   | 'enemy_turn'
   | 'victory'
-  | 'defeat';
+  | 'defeat'
+  | 'defeat_offer_revive';
 
 export type EffectType =
   | 'scaffold'
@@ -180,6 +181,8 @@ export interface PlayerState {
   /** 次にプレイするブロック付きカードの block を乗算（1で無効）。ターン終了で1にリセット */
   nextCardBlockMultiplier: number;
   timeBonusPerTurn: number;
+  /** ボス報酬「最大メンタル+1」などで上乗せしたメンタル上限（getJobConfig.maxMental に加算） */
+  mentalMaxBonus?: number;
   nextCardDoubleEffect: boolean;
   /** 逆境の才能など：パワーで付与された全アタックダメージ加算 */
   attackDamageBonusAllAttacks: number;

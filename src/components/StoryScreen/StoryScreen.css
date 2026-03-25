@@ -1,7 +1,8 @@
 .story-screen {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  /* エリアクリア報酬（20000）の次に表示し、マップ UI（〜1100）より手前に出す */
+  z-index: 22000;
   cursor: pointer;
   user-select: none;
 }

@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ANXIETY_CARD, CURSE_CARD } from '../data/carpenterDeck';
 import { getJobConfig } from '../data/jobs';
 import { createRandomEncounter } from '../data/enemies';
-import { useBattleLogic } from './useBattleLogic';
+import { applyOneToolSlotToPlayer, useBattleLogic } from './useBattleLogic';
+import { clearBattleState } from '../utils/battleSave';
+import { clearSavedProgress } from './useRunProgress';
+import { getAdsRemoved, setPendingDefeatInterstitial } from '../utils/adsRemoved';
 import type { CardResolveResult } from './useBattleLogic';
 import { useEnemyAI } from './useEnemyAI';
 import type { Card, EnemyIntent, EnemyIntentType, GameState, JobId, PlayerState } from '../types/game';
@@ -19,6 +22,8 @@ import { shuffle } from '../utils/shuffle';
 import { isEnemyTargetCard } from '../utils/cardTarget';
 import { getEffectiveTimeCost } from '../utils/timeline';
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
+import { getEffectiveMaxMental } from '../utils/mentalLimits';
+import { applyDebugEnemyHp1ToEnemies } from '../utils/debugEnemyHp1';
 import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord';
 import {
   canPlaySelfDamageBadgeCard,
@@ -32,7 +37,6 @@ const MAX_RESERVED = 2;
 const RESERVE_TIME_PENALTY = 1.5;
 const DRAW_COUNT = 5;
 const SELL_ANIMATION_MS = 220;
-const REWARD_AD_HEAL_AMOUNT = 20;
 const INITIAL_MENTAL = 7;
 const CARPENTER_CAN_SELL_IN_BATTLE = false;
 const ENEMY_GOLD_REWARDS: Record<string, number> = {
@@ -134,8 +138,9 @@ export interface UseGameStateResult {
   endTurn: () => Promise<void>;
   concedeBattle: () => void;
   retryBattle: () => void;
-  /** リワード広告プレースホルダー：HPを最大20回復（バトル開始／プレイヤーターンのみ） */
-  applyRewardAdHeal: () => boolean;
+  giveUpDefeatOffer: () => void;
+  reviveAfterDefeatOffer: () => void;
+  showDefeatReviveModal: boolean;
 }
 
 interface UseGameStateOptions {
@@ -145,6 +150,9 @@ interface UseGameStateOptions {
   onTurnStart?: (state: GameState) => void;
   onBattleFinished?: () => void;
   initialGameState?: GameState | null;
+  /** このランでまだ敗北復活を使っていれば true（親の RunState と同期） */
+  canOfferDefeatRevive?: boolean;
+  onDefeatReviveConsumed?: () => void;
 }
 
 const getMaxTime = (mental: number, timeBonusPerTurn = 0): number =>
@@ -229,6 +237,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   timeBonusPerTurn: player.timeBonusPerTurn ?? 0,
   attackDamageBonusAllAttacks: player.attackDamageBonusAllAttacks ?? 0,
   fullSprintUsedCount: 0,
+  mentalMaxBonus: player.mentalMaxBonus ?? 0,
 });
 
 const createInitialGameState = (setup?: BattleSetup | null): GameState => {
@@ -318,7 +327,10 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
       cookingGauge: 0,
       statusEffects: [...basePlayer.statusEffects],
     }),
-    enemies: encounter.map((enemy) => ({ ...enemy, statusEffects: [...enemy.statusEffects] })),
+    // DEV ONLY — 確認後削除（debugEnemyHp1.ts）
+    enemies: applyDebugEnemyHp1ToEnemies(
+      encounter.map((enemy) => ({ ...enemy, statusEffects: [...enemy.statusEffects] })),
+    ),
     executingIndex: -1,
     toolSlots: [],
   };
@@ -337,8 +349,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const [returningCardId, setReturningCardId] = useState<string | null>(null);
   const [coinBursts, setCoinBursts] = useState<CoinBurst[]>([]);
   const [battlePopups, setBattlePopups] = useState<BattlePopup[]>([]);
-  const [battleMessage, setBattleMessage] = useState('戦闘開始！');
-  const [showStartBanner, setShowStartBanner] = useState(true);
+  const [battleMessage, setBattleMessage] = useState(() =>
+    options?.initialGameState?.phase === 'player_turn' ? 'カードを配置してターン終了' : '戦闘開始！',
+  );
+  const [showStartBanner, setShowStartBanner] = useState(() => !options?.initialGameState);
+  /** セーブから再開したときバトル開始演出をスキップ */
+  const skipBattleStartAnimationRef = useRef(!!options?.initialGameState);
   const [hitEnemyId, setHitEnemyId] = useState<string | null>(null);
   const [isPlayerHit, setIsPlayerHit] = useState(false);
   const [isMentalHit, setIsMentalHit] = useState(false);
@@ -369,6 +385,17 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   useEffect(() => {
     if (!options?.setup) return;
+    if (options?.initialGameState) {
+      setBattleItems(options.setup.items ?? []);
+      setBattleMessage(
+        options.initialGameState.phase === 'player_turn'
+          ? 'カードを配置してターン終了'
+          : '戦闘開始！',
+      );
+      setShowStartBanner(false);
+      return;
+    }
+    skipBattleStartAnimationRef.current = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setGameState(createInitialGameState(options.setup));
     setBattleItems(options.setup.items ?? []);
@@ -393,10 +420,21 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setShowRevivalEffect(false);
     setPendingHandUpgradeCount(0);
     prevHungryStateRef.current = 'normal';
-  }, [options?.setup]);
+  }, [options?.setup, options?.initialGameState]);
 
   useEffect(() => {
     if (gameState.phase !== 'battle_start') return;
+    if (skipBattleStartAnimationRef.current) {
+      skipBattleStartAnimationRef.current = false;
+      setGameState((prev) => {
+        const nextState = { ...prev, phase: 'player_turn' as const };
+        options?.onTurnStart?.(nextState);
+        return nextState;
+      });
+      setShowStartBanner(false);
+      setBattleMessage('カードを配置してターン終了');
+      return;
+    }
     const timer = window.setTimeout(() => {
       setGameState((prev) => {
         const nextState = { ...prev, phase: 'player_turn' as const };
@@ -529,6 +567,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   );
   const remainingTime = gameState.maxTime - gameState.usedTime;
   const canPlayCard = (card: Card): boolean => {
+    if (gameState.phase !== 'player_turn') return false;
     if (card.type === 'status' || card.type === 'curse') return false;
     if (card.tags?.includes('require_below_half_hp')) {
       if (gameState.player.currentHp > Math.floor(gameState.player.maxHp / 2)) return false;
@@ -711,7 +750,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const onKillGold = getOmamoriBonus(battleOmamoris, 'on_kill', 'gold');
     const onKillHealTotal = newlyDefeated.length * onKillHeal;
     const onKillGoldTotal = newlyDefeated.length * onKillGold;
-    const playerAfterKill: PlayerState =
+    let playerAfterKill: PlayerState =
       onKillHealTotal > 0 || onKillGoldTotal > 0
         ? {
             ...playerAfterCard,
@@ -722,6 +761,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             gold: playerAfterCard.gold + onKillGoldTotal,
           }
         : playerAfterCard;
+    if (result.equippedTool) {
+      const slot = { card: result.equippedTool };
+      const omitStatic: { omitStaticCardBlock?: boolean } = { omitStaticCardBlock: true };
+      playerAfterKill = applyOneToolSlotToPlayer(playerAfterKill, slot, omitStatic);
+      if (replayActive) {
+        playerAfterKill = applyOneToolSlotToPlayer(playerAfterKill, slot, omitStatic);
+      }
+    }
     const allEnemiesDead = result.enemies.every((enemy) => enemy.currentHp <= 0);
     const gainedDoubleNext = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'double_next')
@@ -897,6 +944,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (mentalTimeDelta > 0) {
       pushPopup(`🧠+${mentalTimeDelta.toFixed(1)}s`, 'player', 'buff');
     }
+    const playerHpIncreasedForHealSe = playerAfterKill.currentHp > gameState.player.currentHp;
+    const anyEnemyHpIncreasedForHealSe = result.enemies.some((e) => {
+      const before = enemiesBefore.find((item) => item.id === e.id);
+      return before !== undefined && e.currentHp > before.hp;
+    });
+    if (playerHpIncreasedForHealSe || anyEnemyHpIncreasedForHealSe) {
+      playSe('heal');
+    }
     if (result.isDandoriActive) {
       pushPopup('⚡段取り！', 'player', 'dandori');
     }
@@ -937,7 +992,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       window.setTimeout(() => {
         const reward = result.enemies.reduce((sum, enemy) => sum + getEnemyReward(enemy.templateId), 0);
         const nextMental = Math.min(
-          getJobConfig(playerAfterKill.jobId).maxMental,
+          getEffectiveMaxMental(playerAfterKill),
           playerAfterKill.mental + 1,
         );
         setVictoryRewardGold(reward);
@@ -1229,6 +1284,55 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     };
   };
 
+  const pendingDefeatRef = useRef<{ snapshot: GameState; defeatedBy: string } | null>(null);
+
+  const buildDefeatBattleResult = (snapshot: GameState, defeatedBy: string): BattleResult => ({
+    outcome: 'defeat',
+    player: clearBattleFlags(snapshot.player),
+    deck: [
+      ...snapshot.drawPile,
+      ...snapshot.discardPile,
+      ...snapshot.hand,
+      ...snapshot.reserved,
+      ...snapshot.exhaustedCards,
+      ...snapshot.activePowers,
+      ...snapshot.toolSlots.map((slot) => slot.card),
+    ],
+    items: battleItems,
+    defeatedEnemies: snapshot.enemies,
+    rewardGold: 0,
+    mentalRecovery: 0,
+    kind: options?.setup?.kind ?? 'battle',
+    battleTurns: snapshot.turn,
+    defeatedBy,
+  });
+
+  const giveUpDefeatOffer = () => {
+    const pending = pendingDefeatRef.current;
+    if (!pending) return;
+    pendingDefeatRef.current = null;
+    const { snapshot, defeatedBy } = pending;
+    setGameState({ ...snapshot, phase: 'defeat', player: clearBattleFlags(snapshot.player) });
+    setBattleMessage('敗北...');
+    options?.onBattleFinished?.();
+    options?.onBattleEnd?.(buildDefeatBattleResult(snapshot, defeatedBy));
+  };
+
+  const reviveAfterDefeatOffer = () => {
+    const pending = pendingDefeatRef.current;
+    if (!pending) return;
+    pendingDefeatRef.current = null;
+    options?.onDefeatReviveConsumed?.();
+    const hp = Math.max(1, Math.floor(pending.snapshot.player.maxHp * 0.5));
+    const cleared = clearBattleFlags(pending.snapshot.player);
+    const revivedPlayer = { ...cleared, currentHp: hp };
+    const mid: GameState = { ...pending.snapshot, player: revivedPlayer };
+    const nextState = moveToNextTurn(mid);
+    setGameState(nextState);
+    setBattleMessage('復活！');
+    options?.onTurnStart?.(nextState);
+  };
+
   async function endTurn(): Promise<void> {
     if (gameState.phase !== 'player_turn') return;
     if (activePendingHandUpgradeCount > 0) return;
@@ -1261,7 +1365,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (workingState.enemies.every((enemy) => enemy.currentHp <= 0)) {
       const reward = workingState.enemies.reduce((sum, enemy) => sum + getEnemyReward(enemy.templateId), 0);
       const nextMental = Math.min(
-        getJobConfig(workingState.player.jobId).maxMental,
+        getEffectiveMaxMental(workingState.player),
         workingState.player.mental + 1,
       );
       setVictoryRewardGold(reward);
@@ -1342,7 +1446,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       if (workingState.enemies.every((enemy) => enemy.currentHp <= 0)) {
         const reward = workingState.enemies.reduce((sum, enemy) => sum + getEnemyReward(enemy.templateId), 0);
         const nextMental = Math.min(
-          getJobConfig(workingState.player.jobId).maxMental,
+          getEffectiveMaxMental(workingState.player),
           workingState.player.mental + 1,
         );
         setVictoryRewardGold(reward);
@@ -1452,6 +1556,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         }
       }
       if (result.enemy.currentHp > enemy.currentHp) {
+        playSe('heal');
         pushPopup(`💚+${result.enemy.currentHp - enemy.currentHp}HP`, enemy.id, 'buff');
       }
       setBattleMessage(result.log);
@@ -1463,6 +1568,20 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     }
 
     if (workingState.player.currentHp <= 0) {
+      const defeatedByLabel = lastAttackerName || '敵';
+      if (options?.canOfferDefeatRevive) {
+        pendingDefeatRef.current = { snapshot: workingState, defeatedBy: defeatedByLabel };
+        clearBattleState();
+        clearSavedProgress();
+        if (!getAdsRemoved()) setPendingDefeatInterstitial(true);
+        setGameState({
+          ...workingState,
+          phase: 'defeat_offer_revive',
+          player: clearBattleFlags(workingState.player),
+        });
+        setBattleMessage('敗北...');
+        return;
+      }
       setGameState({
         ...workingState,
         phase: 'defeat',
@@ -1470,26 +1589,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       });
       setBattleMessage('敗北...');
       options?.onBattleFinished?.();
-      options?.onBattleEnd?.({
-        outcome: 'defeat',
-        player: clearBattleFlags(workingState.player),
-        deck: [
-          ...workingState.drawPile,
-          ...workingState.discardPile,
-          ...workingState.hand,
-          ...workingState.reserved,
-          ...workingState.exhaustedCards,
-          ...workingState.activePowers,
-          ...workingState.toolSlots.map((slot) => slot.card),
-        ],
-        items: battleItems,
-        defeatedEnemies: workingState.enemies,
-        rewardGold: 0,
-        mentalRecovery: 0,
-        kind: options?.setup?.kind ?? 'battle',
-        battleTurns: workingState.turn,
-        defeatedBy: lastAttackerName || '敵',
-      });
+      options?.onBattleEnd?.(buildDefeatBattleResult(workingState, defeatedByLabel));
       return;
     }
 
@@ -1510,29 +1610,23 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
     // burnダメージによる敗北判定
     if (next.player.currentHp <= 0) {
+      if (options?.canOfferDefeatRevive) {
+        pendingDefeatRef.current = { snapshot: next, defeatedBy: '火傷' };
+        clearBattleState();
+        clearSavedProgress();
+        if (!getAdsRemoved()) setPendingDefeatInterstitial(true);
+        setGameState({
+          ...next,
+          phase: 'defeat_offer_revive',
+          player: clearBattleFlags(next.player),
+        });
+        setBattleMessage('敗北...');
+        return;
+      }
       setGameState({ ...next, phase: 'defeat', player: clearBattleFlags(next.player) });
       setBattleMessage('敗北...');
       options?.onBattleFinished?.();
-      options?.onBattleEnd?.({
-        outcome: 'defeat',
-        player: clearBattleFlags(next.player),
-        deck: [
-          ...next.drawPile,
-          ...next.discardPile,
-          ...next.hand,
-          ...next.reserved,
-          ...next.exhaustedCards,
-          ...next.activePowers,
-          ...next.toolSlots.map((slot) => slot.card),
-        ],
-        items: battleItems,
-        defeatedEnemies: next.enemies,
-        rewardGold: 0,
-        mentalRecovery: 0,
-        kind: options?.setup?.kind ?? 'battle',
-        battleTurns: next.turn,
-        defeatedBy: '火傷',
-      });
+      options?.onBattleEnd?.(buildDefeatBattleResult(next, '火傷'));
       return;
     }
 
@@ -1571,30 +1665,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     pushPopupRef.current = pushPopup;
   });
 
-  const applyRewardAdHeal = (): boolean => {
-    let healed = 0;
-    setGameState((prev) => {
-      if (!['battle_start', 'player_turn'].includes(prev.phase)) return prev;
-      const { currentHp, maxHp } = prev.player;
-      if (currentHp >= maxHp) return prev;
-      const nextHp = Math.min(maxHp, currentHp + REWARD_AD_HEAL_AMOUNT);
-      healed = nextHp - currentHp;
-      return {
-        ...prev,
-        player: {
-          ...prev.player,
-          currentHp: nextHp,
-        },
-      };
-    });
-    if (healed > 0) {
-      pushPopup(`+${healed} HP`, 'player', 'buff');
-      return true;
-    }
-    return false;
-  };
-
   const retryBattle = (): void => {
+    pendingDefeatRef.current = null;
     setGameState(createInitialGameState(options?.setup));
     setSelectedCardId(null);
     setSellingCardId(null);
@@ -1697,6 +1769,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     endTurn,
     concedeBattle,
     retryBattle,
-    applyRewardAdHeal,
+    giveUpDefeatOffer,
+    reviveAfterDefeatOffer,
+    showDefeatReviveModal: gameState.phase === 'defeat_offer_revive',
   };
 };

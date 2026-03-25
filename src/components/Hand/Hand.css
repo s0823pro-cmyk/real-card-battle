@@ -444,9 +444,10 @@
 
 .card-sub-badges {
   position: absolute;
-  right: 4px;
+  right: 0;
   top: 50%;
-  transform: translateY(-50%);
+  /* 準備・温存・自傷：中央寄りを避け右寄せに近づける */
+  transform: translate(6px, -50%);
   display: flex;
   gap: 2px;
   align-items: center;

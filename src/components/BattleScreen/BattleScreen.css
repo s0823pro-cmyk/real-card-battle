@@ -17,7 +17,7 @@
   position: relative;
   overflow: hidden;
   background-color: #0d1117;
-  /* RunMap 等と同様、--sat より詰めて広告・設定行をステータスバー直下に寄せる */
+  /* RunMap 等と同様、--sat より詰めてヘッダー行をステータスバー直下に寄せる */
   --battle-header-top: max(0px, calc(var(--sat) - 56px));
 }
 
@@ -256,32 +256,10 @@
   color: var(--text-secondary);
 }
 
-.battle-reward-ad-btn {
-  position: absolute;
-  top: var(--battle-header-top);
-  left: 8px;
-  z-index: 30;
-  min-width: 80px;
-  height: 30px;
-  border-radius: 8px;
-  border: 1px solid rgba(46, 204, 113, 0.45);
-  background: rgba(46, 204, 113, 0.15);
-  color: #2ecc71;
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.battle-reward-ad-btn--used {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: #3d444d;
-}
-
 .battle-omamori-list {
   position: absolute;
   top: var(--battle-header-top);
-  left: 115px; /* 他はそのまま */
+  left: 8px;
   right: 55px;
   display: flex;
   justify-content: flex-start;
@@ -1361,4 +1339,70 @@
     opacity: 0;
     transform: translate(-50%, -60%) scale(1.05);
   }
+}
+
+.defeat-revive-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 11050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.72);
+  box-sizing: border-box;
+}
+
+.defeat-revive-dialog {
+  width: 100%;
+  max-width: 320px;
+  padding: 20px 18px;
+  border-radius: 14px;
+  background: linear-gradient(165deg, #1c2433 0%, #121820 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+.defeat-revive-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+  color: #f0f3f8;
+}
+
+.defeat-revive-desc {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+  color: rgba(230, 237, 247, 0.78);
+}
+
+.defeat-revive-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.defeat-revive-btn {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.defeat-revive-btn--primary {
+  background: linear-gradient(180deg, #c0392b 0%, #922b21 100%);
+  color: #fff;
+}
+
+.defeat-revive-btn--ghost {
+  background: transparent;
+  color: rgba(230, 237, 247, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }

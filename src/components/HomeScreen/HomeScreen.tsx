@@ -28,6 +28,11 @@ import {
   getUnlockedAchievementIds,
   unlockAllAchievements,
 } from '../../utils/achievementSystem';
+import { PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
+import {
+  DEBUG_ENEMY_HP1_STORAGE_KEY,
+  isDebugEnemyHp1Enabled,
+} from '../../utils/debugEnemyHp1';
 import type { AchievementTier } from '../../utils/achievementTypes';
 
 const TIER_LABEL: Record<AchievementTier, string> = {
@@ -281,10 +286,26 @@ const HomeScreen = ({
     unemployed: 0,
   });
   const [fallingIndex, setFallingIndex] = useState<number | null>(null);
+  // DEV ONLY — 確認後削除
+  const [debugEnemyHp1, setDebugEnemyHp1] = useState(() => isDebugEnemyHp1Enabled());
+  const toggleDebugEnemyHp1 = () => {
+    try {
+      if (window.localStorage.getItem(DEBUG_ENEMY_HP1_STORAGE_KEY) === 'true') {
+        window.localStorage.removeItem(DEBUG_ENEMY_HP1_STORAGE_KEY);
+        setDebugEnemyHp1(false);
+      } else {
+        window.localStorage.setItem(DEBUG_ENEMY_HP1_STORAGE_KEY, 'true');
+        setDebugEnemyHp1(true);
+      }
+    } catch {
+      // ignore
+    }
+  };
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const transitionTimeoutRef = useRef<number | null>(null);
   const resetTimeoutRef = useRef<number | null>(null);
   const activeFragmentsRef = useRef<HTMLDivElement[]>([]);
+
   const backgroundStyle: CSSProperties = {
     backgroundImage: `url(${homeBackgroundImage})`,
     backgroundSize: 'cover',
@@ -628,7 +649,9 @@ const HomeScreen = ({
                     '再度確認します。\n進行・図鑑・チュートリアルなどがすべて削除されます。本当に初期化しますか？',
                   );
                   if (!secondOk) return;
+                  /** 課金・広告削除（real-card-battle:ads-removed）は意図的に除外 */
                   const keysToDelete = [
+                    PENDING_DEFEAT_INTERSTITIAL_KEY,
                     'real-card-battle:save-data',
                     'jobless_battle_save',
                     'jobless_enemy_records',
@@ -706,6 +729,25 @@ const HomeScreen = ({
           onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/privacy.html', '_self')}
         >
           <span className="settings-btn-block-title">プライバシーポリシー</span>
+        </button>
+        <button
+          type="button"
+          className="settings-btn-block"
+          onClick={() =>
+            window.open(
+              'https://docs.google.com/forms/d/e/1FAIpQLSeRZ04gxmRYKpRsG43pYuoIsvrd-MAJrll7vknlL7c4v67cJg/viewform',
+              '_self',
+            )
+          }
+        >
+          <span className="settings-btn-block-title">🐛 バグ報告・ご意見</span>
+        </button>
+        {/* DEV ONLY — 確認後削除 */}
+        <button type="button" className="settings-btn-block" onClick={toggleDebugEnemyHp1}>
+          <span className="settings-btn-block-title">
+            {debugEnemyHp1 ? '🐛 全敵HP1：ON' : '🐛 全敵HP1：OFF'}
+          </span>
+          <span className="settings-btn-block-desc">🐛 全敵HP1（デバッグ）</span>
         </button>
       </div>
 

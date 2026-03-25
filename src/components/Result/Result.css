@@ -40,6 +40,11 @@
 }
 
 .result-overlay.victory {
+  /* マップの fixed オーバーレイ（z-index 1100 帯）より手前に描画しないとタップが奪われる */
+  z-index: 25000;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
   background:
     radial-gradient(circle at center, rgba(255, 215, 0, 0.2), rgba(8, 16, 28, 0.84) 60%),
     rgba(8, 16, 28, 0.82);
@@ -54,6 +59,29 @@
 .result-overlay.victory button {
   background: #2dbe6c;
   color: #effff5;
+}
+
+.result-overlay.victory.victory--tap-ready {
+  cursor: pointer;
+}
+
+.victory-tap-hint {
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  min-height: 1.5em;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.victory-tap-hint--ready {
+  visibility: visible;
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .result-overlay.defeat {

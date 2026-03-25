@@ -101,23 +101,18 @@ const EnemyDisplay = ({
                     src={enemy.block > 0 ? ICONS.block : ICONS.hp}
                     alt={enemy.block > 0 ? 'Block' : 'HP'}
                     className="status-icon"
+                    draggable={false}
                   />
-                  <span className="enemy-hp-num-left">{enemy.maxHp}</span>
-                  <span className="enemy-hp-sep">/</span>
                   <span
                     className={
                       isPreviewTarget
-                        ? 'enemy-hp-num-right enemy-hp-num-right--preview'
+                        ? 'enemy-hp-num-single enemy-hp-num-single--preview'
                         : enemy.block > 0
-                          ? 'enemy-hp-num-right enemy-hp-num-right--block'
-                          : 'enemy-hp-num-right'
+                          ? 'enemy-hp-num-single enemy-hp-num-single--block'
+                          : 'enemy-hp-num-single'
                     }
                   >
-                    {isPreviewTarget
-                      ? previewHp
-                      : enemy.block > 0
-                        ? enemy.currentHp + enemy.block
-                        : enemy.currentHp}
+                    {isPreviewTarget ? previewHp : enemy.currentHp}
                   </span>
                 </span>
               </div>
@@ -135,6 +130,7 @@ const EnemyDisplay = ({
                   src={enemy.imageUrl}
                   alt={enemy.name}
                   className="enemy-illustration-img"
+                  draggable={false}
                   onError={() => {
                     setFailedImageEnemyIds((prev) => {
                       const next = new Set(prev);

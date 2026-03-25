@@ -204,6 +204,11 @@
   box-sizing: border-box;
 }
 
+/* ネイティブの下部バナーとコンテンツが重ならないよう余白 */
+.card-reward-screen--with-banner {
+  padding-bottom: max(88px, calc(12px + env(safe-area-inset-bottom, 0px)));
+}
+
 /* 写真背景を広く見せる：半透明の全画面枠は使わず、見出し・カード・スキップだけを載せる */
 .card-reward-panel {
   display: flex;
@@ -571,6 +576,14 @@
   margin: 0;
   font-size: 14px;
   color: #e6edf3;
+}
+
+.shop-confirm-effect-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(230, 237, 247, 0.82);
+  text-align: center;
 }
 
 .shop-remove-close {

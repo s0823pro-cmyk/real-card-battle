@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
@@ -7,14 +8,13 @@ import type { EffectiveCardValues } from '../../utils/cardPreview';
 import CardComponent from '../Hand/CardComponent';
 import { upgradeCardByJobId } from '../../utils/cardUpgrade';
 import { FLOW_BG_CARD_REWARD, FLOW_BG_REST } from '../../data/flowBackgrounds';
+import { mountCardRewardBanner } from '../../utils/adMobClient';
 
 function useVictoryRewardBgm() {
   const { playBgm } = useAudioContext();
   useEffect(() => {
     playBgm('victory');
-    return () => {
-      playBgm('none');
-    };
+    // カード報酬→お守り等の遷移で fanfare を切らない（マップ等で別 BGM が上書きされる）
   }, [playBgm]);
 }
 
@@ -23,6 +23,8 @@ interface CardRewardProps {
   jobId: JobId;
   onPick: (cardId: string) => void;
   onSkip: () => void;
+  /** 広告削除購入済みのときはバナーを出さない */
+  adsRemoved: boolean;
 }
 
 const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
@@ -43,7 +45,7 @@ const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
   isAttackDamageWeakDebuffed: false,
 });
 
-export const CardRewardScreen = ({ cards, jobId, onPick, onSkip }: CardRewardProps) => {
+export const CardRewardScreen = ({ cards, jobId, onPick, onSkip, adsRemoved }: CardRewardProps) => {
   useVictoryRewardBgm();
   const noop = () => {};
   const rewardListRef = useRef<HTMLDivElement | null>(null);
@@ -75,13 +77,32 @@ export const CardRewardScreen = ({ cards, jobId, onPick, onSkip }: CardRewardPro
     };
   }, [cards.length]);
 
+  useEffect(() => {
+    let cancelled = false;
+    let remove: (() => Promise<void>) | undefined;
+    void (async () => {
+      remove = await mountCardRewardBanner(adsRemoved);
+      if (cancelled) await remove();
+    })();
+    return () => {
+      cancelled = true;
+      void remove?.();
+    };
+  }, [adsRemoved]);
+
   const cardRewardMainStyle = {
     '--flow-bg-image': `url(${FLOW_BG_CARD_REWARD})`,
     '--flow-bg-overlay': 'rgba(0, 0, 0, 0.22)',
   } as CSSProperties;
 
+  const bannerBottomClass =
+    !adsRemoved && Capacitor.isNativePlatform() ? ' card-reward-screen--with-banner' : '';
+
   return (
-    <main className="flow-screen card-reward-screen flow-screen--with-bg" style={cardRewardMainStyle}>
+    <main
+      className={`flow-screen card-reward-screen flow-screen--with-bg${bannerBottomClass}`}
+      style={cardRewardMainStyle}
+    >
       <section className="card-reward-panel">
         <h2 className="reward-heading">カードを1枚選んでください</h2>
         <div className="reward-card-list" ref={rewardListRef}>

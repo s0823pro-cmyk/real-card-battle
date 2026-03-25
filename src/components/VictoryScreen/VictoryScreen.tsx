@@ -1,5 +1,7 @@
+import { Capacitor } from '@capacitor/core';
 import { useEffect, useRef, useState } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { mountCardRewardBanner } from '../../utils/adMobClient';
 import type { JobId } from '../../types/game';
 import type { Achievement } from '../../utils/achievementSystem';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
@@ -11,6 +13,7 @@ interface VictoryScreenProps {
   turnCount: number;
   cardsAcquired: number;
   newAchievements?: Achievement[];
+  adsRemoved: boolean;
   onHome: () => void;
 }
 
@@ -20,6 +23,7 @@ export const VictoryScreen = ({
   turnCount,
   cardsAcquired,
   newAchievements = [],
+  adsRemoved,
   onHome,
 }: VictoryScreenProps) => {
   const [showStats, setShowStats] = useState(false);
@@ -91,11 +95,27 @@ export const VictoryScreen = ({
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    let remove: (() => Promise<void>) | undefined;
+    void (async () => {
+      remove = await mountCardRewardBanner(adsRemoved);
+      if (cancelled) await remove();
+    })();
+    return () => {
+      cancelled = true;
+      void remove?.();
+    };
+  }, [adsRemoved]);
+
+  const bannerBottomClass =
+    !adsRemoved && Capacitor.isNativePlatform() ? ' victory-screen--with-banner' : '';
+
   const jobName = { carpenter: '大工', cook: '料理人', unemployed: '無職' }[jobId] ?? jobId;
   const jobColor = { carpenter: '#c0392b', cook: '#f9ca24', unemployed: '#8b949e' }[jobId] ?? '#ffffff';
 
   return (
-    <div className="victory-screen">
+    <div className={`victory-screen${bannerBottomClass}`}>
       <div className="victory-bg" />
       <canvas ref={confettiRef} className="victory-confetti" />
       <div className="victory-content">
@@ -153,13 +173,6 @@ export const VictoryScreen = ({
                 </div>
               </button>
             ))}
-          </div>
-        )}
-
-        {/* 広告プレースホルダー: Capacitor移行後にAdMobのインタースティシャル広告を表示 */}
-        {showStats && (
-          <div className="ad-placeholder">
-            <p className="ad-placeholder-text">広告スペース</p>
           </div>
         )}
 

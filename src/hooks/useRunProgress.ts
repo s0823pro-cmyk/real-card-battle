@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useReducer, useRef } from 'react';
 import type { BossRewardType } from '../data/bossRewards';
 import { CARPENTER_STARTER_DECK, CURSE_CARD, RESERVE_BONUS_CARDS } from '../data/carpenterDeck';
 import { NEUTRAL_CARD_POOL } from '../data/cards/neutralCards';
@@ -41,6 +41,7 @@ import {
 import { createEncounterFromTemplateIds, createEncounterFromTemplates } from '../data/enemies';
 import type { Card, GameState, JobId, PlayerState } from '../types/game';
 import type {
+  BattleKind,
   BattleResult,
   BattleSetup,
   BoardTile,
@@ -60,6 +61,7 @@ import {
   movePlayerBySteps,
 } from '../utils/boardGenerator';
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
+import { getEffectiveMaxMental } from '../utils/mentalLimits';
 import { clearBattleState, saveBattleState } from '../utils/battleSave';
 import type { Achievement } from '../utils/achievementSystem';
 import {
@@ -71,6 +73,7 @@ import {
   recordShrineVisitForAchievements,
   recordShopCardBuyForAchievements,
 } from '../utils/achievementSystem';
+import { playSeByType } from './useAudio';
 
 /** 開発用: 拡張プールの全カード（各1枚分の定義） */
 const DEV_EXPANSION_CARD_POOLS_LIST: Card[] = [
@@ -111,6 +114,25 @@ const cloneExpansionCardsTwiceForDev = (): Card[] =>
   DEV_EXPANSION_CARD_POOLS_LIST.flatMap((card) => [cloneRewardCard(card), cloneRewardCard(card)]);
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+/** lastTileType が欠けているとき battleSetup から復元（ボス討伐後の遷移不具合対策） */
+function inferLastTileTypeFromSetup(setup: BattleSetup | null): TileType | null {
+  if (!setup) return null;
+  if (setup.kind === 'boss') return 'area_boss';
+  if (setup.kind === 'elite') return 'unique_boss';
+  return 'enemy';
+}
+
+/**
+ * バトル結果の kind は常に setup.kind と一致する想定だが、ラン状態の lastTileType / battleSetup が
+ * 欠落していると preservedLastTileType が null になり lastTileType が消える → エリート後に
+ * regenerate が通常枠になりレア報酬フローと不整合、またはタップ後の遷移が壊れる原因になる。
+ */
+function inferLastTileTypeFromBattleResultKind(kind: BattleKind): TileType {
+  if (kind === 'boss') return 'area_boss';
+  if (kind === 'elite') return 'unique_boss';
+  return 'enemy';
+}
 const UNLOCKED_CARD_NAMES_STORAGE_KEY = 'real-card-battle:unlocked-card-names';
 const SAVE_DATA_KEY = 'real-card-battle:save-data';
 const NON_RESUMABLE_SCREENS = [
@@ -120,11 +142,10 @@ const NON_RESUMABLE_SCREENS = [
   'job_select',
   'victory',
   'game_over',
-  'card_reward',
   'omamori_reward',
   'boss_reward',
 ];
-const NORMALIZE_TO_MAP = ['battle', 'card_reward', 'omamori_reward', 'boss_reward'];
+const NORMALIZE_TO_MAP = ['battle', 'omamori_reward', 'boss_reward', 'battle_victory'];
 export type DevDestination =
   | 'battle_normal'
   | 'battle_elite'
@@ -164,7 +185,17 @@ export const loadSavedProgress = (): GameProgress | null => {
     const raw = window.localStorage.getItem(SAVE_DATA_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SerializedProgress;
-    const normalizedScreen = NORMALIZE_TO_MAP.includes(parsed.currentScreen) ? 'map' : parsed.currentScreen;
+    let normalizedScreen: GameScreen = parsed.currentScreen;
+    const savedRewardCount = parsed.cardReward?.cards?.length ?? 0;
+    // 報酬カードがあるときはカード選択へ。空でも battle_victory / card_reward のまま返し continueFromSave で再生成
+    if (
+      (parsed.currentScreen === 'battle_victory' || parsed.currentScreen === 'card_reward') &&
+      savedRewardCount > 0
+    ) {
+      normalizedScreen = 'card_reward';
+    } else if (NORMALIZE_TO_MAP.includes(parsed.currentScreen)) {
+      normalizedScreen = 'map';
+    }
     const isInvalidProgress =
       !parsed.jobId ||
       !normalizedScreen ||
@@ -187,6 +218,9 @@ export const loadSavedProgress = (): GameProgress | null => {
       pendingItemReplacement: null,
       lastBattleNewAchievements: [],
       rewardAdUsed: parsed.rewardAdUsed ?? false,
+      defeatReviveUsedThisRun: parsed.defeatReviveUsedThisRun ?? false,
+      lastVictoryRewardGold: parsed.lastVictoryRewardGold ?? 0,
+      lastVictoryMentalRecovery: parsed.lastVictoryMentalRecovery ?? 0,
       // バトル中状態はリセット（マップ画面に戻す）
       battleSetup: null,
       currentScreen: normalizedScreen,
@@ -261,7 +295,28 @@ type Action =
   | { type: 'open_card_upgrade'; mode: 'upgrade' | 'remove'; returnScreen: Exclude<GameScreen, 'card_upgrade'> }
   | { type: 'close_card_upgrade' }
   | { type: 'set_last_battle_achievements'; achievements: Achievement[] }
-  | { type: 'set_reward_ad_used'; used: boolean };
+  | { type: 'set_reward_ad_used'; used: boolean }
+  | { type: 'set_defeat_revive_used'; used: boolean }
+  | { type: 'set_last_victory_rewards'; rewardGold: number; mentalRecovery: number }
+  /**
+   * バトル勝利後の更新を1回の reducer で適用する。
+   * 連続 dispatch だと React のバッチとは別に、中間状態を読む useEffect / stateRef との競合で
+   * cardReward が欠落したように見えることがある（エリート・ボス後の VICTORY で進めない原因）。
+   */
+  | {
+      type: 'apply_battle_win_bundle';
+      runStats: { totalTurns: number; lastDefeatedBy: string };
+      player: PlayerState;
+      deck: Card[];
+      items: RunItem[];
+      lastTileType: TileType;
+      achievements: Achievement[];
+      lastVictoryRewardGold: number;
+      lastVictoryMentalRecovery: number;
+      cardRewardCards: Card[] | null;
+      omamoriReward: { omamoris: Omamori[] | null; source: 'battle' | 'shrine' | null };
+      nextScreen: 'battle_victory' | 'victory';
+    };
 
 interface PickRewardOptions {
   deferBossTransition?: boolean;
@@ -309,6 +364,7 @@ const initialPlayer: PlayerState = {
   nextCardDoubleEffect: false,
   nextCardEffectBoost: 0,
   attackDamageBonusAllAttacks: 0,
+  mentalMaxBonus: 0,
 };
 
 const makeInitialProgress = (): GameProgress => {
@@ -348,6 +404,9 @@ const makeInitialProgress = (): GameProgress => {
     pendingItemReplacement: null,
     lastBattleNewAchievements: [],
     rewardAdUsed: false,
+    defeatReviveUsedThisRun: false,
+    lastVictoryRewardGold: 0,
+    lastVictoryMentalRecovery: 0,
   };
 };
 
@@ -434,11 +493,19 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
         ...state,
         cardReward: action.cards ? { cards: action.cards, canSkip: true } : null,
       };
-    case 'set_omamori_reward':
+    case 'set_omamori_reward': {
+      const hasChoices = Boolean(action.omamoris && action.omamoris.length > 0);
       return {
         ...state,
         omamoriRewardChoices: action.omamoris,
-        omamoriRewardSource: action.omamoris ? action.source : null,
+        omamoriRewardSource: hasChoices ? action.source : null,
+      };
+    }
+    case 'set_last_victory_rewards':
+      return {
+        ...state,
+        lastVictoryRewardGold: action.rewardGold,
+        lastVictoryMentalRecovery: action.mentalRecovery,
       };
     case 'set_battle_setup':
       return { ...state, battleSetup: action.setup, lastTileType: action.tileType };
@@ -499,6 +566,35 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       return { ...state, lastBattleNewAchievements: action.achievements };
     case 'set_reward_ad_used':
       return { ...state, rewardAdUsed: action.used };
+    case 'set_defeat_revive_used':
+      return { ...state, defeatReviveUsedThisRun: action.used };
+    case 'apply_battle_win_bundle': {
+      const a = action;
+      const gained = Math.max(0, a.deck.length - state.deck.length);
+      const hasOmamori = Boolean(a.omamoriReward.omamoris && a.omamoriReward.omamoris.length > 0);
+      return {
+        ...state,
+        totalTurns: a.runStats.totalTurns,
+        lastDefeatedBy: a.runStats.lastDefeatedBy,
+        player: a.player,
+        deck: a.deck,
+        unlockedCardNames: new Set([...state.unlockedCardNames, ...a.deck.map((card) => card.name)]),
+        cardsAcquired: state.cardsAcquired + gained,
+        items: a.items,
+        battleSetup: null,
+        lastTileType: a.lastTileType,
+        lastBattleNewAchievements: a.achievements,
+        lastVictoryRewardGold: a.lastVictoryRewardGold,
+        lastVictoryMentalRecovery: a.lastVictoryMentalRecovery,
+        cardReward:
+          a.cardRewardCards && a.cardRewardCards.length > 0
+            ? { cards: a.cardRewardCards, canSkip: true }
+            : null,
+        omamoriRewardChoices: a.omamoriReward.omamoris,
+        omamoriRewardSource: hasOmamori ? a.omamoriReward.source : null,
+        currentScreen: a.nextScreen,
+      };
+    }
     default:
       return state;
   }
@@ -516,14 +612,38 @@ const applyCardGain = (deck: Card[], jobId: JobId, count = 1): Card[] => {
 
 const getRemoveCost = (removeCount: number): number => 50 + removeCount * 25;
 
+/** バトル終了時と同じルールで報酬カードを再生成（unique_boss / area_boss はレア枠） */
+const regenerateCardRewardChoices = (jobId: JobId, lastTileType: TileType | null): Card[] => {
+  const useRare = lastTileType === 'area_boss' || lastTileType === 'unique_boss';
+  return useRare ? generateRareCardRewardChoices(jobId, 3) : generateCardRewardChoices(jobId, 3);
+};
+
 const advanceAfterAreaBossCore = (
   dispatchFn: (action: Action) => void,
   currentArea: number,
+  player: PlayerState,
+  jobId: JobId,
 ) => {
   if (currentArea >= 3) {
     dispatchFn({ type: 'set_screen', screen: 'victory' });
     return;
   }
+  playSeByType('heal');
+  const jc = getJobConfig(jobId);
+  const effectiveMaxMental = getEffectiveMaxMental(player);
+  const mentalAfterAreaClear = Math.min(
+    effectiveMaxMental,
+    jc.initialMental + (player.mentalMaxBonus ?? 0),
+  );
+  dispatchFn({
+    type: 'set_player',
+    player: {
+      ...player,
+      currentHp: player.maxHp,
+      /** ボス報酬のメンタル上限+1 等を反映（例：大工 7/9 → +1 上限後はエリア開始 8/10） */
+      mental: mentalAfterAreaClear,
+    },
+  });
   dispatchFn({ type: 'set_current_area', area: currentArea + 1 });
   dispatchFn({ type: 'set_board', board: updateBoardPosition(generateBoard(), 1) });
   dispatchFn({ type: 'set_current_tile', tileId: 1 });
@@ -547,7 +667,7 @@ const applySingleEffect = (
       next.player.gold = Math.max(0, next.player.gold + effect.value);
       break;
     case 'mental': {
-      const cap = getJobConfig(state.jobId).maxMental;
+      const cap = getEffectiveMaxMental(next.player);
       next.player.mental = Math.max(0, Math.min(cap, next.player.mental + effect.value));
       break;
     }
@@ -577,8 +697,24 @@ const applySingleEffect = (
 export const useRunProgress = () => {
   const [state, dispatch] = useReducer(reducer, undefined, makeInitialProgress);
   const stateRef = useRef(state);
+  /**
+   * apply_battle_win_bundle 直後でも stateRef / reducer と競合して cardReward が一瞬空に見えることがある。
+   * エリート・エリアボス後の VICTORY で進めない対策として、生成した報酬3枚を退避する。
+   */
+  const lastBattleVictoryCardChoicesRef = useRef<Card[] | null>(null);
+  /** 同一フレーム内の proceed 二重発火のみ抑止（時間デバウンスは前戦の値が残り雑魚戦で進めなくなるため使わない） */
+  const victoryProceedScheduledRef = useRef(false);
+  /** onBattleEnd 直後に stateRef が未更新の瞬間でも proceedFromBattleVictory の再生成に使う */
+  const lastBattleResultKindRef = useRef<BattleKind | null>(null);
+  /**
+   * エリア3最終ボス撃破でランクリア（currentScreen: victory）に入った直後のみ true。
+   * App.tsx で showAreaStory(3) を出す判定に使う。state.currentArea >= 3 だけだと
+   * エリア1・2のエリアボス後に誤ってストーリーが被り、VICTORY タップが奪われることがある。
+   */
+  const pendingArea3RunVictoryStoryRef = useRef(false);
   const prevScreenRef = useRef(state.currentScreen);
-  useEffect(() => {
+  /** ペイント前に同期しないと、VICTORY 直後のタップで cardReward が未反映の stateRef を読み進めないことがある */
+  useLayoutEffect(() => {
     stateRef.current = state;
   }, [state]);
 
@@ -853,6 +989,11 @@ export const useRunProgress = () => {
           ? ({ type: 'heal', value: 30 } as const)
           : ({ type: 'damage', value: 20 } as const);
       nextState = applySingleEffect(nextState, effect);
+      if (effect.type === 'heal') {
+        playSeByType('heal');
+      } else if (effect.type === 'damage' && effect.value > 0) {
+        playSeByType('damage');
+      }
       dispatch({ type: 'set_player', player: nextState.player });
       dispatch({ type: 'set_deck', deck: nextState.deck });
       dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
@@ -869,7 +1010,12 @@ export const useRunProgress = () => {
       return;
     }
 
+    const effectIsHealOrPositiveMental = (e: { type: string; value: number }): boolean =>
+      e.type === 'heal' || (e.type === 'mental' && e.value > 0);
+
     let nextState = stateRef.current;
+    let shouldPlayHealSe = false;
+    let shouldPlayDamageSe = false;
     for (const effect of event.choices[choiceIndex]?.effects ?? []) {
       if (event.id === 'vending_machine' && effect.type === 'gold' && effect.value === -10) {
         // -10G消費を先に適用してからランダム効果を付与
@@ -881,11 +1027,18 @@ export const useRunProgress = () => {
           { type: 'mental', value: 1 },
           { type: 'mental', value: -1 },
         ] as const;
-        nextState = applySingleEffect(nextState, randomSet[Math.floor(Math.random() * randomSet.length)]);
+        const randomEffect = randomSet[Math.floor(Math.random() * randomSet.length)];
+        nextState = applySingleEffect(nextState, randomEffect);
+        if (effectIsHealOrPositiveMental(randomEffect)) shouldPlayHealSe = true;
+        if (randomEffect.type === 'damage' && randomEffect.value > 0) shouldPlayDamageSe = true;
       } else {
+        if (effectIsHealOrPositiveMental(effect)) shouldPlayHealSe = true;
+        if (effect.type === 'damage' && effect.value > 0) shouldPlayDamageSe = true;
         nextState = applySingleEffect(nextState, effect);
       }
     }
+    if (shouldPlayHealSe) playSeByType('heal');
+    if (shouldPlayDamageSe) playSeByType('damage');
     dispatch({ type: 'set_player', player: nextState.player });
     dispatch({ type: 'set_deck', deck: nextState.deck });
     dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
@@ -903,6 +1056,7 @@ export const useRunProgress = () => {
   };
 
   const hotelHeal = () => {
+    playSeByType('heal');
     const bonus = stateRef.current.omamoris.find((item) => item.effect.stat === 'rest_heal')?.effect.value ?? 0;
     const healAmount = Math.floor(stateRef.current.player.maxHp * 0.3) + bonus;
     dispatch({
@@ -916,12 +1070,13 @@ export const useRunProgress = () => {
   };
 
   const hotelMeditate = () => {
+    playSeByType('heal');
     dispatch({
       type: 'set_player',
       player: {
         ...stateRef.current.player,
         mental: Math.min(
-          getJobConfig(stateRef.current.jobId).maxMental,
+          getEffectiveMaxMental(stateRef.current.player),
           stateRef.current.player.mental + 2,
         ),
       },
@@ -1139,27 +1294,40 @@ export const useRunProgress = () => {
     nextCardEffectBoost: 0,
     attackDamageBonusAllAttacks: 0,
     fullSprintUsedCount: 0,
+    mentalMaxBonus: player.mentalMaxBonus ?? 0,
   });
 
   const onBattleEnd = (result: BattleResult) => {
+    lastBattleVictoryCardChoicesRef.current = null;
+    victoryProceedScheduledRef.current = false;
+    lastBattleResultKindRef.current = result.kind;
+    pendingArea3RunVictoryStoryRef.current = false;
     clearBattleState();
+    // 敗北確定時点でランセーブを消す（game_over では save がスキップされ、直前の battle 等が残ると再起動後に「続きから」になる）
+    if (result.outcome === 'defeat') {
+      clearSavedProgress();
+    }
     const battleArea = stateRef.current.currentArea;
     recordBattleEndForAchievements(result);
     const newAchievements = evaluateAchievementsAfterBattle(result, battleArea);
     const cleanedDeck = result.deck.filter(
       (card) => card.type !== 'status' && card.type !== 'curse',
     );
-    dispatch({
-      type: 'set_run_stats',
-      totalTurns: stateRef.current.totalTurns + (result.battleTurns ?? 0),
-      lastDefeatedBy: result.defeatedBy ?? stateRef.current.lastDefeatedBy,
-    });
-    dispatch({ type: 'set_player', player: sanitizePlayerAfterBattle(result.player) });
-    dispatch({ type: 'set_deck', deck: cleanedDeck });
-    dispatch({ type: 'set_items', items: result.items });
-    dispatch({ type: 'set_battle_setup', setup: null, tileType: stateRef.current.lastTileType });
+    const preservedLastTileType =
+      stateRef.current.lastTileType ??
+      inferLastTileTypeFromSetup(stateRef.current.battleSetup) ??
+      inferLastTileTypeFromBattleResultKind(result.kind);
 
     if (result.outcome === 'defeat') {
+      dispatch({
+        type: 'set_run_stats',
+        totalTurns: stateRef.current.totalTurns + (result.battleTurns ?? 0),
+        lastDefeatedBy: result.defeatedBy ?? stateRef.current.lastDefeatedBy,
+      });
+      dispatch({ type: 'set_player', player: sanitizePlayerAfterBattle(result.player) });
+      dispatch({ type: 'set_deck', deck: cleanedDeck });
+      dispatch({ type: 'set_items', items: result.items });
+      dispatch({ type: 'set_battle_setup', setup: null, tileType: preservedLastTileType });
       dispatch({
         type: 'set_screen_with_achievements',
         screen: 'game_over',
@@ -1168,40 +1336,68 @@ export const useRunProgress = () => {
       return;
     }
 
-    dispatch({ type: 'set_last_battle_achievements', achievements: newAchievements });
+    const sanitizedPlayer = sanitizePlayerAfterBattle(result.player);
+    const runStatsBase = {
+      totalTurns: stateRef.current.totalTurns + (result.battleTurns ?? 0),
+      lastDefeatedBy: result.defeatedBy ?? stateRef.current.lastDefeatedBy,
+    };
 
-    // エリア3ボス撃破時は報酬なしで直接クリア画面へ
-    if (
-      result.kind === 'boss' &&
-      stateRef.current.lastTileType === 'area_boss' &&
-      stateRef.current.currentArea >= 3
-    ) {
-      dispatch({ type: 'set_screen', screen: 'victory' });
+    // エリア3最終ボス: stateRef は未更新のことがあるため preservedLastTileType を使う（stateRef.lastTileType では誤判定しうる）
+    if (result.kind === 'boss' && preservedLastTileType === 'area_boss' && battleArea >= 3) {
+      pendingArea3RunVictoryStoryRef.current = true;
+      dispatch({
+        type: 'apply_battle_win_bundle',
+        runStats: runStatsBase,
+        player: sanitizedPlayer,
+        deck: cleanedDeck,
+        items: result.items,
+        lastTileType: preservedLastTileType,
+        achievements: newAchievements,
+        lastVictoryRewardGold: result.rewardGold,
+        lastVictoryMentalRecovery: result.mentalRecovery,
+        cardRewardCards: null,
+        omamoriReward: { omamoris: null, source: null },
+        nextScreen: 'victory',
+      });
       return;
     }
 
-    const isBossBattle = result.kind === 'boss';
+    const useRareCards = result.kind === 'boss' || result.kind === 'elite';
+    const cardRewardCards = useRareCards
+      ? generateRareCardRewardChoices(stateRef.current.jobId, 3)
+      : generateCardRewardChoices(stateRef.current.jobId, 3);
+    const omamoriReward =
+      result.kind === 'elite' || result.kind === 'boss'
+        ? { omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'battle' as const }
+        : { omamoris: null, source: null };
+
+    lastBattleVictoryCardChoicesRef.current =
+      cardRewardCards.length > 0 ? cardRewardCards : null;
+
     dispatch({
-      type: 'set_card_reward',
-      cards: isBossBattle
-        ? generateRareCardRewardChoices(stateRef.current.jobId, 3)
-        : generateCardRewardChoices(stateRef.current.jobId, 3),
+      type: 'apply_battle_win_bundle',
+      runStats: runStatsBase,
+      player: sanitizedPlayer,
+      deck: cleanedDeck,
+      items: result.items,
+      lastTileType: preservedLastTileType,
+      achievements: newAchievements,
+      lastVictoryRewardGold: result.rewardGold,
+      lastVictoryMentalRecovery: result.mentalRecovery,
+      cardRewardCards,
+      omamoriReward,
+      nextScreen: 'battle_victory',
     });
-    if (result.kind === 'elite' || result.kind === 'boss') {
-      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'battle' });
-    } else {
-      dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
-    }
-    dispatch({ type: 'set_screen', screen: 'card_reward' });
   };
 
   const pickCardReward = (cardId: string | null, options?: PickRewardOptions) => {
+    const pendingOmamori = stateRef.current.omamoriRewardChoices;
     if (cardId) {
       const card = stateRef.current.cardReward?.cards.find((item) => item.id === cardId);
       if (card) dispatch({ type: 'set_deck', deck: [...stateRef.current.deck, card] });
     }
     dispatch({ type: 'set_card_reward', cards: null });
-    if (stateRef.current.omamoriRewardChoices?.length) {
+    if (pendingOmamori && pendingOmamori.length > 0) {
       dispatch({ type: 'set_screen', screen: 'omamori_reward' });
       return;
     }
@@ -1210,7 +1406,12 @@ export const useRunProgress = () => {
         dispatch({ type: 'set_screen', screen: 'map' });
         return;
       }
-      advanceAfterAreaBossCore(dispatch, stateRef.current.currentArea);
+      advanceAfterAreaBossCore(
+        dispatch,
+        stateRef.current.currentArea,
+        stateRef.current.player,
+        stateRef.current.jobId,
+      );
       return;
     }
     dispatch({ type: 'set_screen', screen: 'map' });
@@ -1218,49 +1419,100 @@ export const useRunProgress = () => {
 
   const pickOmamoriReward = (omamoriId: string, options?: PickRewardOptions) => {
     const omamori = stateRef.current.omamoriRewardChoices?.find((item) => item.id === omamoriId);
-    if (omamori) dispatch({ type: 'set_omamoris', omamoris: [...stateRef.current.omamoris, omamori] });
     const source = stateRef.current.omamoriRewardSource;
+    const lastTile = stateRef.current.lastTileType;
+    if (omamori) dispatch({ type: 'set_omamoris', omamoris: [...stateRef.current.omamoris, omamori] });
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
-    if (source === 'battle' && stateRef.current.lastTileType === 'area_boss') {
+    if (source === 'battle' && lastTile === 'area_boss') {
       if (options?.deferBossTransition) {
         dispatch({ type: 'set_screen', screen: 'map' });
         return;
       }
-      advanceAfterAreaBossCore(dispatch, stateRef.current.currentArea);
+      advanceAfterAreaBossCore(
+        dispatch,
+        stateRef.current.currentArea,
+        stateRef.current.player,
+        stateRef.current.jobId,
+      );
       return;
     }
     dispatch({ type: 'set_screen', screen: 'map' });
   };
 
-  const applyBossReward = (rewardType: BossRewardType, selectedCard?: Card) => {
+  const applyBossReward = (rewardType: BossRewardType, selectedCard?: Card): PlayerState => {
+    const p = stateRef.current.player;
     if (rewardType === 'max_hp_up') {
-      dispatch({
-        type: 'set_player',
-        player: {
-          ...stateRef.current.player,
-          maxHp: stateRef.current.player.maxHp + 10,
-          currentHp: stateRef.current.player.currentHp + 10,
-        },
-      });
-      return;
+      playSeByType('heal');
+      const next: PlayerState = {
+        ...p,
+        maxHp: p.maxHp + 10,
+        currentHp: p.currentHp + 10,
+      };
+      dispatch({ type: 'set_player', player: next });
+      return next;
     }
-    if (rewardType === 'time_up') {
-      dispatch({
-        type: 'set_player',
-        player: {
-          ...stateRef.current.player,
-          timeBonusPerTurn: stateRef.current.player.timeBonusPerTurn + 1,
-        },
-      });
-      return;
+    if (rewardType === 'mental_max_up') {
+      playSeByType('heal');
+      const next: PlayerState = {
+        ...p,
+        mentalMaxBonus: (p.mentalMaxBonus ?? 0) + 1,
+      };
+      dispatch({ type: 'set_player', player: next });
+      return next;
     }
     if (rewardType === 'rare_card' && selectedCard) {
       dispatch({ type: 'set_deck', deck: [...stateRef.current.deck, selectedCard] });
+      return p;
+    }
+    return p;
+  };
+
+  const advanceAfterAreaBoss = (playerOverride?: PlayerState) => {
+    advanceAfterAreaBossCore(
+      dispatch,
+      stateRef.current.currentArea,
+      playerOverride ?? stateRef.current.player,
+      stateRef.current.jobId,
+    );
+  };
+
+  const proceedFromBattleVictory = () => {
+    if (victoryProceedScheduledRef.current) return;
+    victoryProceedScheduledRef.current = true;
+    try {
+      const jobId = stateRef.current.jobId;
+      let cards = stateRef.current.cardReward?.cards;
+      if (!cards || cards.length === 0) {
+        cards = lastBattleVictoryCardChoicesRef.current ?? [];
+      }
+      if (cards.length > 0) {
+        lastBattleVictoryCardChoicesRef.current = null;
+        if (!stateRef.current.cardReward?.cards?.length) {
+          dispatch({ type: 'set_card_reward', cards });
+        }
+        dispatch({ type: 'set_screen', screen: 'card_reward' });
+        return;
+      }
+      const tileForRegen =
+        stateRef.current.lastTileType ??
+        inferLastTileTypeFromBattleResultKind(lastBattleResultKindRef.current ?? 'battle');
+      const regen = regenerateCardRewardChoices(jobId, tileForRegen);
+      if (regen.length > 0) {
+        dispatch({ type: 'set_card_reward', cards: regen });
+        dispatch({ type: 'set_screen', screen: 'card_reward' });
+        return;
+      }
+      dispatch({ type: 'set_card_reward', cards: null });
+      dispatch({ type: 'set_screen', screen: 'map' });
+    } finally {
+      queueMicrotask(() => {
+        victoryProceedScheduledRef.current = false;
+      });
     }
   };
 
-  const advanceAfterAreaBoss = () => {
-    advanceAfterAreaBossCore(dispatch, stateRef.current.currentArea);
+  const consumeDefeatRevive = () => {
+    dispatch({ type: 'set_defeat_revive_used', used: true });
   };
 
   const resetRun = () => {
@@ -1334,6 +1586,8 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_dice', value: null, rolling: false });
     dispatch({ type: 'set_last_battle_achievements', achievements: [] });
     dispatch({ type: 'set_reward_ad_used', used: false });
+    dispatch({ type: 'set_defeat_revive_used', used: false });
+    dispatch({ type: 'set_last_victory_rewards', rewardGold: 0, mentalRecovery: 0 });
     dispatch({ type: 'set_screen', screen: 'home' });
   };
 
@@ -1342,12 +1596,32 @@ export const useRunProgress = () => {
   };
 
   const continueFromSave = (saved: GameProgress) => {
+    lastBattleVictoryCardChoicesRef.current = null;
+    victoryProceedScheduledRef.current = false;
+    let resolvedScreen: GameScreen = saved.currentScreen;
+    let resolvedRewardCards: Card[] | null = saved.cardReward?.cards ?? null;
+    if (resolvedScreen === 'battle_victory' || resolvedScreen === 'card_reward') {
+      const n = resolvedRewardCards?.length ?? 0;
+      if (n > 0) {
+        resolvedScreen = 'card_reward';
+      } else {
+        const regen = regenerateCardRewardChoices(saved.jobId, saved.lastTileType);
+        if (regen.length > 0) {
+          resolvedRewardCards = regen;
+          resolvedScreen = 'card_reward';
+        } else {
+          resolvedRewardCards = null;
+          resolvedScreen = 'map';
+        }
+      }
+    }
+
     dispatch({ type: 'set_job', jobId: saved.jobId });
     dispatch({ type: 'set_player', player: saved.player });
     dispatch({ type: 'set_deck', deck: saved.deck });
     dispatch({ type: 'set_items', items: saved.items });
     dispatch({ type: 'set_omamoris', omamoris: saved.omamoris });
-    dispatch({ type: 'set_card_reward', cards: saved.cardReward?.cards ?? null });
+    dispatch({ type: 'set_card_reward', cards: resolvedRewardCards });
     dispatch({ type: 'set_omamori_reward', omamoris: saved.omamoriRewardChoices, source: saved.omamoriRewardSource });
     dispatch({ type: 'set_shop', shopItems: saved.activeShopItems });
     dispatch({ type: 'set_pawnshop_sell_used', used: saved.pawnshopSellUsedThisVisit });
@@ -1367,9 +1641,15 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_current_area', area: saved.currentArea });
     dispatch({ type: 'set_board', board: saved.board });
     dispatch({ type: 'set_current_tile', tileId: saved.currentTileId });
-    dispatch({ type: 'set_screen', screen: saved.currentScreen });
+    dispatch({ type: 'set_screen', screen: resolvedScreen });
     dispatch({ type: 'set_last_battle_achievements', achievements: [] });
     dispatch({ type: 'set_reward_ad_used', used: saved.rewardAdUsed ?? false });
+    dispatch({ type: 'set_defeat_revive_used', used: saved.defeatReviveUsedThisRun ?? false });
+    dispatch({
+      type: 'set_last_victory_rewards',
+      rewardGold: saved.lastVictoryRewardGold ?? 0,
+      mentalRecovery: saved.lastVictoryMentalRecovery ?? 0,
+    });
   };
 
   const openZukanFromHome = () => {
@@ -1656,11 +1936,9 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_current_tile', tileId: 1 });
     dispatch({ type: 'set_last_battle_achievements', achievements: [] });
     dispatch({ type: 'set_reward_ad_used', used: false });
+    dispatch({ type: 'set_defeat_revive_used', used: false });
+    dispatch({ type: 'set_last_victory_rewards', rewardGold: 0, mentalRecovery: 0 });
     dispatch({ type: 'set_screen', screen: 'map' });
-  };
-
-  const useRewardAd = () => {
-    dispatch({ type: 'set_reward_ad_used', used: true });
   };
 
   return {
@@ -1699,7 +1977,8 @@ export const useRunProgress = () => {
     startDevNavigation,
     startRunFromJobSelect,
     resetRun,
-    rewardAdUsed: state.rewardAdUsed,
-    useRewardAd,
+    consumeDefeatRevive,
+    proceedFromBattleVictory,
+    pendingArea3RunVictoryStoryRef,
   };
 };

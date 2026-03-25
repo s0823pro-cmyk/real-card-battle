@@ -1,4 +1,5 @@
 import type { Enemy, EnemyIntent, EnemyIntentType, PlayerState, StatusEffect } from '../types/game';
+import { stripEnemyIntentParenthetical } from '../utils/enemyIntentDisplay';
 import { applyEnemyAttack } from '../utils/damage';
 
 export interface EnemyTurnResult {
@@ -179,7 +180,7 @@ export const useEnemyAI = () => {
       log:
         intent.type === 'attack'
           ? `${enemy.name}：攻撃 ${damage}`
-          : `${enemy.name}：${intent.description}`,
+          : `${enemy.name}：${stripEnemyIntentParenthetical(intent.description)}`,
     };
   };
 
