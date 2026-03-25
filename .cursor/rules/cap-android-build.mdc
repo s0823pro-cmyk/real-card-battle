@@ -6,6 +6,6 @@ alwaysApply: true
 # Capacitor / Android への反映
 
 - `src` や `vite` 由来の変更を **実機 APK に反映**するには、編集後に必ず **`npm run cap:build`** を実行する（`npm run build` のあと `npx cap sync` が走る）。
-- **実行ディレクトリは** `C:\Users\amc_2\Desktop\real-card-battle` **を使う**（Cursor のワークスペースが OneDrive 側でも、同期・ビルドはこのパスで行う）。
+- **実行ディレクトリは** `C:\dev\real-card-battle` **を使う**（正のソースはブランチ `2026-03-23-k1zp`。デスクトップ側のクローンは `main` など別ブランチのままだと **古いコードで `cap:build` される**ため、実機反映は必ずこのパスで行う）。
 - `cap:build` はユーザーが依頼したときだけでなく、**「アプリに反映して」と言われたら、または UI/フロントの変更を終えたら** エージェント側で実行してよい。
 - その後、ユーザーは Android Studio で **Run** してインストールし直す。

@@ -300,6 +300,8 @@ type Action =
   | { type: 'set_defeat_revive_used'; used: boolean }
   | { type: 'set_last_victory_rewards'; rewardGold: number; mentalRecovery: number }
   | { type: 'set_battle_victory_seq'; value: number }
+  /** VICTORY → カード報酬 or マップを1 dispatch で（二重 dispatch による中間状態ずれ対策） */
+  | { type: 'proceed_from_battle_victory'; cards: Card[] | null }
   /**
    * バトル勝利後の更新を1回の reducer で適用する。
    * 連続 dispatch だと React のバッチとは別に、中間状態を読む useEffect / stateRef との競合で
@@ -512,6 +514,15 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       };
     case 'set_battle_victory_seq':
       return { ...state, battleVictorySeq: action.value };
+    case 'proceed_from_battle_victory': {
+      const raw = action.cards;
+      const hasCards = Boolean(raw && raw.length > 0);
+      return {
+        ...state,
+        cardReward: hasCards ? { cards: raw!, canSkip: true } : null,
+        currentScreen: hasCards ? 'card_reward' : 'map',
+      };
+    }
     case 'set_battle_setup':
       return { ...state, battleSetup: action.setup, lastTileType: action.tileType };
     case 'set_player':
@@ -710,8 +721,6 @@ export const useRunProgress = () => {
    * エリート・エリアボス後の VICTORY で進めない対策として、生成した報酬3枚を退避する。
    */
   const lastBattleVictoryCardChoicesRef = useRef<Card[] | null>(null);
-  /** 同一フレーム内の proceed 二重発火のみ抑止（時間デバウンスは前戦の値が残り雑魚戦で進めなくなるため使わない） */
-  const victoryProceedScheduledRef = useRef(false);
   /** onBattleEnd 直後に stateRef が未更新の瞬間でも proceedFromBattleVictory の再生成に使う */
   const lastBattleResultKindRef = useRef<BattleKind | null>(null);
   /**
@@ -1307,7 +1316,6 @@ export const useRunProgress = () => {
 
   const onBattleEnd = (result: BattleResult) => {
     lastBattleVictoryCardChoicesRef.current = null;
-    victoryProceedScheduledRef.current = false;
     lastBattleResultKindRef.current = result.kind;
     pendingArea3RunVictoryStoryRef.current = false;
     clearBattleState();
@@ -1485,38 +1493,29 @@ export const useRunProgress = () => {
   };
 
   const proceedFromBattleVictory = () => {
-    if (victoryProceedScheduledRef.current) return;
-    victoryProceedScheduledRef.current = true;
-    try {
-      const jobId = stateRef.current.jobId;
-      let cards = stateRef.current.cardReward?.cards;
-      if (!cards || cards.length === 0) {
-        cards = lastBattleVictoryCardChoicesRef.current ?? [];
-      }
-      if (cards.length > 0) {
-        lastBattleVictoryCardChoicesRef.current = null;
-        if (!stateRef.current.cardReward?.cards?.length) {
-          dispatch({ type: 'set_card_reward', cards });
-        }
-        dispatch({ type: 'set_screen', screen: 'card_reward' });
-        return;
-      }
-      const tileForRegen =
-        stateRef.current.lastTileType ??
-        inferLastTileTypeFromBattleResultKind(lastBattleResultKindRef.current ?? 'battle');
-      const regen = regenerateCardRewardChoices(jobId, tileForRegen);
-      if (regen.length > 0) {
-        dispatch({ type: 'set_card_reward', cards: regen });
-        dispatch({ type: 'set_screen', screen: 'card_reward' });
-        return;
-      }
-      dispatch({ type: 'set_card_reward', cards: null });
-      dispatch({ type: 'set_screen', screen: 'map' });
-    } finally {
-      queueMicrotask(() => {
-        victoryProceedScheduledRef.current = false;
-      });
+    const jobId = stateRef.current.jobId;
+    const kind = lastBattleResultKindRef.current ?? 'battle';
+    let cards = stateRef.current.cardReward?.cards;
+    if (!cards || cards.length === 0) {
+      cards = lastBattleVictoryCardChoicesRef.current ?? [];
     }
+    if (cards.length > 0) {
+      lastBattleVictoryCardChoicesRef.current = null;
+      dispatch({ type: 'proceed_from_battle_victory', cards });
+      return;
+    }
+    // lastTileType が敵マスに残っているとレア枠が通常枠に化ける。kind を優先する。
+    const tileFromKind = inferLastTileTypeFromBattleResultKind(kind);
+    const tileForRegen =
+      kind === 'elite' || kind === 'boss'
+        ? tileFromKind
+        : stateRef.current.lastTileType ?? tileFromKind;
+    const regen = regenerateCardRewardChoices(jobId, tileForRegen);
+    if (regen.length > 0) {
+      dispatch({ type: 'proceed_from_battle_victory', cards: regen });
+      return;
+    }
+    dispatch({ type: 'proceed_from_battle_victory', cards: null });
   };
 
   const consumeDefeatRevive = () => {
@@ -1606,7 +1605,6 @@ export const useRunProgress = () => {
 
   const continueFromSave = (saved: GameProgress) => {
     lastBattleVictoryCardChoicesRef.current = null;
-    victoryProceedScheduledRef.current = false;
     let resolvedScreen: GameScreen = saved.currentScreen;
     let resolvedRewardCards: Card[] | null = saved.cardReward?.cards ?? null;
     if (resolvedScreen === 'battle_victory' || resolvedScreen === 'card_reward') {

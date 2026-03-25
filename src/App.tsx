@@ -490,7 +490,7 @@ function App() {
       case 'battle_victory':
         return (
           <BattleVictoryScreen
-            key={`bv-${state.lastVictoryRewardGold}-${state.lastVictoryMentalRecovery}-${state.totalTurns}`}
+            key={`bv-${state.battleVictorySeq}`}
             rewardGold={state.lastVictoryRewardGold}
             mentalRecovery={state.lastVictoryMentalRecovery}
             totalGold={state.player.gold}
