@@ -219,6 +219,7 @@ export const loadSavedProgress = (): GameProgress | null => {
       lastBattleNewAchievements: [],
       rewardAdUsed: parsed.rewardAdUsed ?? false,
       defeatReviveUsedThisRun: parsed.defeatReviveUsedThisRun ?? false,
+      battleVictorySeq: typeof parsed.battleVictorySeq === 'number' ? parsed.battleVictorySeq : 0,
       lastVictoryRewardGold: parsed.lastVictoryRewardGold ?? 0,
       lastVictoryMentalRecovery: parsed.lastVictoryMentalRecovery ?? 0,
       // バトル中状態はリセット（マップ画面に戻す）
@@ -298,6 +299,7 @@ type Action =
   | { type: 'set_reward_ad_used'; used: boolean }
   | { type: 'set_defeat_revive_used'; used: boolean }
   | { type: 'set_last_victory_rewards'; rewardGold: number; mentalRecovery: number }
+  | { type: 'set_battle_victory_seq'; value: number }
   /**
    * バトル勝利後の更新を1回の reducer で適用する。
    * 連続 dispatch だと React のバッチとは別に、中間状態を読む useEffect / stateRef との競合で
@@ -407,6 +409,7 @@ const makeInitialProgress = (): GameProgress => {
     defeatReviveUsedThisRun: false,
     lastVictoryRewardGold: 0,
     lastVictoryMentalRecovery: 0,
+    battleVictorySeq: 0,
   };
 };
 
@@ -507,6 +510,8 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
         lastVictoryRewardGold: action.rewardGold,
         lastVictoryMentalRecovery: action.mentalRecovery,
       };
+    case 'set_battle_victory_seq':
+      return { ...state, battleVictorySeq: action.value };
     case 'set_battle_setup':
       return { ...state, battleSetup: action.setup, lastTileType: action.tileType };
     case 'set_player':
@@ -572,8 +577,11 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       const a = action;
       const gained = Math.max(0, a.deck.length - state.deck.length);
       const hasOmamori = Boolean(a.omamoriReward.omamoris && a.omamoriReward.omamoris.length > 0);
+      const nextBattleVictorySeq =
+        a.nextScreen === 'battle_victory' ? state.battleVictorySeq + 1 : state.battleVictorySeq;
       return {
         ...state,
+        battleVictorySeq: nextBattleVictorySeq,
         totalTurns: a.runStats.totalTurns,
         lastDefeatedBy: a.runStats.lastDefeatedBy,
         player: a.player,
@@ -1588,6 +1596,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_reward_ad_used', used: false });
     dispatch({ type: 'set_defeat_revive_used', used: false });
     dispatch({ type: 'set_last_victory_rewards', rewardGold: 0, mentalRecovery: 0 });
+    dispatch({ type: 'set_battle_victory_seq', value: 0 });
     dispatch({ type: 'set_screen', screen: 'home' });
   };
 
@@ -1650,6 +1659,7 @@ export const useRunProgress = () => {
       rewardGold: saved.lastVictoryRewardGold ?? 0,
       mentalRecovery: saved.lastVictoryMentalRecovery ?? 0,
     });
+    dispatch({ type: 'set_battle_victory_seq', value: saved.battleVictorySeq ?? 0 });
   };
 
   const openZukanFromHome = () => {

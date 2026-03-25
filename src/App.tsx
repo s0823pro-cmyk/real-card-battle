@@ -494,6 +494,7 @@ function App() {
             rewardGold={state.lastVictoryRewardGold}
             mentalRecovery={state.lastVictoryMentalRecovery}
             totalGold={state.player.gold}
+            tapArmKey={state.battleVictorySeq}
             onContinue={proceedFromBattleVictory}
           />
         );

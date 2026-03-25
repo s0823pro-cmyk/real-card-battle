@@ -207,4 +207,8 @@ export interface GameProgress {
   /** 直近の勝利バトル表示用（VICTORY 画面用・セーブ可） */
   lastVictoryRewardGold: number;
   lastVictoryMentalRecovery: number;
+  /**
+   * battle_victory に入るたびに増やす。合計所持金などの後続更新でタップ待ちがリセットされ続けないようにする。
+   */
+  battleVictorySeq: number;
 }
