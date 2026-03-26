@@ -1156,12 +1156,6 @@
   cursor: pointer;
 }
 
-.victory-achievement-tap {
-  font-size: 9px;
-  color: rgba(240, 180, 41, 0.6);
-  margin-left: 4px;
-}
-
 .achievement-icon {
   font-size: 22px;
   flex-shrink: 0;

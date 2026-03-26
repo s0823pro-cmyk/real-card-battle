@@ -107,57 +107,59 @@ const PlayerStatus = ({
     <section className={`player-status ${isPlayerHit ? 'player-hit' : ''}`}>
       <div className="player-row player-row--top">
         <div className="player-main-stats">
-          <div className="player-hp-block-column">
-            <div className="player-hp-row">
-              <Tooltip tooltipKey="hp">
-                <span className={`hp ${hpClass}`}>
-                  <img src={ICONS.hp} alt="HP" className="status-icon" draggable={false} />
-                  <span className="hp-value">
-                    <span
-                      className={`hp-value-current${previewHp != null ? ' stat-value-preview stat-value-preview--hp' : ''}`}
-                    >
-                      {displayCurrentHp}
+          <div className="player-stat-left-cluster">
+            <div className="player-hp-block-column">
+              <div className="player-hp-row">
+                <Tooltip tooltipKey="hp">
+                  <span className={`hp ${hpClass}`}>
+                    <img src={ICONS.hp} alt="HP" className="status-icon" draggable={false} />
+                    <span className="hp-value">
+                      <span
+                        className={`hp-value-current${previewHp != null ? ' stat-value-preview stat-value-preview--hp' : ''}`}
+                      >
+                        {displayCurrentHp}
+                      </span>
                     </span>
                   </span>
-                </span>
-              </Tooltip>
-            </div>
-            <div className="player-block-row">
-              <Tooltip tooltipKey="block">
-                <span
-                  className={`block ${blockClass} ${blockPreviewActive ? 'block--preview' : ''}${
-                    showBlockImmunityPreview ? ' block--immunity-preview' : ''
-                  }`}
-                >
-                  <img src={ICONS.block} alt="Block" className="status-icon" draggable={false} />
+                </Tooltip>
+              </div>
+              <div className="player-block-row">
+                <Tooltip tooltipKey="block">
                   <span
-                    className={`block-value${
-                      showBlockImmunityPreview
-                        ? ' stat-value-preview stat-value-preview--immunity'
-                        : showBlockNumberPreview
-                          ? ' stat-value-preview stat-value-preview--block'
-                          : ''
+                    className={`block ${blockClass} ${blockPreviewActive ? 'block--preview' : ''}${
+                      showBlockImmunityPreview ? ' block--immunity-preview' : ''
                     }`}
                   >
-                    {showBlockNumberPreview ? previewBlock : player.block}
+                    <img src={ICONS.block} alt="Block" className="status-icon" draggable={false} />
+                    <span
+                      className={`block-value${
+                        showBlockImmunityPreview
+                          ? ' stat-value-preview stat-value-preview--immunity'
+                          : showBlockNumberPreview
+                            ? ' stat-value-preview stat-value-preview--block'
+                            : ''
+                      }`}
+                    >
+                      {showBlockNumberPreview ? previewBlock : player.block}
+                    </span>
                   </span>
-                </span>
-              </Tooltip>
-              {(player.ridgepoleActive || player.templeCarpenterActive) && (
-                <div className="player-block-trailing-icons">
-                  {player.ridgepoleActive && (
-                    <Tooltip label="🎌 棟上げ" description="足場5以上で毎ターン全敵10ダメージ">
-                      <span className="status-ridgepole">🎌</span>
-                    </Tooltip>
-                  )}
-                  {player.templeCarpenterActive && (
-                    <Tooltip label="🏯 宮大工の技" description="段取りボーナスが+50%に強化">
-                      <span className="status-temple">🏯</span>
-                    </Tooltip>
-                  )}
-                </div>
-              )}
+                </Tooltip>
+              </div>
             </div>
+            {(player.ridgepoleActive || player.templeCarpenterActive) && (
+              <div className="player-block-buff-icons">
+                {player.ridgepoleActive && (
+                  <Tooltip label="🎌 棟上げ" description="足場5以上で毎ターン全敵10ダメージ">
+                    <span className="status-ridgepole">🎌</span>
+                  </Tooltip>
+                )}
+                {player.templeCarpenterActive && (
+                  <Tooltip label="🏯 宮大工の技" description="段取りボーナスが+50%に強化">
+                    <span className="status-temple">🏯</span>
+                  </Tooltip>
+                )}
+              </div>
+            )}
           </div>
           <div className="player-info-row-icons">
             {player.jobId === 'cook' && (

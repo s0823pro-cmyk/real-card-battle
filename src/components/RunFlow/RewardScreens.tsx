@@ -45,6 +45,121 @@ const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
   isAttackDamageWeakDebuffed: false,
 });
 
+interface EventCardGainPreviewProps {
+  cards: Card[];
+  jobId: JobId;
+  /** マップと同じエリアBGMを鳴らす（勝利ファンファーレは使わない） */
+  currentArea: number;
+  onContinue: () => void;
+}
+
+/** イベント等で即時デッキに加わったカードのプレビュー（選択不要・確認のみ） */
+export const EventCardGainPreviewScreen = ({
+  cards,
+  jobId,
+  currentArea,
+  onContinue,
+}: EventCardGainPreviewProps) => {
+  const { playBgm } = useAudioContext();
+  useEffect(() => {
+    const area = Math.min(3, Math.max(1, currentArea));
+    if (area === 1) playBgm('area1');
+    else if (area === 2) playBgm('area2');
+    else playBgm('area3');
+  }, [currentArea, playBgm]);
+
+  const noop = () => {};
+  const rewardListRef = useRef<HTMLDivElement | null>(null);
+  const [rewardCardWidth, setRewardCardWidth] = useState(() =>
+    Math.max(
+      72,
+      Math.floor(
+        ((Math.min(window.innerWidth, 430) - 56) / Math.max(1, cards.length)) * 0.88,
+      ),
+    ),
+  );
+
+  useEffect(() => {
+    const node = rewardListRef.current;
+    if (!node) return;
+    const updateRewardCardWidth = () => {
+      const fallbackListWidth = Math.min(window.innerWidth, 430) - 16;
+      const rectWidth = Math.floor(node.getBoundingClientRect().width);
+      const measuredListWidth = Math.max(node.clientWidth, rectWidth);
+      const listWidth = measuredListWidth > 0 ? measuredListWidth : fallbackListWidth;
+      const count = Math.max(1, cards.length);
+      const gap = 10;
+      const width = Math.floor((listWidth - gap * (count - 1)) / count);
+      setRewardCardWidth(Math.max(72, Math.floor(width * 0.88)));
+    };
+    updateRewardCardWidth();
+    window.requestAnimationFrame(updateRewardCardWidth);
+    const observer = new ResizeObserver(updateRewardCardWidth);
+    observer.observe(node);
+    window.addEventListener('resize', updateRewardCardWidth);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateRewardCardWidth);
+    };
+  }, [cards.length]);
+
+  const cardRewardMainStyle = {
+    '--flow-bg-image': `url(${FLOW_BG_CARD_REWARD})`,
+    /* 控えめに：背景写真をやや抑え、落ち着いたトーンに */
+    '--flow-bg-overlay': 'rgba(14, 16, 22, 0.52)',
+  } as CSSProperties;
+
+  return (
+    <main
+      className="flow-screen card-reward-screen flow-screen--with-bg event-card-gain-preview-screen"
+      style={cardRewardMainStyle}
+    >
+      <section className="card-reward-panel">
+        <h2 className="reward-heading reward-heading--event-preview">カードを入手</h2>
+        <div className="reward-card-list" ref={rewardListRef}>
+          {cards.map((card, idx) => (
+            <div
+              key={`${card.id}_${idx}`}
+              className="reward-card-wrapper event-card-gain-preview-card"
+              style={
+                {
+                  '--reward-card-width': `${rewardCardWidth}px`,
+                  '--hand-card-width': `${rewardCardWidth}px`,
+                  '--hand-card-height': `${Math.floor(rewardCardWidth * 1.6)}px`,
+                } as CSSProperties
+              }
+            >
+              <CardComponent
+                card={card}
+                jobId={jobId}
+                selected={false}
+                disabled={false}
+                locked={false}
+                isSelling={false}
+                isReturning={false}
+                isGhost={false}
+                isDragging={false}
+                isDragUnavailable={false}
+                effectiveValues={getBaseEffectiveValues(card)}
+                onSelect={noop}
+                onPointerDown={noop}
+                onPointerMove={noop}
+                onPointerUp={noop}
+                onPointerCancel={noop}
+                onMouseEnter={noop}
+                onMouseLeave={noop}
+              />
+            </div>
+          ))}
+        </div>
+        <button type="button" className="flow-btn flow-btn--event-preview-ok event-card-gain-preview-ok" onClick={onContinue}>
+          OK
+        </button>
+      </section>
+    </main>
+  );
+};
+
 export const CardRewardScreen = ({ cards, jobId, onPick, onSkip, adsRemoved }: CardRewardProps) => {
   useVictoryRewardBgm();
   const noop = () => {};

@@ -3,8 +3,13 @@
   inset: 0;
   z-index: 1000;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: max(12px, env(safe-area-inset-top, 0px)) 0 max(12px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
 }
 
 .defeat-bg {
@@ -18,11 +23,12 @@
   z-index: 2;
   width: 100%;
   max-width: 430px;
-  padding: 48px 24px;
+  padding: 36px 24px 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 28px;
+  margin: 0 auto;
 }
 
 .defeat-title-area {
@@ -191,6 +197,16 @@
   max-width: 320px;
 }
 
+.victory-achievements-scroll {
+  max-height: min(42vh, 300px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 2px;
+}
+
 .victory-achievements-title {
   font-family: var(--font-display);
   font-size: 14px;
@@ -212,13 +228,8 @@
   border: 1px solid rgba(240, 180, 41, 0.3);
   border-radius: 8px;
   padding: 10px 14px;
-  margin-bottom: 8px;
-}
-
-.victory-achievement-tap {
-  font-size: 9px;
-  color: rgba(240, 180, 41, 0.6);
-  margin-left: 4px;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .victory-achievement-icon {
@@ -238,89 +249,6 @@
   font-size: 11px;
   color: #f0b429;
   margin: 0;
-}
-
-.achievement-reward-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.achievement-reward-modal {
-  background: #161b22;
-  border: 1px solid rgba(240, 180, 41, 0.4);
-  border-radius: 16px;
-  padding: 24px 20px;
-  width: min(320px, calc(100vw - 32px));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.achievement-reward-modal-title {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 700;
-  color: #f0b429;
-  margin: 0;
-  text-align: center;
-}
-
-.achievement-reward-modal-sub {
-  font-family: var(--font-display);
-  font-size: 11px;
-  color: #8b949e;
-  margin: 0;
-}
-
-.achievement-omamori-detail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 10px;
-  width: 100%;
-}
-
-.achievement-omamori-icon {
-  font-size: 48px;
-}
-
-.achievement-omamori-name {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 700;
-  color: #e6edf3;
-  margin: 0;
-}
-
-.achievement-omamori-desc {
-  font-family: var(--font-display);
-  font-size: 12px;
-  color: #8b949e;
-  margin: 0;
-  text-align: center;
-  line-height: 1.6;
-}
-
-.achievement-reward-close {
-  background: #f0b429;
-  border: none;
-  border-radius: 8px;
-  color: #0d1117;
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 10px 32px;
-  cursor: pointer;
-  margin-top: 4px;
 }
 
 .ad-placeholder {

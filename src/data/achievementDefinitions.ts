@@ -1,8 +1,9 @@
 import type { Achievement } from '../utils/achievementTypes';
 
 /**
- * 実績20件。各実績でアンコモン／レアカード2枚が解放される（計40枚は実績までプールから除外）。
- * tier: easy=アンコモン2枚 / medium=アンコモン+レア / hard=レア2枚
+ * 実績20件。各実績でカード2枚が解放される（計40枚は実績までプールから除外）。
+ * 報酬は実装済みの大工カード・無色カードのみ（料理人・無職のカードは含めない）。
+ * tier: easy=アンコモン2枚 / medium=アンコモン+レア / hard=レア2枚（dice_80のみ大工アンコモン2枚でレア枠の都合を調整）
  */
 export const ACHIEVEMENTS: Achievement[] = [
   // --- easy（アンコモン×2）---
@@ -44,7 +45,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'サイコロを累計25回振る',
     icon: '🎲',
     tier: 'easy',
-    rewardCardIds: ['hot_sauce', 'recipe_study'],
+    rewardCardIds: ['kanazuchi_tap', 'sumitsubo_makijaku'],
   },
   {
     id: 'shrine_5',
@@ -52,7 +53,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '神社マスを累計5回訪れる',
     icon: '⛩️',
     tier: 'easy',
-    rewardCardIds: ['welfare', 'cardboard_house'],
+    rewardCardIds: ['dodge', 'first_aid'],
   },
   {
     id: 'shop_cards_8',
@@ -60,7 +61,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '質屋でカードを累計8回購入する',
     icon: '🏪',
     tier: 'easy',
-    rewardCardIds: ['knife_set', 'aged_dough'],
+    rewardCardIds: ['iron_wall', 'reinforced_concrete'],
   },
   {
     id: 'gold_lifetime_500',
@@ -68,7 +69,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '累計でゴールドを500以上獲得する（バトル報酬など）',
     icon: '💰',
     tier: 'easy',
-    rewardCardIds: ['delivery', 'simmering'],
+    rewardCardIds: ['power_drill', 'quick_hammer'],
   },
   // --- medium（アンコモン+レア）---
   {
@@ -101,7 +102,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'イベントを累計10回完了する',
     icon: '❓',
     tier: 'medium',
-    rewardCardIds: ['ingredient_sourcing', 'hidden_power'],
+    rewardCardIds: ['kensei', 'hidden_power'],
   },
   {
     id: 'hotel_5',
@@ -109,7 +110,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'ホテルマスを累計5回訪れる',
     icon: '🏨',
     tier: 'medium',
-    rewardCardIds: ['interview', 'temple_carpenter'],
+    rewardCardIds: ['defense_wall', 'temple_carpenter'],
   },
   {
     id: 'elite_wins_5',
@@ -117,7 +118,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'エリート戦に累計5回勝利する',
     icon: '⚡',
     tier: 'medium',
-    rewardCardIds: ['kitchen_demon', 'shinshin_choritu'],
+    rewardCardIds: ['mega_nail', 'shinshin_choritu'],
   },
   // --- hard（レア×2）---
   {
@@ -126,7 +127,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'エリア2のエリアボスに勝利する',
     icon: '🏆',
     tier: 'hard',
-    rewardCardIds: ['full_course', 'three_star'],
+    rewardCardIds: ['renovation', 'niju_ashiba'],
   },
   {
     id: 'area3_clear',
@@ -134,7 +135,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'エリア3のエリアボスに勝利する（ゲームクリア）',
     icon: '👑',
     tier: 'hard',
-    rewardCardIds: ['secret_soup', 'mystery_pot'],
+    rewardCardIds: ['ishizue_ichigeki', 'cho_mabashira'],
   },
   {
     id: 'zero_mental_survive',
@@ -142,7 +143,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'メンタルが0以下の状態でバトルに勝利する',
     icon: '🌟',
     tier: 'hard',
-    rewardCardIds: ['flame_flambe', 'gamble'],
+    rewardCardIds: ['last_word', 'gyakkyou_sainou'],
   },
   {
     id: 'win_25',
@@ -150,7 +151,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '累計25回バトルに勝利する',
     icon: '🛡️',
     tier: 'hard',
-    rewardCardIds: ['revival', 'death_wish'],
+    rewardCardIds: ['koryo_setsugo', 'meisho_nomi'],
   },
   {
     id: 'gold_lifetime_2000',
@@ -158,7 +159,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '累計でゴールドを2000以上獲得する',
     icon: '💎',
     tier: 'hard',
-    rewardCardIds: ['cliff_edge', 'revenge'],
+    rewardCardIds: ['tenken_sha', 'zenmen_kaiso'],
   },
   {
     id: 'dice_80',
@@ -166,7 +167,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'サイコロを累計80回振る',
     icon: '🎲',
     tier: 'hard',
-    rewardCardIds: ['gyakkyou_sainou', 'last_word'],
+    rewardCardIds: ['yane_fuki', 'toshi_bashira'],
   },
 ];
 

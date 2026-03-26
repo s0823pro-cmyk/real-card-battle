@@ -145,7 +145,7 @@ const NON_RESUMABLE_SCREENS = [
   'omamori_reward',
   'boss_reward',
 ];
-const NORMALIZE_TO_MAP = ['battle', 'omamori_reward', 'boss_reward', 'battle_victory'];
+const NORMALIZE_TO_MAP = ['battle', 'omamori_reward', 'boss_reward', 'battle_victory', 'event_card_preview'];
 export type DevDestination =
   | 'battle_normal'
   | 'battle_elite'
@@ -214,6 +214,7 @@ export const loadSavedProgress = (): GameProgress | null => {
     }
     return {
       ...parsed,
+      eventGainedCards: null,
       unlockedCardNames: new Set(parsed.unlockedCardNames ?? []),
       pendingItemReplacement: null,
       lastBattleNewAchievements: [],
@@ -277,6 +278,9 @@ type Action =
   | { type: 'clear_traveled_edges' }
   | { type: 'set_branch'; tileId: number | null }
   | { type: 'set_event'; event: GameEvent | null }
+  | { type: 'set_event_gained_cards'; cards: Card[] | null }
+  | { type: 'show_event_card_preview'; cards: Card[] }
+  | { type: 'close_event_card_preview' }
   | { type: 'set_shop'; shopItems: ShopItem[] }
   | { type: 'set_pawnshop_sell_used'; used: boolean }
   | { type: 'set_hotel_item_received'; used: boolean }
@@ -391,6 +395,7 @@ const makeInitialProgress = (): GameProgress => {
     selectableTileIds: [],
     traveledEdges: [],
     activeEvent: null,
+    eventGainedCards: null,
     activeShopItems: [],
     pawnshopSellUsedThisVisit: false,
     hotelItemReceivedThisVisit: false,
@@ -487,6 +492,16 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       return { ...state, selectedBranchTileId: action.tileId };
     case 'set_event':
       return { ...state, activeEvent: action.event };
+    case 'set_event_gained_cards':
+      return { ...state, eventGainedCards: action.cards };
+    case 'show_event_card_preview':
+      return {
+        ...state,
+        eventGainedCards: action.cards,
+        currentScreen: 'event_card_preview',
+      };
+    case 'close_event_card_preview':
+      return { ...state, eventGainedCards: null, currentScreen: 'map' };
     case 'set_shop':
       return { ...state, activeShopItems: action.shopItems };
     case 'set_pawnshop_sell_used':
@@ -624,9 +639,9 @@ const cloneCurse = (): Card => ({
   id: `${CURSE_CARD.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
 });
 
-const applyCardGain = (deck: Card[], jobId: JobId, count = 1): Card[] => {
+const applyCardGain = (deck: Card[], jobId: JobId, count = 1): { deck: Card[]; gained: Card[] } => {
   const gained = generateCardRewardChoices(jobId, count);
-  return [...deck, ...gained];
+  return { deck: [...deck, ...gained], gained };
 };
 
 const getRemoveCost = (removeCount: number): number => 50 + removeCount * 25;
@@ -673,7 +688,7 @@ const advanceAfterAreaBossCore = (
 const applySingleEffect = (
   state: GameProgress,
   effect: { type: 'heal' | 'damage' | 'gold' | 'mental' | 'card' | 'omamori' | 'curse'; value: number },
-): GameProgress => {
+): { state: GameProgress; gainedCards: Card[] } => {
   const next = { ...state, player: { ...state.player }, deck: [...state.deck] };
   switch (effect.type) {
     case 'heal':
@@ -690,9 +705,11 @@ const applySingleEffect = (
       next.player.mental = Math.max(0, Math.min(cap, next.player.mental + effect.value));
       break;
     }
-    case 'card':
-      next.deck = applyCardGain(next.deck, state.jobId, Math.max(1, effect.value));
-      break;
+    case 'card': {
+      const { deck, gained } = applyCardGain(next.deck, state.jobId, Math.max(1, effect.value));
+      next.deck = deck;
+      return { state: next, gainedCards: gained };
+    }
     case 'curse':
       next.deck.push(...Array.from({ length: effect.value }).map(() => cloneCurse()));
       break;
@@ -703,14 +720,17 @@ const applySingleEffect = (
         if (choices.length === 0) break;
         const randomOmamori = choices[0];
         return {
-          ...next,
-          omamoris: [...next.omamoris, randomOmamori],
+          state: {
+            ...next,
+            omamoris: [...next.omamoris, randomOmamori],
+          },
+          gainedCards: [],
         };
       }
     default:
       break;
   }
-  return next;
+  return { state: next, gainedCards: [] };
 };
 
 export const useRunProgress = () => {
@@ -980,6 +1000,10 @@ export const useRunProgress = () => {
     })();
   };
 
+  const closeEventCardPreview = () => {
+    dispatch({ type: 'close_event_card_preview' });
+  };
+
   const chooseEventChoice = (choiceIndex: number) => {
     const event = stateRef.current.activeEvent;
     if (!event) return;
@@ -990,7 +1014,7 @@ export const useRunProgress = () => {
         Math.random() < 0.5
           ? ({ type: 'gold', value: 80 } as const)
           : ({ type: 'gold', value: -40 } as const);
-      nextState = applySingleEffect(nextState, effect);
+      nextState = applySingleEffect(nextState, effect).state;
       dispatch({ type: 'set_player', player: nextState.player });
       dispatch({ type: 'set_deck', deck: nextState.deck });
       dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
@@ -1005,7 +1029,7 @@ export const useRunProgress = () => {
         Math.random() < 0.5
           ? ({ type: 'heal', value: 30 } as const)
           : ({ type: 'damage', value: 20 } as const);
-      nextState = applySingleEffect(nextState, effect);
+      nextState = applySingleEffect(nextState, effect).state;
       if (effect.type === 'heal') {
         playSeByType('heal');
       } else if (effect.type === 'damage' && effect.value > 0) {
@@ -1033,10 +1057,13 @@ export const useRunProgress = () => {
     let nextState = stateRef.current;
     let shouldPlayHealSe = false;
     let shouldPlayDamageSe = false;
+    const gainedFromEvent: Card[] = [];
     for (const effect of event.choices[choiceIndex]?.effects ?? []) {
       if (event.id === 'vending_machine' && effect.type === 'gold' && effect.value === -10) {
         // -10G消費を先に適用してからランダム効果を付与
-        nextState = applySingleEffect(nextState, effect);
+        const rPay = applySingleEffect(nextState, effect);
+        nextState = rPay.state;
+        gainedFromEvent.push(...rPay.gainedCards);
         const randomSet = [
           { type: 'heal', value: 20 },
           { type: 'damage', value: 5 },
@@ -1045,13 +1072,17 @@ export const useRunProgress = () => {
           { type: 'mental', value: -1 },
         ] as const;
         const randomEffect = randomSet[Math.floor(Math.random() * randomSet.length)];
-        nextState = applySingleEffect(nextState, randomEffect);
+        const rRand = applySingleEffect(nextState, randomEffect);
+        nextState = rRand.state;
+        gainedFromEvent.push(...rRand.gainedCards);
         if (effectIsHealOrPositiveMental(randomEffect)) shouldPlayHealSe = true;
         if (randomEffect.type === 'damage' && randomEffect.value > 0) shouldPlayDamageSe = true;
       } else {
         if (effectIsHealOrPositiveMental(effect)) shouldPlayHealSe = true;
         if (effect.type === 'damage' && effect.value > 0) shouldPlayDamageSe = true;
-        nextState = applySingleEffect(nextState, effect);
+        const r = applySingleEffect(nextState, effect);
+        nextState = r.state;
+        gainedFromEvent.push(...r.gainedCards);
       }
     }
     if (shouldPlayHealSe) playSeByType('heal');
@@ -1061,7 +1092,11 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
     dispatch({ type: 'set_event', event: null });
     recordEventResolvedForAchievements();
-    dispatch({ type: 'set_screen', screen: 'map' });
+    if (gainedFromEvent.length > 0) {
+      dispatch({ type: 'show_event_card_preview', cards: gainedFromEvent });
+    } else {
+      dispatch({ type: 'set_screen', screen: 'map' });
+    }
   };
 
   const openHotelUpgrade = () => {
@@ -1379,9 +1414,15 @@ export const useRunProgress = () => {
     }
 
     const useRareCards = result.kind === 'boss' || result.kind === 'elite';
-    const cardRewardCards = useRareCards
-      ? generateRareCardRewardChoices(stateRef.current.jobId, 3)
-      : generateCardRewardChoices(stateRef.current.jobId, 3);
+    const jobId = stateRef.current.jobId;
+    let cardRewardCards: Card[];
+    try {
+      cardRewardCards = useRareCards
+        ? generateRareCardRewardChoices(jobId, 3)
+        : generateCardRewardChoices(jobId, 3);
+    } catch {
+      cardRewardCards = generateCardRewardChoices(jobId, 3);
+    }
     const omamoriReward =
       result.kind === 'elite' || result.kind === 'boss'
         ? { omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'battle' as const }
@@ -1585,6 +1626,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_pawnshop_sell_used', used: false });
     dispatch({ type: 'set_hotel_item_received', used: false });
     dispatch({ type: 'set_event', event: null });
+    dispatch({ type: 'set_event_gained_cards', cards: null });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
     dispatch({ type: 'set_branch', tileId: null });
     dispatch({ type: 'set_selectable_tiles', tileIds: [] });
@@ -1606,6 +1648,9 @@ export const useRunProgress = () => {
   const continueFromSave = (saved: GameProgress) => {
     lastBattleVictoryCardChoicesRef.current = null;
     let resolvedScreen: GameScreen = saved.currentScreen;
+    if (resolvedScreen === 'event_card_preview') {
+      resolvedScreen = 'map';
+    }
     let resolvedRewardCards: Card[] | null = saved.cardReward?.cards ?? null;
     if (resolvedScreen === 'battle_victory' || resolvedScreen === 'card_reward') {
       const n = resolvedRewardCards?.length ?? 0;
@@ -1658,6 +1703,7 @@ export const useRunProgress = () => {
       mentalRecovery: saved.lastVictoryMentalRecovery ?? 0,
     });
     dispatch({ type: 'set_battle_victory_seq', value: saved.battleVictorySeq ?? 0 });
+    dispatch({ type: 'set_event_gained_cards', cards: null });
   };
 
   const openZukanFromHome = () => {
@@ -1745,6 +1791,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_pawnshop_sell_used', used: false });
     dispatch({ type: 'set_hotel_item_received', used: false });
     dispatch({ type: 'set_event', event: null });
+    dispatch({ type: 'set_event_gained_cards', cards: null });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
     dispatch({ type: 'set_branch', tileId: null });
     dispatch({ type: 'set_selectable_tiles', tileIds: [] });
@@ -1931,6 +1978,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_pawnshop_sell_used', used: false });
     dispatch({ type: 'set_hotel_item_received', used: false });
     dispatch({ type: 'set_event', event: null });
+    dispatch({ type: 'set_event_gained_cards', cards: null });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
     dispatch({ type: 'set_branch', tileId: null });
     dispatch({ type: 'set_selectable_tiles', tileIds: [] });
@@ -1956,6 +2004,7 @@ export const useRunProgress = () => {
     rollDiceAndMove,
     chooseBranch,
     chooseEventChoice,
+    closeEventCardPreview,
     hotelHeal,
     hotelMeditate,
     hotelGetItem,

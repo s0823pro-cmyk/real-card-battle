@@ -1,11 +1,24 @@
 import { Capacitor } from '@capacitor/core';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
-import { mountCardRewardBanner } from '../../utils/adMobClient';
+import { mountCardRewardBanner, removeBannerAd } from '../../utils/adMobClient';
 import type { JobId } from '../../types/game';
-import type { Achievement } from '../../utils/achievementSystem';
+import type { AchievementTier } from '../../utils/achievementTypes';
+import {
+  getCumulativeAchievementProgressSuffix,
+  getDefeatCount,
+  type Achievement,
+} from '../../utils/achievementSystem';
+import { loadAchievementCounters } from '../../utils/achievementCounters';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
+import '../HomeScreen/HomeScreen.css';
 import './VictoryScreen.css';
+
+const TIER_LABEL: Record<AchievementTier, string> = {
+  easy: '（アンコモン×2）',
+  medium: '（アンコモン+レア）',
+  hard: '（レア×2）',
+};
 
 interface VictoryScreenProps {
   jobId: JobId;
@@ -14,6 +27,8 @@ interface VictoryScreenProps {
   cardsAcquired: number;
   newAchievements?: Achievement[];
   adsRemoved: boolean;
+  /** エリア3クリア後ストーリー等で重ねる間はネイティブの下部バナーを出さない */
+  suppressNativeBanner?: boolean;
   onHome: () => void;
 }
 
@@ -24,12 +39,21 @@ export const VictoryScreen = ({
   cardsAcquired,
   newAchievements = [],
   adsRemoved,
+  suppressNativeBanner = false,
   onHome,
 }: VictoryScreenProps) => {
   const [showStats, setShowStats] = useState(false);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
   const { playBgm } = useAudioContext();
+
+  const cumulativeDisplayState = useMemo(
+    () => ({
+      counters: loadAchievementCounters(),
+      defeatCount: getDefeatCount(),
+    }),
+    [showStats, newAchievements],
+  );
 
   useEffect(() => {
     playBgm('victory');
@@ -96,6 +120,10 @@ export const VictoryScreen = ({
   }, []);
 
   useEffect(() => {
+    if (suppressNativeBanner) {
+      void removeBannerAd();
+      return;
+    }
     let cancelled = false;
     let remove: (() => Promise<void>) | undefined;
     void (async () => {
@@ -106,10 +134,10 @@ export const VictoryScreen = ({
       cancelled = true;
       void remove?.();
     };
-  }, [adsRemoved]);
+  }, [adsRemoved, suppressNativeBanner]);
 
   const bannerBottomClass =
-    !adsRemoved && Capacitor.isNativePlatform() ? ' victory-screen--with-banner' : '';
+    !adsRemoved && !suppressNativeBanner && Capacitor.isNativePlatform() ? ' victory-screen--with-banner' : '';
 
   const jobName = { carpenter: '大工', cook: '料理人', unemployed: '無職' }[jobId] ?? jobId;
   const jobColor = { carpenter: '#c0392b', cook: '#f9ca24', unemployed: '#8b949e' }[jobId] ?? '#ffffff';
@@ -155,24 +183,34 @@ export const VictoryScreen = ({
 
         {showStats && newAchievements.length > 0 && (
           <div className="victory-achievements">
-            <h3 className="victory-achievements-title">🎖️ 実績解除！</h3>
-            {newAchievements.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                className="victory-achievement-item"
-                onClick={() => setSelectedAchievement(a)}
-              >
-                <span className="victory-achievement-icon">{a.icon}</span>
-                <div className="victory-achievement-info">
-                  <p className="victory-achievement-name">{a.name}</p>
-                  <p className="victory-achievement-reward">
-                    🃏 カード2枚 解放！{' '}
-                    <span className="victory-achievement-tap">タップで確認</span>
-                  </p>
-                </div>
-              </button>
-            ))}
+            <h3 className="victory-achievements-title">
+              🎖️ 実績解除！{newAchievements.length > 1 ? `（${newAchievements.length}件）` : ''}
+            </h3>
+            <div className="achievement-list">
+              {newAchievements.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className="achievement-item achievement-item--unlocked"
+                  onClick={() => setSelectedAchievement(a)}
+                >
+                  <span className="achievement-icon">{a.icon}</span>
+                  <div className="achievement-info">
+                    <p className="achievement-name">{a.name}</p>
+                    <p className="achievement-desc">
+                      {a.description}
+                      {getCumulativeAchievementProgressSuffix(
+                        a.id,
+                        cumulativeDisplayState.counters,
+                        cumulativeDisplayState.defeatCount,
+                      ) ?? ''}
+                    </p>
+                    <p className="achievement-tier">{TIER_LABEL[a.tier]}</p>
+                    <p className="achievement-reward">報酬: カード2枚（タップで表示）</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

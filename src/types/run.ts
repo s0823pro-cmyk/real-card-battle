@@ -25,6 +25,7 @@ export type GameScreen =
   | 'shrine'
   | 'pawnshop'
   | 'event'
+  | 'event_card_preview'
   | 'hotel'
   | 'branch_select'
   | 'card_upgrade'
@@ -183,6 +184,8 @@ export interface GameProgress {
   selectableTileIds: number[];
   traveledEdges: Array<{ from: number; to: number }>;
   activeEvent: GameEvent | null;
+  /** イベントでカード入手直後のプレビュー用（復帰時はマップへ正規化して破棄） */
+  eventGainedCards: Card[] | null;
   activeShopItems: ShopItem[];
   pawnshopSellUsedThisVisit: boolean;
   hotelItemReceivedThisVisit: boolean;

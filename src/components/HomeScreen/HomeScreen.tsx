@@ -25,9 +25,12 @@ import type { Achievement } from '../../utils/achievementSystem';
 import {
   ACHIEVEMENTS,
   clearAchievements,
+  getCumulativeAchievementProgressSuffix,
+  getDefeatCount,
   getUnlockedAchievementIds,
   unlockAllAchievements,
 } from '../../utils/achievementSystem';
+import { loadAchievementCounters } from '../../utils/achievementCounters';
 import { PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
 import {
   DEBUG_ENEMY_HP1_STORAGE_KEY,
@@ -320,6 +323,12 @@ const HomeScreen = ({
   };
 
   const unlockedIds = useMemo(() => getUnlockedAchievementIds(), [achievementRefreshKey]);
+  const cumulativeDisplayState = useMemo(() => {
+    return {
+      counters: loadAchievementCounters(),
+      defeatCount: getDefeatCount(),
+    };
+  }, [achievementRefreshKey, showRecords]);
   const storyJobs: {
     jobKey: StoryJobKey;
     jobName: string;
@@ -879,13 +888,19 @@ const HomeScreen = ({
                     <span className="achievement-icon">{isUnlocked ? a.icon : '🔒'}</span>
                     <div className="achievement-info">
                       <p className="achievement-name">{a.name}</p>
-                      <p className="achievement-desc">{a.description}</p>
+                      <p className="achievement-desc">
+                        {a.description}
+                        {getCumulativeAchievementProgressSuffix(
+                          a.id,
+                          cumulativeDisplayState.counters,
+                          cumulativeDisplayState.defeatCount,
+                        ) ?? ''}
+                      </p>
                       <p className="achievement-tier">{TIER_LABEL[a.tier]}</p>
                       <p className="achievement-reward">
                         {isUnlocked
                           ? '報酬: カード2枚（タップで表示）'
                           : '報酬: ？？？（未達成のため内容は不明）'}
-                        {isUnlocked && <span className="victory-achievement-tap"> タップで確認</span>}
                       </p>
                     </div>
                   </button>

@@ -1,6 +1,7 @@
 import { ACHIEVEMENTS } from '../data/achievementDefinitions';
 import type { Achievement } from './achievementTypes';
 import type { BattleResult } from '../types/run';
+import type { AchievementCounters } from './achievementCounters';
 import { clearAchievementCounters, loadAchievementCounters, saveAchievementCounters } from './achievementCounters';
 
 export type { Achievement, AchievementTier } from './achievementTypes';
@@ -103,6 +104,47 @@ export const recordBattleEndForAchievements = (result: BattleResult): void => {
 
 const pushIf = (ids: string[], cond: boolean, id: string): void => {
   if (cond) ids.push(id);
+};
+
+/**
+ * 実績一覧で「累積条件」の現在値を表示する対象。
+ * 閾値・カウンタ対応は evaluateAchievementProgress / evaluateAchievementsAfterBattle と一致させる。
+ */
+const CUMULATIVE_ACHIEVEMENT_DISPLAY: Record<
+  string,
+  | { kind: 'counter'; key: keyof AchievementCounters; unit: 'times' | 'gold' }
+  | { kind: 'defeat' }
+> = {
+  dice_25: { kind: 'counter', key: 'diceRolls', unit: 'times' },
+  dice_80: { kind: 'counter', key: 'diceRolls', unit: 'times' },
+  shrine_5: { kind: 'counter', key: 'shrineVisits', unit: 'times' },
+  shop_cards_8: { kind: 'counter', key: 'shopCardBuys', unit: 'times' },
+  gold_lifetime_500: { kind: 'counter', key: 'lifetimeGoldEarned', unit: 'gold' },
+  gold_lifetime_2000: { kind: 'counter', key: 'lifetimeGoldEarned', unit: 'gold' },
+  events_10: { kind: 'counter', key: 'eventsResolved', unit: 'times' },
+  hotel_5: { kind: 'counter', key: 'hotelVisits', unit: 'times' },
+  win_10: { kind: 'counter', key: 'battleWins', unit: 'times' },
+  win_25: { kind: 'counter', key: 'battleWins', unit: 'times' },
+  elite_wins_5: { kind: 'counter', key: 'eliteWins', unit: 'times' },
+  defeat_3: { kind: 'defeat' },
+};
+
+/** 累積型実績の説明文に付ける接尾辞（例: （現在3回））。対象外は null */
+export const getCumulativeAchievementProgressSuffix = (
+  achievementId: string,
+  counters: AchievementCounters,
+  defeatCount: number,
+): string | null => {
+  const spec = CUMULATIVE_ACHIEVEMENT_DISPLAY[achievementId];
+  if (!spec) return null;
+  if (spec.kind === 'defeat') {
+    return `（現在${defeatCount}回）`;
+  }
+  const n = counters[spec.key] as number;
+  if (spec.unit === 'gold') {
+    return `（現在${n}G）`;
+  }
+  return `（現在${n}回）`;
 };
 
 /** 累計カウンタのみで判定する実績（サイコロ・神社・ゴールド等） */

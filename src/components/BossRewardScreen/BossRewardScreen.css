@@ -15,15 +15,6 @@
   margin-bottom: 24px;
 }
 
-.boss-reward-area {
-  font-family: var(--font-display);
-  font-size: 13px;
-  color: #f0b429;
-  margin: 0 0 8px;
-  letter-spacing: 0.15em;
-  text-shadow: 0 0 10px rgba(240, 180, 41, 0.5);
-}
-
 .boss-reward-title {
   font-family: var(--font-display);
   font-size: 18px;
@@ -94,6 +85,13 @@
   flex-shrink: 0;
 }
 
+.boss-reward-confirm-slot {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+}
+
 .btn-boss-reward-confirm {
   width: 100%;
   background: linear-gradient(135deg, #f0b429, #d4a017);
@@ -105,9 +103,14 @@
   font-weight: 900;
   padding: 14px 0;
   cursor: pointer;
-  margin-top: 8px;
   letter-spacing: 0.1em;
   box-shadow: 0 4px 20px rgba(240, 180, 41, 0.4);
+}
+
+.btn-boss-reward-confirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .boss-reward-card-select {
@@ -166,11 +169,4 @@
   font-size: 13px;
   padding: 8px 20px;
   cursor: pointer;
-}
-
-.boss-reward-player-hp {
-  margin-top: 14px;
-  font-size: 12px;
-  font-family: var(--font-display);
-  color: rgba(255, 255, 255, 0.55);
 }

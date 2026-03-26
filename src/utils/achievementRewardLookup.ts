@@ -19,8 +19,15 @@ import {
 } from '../data/jobs/unemployed';
 import { getUnlockedCardIds } from './achievementSystem';
 
+/** 実績報酬は大工＋無色のみ。抽選プール用に料理人・無職の全カードも参照する */
+const CARPENTER_ALL: Card[] = [
+  ...CARPENTER_COMMON_POOL,
+  ...CARPENTER_UNCOMMON_POOL_UNFILTERED,
+  ...CARPENTER_RARE_POOL_ALL,
+];
+
 const JOB_CARD_SOURCES: Record<JobId, Card[]> = {
-  carpenter: [...CARPENTER_COMMON_POOL, ...CARPENTER_UNCOMMON_POOL_UNFILTERED, ...CARPENTER_RARE_POOL_ALL],
+  carpenter: CARPENTER_ALL,
   cook: [...COOK_COMMON_POOL, ...COOK_UNCOMMON_POOL_UNFILTERED, ...COOK_RARE_POOL_UNFILTERED],
   unemployed: [...UNEMPLOYED_COMMON_POOL, ...UNEMPLOYED_UNCOMMON_POOL_UNFILTERED, ...UNEMPLOYED_RARE_POOL_UNFILTERED],
 };
@@ -40,9 +47,7 @@ const add = (cards: Card[]): void => {
   }
 };
 add(NEUTRAL_CARD_POOL);
-add(JOB_CARD_SOURCES.carpenter);
-add(JOB_CARD_SOURCES.cook);
-add(JOB_CARD_SOURCES.unemployed);
+add(CARPENTER_ALL);
 
 /** 実績報酬カード1枚をIDで取得 */
 export const getAchievementRewardCard = (rewardId: string): Card | null => LOOKUP.get(rewardId) ?? null;

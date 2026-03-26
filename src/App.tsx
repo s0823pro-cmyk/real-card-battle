@@ -20,6 +20,7 @@ import ShrineScreen from './components/RunFlow/TreasureScreen';
 import {
   CardRewardScreen,
   CardUpgradeScreen,
+  EventCardGainPreviewScreen,
   OmamoriRewardScreen,
 } from './components/RunFlow/RewardScreens';
 import { BattleVictoryScreen } from './components/RunFlow/BattleVictoryScreen';
@@ -63,6 +64,7 @@ function App() {
     rollDiceAndMove,
     chooseBranch,
     chooseEventChoice,
+    closeEventCardPreview,
     hotelHeal,
     hotelMeditate,
     hotelGetItem,
@@ -322,6 +324,15 @@ function App() {
       setBossRewardArea(area);
       setShowBossReward(true);
     };
+
+    // エリアクリア報酬はストーリー視聴後（大工 e1/e2 初回のみストーリー→報酬の順）
+    if (state.jobId === 'carpenter' && area >= 1 && area <= 2) {
+      const storyId = `carpenter_e${area}`;
+      if (!hasSeenStory(storyId)) {
+        showAreaStory(area as 1 | 2, openBossReward);
+        return;
+      }
+    }
     openBossReward();
   };
 
@@ -363,19 +374,9 @@ function App() {
   };
 
   const handleBossRewardComplete = (reward: BossReward, selectedCard?: Card) => {
-    const area = bossRewardArea;
     const updatedPlayer = applyBossReward(reward.type, selectedCard);
     setShowBossReward(false);
     setBossRewardArea(null);
-    if (state.jobId === 'carpenter' && area !== null && area >= 1 && area <= 2) {
-      const storyId = `carpenter_e${area}`;
-      if (!hasSeenStory(storyId)) {
-        showAreaStory(area as 1 | 2, () => {
-          advanceAfterAreaBoss(updatedPlayer);
-        });
-        return;
-      }
-    }
     advanceAfterAreaBoss(updatedPlayer);
   };
 
@@ -453,6 +454,15 @@ function App() {
         return state.activeEvent ? (
           <EventScreen event={state.activeEvent} onChoose={chooseEventChoice} />
         ) : null;
+      case 'event_card_preview':
+        return state.eventGainedCards && state.eventGainedCards.length > 0 ? (
+          <EventCardGainPreviewScreen
+            cards={state.eventGainedCards}
+            jobId={state.jobId}
+            currentArea={state.currentArea}
+            onContinue={closeEventCardPreview}
+          />
+        ) : null;
       case 'hotel':
         return (
           <RestScreen
@@ -495,6 +505,8 @@ function App() {
             mentalRecovery={state.lastVictoryMentalRecovery}
             totalGold={state.player.gold}
             tapArmKey={state.battleVictorySeq}
+            jobId={state.jobId}
+            newAchievements={state.lastBattleNewAchievements}
             onContinue={proceedFromBattleVictory}
           />
         );
@@ -535,6 +547,7 @@ function App() {
             cardsAcquired={state.cardsAcquired}
             newAchievements={state.lastBattleNewAchievements}
             adsRemoved={getAdsRemoved()}
+            suppressNativeBanner={showStory && currentStoryId === 'carpenter_e3'}
             onHome={goHomeWithInterstitial}
           />
         );
@@ -614,12 +627,7 @@ function App() {
         />
       )}
       {showBossReward && bossRewardArea !== null && (
-        <BossRewardScreen
-          area={bossRewardArea}
-          jobId={state.jobId}
-          player={state.player}
-          onComplete={handleBossRewardComplete}
-        />
+        <BossRewardScreen jobId={state.jobId} onComplete={handleBossRewardComplete} />
       )}
       {showBattleRestorePrompt && battleSave && (
         <div className="restore-overlay">

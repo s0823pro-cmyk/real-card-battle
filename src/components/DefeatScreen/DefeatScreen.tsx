@@ -83,24 +83,25 @@ export const DefeatScreen = ({
 
         {newAchievements.length > 0 && (
           <div className="victory-achievements defeat-achievements">
-            <h3 className="victory-achievements-title">🎖️ 実績解除！</h3>
-            {newAchievements.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                className="victory-achievement-item"
-                onClick={() => setSelectedAchievement(a)}
-              >
-                <span className="victory-achievement-icon">{a.icon}</span>
-                <div className="victory-achievement-info">
-                  <p className="victory-achievement-name">{a.name}</p>
-                  <p className="victory-achievement-reward">
-                    🃏 カード2枚 解放！{' '}
-                    <span className="victory-achievement-tap">タップで確認</span>
-                  </p>
-                </div>
-              </button>
-            ))}
+            <h3 className="victory-achievements-title">
+              🎖️ 実績解除！{newAchievements.length > 1 ? `（${newAchievements.length}件）` : ''}
+            </h3>
+            <div className="victory-achievements-scroll">
+              {newAchievements.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className="victory-achievement-item"
+                  onClick={() => setSelectedAchievement(a)}
+                >
+                  <span className="victory-achievement-icon">{a.icon}</span>
+                  <div className="victory-achievement-info">
+                    <p className="victory-achievement-name">{a.name}</p>
+                    <p className="victory-achievement-reward">🃏 カード2枚 解放！</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

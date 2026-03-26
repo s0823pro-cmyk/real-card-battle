@@ -278,6 +278,51 @@
   pointer-events: none;
 }
 
+/* イベント入手プレビュー：選択なしのためホバー浮きを抑止 */
+.event-card-gain-preview-card {
+  cursor: default;
+}
+
+.event-card-gain-preview-card:hover,
+.event-card-gain-preview-card:focus-visible,
+.event-card-gain-preview-card:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.event-card-gain-preview-ok {
+  margin-top: 18px;
+}
+
+/* イベント由来のカード入手プレビュー：全体を控えめに */
+.event-card-gain-preview-screen .reward-heading--event-preview {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(230, 235, 242, 0.88);
+  margin-bottom: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.event-card-gain-preview-screen .card-reward-panel {
+  gap: 6px;
+}
+
+.flow-btn--event-preview-ok {
+  margin-top: 14px;
+  text-align: center;
+  background: rgba(30, 36, 48, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(230, 237, 243, 0.92);
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 10px 28px;
+}
+
+.flow-btn--event-preview-ok:active {
+  background: rgba(40, 48, 62, 0.92);
+}
+
 .btn-skip {
   background: none;
   border: none;
@@ -738,10 +783,16 @@
   gap: 4px;
 }
 
-/* 写真背景（ホテル・神社・質屋・鍛錬・イベント・カード報酬・ボス報酬等） */
-.flow-screen.flow-screen--with-bg,
-.boss-reward-screen.boss-reward-screen--with-bg {
+/* 写真背景（ホテル・神社・質屋・鍛錬・イベント・カード報酬等） */
+.flow-screen.flow-screen--with-bg {
   position: relative;
+  isolation: isolate;
+  background-color: transparent;
+}
+
+/* ボス報酬は App 内マップ枠の子だが全画面オーバーレイ（BossRewardScreen.css の fixed）を維持する。
+ * flow-screen と同梱していた position: relative が fixed を潰し、画面上半分にマップが透けていた。 */
+.boss-reward-screen.boss-reward-screen--with-bg {
   isolation: isolate;
   background-color: transparent;
 }

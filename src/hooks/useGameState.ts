@@ -944,12 +944,17 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (mentalTimeDelta > 0) {
       pushPopup(`🧠+${mentalTimeDelta.toFixed(1)}s`, 'player', 'buff');
     }
-    const playerHpIncreasedForHealSe = playerAfterKill.currentHp > gameState.player.currentHp;
+    /** カード解決直後（撃破お守りの on_kill 回復より前）に既にHPが増えているか */
+    const playerHpIncreasedFromCardResolve = playerAfterCard.currentHp > gameState.player.currentHp;
+    const playerHpIncreasedOverall = playerAfterKill.currentHp > gameState.player.currentHp;
     const anyEnemyHpIncreasedForHealSe = result.enemies.some((e) => {
       const before = enemiesBefore.find((item) => item.id === e.id);
       return before !== undefined && e.currentHp > before.hp;
     });
-    if (playerHpIncreasedForHealSe || anyEnemyHpIncreasedForHealSe) {
+    /** 勝利のお守り等の on_kill 回復だけでは回復SEを鳴らさない（カード回復・敵回復は従来どおり） */
+    const shouldPlayHealSe =
+      anyEnemyHpIncreasedForHealSe || (playerHpIncreasedOverall && playerHpIncreasedFromCardResolve);
+    if (shouldPlayHealSe) {
       playSe('heal');
     }
     if (result.isDandoriActive) {

@@ -73,6 +73,16 @@
   margin-left: var(--player-main-stats-nudge-left);
 }
 
+/* HP/ブロック列と棟上げ・宮大工（ブロック数値の右隣）を束ね、装備スロットの負マージ侵入と重ならないようにする */
+.player-stat-left-cluster {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
 /* HP・プレビュー・ブロックを同じ縦列に */
 .player-hp-block-column {
   display: flex;
@@ -397,20 +407,19 @@
   font-size: 14px;
 }
 
-/* 棟上げ・宮大工：ブロック数値の少し右横 */
-.player-block-trailing-icons {
+/* 棟上げ・宮大工：ブロック数値列の右（料理バッジ等より手前）。装備枠と重ならないよう列を分離 */
+.player-block-buff-icons {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: 8px;
   flex-shrink: 0;
   position: relative;
   top: var(--block-row-sub-nudge-y);
 }
 
 /* ブロックアイコンよりひと回り小さめ */
-.player-block-trailing-icons .status-ridgepole,
-.player-block-trailing-icons .status-temple {
+.player-block-buff-icons .status-ridgepole,
+.player-block-buff-icons .status-temple {
   width: 18px;
   height: 18px;
   font-size: 18px;

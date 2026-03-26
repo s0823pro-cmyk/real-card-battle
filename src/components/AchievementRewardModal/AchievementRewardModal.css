@@ -1,9 +1,67 @@
+/* バトル勝利オーバーレイ（z-index 25000 帯）より手前に出す */
+.achievement-reward-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 26000;
+}
+
+.achievement-reward-modal {
+  background: #161b22;
+  border: 1px solid rgba(240, 180, 41, 0.4);
+  border-radius: 16px;
+  padding: 24px 20px;
+  width: min(320px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.achievement-reward-modal-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: #f0b429;
+  margin: 0;
+  text-align: center;
+}
+
+.achievement-reward-modal-sub {
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: #8b949e;
+  margin: 0;
+}
+
+.achievement-reward-close {
+  background: #f0b429;
+  border: none;
+  border-radius: 8px;
+  color: #0d1117;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 32px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
 .achievement-reward-cards-row {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
   margin: 12px 0;
+}
+
+/* 親画面の button スタイル等で背景が乗らないよう、プレビュー用カードは常に透明ベース */
+.achievement-reward-cards-row .hand-card {
+  background: transparent;
+  color: inherit;
 }
 
 .achievement-omamori-img {

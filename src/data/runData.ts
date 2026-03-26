@@ -148,7 +148,7 @@ export const RELICS: Omamori[] = [
     name: '勝利のお守り',
     icon: '🏆',
     imageUrl: victoryCharmImage,
-    description: '敵を倒すたびHPを2回復',
+    description: '敵を倒すたびHPを2回復（※この回復では回復SEは鳴りません）',
     effect: { type: 'on_kill', stat: 'heal', value: 2 },
   },
   {
@@ -524,14 +524,34 @@ const pickWeightedGameEvent = (pool: GameEvent[]): GameEvent => {
   return pool[pool.length - 1];
 };
 
-const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const pickRandom = <T,>(arr: T[]): T => {
+  if (arr.length === 0) {
+    throw new Error('pickRandom: empty pool');
+  }
+  return arr[Math.floor(Math.random() * arr.length)];
+};
 
-export const pickRandomCommonCard = (jobId: JobId = 'carpenter'): Card =>
-  cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).common.filter((card) => !card.neutral)));
-export const pickRandomUncommonCard = (jobId: JobId = 'carpenter'): Card =>
-  cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).uncommon.filter((card) => !card.neutral)));
-export const pickRandomRareCard = (jobId: JobId = 'carpenter'): Card =>
-  cloneRewardCard(pickRandom(getCardPoolsByJob(jobId).rare.filter((card) => !card.neutral)));
+export const pickRandomCommonCard = (jobId: JobId = 'carpenter'): Card => {
+  const pool = getCardPoolsByJob(jobId).common.filter((card) => !card.neutral);
+  if (pool.length === 0) {
+    return cloneRewardCard(pickRandom(NEUTRAL_COMMON_POOL));
+  }
+  return cloneRewardCard(pickRandom(pool));
+};
+export const pickRandomUncommonCard = (jobId: JobId = 'carpenter'): Card => {
+  const pool = getCardPoolsByJob(jobId).uncommon.filter((card) => !card.neutral);
+  if (pool.length === 0) {
+    return pickRandomCommonCard(jobId);
+  }
+  return cloneRewardCard(pickRandom(pool));
+};
+export const pickRandomRareCard = (jobId: JobId = 'carpenter'): Card => {
+  const pool = getCardPoolsByJob(jobId).rare.filter((card) => !card.neutral);
+  if (pool.length === 0) {
+    return pickRandomUncommonCard(jobId);
+  }
+  return cloneRewardCard(pickRandom(pool));
+};
 
 const getNeutralPoolForPick = (rarity: 'uncommon' | 'rare'): Card[] => {
   const unlocked = getUnlockedCardIds();
@@ -542,40 +562,120 @@ const getNeutralPoolForPick = (rarity: 'uncommon' | 'rare'): Card[] => {
   );
 };
 
-const pickRandomNeutralByRarity = (rarity: 'common' | 'uncommon' | 'rare'): Card => {
-  if (rarity === 'rare') return cloneRewardCard(pickRandom(getNeutralPoolForPick('rare')));
-  if (rarity === 'uncommon') return cloneRewardCard(pickRandom(getNeutralPoolForPick('uncommon')));
+/** 実績ロック等で中立プールが空でも、ジョブ枠にフォールバック（エリート／ボス報酬で onBattleEnd が落ちないようにする） */
+const pickRandomNeutralByRarity = (rarity: 'common' | 'uncommon' | 'rare', jobId: JobId): Card => {
+  if (rarity === 'rare') {
+    const pool = getNeutralPoolForPick('rare');
+    if (pool.length > 0) return cloneRewardCard(pickRandom(pool));
+    return pickRandomRareCard(jobId);
+  }
+  if (rarity === 'uncommon') {
+    const pool = getNeutralPoolForPick('uncommon');
+    if (pool.length > 0) return cloneRewardCard(pickRandom(pool));
+    return pickRandomUncommonCard(jobId);
+  }
   return cloneRewardCard(pickRandom(NEUTRAL_COMMON_POOL));
 };
 
+/** 報酬候補の同一カード判定（名前が一致すれば同一とみなす） */
+const cardNameKey = (card: Card): string => card.name;
+
+const dedupeTemplatesByName = (cards: Card[]): Card[] => {
+  const byName = new Map<string, Card>();
+  for (const c of cards) {
+    if (!byName.has(c.name)) byName.set(c.name, c);
+  }
+  return [...byName.values()];
+};
+
+const getAllRewardTemplatesForJob = (jobId: JobId): Card[] => {
+  const p = getCardPoolsByJob(jobId);
+  return dedupeTemplatesByName([...p.common, ...p.uncommon, ...p.rare]);
+};
+
+const pickFallbackUniqueFromTemplates = (templates: Card[], seen: Set<string>): Card | null => {
+  const avail = templates.filter((t) => !seen.has(t.name));
+  if (avail.length === 0) return null;
+  return cloneRewardCard(pickRandom(avail));
+};
+
+/** レア報酬用：レア枠で足りなければアンコモン→コモンの順で埋める */
+const pickFallbackRareRewardExpanding = (jobId: JobId, seen: Set<string>): Card | null => {
+  const p = getCardPoolsByJob(jobId);
+  for (const pool of [p.rare, p.uncommon, p.common]) {
+    const t = pickFallbackUniqueFromTemplates(dedupeTemplatesByName(pool), seen);
+    if (t) return t;
+  }
+  return null;
+};
+
 export const generateCardRewardChoices = (jobId: JobId = 'carpenter', count = 3): Card[] => {
-  const cards: Card[] = [];
-  for (let i = 0; i < count; i += 1) {
+  const pickOne = (): Card => {
     const roll = Math.random();
     const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.03 ? 'rare' : roll < 0.23 ? 'uncommon' : 'common';
     const useNeutral = Math.random() < 0.3;
     if (useNeutral) {
-      cards.push(pickRandomNeutralByRarity(rarity));
-    } else if (rarity === 'rare') {
-      cards.push(pickRandomRareCard(jobId));
-    } else if (rarity === 'uncommon') {
-      cards.push(pickRandomUncommonCard(jobId));
-    } else {
-      cards.push(pickRandomCommonCard(jobId));
+      return pickRandomNeutralByRarity(rarity, jobId);
     }
+    if (rarity === 'rare') {
+      return pickRandomRareCard(jobId);
+    }
+    if (rarity === 'uncommon') {
+      return pickRandomUncommonCard(jobId);
+    }
+    return pickRandomCommonCard(jobId);
+  };
+
+  const cards: Card[] = [];
+  const seen = new Set<string>();
+  let guard = 0;
+  const maxGuard = Math.max(count * 100, 100);
+  while (cards.length < count && guard < maxGuard) {
+    guard += 1;
+    const c = pickOne();
+    const k = cardNameKey(c);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    cards.push(c);
+  }
+
+  const allTemplates = getAllRewardTemplatesForJob(jobId);
+  while (cards.length < count) {
+    const next = pickFallbackUniqueFromTemplates(allTemplates, seen);
+    if (!next) break;
+    seen.add(cardNameKey(next));
+    cards.push(next);
   }
   return cards;
 };
 
 export const generateRareCardRewardChoices = (jobId: JobId = 'carpenter', count = 3): Card[] => {
-  const cards: Card[] = [];
-  for (let i = 0; i < count; i += 1) {
+  const pickOne = (): Card => {
     const useNeutral = Math.random() < 0.3;
     if (useNeutral) {
-      cards.push(pickRandomNeutralByRarity('rare'));
-    } else {
-      cards.push(pickRandomRareCard(jobId));
+      return pickRandomNeutralByRarity('rare', jobId);
     }
+    return pickRandomRareCard(jobId);
+  };
+
+  const cards: Card[] = [];
+  const seen = new Set<string>();
+  let guard = 0;
+  const maxGuard = Math.max(count * 100, 100);
+  while (cards.length < count && guard < maxGuard) {
+    guard += 1;
+    const c = pickOne();
+    const k = cardNameKey(c);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    cards.push(c);
+  }
+
+  while (cards.length < count) {
+    const next = pickFallbackRareRewardExpanding(jobId, seen);
+    if (!next) break;
+    seen.add(cardNameKey(next));
+    cards.push(next);
   }
   return cards;
 };
@@ -595,7 +695,7 @@ export const generateShopCards = (count: number, jobId: JobId = 'carpenter'): Ca
     const roll = Math.random();
     const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.03 ? 'rare' : roll < 0.23 ? 'uncommon' : 'common';
     const useNeutral = Math.random() < 0.3;
-    if (useNeutral) return pickRandomNeutralByRarity(rarity);
+    if (useNeutral) return pickRandomNeutralByRarity(rarity, jobId);
     if (rarity === 'rare') return pickRandomRareCard(jobId);
     if (rarity === 'uncommon') return pickRandomUncommonCard(jobId);
     return pickRandomCommonCard(jobId);

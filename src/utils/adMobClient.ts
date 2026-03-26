@@ -70,6 +70,14 @@ export async function showInterstitialIfAllowed(
   await h3.remove().catch(() => {});
 }
 
+/** ストーリー重ね表示などでネイティブバナーだけ消す */
+export async function removeBannerAd(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  await ensureAdMobInitialized();
+  const { AdMob } = await import('@capacitor-community/admob');
+  await AdMob.removeBanner().catch(() => {});
+}
+
 /** カード報酬画面用バナー。戻り値のクリーンアップで removeBanner する */
 export async function mountCardRewardBanner(adsRemoved: boolean): Promise<() => Promise<void>> {
   if (adsRemoved || !Capacitor.isNativePlatform()) {

@@ -6,14 +6,12 @@ import { FLOW_BG_BOSS_REWARD } from '../../data/flowBackgrounds';
 import { BOSS_REWARDS } from '../../data/bossRewards';
 import type { BossReward } from '../../data/bossRewards';
 import { pickRandomRareCard } from '../../data/runData';
-import type { Card, JobId, PlayerState } from '../../types/game';
+import type { Card, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import './BossRewardScreen.css';
 
 interface BossRewardScreenProps {
-  area: number;
   jobId: JobId;
-  player: PlayerState;
   onComplete: (reward: BossReward, selectedCard?: Card) => void;
 }
 
@@ -53,7 +51,7 @@ const generateRareRewardCards = (jobId: JobId): Card[] => {
   return picked;
 };
 
-export const BossRewardScreen = ({ area, jobId, player, onComplete }: BossRewardScreenProps) => {
+export const BossRewardScreen = ({ jobId, onComplete }: BossRewardScreenProps) => {
   const { playBgm } = useAudioContext();
   useEffect(() => {
     playBgm('victory');
@@ -84,14 +82,21 @@ export const BossRewardScreen = ({ area, jobId, player, onComplete }: BossReward
 
   const handleRewardSelect = (reward: BossReward) => {
     setSelectedReward(reward);
-    if (reward.type === 'rare_card') {
-      setShowCardSelect(true);
-    }
   };
 
   const handleConfirm = (selectedCard?: Card) => {
     if (!selectedReward) return;
     onComplete(selectedReward, selectedCard);
+  };
+
+  /** メイン画面の「決定」：レアはこの後にカード一覧へ（カードは決定まで非表示） */
+  const handleMainScreenConfirm = () => {
+    if (!selectedReward) return;
+    if (selectedReward.type === 'rare_card') {
+      setShowCardSelect(true);
+      return;
+    }
+    handleConfirm();
   };
 
   const bossRewardRootStyle = {
@@ -102,7 +107,6 @@ export const BossRewardScreen = ({ area, jobId, player, onComplete }: BossReward
   return (
     <div className="boss-reward-screen boss-reward-screen--with-bg" style={bossRewardRootStyle}>
       <div className="boss-reward-header">
-        <p className="boss-reward-area">エリア{area} クリア！</p>
         <h2 className="boss-reward-title">報酬を選択してください</h2>
       </div>
 
@@ -120,17 +124,24 @@ export const BossRewardScreen = ({ area, jobId, player, onComplete }: BossReward
               <span className="boss-reward-option-icon">{reward.icon}</span>
               <div className="boss-reward-option-info">
                 <p className="boss-reward-option-label">{reward.label}</p>
-                <p className="boss-reward-option-desc">{reward.description}</p>
+                {reward.type !== 'rare_card' && (
+                  <p className="boss-reward-option-desc">{reward.description}</p>
+                )}
               </div>
               {selectedReward?.type === reward.type && <span className="boss-reward-option-check">✓</span>}
             </button>
           ))}
 
-          {selectedReward && selectedReward.type !== 'rare_card' && (
-            <button type="button" className="btn-boss-reward-confirm" onClick={() => handleConfirm()}>
+          <div className="boss-reward-confirm-slot">
+            <button
+              type="button"
+              className="btn-boss-reward-confirm"
+              disabled={!selectedReward}
+              onClick={handleMainScreenConfirm}
+            >
               決定
             </button>
-          )}
+          </div>
         </div>
       )}
 
@@ -194,7 +205,6 @@ export const BossRewardScreen = ({ area, jobId, player, onComplete }: BossReward
           </button>
         </div>
       )}
-      <div className="boss-reward-player-hp">HP: {player.maxHp}/{player.currentHp}</div>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 import type { Card, JobId } from '../../types/game';
 import CardComponent from '../Hand/CardComponent';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
@@ -47,9 +48,22 @@ export const AchievementRewardModal = ({ selected, onClose, jobId }: Achievement
 
   const [cardA, cardB] = getAchievementRewardCards(selected.rewardCardIds[0], selected.rewardCardIds[1]);
 
-  return (
-    <div className="achievement-reward-overlay" onClick={onClose}>
-      <div className="achievement-reward-modal" onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <div
+      className="achievement-reward-overlay"
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+      onTouchEnd={(e) => e.stopPropagation()}
+    >
+      <div
+        className="achievement-reward-modal"
+        onClick={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+      >
         <h3 className="achievement-reward-modal-title">
           {selected.icon} {selected.name}
         </h3>
@@ -85,10 +99,18 @@ export const AchievementRewardModal = ({ selected, onClose, jobId }: Achievement
             ) : null,
           )}
         </div>
-        <button type="button" className="achievement-reward-close" onClick={onClose}>
+        <button
+          type="button"
+          className="achievement-reward-close"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+        >
           閉じる
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

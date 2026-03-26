@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
+import type { JobId } from '../../types/game';
+import type { Achievement } from '../../utils/achievementSystem';
 import { BattleVictoryPanel } from '../Result/BattleVictoryPanel';
 
 interface Props {
@@ -9,6 +11,8 @@ interface Props {
   onContinue: () => void;
   /** ラン状態の battleVictorySeq（合計金の変更でタップ待ちがリセットされ続けないようにする） */
   tapArmKey: number;
+  jobId: JobId;
+  newAchievements?: Achievement[];
 }
 
 /** ラン中：敵討伐後のスプラッシュ →「進む」で次フローへ */
@@ -18,6 +22,8 @@ export const BattleVictoryScreen = ({
   totalGold,
   onContinue,
   tapArmKey,
+  jobId,
+  newAchievements = [],
 }: Props) => {
   const { playBgm } = useAudioContext();
   useEffect(() => {
@@ -32,6 +38,8 @@ export const BattleVictoryScreen = ({
       totalGold={totalGold}
       onContinue={onContinue}
       tapArmKey={tapArmKey}
+      jobId={jobId}
+      newAchievements={newAchievements}
     />
   );
 };
