@@ -4,6 +4,9 @@ const config: CapacitorConfig = {
   appId: 'com.s0823pro.realcardbattle',
   appName: 'Real Card Battle',
   webDir: 'dist',
+  ios: {
+    contentInset: 'always',
+  },
   server: {
     androidScheme: 'https',
   },

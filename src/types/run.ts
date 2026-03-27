@@ -26,6 +26,7 @@ export type GameScreen =
   | 'pawnshop'
   | 'event'
   | 'event_card_preview'
+  | 'event_gain_modal'
   | 'hotel'
   | 'branch_select'
   | 'card_upgrade'
@@ -186,6 +187,10 @@ export interface GameProgress {
   activeEvent: GameEvent | null;
   /** イベントでカード入手直後のプレビュー用（復帰時はマップへ正規化して破棄） */
   eventGainedCards: Card[] | null;
+  /** カードプレビュー後に表示するお守り／アイテム獲得モーダル（1件） */
+  pendingGainAfterEventCards: { name: string; icon: string; kind: 'omamori' | 'item' } | null;
+  /** イベントでお守り／アイテムのみ獲得したときの表示用 */
+  eventGainModal: { name: string; icon: string; kind: 'omamori' | 'item' } | null;
   activeShopItems: ShopItem[];
   pawnshopSellUsedThisVisit: boolean;
   hotelItemReceivedThisVisit: boolean;

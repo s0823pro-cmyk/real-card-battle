@@ -10,10 +10,10 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   墨の補足: {
     name: '墨の補足+',
-    description: '次のアタックの所要時間-3秒（ターン終了で失効）',
-    effects: [{ type: 'next_attack_time_reduce', value: 3 }],
+    description: '次のアタックの所要時間-2.5秒（ターン終了で失効）',
+    effects: [{ type: 'next_attack_time_reduce', value: 2.5 }],
   },
-  小釘打ち: { name: '小釘打ち+', damage: 7, description: '7ダメージ' },
+  小釘打ち: { name: '小釘打ち+', damage: 8, description: '8ダメージ' },
   角材: { name: '角材+', block: 10, description: '10ブロック' },
   仮囲い: {
     name: '仮囲い+',
@@ -50,7 +50,13 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
     description: '5ブロック、カード1枚ドロー',
     effects: [{ type: 'draw', value: 1 }],
   },
-  杭打ち: { name: '杭打ち+', damage: 11, timeCost: 2.5, description: '11ダメージ（所要時間2.5秒）' },
+  杭打ち: {
+    name: '杭打ち+',
+    damage: 10,
+    timeCost: 2,
+    description: '10ダメージ',
+    badges: ['setup'],
+  },
   仕口チェック: {
     name: '仕口チェック+',
     description: '足場+2、カード1枚ドロー',
@@ -78,7 +84,7 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
     description: 'カード3枚ドロー（所要時間1.5秒）',
     effects: [{ type: 'draw', value: 3 }],
   },
-  木粉払い: { name: '木粉払い+', damage: 7, description: '7ダメージ' },
+  木粉払い: { name: '木粉払い+', damage: 5, description: '全体5ダメージ' },
   垂木の下: { name: '垂木の下+', block: 9, timeCost: 2, description: '9ブロック（所要時間2秒）' },
   墨付け直し: {
     name: '墨付け直し+',
@@ -101,10 +107,10 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   梁の継ぎ手: {
     name: '梁の継ぎ手+',
-    timeCost: 2.5,
+    timeCost: 4,
     damage: 10,
-    scaffoldMultiplier: 0.75,
-    description: '10ダメージ+足場×0.75ダメージ',
+    scaffoldMultiplier: 1,
+    description: '10ダメージ+足場×1ダメージ',
   },
   大工ばしご: {
     name: '大工ばしご+',
@@ -119,9 +125,9 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   金槌の響き: {
     name: '金槌の響き+',
-    timeCost: 2,
-    description: 'このターンのアタック2回まで+5ダメージ（ターン終了で失効）',
-    effects: [{ type: 'next_attack_boost', value: 5, count: 2 }],
+    timeCost: 1,
+    description: 'このターンに使用するアタックを2回まで+3ダメージ（ターン終了で失効）',
+    effects: [{ type: 'next_attack_boost', value: 3, count: 2 }],
   },
   土台固め: {
     name: '土台固め+',
@@ -147,12 +153,12 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
     description: '10ブロック。敵に脆弱3ターン',
     effects: [{ type: 'vulnerable', value: 1, duration: 3 }],
   },
-  のこぎり連打: {
-    name: 'のこぎり連打+',
-    timeCost: 3,
+  ノコギリ連打: {
+    name: 'ノコギリ連打+',
+    timeCost: 3.5,
     damage: 5,
-    description: '5ダメージを4回、ランダムな敵へ（所要時間3秒）',
-    effects: [{ type: 'hit_count', value: 4 }],
+    description: '5ダメージを3回、ランダムな敵へ',
+    effects: [{ type: 'hit_count', value: 3 }],
   },
   内装下地: {
     name: '内装下地+',
@@ -171,8 +177,8 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   検査合格: {
     name: '検査合格+',
     timeCost: 3,
-    description: '次に使うカードのブロック値を3倍にする（ターン終了で失効）',
-    effects: [{ type: 'next_card_block_multiplier', value: 3 }],
+    description: '次に使うカードのブロック値を2.5倍（ターン終了で失効）',
+    effects: [{ type: 'next_card_block_multiplier', value: 2.5 }],
   },
   メジャー測定: {
     name: 'メジャー測定+',
@@ -192,28 +198,33 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
 
   超間柱: {
     name: '超間柱+',
-    damage: 3,
-    scaffoldMultiplier: 2.5,
-    description: '3ダメージ+足場×2.5ダメージ（所要時間3.5秒）',
+    timeCost: 3,
+    damage: 2,
+    scaffoldMultiplier: 2,
+    tags: ['scaffold_bonus'],
+    badges: [],
+    description: '2ダメージ+足場×2ダメージ',
   },
   全面改装: {
     name: '全面改装+',
-    timeCost: 2,
-    description: '手札のカード4枚をランダムで強化。使用後除外（所要時間2秒）',
-    effects: [{ type: 'upgrade_random_hand_card', value: 4 }],
+    timeCost: 2.5,
+    description: '手札のカード3枚をランダムで強化。使用後除外',
+    effects: [{ type: 'upgrade_random_hand_card', value: 3 }],
   },
   鋼梁接合: {
     name: '鋼梁接合+',
-    block: 26,
-    timeCost: 3.5,
-    description: '26ブロック。3ターンブロックが消えない',
-    effects: [{ type: 'block_persist', value: 3 }],
+    block: 30,
+    timeCost: 5,
+    description: '30ブロック、次のターンまで効果が消えない',
+    effects: [{ type: 'block_persist', value: 1 }],
+    tags: ['exhaust'],
+    badges: ['exhaust'],
   },
   二重足場: {
     name: '二重足場+',
-    timeCost: 4,
-    description: '毎ターン足場+3',
-    effects: [{ type: 'scaffold_per_turn', value: 3 }],
+    timeCost: 5.5,
+    description: '毎ターン足場+2',
+    effects: [{ type: 'scaffold_per_turn', value: 2 }],
   },
   点検車: {
     name: '点検車+',

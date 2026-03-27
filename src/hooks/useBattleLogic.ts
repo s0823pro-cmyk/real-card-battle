@@ -228,7 +228,8 @@ export const useBattleLogic = () => {
         nextPlayer.nextAttackDamageBoost += effect.value;
       }
       if (effect.type === 'block_persist') {
-        nextPlayer.blockPersist = true;
+        const turns = effect.value ?? 1;
+        nextPlayer.blockPersistTurns = Math.max(nextPlayer.blockPersistTurns ?? 0, turns);
       }
       if (effect.type === 'damage_immunity_this_turn') {
         nextPlayer.damageImmunityThisTurn = true;

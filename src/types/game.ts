@@ -31,6 +31,7 @@ export type EffectType =
   | 'block_persist'
   | 'block_per_turn'
   | 'upgrade_random_hand_card'
+  | 'upgrade_all_hand_card'
   | 'next_attack_damage_boost'
   | 'damage_immunity_this_turn'
   | 'next_turn_no_block'
@@ -160,7 +161,8 @@ export interface PlayerState {
   templeCarpenterMultiplier?: number;
   cliffEdgeActive: boolean;
   nextAttackTimeReduce: number;
-  blockPersist: boolean;
+  /** 0 以外なら次の自分ターン開始までブロックを維持する残り回数 */
+  blockPersistTurns: number;
   nextAttackDamageBoost: number;
   damageImmunityThisTurn: boolean;
   nextTurnNoBlock: boolean;
@@ -220,4 +222,6 @@ export interface GameState {
   enemies: Enemy[];
   executingIndex: number;
   toolSlots: ToolSlot[];
+  /** 全面改装／リフォーム系のバトル中のみの強化を終了時に戻すため id→強化前 */
+  battleCardRevertMap?: Record<string, Card>;
 }

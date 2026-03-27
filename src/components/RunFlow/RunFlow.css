@@ -126,16 +126,24 @@
 
 .shop-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .shop-card-price {
   display: block;
   text-align: center;
   color: #8b949e;
-  font-size: 11px;
-  margin-top: 4px;
+  font-size: 10px;
+  margin-top: 2px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shop-tabs {
@@ -154,10 +162,12 @@
   border-radius: 10px;
   background: var(--bg-card);
   color: var(--text-primary);
-  min-height: 74px;
-  padding: 8px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 6px 8px;
+  font-size: 12px;
   display: grid;
-  gap: 4px;
+  gap: 2px;
   text-align: left;
 }
 
@@ -306,6 +316,20 @@
 
 .event-card-gain-preview-screen .card-reward-panel {
   gap: 6px;
+}
+
+.event-gain-modal-panel .event-gain-modal-msg {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: rgba(220, 228, 236, 0.96);
+  margin: 0;
+  text-align: center;
+  line-height: 1.55;
+}
+
+.event-gain-modal-panel .event-gain-modal-icon {
+  font-size: 1.35rem;
+  vertical-align: middle;
 }
 
 .flow-btn--event-preview-ok {
@@ -714,23 +738,31 @@
 
 .shop-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
   align-items: start;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .shop-card-item {
   cursor: pointer;
   border: 2px solid transparent;
   transition: transform 0.15s ease, border-color 0.15s ease;
-  width: 90px;
-  height: 144px;
-  flex-shrink: 0;
+  width: 100%;
+  max-width: 76px;
+  min-width: 0;
+  height: auto;
+  min-height: 122px;
+  aspect-ratio: 90 / 144;
+  flex-shrink: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   justify-self: center;
   border-radius: 10px;
   box-sizing: border-box;

@@ -180,12 +180,47 @@
   color: #0d1117;
 }
 
+.zukan-count-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-left: 12px;
+  padding-right: 12px;
+  flex-shrink: 0;
+}
+
 .zukan-count {
   font-family: var(--font-display);
   font-size: 11px;
   color: #8b949e;
-  margin: max(0px, calc(4px - var(--overlay-screen-nudge-up, 0px))) 12px 4px;
+  margin: max(0px, calc(4px - var(--overlay-screen-nudge-up, 0px))) 0 4px;
   flex-shrink: 0;
+}
+
+.zukan-upgrade-toggle {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0.35em 0.85em;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #161b22;
+  color: #8b949e;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.zukan-upgrade-toggle--active {
+  color: #0d1117;
+  background: linear-gradient(145deg, #ffe08a, #f0b429);
+  border-color: rgba(240, 180, 41, 0.85);
+  box-shadow: 0 0 14px rgba(240, 180, 41, 0.45);
 }
 
 .zukan-card-grid {

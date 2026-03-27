@@ -44,7 +44,15 @@ export function isAdRemoved(): boolean {
 /** IAP 実装時に購入完了で呼ぶ */
 export function setAdsRemoved(value: boolean): void {
   try {
+    const prev = getAdsRemoved();
     localStorage.setItem(ADS_REMOVED_STORAGE_KEY, value ? 'true' : 'false');
+    if (prev !== value) {
+      try {
+        window.dispatchEvent(new CustomEvent('ads-removed-changed'));
+      } catch {
+        /* ignore */
+      }
+    }
   } catch {
     /* ignore */
   }

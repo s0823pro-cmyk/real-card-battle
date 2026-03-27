@@ -145,7 +145,14 @@ const NON_RESUMABLE_SCREENS = [
   'omamori_reward',
   'boss_reward',
 ];
-const NORMALIZE_TO_MAP = ['battle', 'omamori_reward', 'boss_reward', 'battle_victory', 'event_card_preview'];
+const NORMALIZE_TO_MAP = [
+  'battle',
+  'omamori_reward',
+  'boss_reward',
+  'battle_victory',
+  'event_card_preview',
+  'event_gain_modal',
+];
 export type DevDestination =
   | 'battle_normal'
   | 'battle_elite'
@@ -279,8 +286,18 @@ type Action =
   | { type: 'set_branch'; tileId: number | null }
   | { type: 'set_event'; event: GameEvent | null }
   | { type: 'set_event_gained_cards'; cards: Card[] | null }
-  | { type: 'show_event_card_preview'; cards: Card[] }
+  | {
+      type: 'show_event_card_preview';
+      cards: Card[];
+      pendingGainAfter?: { name: string; icon: string; kind: 'omamori' | 'item' } | null;
+    }
   | { type: 'close_event_card_preview' }
+  | {
+      type: 'show_event_gain_modal';
+      payload: { name: string; icon: string; kind: 'omamori' | 'item' };
+    }
+  | { type: 'close_event_gain_modal' }
+  | { type: 'clear_event_gain_state' }
   | { type: 'set_shop'; shopItems: ShopItem[] }
   | { type: 'set_pawnshop_sell_used'; used: boolean }
   | { type: 'set_hotel_item_received'; used: boolean }
@@ -349,7 +366,7 @@ const initialPlayer: PlayerState = {
   templeCarpenterMultiplier: undefined,
   cliffEdgeActive: false,
   nextAttackTimeReduce: 0,
-  blockPersist: false,
+  blockPersistTurns: 0,
   nextAttackDamageBoost: 0,
   damageImmunityThisTurn: false,
   nextTurnNoBlock: false,
@@ -396,6 +413,8 @@ const makeInitialProgress = (): GameProgress => {
     traveledEdges: [],
     activeEvent: null,
     eventGainedCards: null,
+    pendingGainAfterEventCards: null,
+    eventGainModal: null,
     activeShopItems: [],
     pawnshopSellUsedThisVisit: false,
     hotelItemReceivedThisVisit: false,
@@ -493,15 +512,46 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
     case 'set_event':
       return { ...state, activeEvent: action.event };
     case 'set_event_gained_cards':
-      return { ...state, eventGainedCards: action.cards };
+      return {
+        ...state,
+        eventGainedCards: action.cards,
+        ...(action.cards === null ? { pendingGainAfterEventCards: null } : {}),
+      };
     case 'show_event_card_preview':
       return {
         ...state,
         eventGainedCards: action.cards,
+        pendingGainAfterEventCards: action.pendingGainAfter ?? null,
         currentScreen: 'event_card_preview',
       };
-    case 'close_event_card_preview':
-      return { ...state, eventGainedCards: null, currentScreen: 'map' };
+    case 'close_event_card_preview': {
+      const pending = state.pendingGainAfterEventCards;
+      if (pending) {
+        return {
+          ...state,
+          eventGainedCards: null,
+          pendingGainAfterEventCards: null,
+          eventGainModal: pending,
+          currentScreen: 'event_gain_modal',
+        };
+      }
+      return { ...state, eventGainedCards: null, pendingGainAfterEventCards: null, currentScreen: 'map' };
+    }
+    case 'show_event_gain_modal':
+      return {
+        ...state,
+        eventGainModal: action.payload,
+        currentScreen: 'event_gain_modal',
+      };
+    case 'close_event_gain_modal':
+      return { ...state, eventGainModal: null, currentScreen: 'map' };
+    case 'clear_event_gain_state':
+      return {
+        ...state,
+        eventGainedCards: null,
+        pendingGainAfterEventCards: null,
+        eventGainModal: null,
+      };
     case 'set_shop':
       return { ...state, activeShopItems: action.shopItems };
     case 'set_pawnshop_sell_used':
@@ -1004,6 +1054,10 @@ export const useRunProgress = () => {
     dispatch({ type: 'close_event_card_preview' });
   };
 
+  const closeEventGainModal = () => {
+    dispatch({ type: 'close_event_gain_modal' });
+  };
+
   const chooseEventChoice = (choiceIndex: number) => {
     const event = stateRef.current.activeEvent;
     if (!event) return;
@@ -1054,29 +1108,50 @@ export const useRunProgress = () => {
     const effectIsHealOrPositiveMental = (e: { type: string; value: number }): boolean =>
       e.type === 'heal' || (e.type === 'mental' && e.value > 0);
 
+    const prevOmamoris = stateRef.current.omamoris;
+    const prevItems = stateRef.current.items;
+
     let nextState = stateRef.current;
     let shouldPlayHealSe = false;
     let shouldPlayDamageSe = false;
     const gainedFromEvent: Card[] = [];
     for (const effect of event.choices[choiceIndex]?.effects ?? []) {
       if (event.id === 'vending_machine' && effect.type === 'gold' && effect.value === -10) {
-        // -10G消費を先に適用してからランダム効果を付与
         const rPay = applySingleEffect(nextState, effect);
         nextState = rPay.state;
         gainedFromEvent.push(...rPay.gainedCards);
-        const randomSet = [
-          { type: 'heal', value: 20 },
-          { type: 'damage', value: 5 },
-          { type: 'gold', value: 30 },
-          { type: 'mental', value: 1 },
-          { type: 'mental', value: -1 },
-        ] as const;
-        const randomEffect = randomSet[Math.floor(Math.random() * randomSet.length)];
-        const rRand = applySingleEffect(nextState, randomEffect);
-        nextState = rRand.state;
-        gainedFromEvent.push(...rRand.gainedCards);
-        if (effectIsHealOrPositiveMental(randomEffect)) shouldPlayHealSe = true;
-        if (randomEffect.type === 'damage' && randomEffect.value > 0) shouldPlayDamageSe = true;
+        // ランダム1種: お守り / ランアイテム / カード1枚（-10Gは上で既に適用）
+        const roll = Math.floor(Math.random() * 3);
+        if (roll === 0) {
+          const omChoices = generateOmamoriChoices(1, nextState.omamoris);
+          if (omChoices.length > 0) {
+            nextState = { ...nextState, omamoris: [...nextState.omamoris, omChoices[0]] };
+          } else {
+            const rCard = applySingleEffect(nextState, { type: 'card', value: 1 });
+            nextState = rCard.state;
+            gainedFromEvent.push(...rCard.gainedCards);
+          }
+        } else if (roll === 1) {
+          const runItem = generateShopItems(1)[0];
+          if (runItem) {
+            if (nextState.items.length >= 3) {
+              nextState = {
+                ...nextState,
+                pendingItemReplacement: { source: 'hotel', incomingItem: runItem },
+              };
+            } else {
+              nextState = { ...nextState, items: [...nextState.items, runItem] };
+            }
+          } else {
+            const rCard = applySingleEffect(nextState, { type: 'card', value: 1 });
+            nextState = rCard.state;
+            gainedFromEvent.push(...rCard.gainedCards);
+          }
+        } else {
+          const rCard = applySingleEffect(nextState, { type: 'card', value: 1 });
+          nextState = rCard.state;
+          gainedFromEvent.push(...rCard.gainedCards);
+        }
       } else {
         if (effectIsHealOrPositiveMental(effect)) shouldPlayHealSe = true;
         if (effect.type === 'damage' && effect.value > 0) shouldPlayDamageSe = true;
@@ -1087,13 +1162,34 @@ export const useRunProgress = () => {
     }
     if (shouldPlayHealSe) playSeByType('heal');
     if (shouldPlayDamageSe) playSeByType('damage');
+
+    const addedOmamori = nextState.omamoris.find((o) => !prevOmamoris.some((p) => p.id === o.id));
+    const addedItem = nextState.items.find((i) => !prevItems.some((p) => p.id === i.id));
+    let pendingGain: { name: string; icon: string; kind: 'omamori' | 'item' } | null = null;
+    if (addedOmamori) {
+      pendingGain = { name: addedOmamori.name, icon: addedOmamori.icon, kind: 'omamori' };
+    } else if (addedItem) {
+      pendingGain = { name: addedItem.name, icon: addedItem.icon, kind: 'item' };
+    }
+
     dispatch({ type: 'set_player', player: nextState.player });
     dispatch({ type: 'set_deck', deck: nextState.deck });
     dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
+    dispatch({ type: 'set_items', items: nextState.items });
+    dispatch({
+      type: 'set_pending_item_replacement',
+      value: nextState.pendingItemReplacement ?? null,
+    });
     dispatch({ type: 'set_event', event: null });
     recordEventResolvedForAchievements();
     if (gainedFromEvent.length > 0) {
-      dispatch({ type: 'show_event_card_preview', cards: gainedFromEvent });
+      dispatch({
+        type: 'show_event_card_preview',
+        cards: gainedFromEvent,
+        pendingGainAfter: pendingGain,
+      });
+    } else if (pendingGain) {
+      dispatch({ type: 'show_event_gain_modal', payload: pendingGain });
     } else {
       dispatch({ type: 'set_screen', screen: 'map' });
     }
@@ -1323,7 +1419,7 @@ export const useRunProgress = () => {
     templeCarpenterMultiplier: undefined,
     cliffEdgeActive: false,
     nextAttackTimeReduce: 0,
-    blockPersist: false,
+    blockPersistTurns: 0,
     nextAttackDamageBoost: 0,
     damageImmunityThisTurn: false,
     nextTurnNoBlock: false,
@@ -1587,7 +1683,7 @@ export const useRunProgress = () => {
       templeCarpenterMultiplier: undefined,
       cliffEdgeActive: false,
       nextAttackTimeReduce: 0,
-      blockPersist: false,
+      blockPersistTurns: 0,
       nextAttackDamageBoost: 0,
       damageImmunityThisTurn: false,
       nextTurnNoBlock: false,
@@ -1627,6 +1723,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_hotel_item_received', used: false });
     dispatch({ type: 'set_event', event: null });
     dispatch({ type: 'set_event_gained_cards', cards: null });
+    dispatch({ type: 'clear_event_gain_state' });
     dispatch({ type: 'set_battle_setup', setup: null, tileType: null });
     dispatch({ type: 'set_branch', tileId: null });
     dispatch({ type: 'set_selectable_tiles', tileIds: [] });
@@ -1648,7 +1745,7 @@ export const useRunProgress = () => {
   const continueFromSave = (saved: GameProgress) => {
     lastBattleVictoryCardChoicesRef.current = null;
     let resolvedScreen: GameScreen = saved.currentScreen;
-    if (resolvedScreen === 'event_card_preview') {
+    if (resolvedScreen === 'event_card_preview' || resolvedScreen === 'event_gain_modal') {
       resolvedScreen = 'map';
     }
     let resolvedRewardCards: Card[] | null = saved.cardReward?.cards ?? null;
@@ -1753,7 +1850,7 @@ export const useRunProgress = () => {
       templeCarpenterMultiplier: undefined,
       cliffEdgeActive: false,
       nextAttackTimeReduce: 0,
-      blockPersist: false,
+      blockPersistTurns: 0,
       nextAttackDamageBoost: 0,
       damageImmunityThisTurn: false,
       nextTurnNoBlock: false,
@@ -1944,7 +2041,7 @@ export const useRunProgress = () => {
       templeCarpenterMultiplier: undefined,
       cliffEdgeActive: false,
       nextAttackTimeReduce: 0,
-      blockPersist: false,
+      blockPersistTurns: 0,
       nextAttackDamageBoost: 0,
       damageImmunityThisTurn: false,
       nextTurnNoBlock: false,
@@ -2005,6 +2102,7 @@ export const useRunProgress = () => {
     chooseBranch,
     chooseEventChoice,
     closeEventCardPreview,
+    closeEventGainModal,
     hotelHeal,
     hotelMeditate,
     hotelGetItem,

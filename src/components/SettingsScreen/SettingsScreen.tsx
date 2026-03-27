@@ -1,7 +1,9 @@
 import './SettingsScreen.css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
+import { getAdsRemoved } from '../../utils/adsRemoved';
+import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
 import { useAudioContext } from '../../contexts/AudioContext';
 import type { DevDestination } from '../../hooks/useRunProgress';
 
@@ -19,20 +21,10 @@ const openUrl = async (url: string) => {
 export interface SettingsScreenProps {
   onBack: () => void;
   onResetData: () => void;
-  onRemoveAds: () => void;
-  onRestorePurchase: () => void;
-  isAdFree: boolean;
   onDevNavigate?: (destination: DevDestination) => void;
 }
 
-const SettingsScreen = ({
-  onBack,
-  onResetData,
-  onRemoveAds,
-  onRestorePurchase,
-  isAdFree,
-  onDevNavigate,
-}: SettingsScreenProps) => {
+const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenProps) => {
   const {
     setBgmVolume,
     setSeVolume,
@@ -49,9 +41,49 @@ const SettingsScreen = ({
   const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
   const [seMuted, setSeMuted] = useState(() => isSeMuted());
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [isAdFree, setIsAdFree] = useState(() => getAdsRemoved());
+  const [iapBusy, setIapBusy] = useState(false);
 
   const toggleSection = (section: string) => {
     setOpenSection((prev) => (prev === section ? null : section));
+  };
+
+  useEffect(() => {
+    const onAdsRemoved = () => setIsAdFree(getAdsRemoved());
+    window.addEventListener('ads-removed-changed', onAdsRemoved);
+    return () => window.removeEventListener('ads-removed-changed', onAdsRemoved);
+  }, []);
+
+  const handleIapPurchase = async (productId: string) => {
+    if (!Capacitor.isNativePlatform()) {
+      window.alert('アプリ内課金はストアからインストールしたアプリでご利用ください。');
+      return;
+    }
+    setIapBusy(true);
+    try {
+      await purchaseProduct(productId);
+      setIsAdFree(getAdsRemoved());
+    } catch {
+      window.alert('購入を完了できませんでした。');
+    } finally {
+      setIapBusy(false);
+    }
+  };
+
+  const handleIapRestore = async () => {
+    if (!Capacitor.isNativePlatform()) {
+      window.alert('購入の復元はストアからインストールしたアプリでご利用ください。');
+      return;
+    }
+    setIapBusy(true);
+    try {
+      await restorePurchases();
+      setIsAdFree(getAdsRemoved());
+    } catch {
+      window.alert('復元に失敗しました。');
+    } finally {
+      setIapBusy(false);
+    }
   };
 
   return (
@@ -179,20 +211,57 @@ const SettingsScreen = ({
                 <div className="settings-item settings-item--row">
                   <div className="settings-item-info">
                     <p className="settings-item-title">広告を削除</p>
-                    <p className="settings-item-desc">¥250で広告を完全に削除します。（Capacitor移行後に有効化）</p>
+                    <p className="settings-item-desc">広告表示をオフにします（買い切り）。</p>
                   </div>
-                  <button type="button" className="settings-btn-purchase" disabled onClick={onRemoveAds}>
+                  <button
+                    type="button"
+                    className="settings-btn-purchase"
+                    disabled={iapBusy}
+                    onClick={() => void handleIapPurchase(IAP_PRODUCTS.REMOVE_ADS)}
+                  >
                     ¥250
                   </button>
                 </div>
               )}
-
+              <div className="settings-item settings-item--row">
+                <div className="settings-item-info">
+                  <p className="settings-item-title">開発者応援パック</p>
+                  <p className="settings-item-desc">開発支援のためのオプション購入です。</p>
+                </div>
+                <button
+                  type="button"
+                  className="settings-btn-purchase"
+                  disabled={iapBusy}
+                  onClick={() => void handleIapPurchase(IAP_PRODUCTS.SUPPORTER_PACK)}
+                >
+                  ¥500
+                </button>
+              </div>
+              <div className="settings-item settings-item--row">
+                <div className="settings-item-info">
+                  <p className="settings-item-title">お得セット</p>
+                  <p className="settings-item-desc">広告削除を含むセットです。</p>
+                </div>
+                <button
+                  type="button"
+                  className="settings-btn-purchase"
+                  disabled={iapBusy}
+                  onClick={() => void handleIapPurchase(IAP_PRODUCTS.BUNDLE_PACK)}
+                >
+                  ¥600
+                </button>
+              </div>
               <div className="settings-item settings-item--row">
                 <div className="settings-item-info">
                   <p className="settings-item-title">購入の復元</p>
-                  <p className="settings-item-desc">以前に購入した広告削除を復元します。</p>
+                  <p className="settings-item-desc">以前に購入した内容を復元します。</p>
                 </div>
-                <button type="button" className="settings-btn-restore" disabled onClick={onRestorePurchase}>
+                <button
+                  type="button"
+                  className="settings-btn-restore"
+                  disabled={iapBusy}
+                  onClick={() => void handleIapRestore()}
+                >
                   復元
                 </button>
               </div>

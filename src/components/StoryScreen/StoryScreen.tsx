@@ -141,11 +141,15 @@ export const StoryScreen = ({
   const isLastLine = lineIndex >= currentScene.lines.length - 1;
   const isEnd = isLastScene && isLastLine && !isTyping;
   const finalStartOnly = isEnd && showStartButton;
+  /** 開幕以外のストーリー：最終コマはタップで終了させず「進む」ボタンのみ */
+  const finalEndNoStart = isEnd && !showStartButton;
 
   return (
     <div
-      className={`story-screen${finalStartOnly ? ' story-screen--final-start-only' : ''}`}
-      onClick={finalStartOnly ? undefined : handleTap}
+      className={`story-screen${finalStartOnly || finalEndNoStart ? ' story-screen--final-start-only' : ''}${
+        finalEndNoStart ? ' story-screen--final-end-no-start' : ''
+      }`}
+      onClick={finalStartOnly || finalEndNoStart ? undefined : handleTap}
     >
       {previousBackground && (
         <div className="story-bg story-bg--prev" style={{ backgroundImage: `url(${previousBackground})` }} />
@@ -184,9 +188,21 @@ export const StoryScreen = ({
             冒険を始める
           </button>
         )}
+        {isEnd && !showStartButton && (
+          <button
+            type="button"
+            className="story-btn-start story-btn-story-next"
+            onClick={(event) => {
+              event.stopPropagation();
+              finishStory();
+            }}
+          >
+            進む
+          </button>
+        )}
       </div>
 
-      {!finalStartOnly && (
+      {!finalStartOnly && !finalEndNoStart && (
         <button
           type="button"
           className="story-btn-skip"

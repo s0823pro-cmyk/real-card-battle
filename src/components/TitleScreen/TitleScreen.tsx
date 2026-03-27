@@ -38,7 +38,7 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
         </button>
       </div>
 
-      <p className="title-version">ver 0.1.0</p>
+      <p className="title-version">ver 1.0.0</p>
 
       {showHowTo && (
         <div className="howto-overlay" onClick={() => setShowHowTo(false)}>

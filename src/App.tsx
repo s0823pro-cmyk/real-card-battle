@@ -1,3 +1,4 @@
+import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { useEffect, useRef, useState } from 'react';
@@ -21,6 +22,7 @@ import {
   CardRewardScreen,
   CardUpgradeScreen,
   EventCardGainPreviewScreen,
+  EventGainModalScreen,
   OmamoriRewardScreen,
 } from './components/RunFlow/RewardScreens';
 import { BattleVictoryScreen } from './components/RunFlow/BattleVictoryScreen';
@@ -51,6 +53,7 @@ import {
   setPendingDefeatInterstitial,
 } from './utils/adsRemoved';
 import { ensureAdMobInitialized, showInterstitialIfAllowed } from './utils/adMobClient';
+import { initIAP } from './utils/iapService';
 
 type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 
@@ -65,6 +68,7 @@ function App() {
     chooseBranch,
     chooseEventChoice,
     closeEventCardPreview,
+    closeEventGainModal,
     hotelHeal,
     hotelMeditate,
     hotelGetItem,
@@ -177,7 +181,28 @@ function App() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
+    void initIAP();
+  }, []);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
     void ScreenOrientation.lock({ orientation: 'portrait' }).catch(() => {});
+  }, []);
+
+  /** フォアグラウンド復帰時に Safe Area の env() を再評価させる（WebView の初期描画ずれ対策） */
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        document.documentElement.style.setProperty(
+          '--safe-area-top',
+          `env(safe-area-inset-top, 0px)`,
+        );
+      }
+    });
+    return () => {
+      void listener.then((l) => l.remove());
+    };
   }, []);
 
   useEffect(() => {
@@ -461,6 +486,16 @@ function App() {
             jobId={state.jobId}
             currentArea={state.currentArea}
             onContinue={closeEventCardPreview}
+          />
+        ) : null;
+      case 'event_gain_modal':
+        return state.eventGainModal ? (
+          <EventGainModalScreen
+            name={state.eventGainModal.name}
+            icon={state.eventGainModal.icon}
+            kind={state.eventGainModal.kind}
+            currentArea={state.currentArea}
+            onContinue={closeEventGainModal}
           />
         ) : null;
       case 'hotel':

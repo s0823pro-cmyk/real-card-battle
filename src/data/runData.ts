@@ -609,6 +609,11 @@ const pickFallbackRareRewardExpanding = (jobId: JobId, seen: Set<string>): Card 
   return null;
 };
 
+/**
+ * カード報酬の3択。候補はいずれも pickOne / フォールバックともに
+ * `getCardPoolsByJob` 由来（ジョブ枠はプール定義時に実績ロックID除外、中立枠は
+ * `getNeutralPoolForPick` で未解放を除外）のため、実績未解除のカードは候補に出ない。
+ */
 export const generateCardRewardChoices = (jobId: JobId = 'carpenter', count = 3): Card[] => {
   const pickOne = (): Card => {
     const roll = Math.random();
@@ -649,6 +654,7 @@ export const generateCardRewardChoices = (jobId: JobId = 'carpenter', count = 3)
   return cards;
 };
 
+/** 同上。レア固定の分岐でも `pickRandom*` / `pickFallbackRareRewardExpanding` は同じプール前提。 */
 export const generateRareCardRewardChoices = (jobId: JobId = 'carpenter', count = 3): Card[] => {
   const pickOne = (): Card => {
     const useNeutral = Math.random() < 0.3;

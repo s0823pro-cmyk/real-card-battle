@@ -26,6 +26,7 @@ import { ENEMY_ZUKAN_DATA } from '../../data/enemyZukanData';
 import type { EnemyZukanEntry } from '../../data/enemyZukanData';
 import { getEnemyDefeatCount, getEnemyStatus } from '../../utils/enemyRecord';
 import { formatZukanIntentDetail, getEnemyIntentsForZukan } from '../../utils/enemyIntentCatalog';
+import { upgradeCardByJobId } from '../../utils/cardUpgrade';
 import './ZukanScreen.css';
 
 type MainTab = 'cards' | 'stories' | 'enemies';
@@ -138,13 +139,14 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   const [playingStory, setPlayingStory] = useState<StoryEntry | null>(null);
   const [selectedEnemy, setSelectedEnemy] = useState<EnemyZukanEntry | null>(null);
   const [enemySkillsOpen, setEnemySkillsOpen] = useState(false);
+  const [showCarpenterUpgrade, setShowCarpenterUpgrade] = useState(false);
   const suppressOverlayCloseRef = useRef(false);
 
   useEffect(() => {
     setEnemySkillsOpen(false);
   }, [selectedEnemy]);
 
-  const filteredCards = useMemo(() => {
+  const filteredCardsBase = useMemo(() => {
     const cards = deduplicateCards(ALL_CARDS[activeTab]);
     return cards.filter((card) => {
       if (rarityFilter !== 'all' && getCardRarity(card) !== rarityFilter) return false;
@@ -153,12 +155,21 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
     });
   }, [activeTab, rarityFilter, typeFilter]);
 
+  const filteredCards = useMemo(() => {
+    if (activeTab !== 'carpenter' || !showCarpenterUpgrade) return filteredCardsBase;
+    return filteredCardsBase.map((card) => upgradeCardByJobId({ ...card, upgraded: false }, 'carpenter'));
+  }, [activeTab, showCarpenterUpgrade, filteredCardsBase]);
+
   const previewJobId: JobId = activeTab === 'neutral' ? 'carpenter' : activeTab;
   const activeSelectedIndex =
     selectedIndex !== null && selectedIndex >= 0 && selectedIndex < filteredCards.length
       ? selectedIndex
       : null;
   const selectedCard = activeSelectedIndex !== null ? filteredCards[activeSelectedIndex] : null;
+  const selectedUnlockName =
+    activeSelectedIndex !== null && activeTab === 'carpenter' && showCarpenterUpgrade
+      ? filteredCardsBase[activeSelectedIndex]?.name
+      : selectedCard?.name;
 
   const getPreviewValues = (card: Card): EffectiveCardValues => ({
     ...STATIC_EFFECTIVE_VALUES,
@@ -177,7 +188,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
     }, 180);
     setSelectedIndex(index);
   };
-  const selectedCardUnlocked = selectedCard ? unlockedCardNames.has(selectedCard.name) : false;
+  const selectedCardUnlocked = selectedUnlockName ? unlockedCardNames.has(selectedUnlockName) : false;
   const goNext = () => {
     if (activeSelectedIndex === null || filteredCards.length === 0) return;
     setSelectedIndex((activeSelectedIndex + 1) % filteredCards.length);
@@ -351,6 +362,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     setRarityFilter('all');
                     setTypeFilter('all');
                     setSelectedIndex(null);
+                    if (tab.id !== 'carpenter') setShowCarpenterUpgrade(false);
                   }}
                 >
                   {tab.icon} {tab.label}
@@ -395,11 +407,29 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
               </div>
             </div>
 
-            <p className="zukan-count">{filteredCards.length}枚</p>
+            <div className="zukan-count-row">
+              <p className="zukan-count">{filteredCards.length}枚</p>
+              {activeTab === 'carpenter' && (
+                <button
+                  type="button"
+                  className={`zukan-upgrade-toggle ${showCarpenterUpgrade ? 'zukan-upgrade-toggle--active' : ''}`}
+                  onClick={() => {
+                    setShowCarpenterUpgrade((v) => !v);
+                    setSelectedIndex(null);
+                  }}
+                >
+                  強化
+                </button>
+              )}
+            </div>
 
             <div className="zukan-card-grid">
               {filteredCards.map((card, index) => {
-                const isUnlocked = unlockedCardNames.has(card.name);
+                const unlockName =
+                  activeTab === 'carpenter' && showCarpenterUpgrade
+                    ? filteredCardsBase[index]?.name ?? card.name
+                    : card.name;
+                const isUnlocked = unlockedCardNames.has(unlockName);
                 const frameRarity = getFrameRarity(card);
                 const zukanRarityClass =
                   frameRarity === 'starter' ? 'zukan-card-item--common' : `zukan-card-item--${frameRarity}`;

@@ -56,12 +56,14 @@ const ShopScreen = ({
   const runItems = useMemo(() => items.filter((item) => item.type === 'item'), [items]);
   const noop = () => {};
   const shopCardStyle: CSSProperties = {
-    width: 90,
-    height: 144,
+    width: 72,
+    height: 115,
     position: 'relative',
     transform: 'none',
     transition: 'none',
-    flexShrink: 0,
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: '100%',
   };
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
     damage: card.damage ?? null,

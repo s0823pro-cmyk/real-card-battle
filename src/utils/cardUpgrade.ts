@@ -34,6 +34,8 @@ function applyUpgrade(card: Card, upgrade: CardUpgrade): Card {
     damage: upgrade.damage !== undefined ? upgrade.damage : card.damage,
     block: upgrade.block !== undefined ? upgrade.block : card.block,
     timeCost: upgrade.timeCost !== undefined ? upgrade.timeCost : card.timeCost,
+    preparationTimeCost:
+      upgrade.preparationTimeCost !== undefined ? upgrade.preparationTimeCost : card.preparationTimeCost,
     scaffoldMultiplier:
       upgrade.scaffoldMultiplier !== undefined ? upgrade.scaffoldMultiplier : card.scaffoldMultiplier,
     cookingMultiplier:
@@ -50,11 +52,14 @@ function applyUpgrade(card: Card, upgrade: CardUpgrade): Card {
     description: sanitizedDescription,
     effects: upgrade.effects ?? card.effects,
     tags: upgrade.tags !== undefined ? upgrade.tags : card.tags,
-    badges: upgrade.tags !== undefined
-      ? (upgrade.tags.filter((t) =>
-          t === 'exhaust' || t === 'setup' || t === 'reserve' || t === 'self_damage',
-        ) as import('../types/game').CardBadge[])
-      : card.badges,
+    badges:
+      upgrade.badges !== undefined
+        ? upgrade.badges
+        : upgrade.tags !== undefined
+          ? (upgrade.tags.filter((t) =>
+              t === 'exhaust' || t === 'setup' || t === 'reserve' || t === 'self_damage',
+            ) as import('../types/game').CardBadge[])
+          : card.badges,
     upgraded: true,
   };
 }

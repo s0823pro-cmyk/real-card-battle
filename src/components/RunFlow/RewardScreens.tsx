@@ -53,6 +53,58 @@ interface EventCardGainPreviewProps {
   onContinue: () => void;
 }
 
+interface EventGainModalProps {
+  name: string;
+  icon: string;
+  kind: 'omamori' | 'item';
+  currentArea: number;
+  onContinue: () => void;
+}
+
+/** イベントでお守り／アイテムのみ獲得したときの確認モーダル（カードプレビューと同系の見た目） */
+export const EventGainModalScreen = ({
+  name,
+  icon,
+  kind,
+  currentArea,
+  onContinue,
+}: EventGainModalProps) => {
+  const { playBgm } = useAudioContext();
+  useEffect(() => {
+    const area = Math.min(3, Math.max(1, currentArea));
+    if (area === 1) playBgm('area1');
+    else if (area === 2) playBgm('area2');
+    else playBgm('area3');
+  }, [currentArea, playBgm]);
+
+  const mainStyle = {
+    '--flow-bg-image': `url(${FLOW_BG_CARD_REWARD})`,
+    '--flow-bg-overlay': 'rgba(14, 16, 22, 0.52)',
+  } as CSSProperties;
+
+  const label = kind === 'omamori' ? 'お守り' : 'アイテム';
+
+  return (
+    <main
+      className="flow-screen card-reward-screen flow-screen--with-bg event-card-gain-preview-screen event-gain-modal-screen"
+      style={mainStyle}
+    >
+      <section className="card-reward-panel event-gain-modal-panel">
+        <h2 className="reward-heading reward-heading--event-preview">入手</h2>
+        <p className="event-gain-modal-msg">
+          <span className="event-gain-modal-icon" aria-hidden>
+            {icon}
+          </span>{' '}
+          <strong>{name}</strong>（{label}）を獲得しました！
+        </p>
+        <button type="button" className="flow-btn flow-btn--event-preview-ok event-card-gain-preview-ok" onClick={onContinue}>
+          OK
+        </button>
+      </section>
+    </main>
+  );
+};
+
 /** イベント等で即時デッキに加わったカードのプレビュー（選択不要・確認のみ） */
 export const EventCardGainPreviewScreen = ({
   cards,

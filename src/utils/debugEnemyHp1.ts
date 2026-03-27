@@ -4,11 +4,7 @@ import type { Enemy } from '../types/game';
 export const DEBUG_ENEMY_HP1_STORAGE_KEY = 'real-card-battle:debug-enemy-hp1';
 
 export function isDebugEnemyHp1Enabled(): boolean {
-  try {
-    return window.localStorage.getItem(DEBUG_ENEMY_HP1_STORAGE_KEY) === 'true';
-  } catch {
-    return false;
-  }
+  return false; // 強制無効化（旧UI削除後も localStorage 残存で有効化されないよう）
 }
 
 /** createInitialGameState 内で敵配列に適用 */

@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
 import type { CSSProperties } from 'react';
@@ -31,11 +32,8 @@ import {
   unlockAllAchievements,
 } from '../../utils/achievementSystem';
 import { loadAchievementCounters } from '../../utils/achievementCounters';
-import { PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
-import {
-  DEBUG_ENEMY_HP1_STORAGE_KEY,
-  isDebugEnemyHp1Enabled,
-} from '../../utils/debugEnemyHp1';
+import { getAdsRemoved, PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
+import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
 import type { AchievementTier } from '../../utils/achievementTypes';
 
 const TIER_LABEL: Record<AchievementTier, string> = {
@@ -289,21 +287,6 @@ const HomeScreen = ({
     unemployed: 0,
   });
   const [fallingIndex, setFallingIndex] = useState<number | null>(null);
-  // DEV ONLY — 確認後削除
-  const [debugEnemyHp1, setDebugEnemyHp1] = useState(() => isDebugEnemyHp1Enabled());
-  const toggleDebugEnemyHp1 = () => {
-    try {
-      if (window.localStorage.getItem(DEBUG_ENEMY_HP1_STORAGE_KEY) === 'true') {
-        window.localStorage.removeItem(DEBUG_ENEMY_HP1_STORAGE_KEY);
-        setDebugEnemyHp1(false);
-      } else {
-        window.localStorage.setItem(DEBUG_ENEMY_HP1_STORAGE_KEY, 'true');
-        setDebugEnemyHp1(true);
-      }
-    } catch {
-      // ignore
-    }
-  };
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const transitionTimeoutRef = useRef<number | null>(null);
   const resetTimeoutRef = useRef<number | null>(null);
@@ -419,14 +402,54 @@ const HomeScreen = ({
   const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
   const [seMuted, setSeMuted] = useState(() => isSeMuted());
   const [openSettingsSection, setOpenSettingsSection] = useState<string | null>(null);
+  const [isAdFree, setIsAdFree] = useState(() => getAdsRemoved());
+  const [iapBusy, setIapBusy] = useState(false);
 
   const toggleSettingsSection = (section: string) => {
     setOpenSettingsSection((prev) => (prev === section ? null : section));
   };
 
   useEffect(() => {
+    const onAdsRemoved = () => setIsAdFree(getAdsRemoved());
+    window.addEventListener('ads-removed-changed', onAdsRemoved);
+    return () => window.removeEventListener('ads-removed-changed', onAdsRemoved);
+  }, []);
+
+  useEffect(() => {
     playBgm('menu');
   }, [playBgm]);
+
+  const handleIapPurchase = async (productId: string) => {
+    if (!Capacitor.isNativePlatform()) {
+      window.alert('アプリ内課金はストアからインストールしたアプリでご利用ください。');
+      return;
+    }
+    setIapBusy(true);
+    try {
+      await purchaseProduct(productId);
+      setIsAdFree(getAdsRemoved());
+    } catch {
+      window.alert('購入を完了できませんでした。');
+    } finally {
+      setIapBusy(false);
+    }
+  };
+
+  const handleIapRestore = async () => {
+    if (!Capacitor.isNativePlatform()) {
+      window.alert('購入の復元はストアからインストールしたアプリでご利用ください。');
+      return;
+    }
+    setIapBusy(true);
+    try {
+      await restorePurchases();
+      setIsAdFree(getAdsRemoved());
+    } catch {
+      window.alert('復元に失敗しました。');
+    } finally {
+      setIapBusy(false);
+    }
+  };
 
   const handleButtonClick = (index: number, callback: () => void) => {
     if (fallingIndex !== null) {
@@ -698,23 +721,61 @@ const HomeScreen = ({
         </button>
         {openSettingsSection === 'purchase' && (
           <div className="settings-accordion-body">
+            {!isAdFree && (
+              <div className="settings-item settings-item--row">
+                <div className="settings-item-info">
+                  <p className="settings-item-title">広告を削除</p>
+                  <p className="settings-item-desc">広告表示をオフにします（買い切り）。</p>
+                </div>
+                <button
+                  type="button"
+                  className="settings-btn-purchase"
+                  disabled={iapBusy}
+                  onClick={() => void handleIapPurchase(IAP_PRODUCTS.REMOVE_ADS)}
+                >
+                  ¥250
+                </button>
+              </div>
+            )}
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
-                <p className="settings-item-title">広告を削除</p>
-                <p className="settings-item-desc">
-                  ¥250で広告を完全に削除します。（Capacitor移行後に有効化）
-                </p>
+                <p className="settings-item-title">開発者応援パック</p>
+                <p className="settings-item-desc">開発支援のためのオプション購入です。</p>
               </div>
-              <button type="button" className="settings-btn-purchase" disabled>
-                ¥250
+              <button
+                type="button"
+                className="settings-btn-purchase"
+                disabled={iapBusy}
+                onClick={() => void handleIapPurchase(IAP_PRODUCTS.SUPPORTER_PACK)}
+              >
+                ¥500
+              </button>
+            </div>
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">お得セット</p>
+                <p className="settings-item-desc">広告削除を含むセットです。</p>
+              </div>
+              <button
+                type="button"
+                className="settings-btn-purchase"
+                disabled={iapBusy}
+                onClick={() => void handleIapPurchase(IAP_PRODUCTS.BUNDLE_PACK)}
+              >
+                ¥600
               </button>
             </div>
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
                 <p className="settings-item-title">購入の復元</p>
-                <p className="settings-item-desc">以前に購入した広告削除を復元します。</p>
+                <p className="settings-item-desc">以前に購入した内容を復元します。</p>
               </div>
-              <button type="button" className="settings-btn-restore" disabled>
+              <button
+                type="button"
+                className="settings-btn-restore"
+                disabled={iapBusy}
+                onClick={() => void handleIapRestore()}
+              >
                 復元
               </button>
             </div>
@@ -750,13 +811,6 @@ const HomeScreen = ({
           }
         >
           <span className="settings-btn-block-title">🐛 バグ報告・ご意見</span>
-        </button>
-        {/* DEV ONLY — 確認後削除 */}
-        <button type="button" className="settings-btn-block" onClick={toggleDebugEnemyHp1}>
-          <span className="settings-btn-block-title">
-            {debugEnemyHp1 ? '🐛 全敵HP1：ON' : '🐛 全敵HP1：OFF'}
-          </span>
-          <span className="settings-btn-block-desc">🐛 全敵HP1（デバッグ）</span>
         </button>
       </div>
 
@@ -967,7 +1021,7 @@ const HomeScreen = ({
           ))}
         </div>
 
-        <p className="home-version">ver 0.1.0</p>
+        <p className="home-version">ver 1.0.0</p>
       </div>
 
       {modal && (

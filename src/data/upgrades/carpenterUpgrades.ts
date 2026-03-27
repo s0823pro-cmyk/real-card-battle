@@ -1,4 +1,4 @@
-import type { CardEffect, LowHpBonus } from '../../types/game';
+import type { CardBadge, CardEffect, LowHpBonus } from '../../types/game';
 import { CARPENTER_EXPANSION_UPGRADES } from './carpenterExpansionUpgrades';
 
 export interface CardUpgrade {
@@ -6,6 +6,7 @@ export interface CardUpgrade {
   damage?: number;
   block?: number;
   timeCost?: number;
+  preparationTimeCost?: number;
   scaffoldMultiplier?: number;
   cookingMultiplier?: number;
   lowHpBonus?: LowHpBonus;
@@ -18,6 +19,8 @@ export interface CardUpgrade {
   description: string;
   effects?: CardEffect[];
   tags?: string[];
+  /** 指定時はバッジを差し替え（段取り・消耗など） */
+  badges?: CardBadge[];
 }
 
 export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
@@ -56,8 +59,9 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   // コモン
   '電動ドリル': {
     name: '電動ドリル+',
-    damage: 16,
-    description: '16ダメージ',
+    timeCost: 3,
+    damage: 15,
+    description: '15ダメージ',
   },
   '木材ブロック': {
     name: '木材ブロック+',
@@ -77,8 +81,9 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   '速打ち': {
     name: '速打ち+',
-    damage: 6,
-    description: '6ダメージ',
+    damage: 5,
+    description: '5ダメージ',
+    badges: ['setup'],
   },
   '補強壁': {
     name: '補強壁+',
@@ -104,9 +109,10 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   '大型クレーン': {
     name: '大型クレーン+',
-    damage: 20,
-    timeCost: 4,
-    description: '全体20ダメージ。段取り時：3秒',
+    damage: 16,
+    timeCost: 5,
+    preparationTimeCost: 2,
+    description: '全体16ダメージ。段取り時：2秒',
   },
   '防護壁を建てる': {
     name: '防護壁を建てる+',
@@ -117,6 +123,7 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   '建設現場の親方': {
     name: '建設現場の親方+',
+    timeCost: 4.5,
     description: '毎ターン足場+2',
     effects: [{ type: 'scaffold_per_turn', value: 2 }],
   },
@@ -128,6 +135,7 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   '安全ヘルメット': {
     name: '安全ヘルメット+',
+    timeCost: 2.5,
     description: '毎ターン+5ブロック',
     effects: [{ type: 'block_per_turn', value: 5 }],
   },
@@ -160,8 +168,9 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   'リフォーム': {
     name: 'リフォーム+',
-    description: '手札のカード2枚をランダムで強化。使用後除外（所要時間2秒）',
-    effects: [{ type: 'upgrade_random_hand_card', value: 2 }],
+    timeCost: 0,
+    description: '手札を全て強化。使用後除外',
+    effects: [{ type: 'upgrade_all_hand_card', value: 1 }],
   },
   '匠の一撃': {
     name: '匠の一撃+',

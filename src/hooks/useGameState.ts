@@ -22,6 +22,7 @@ import { shuffle } from '../utils/shuffle';
 import { isEnemyTargetCard } from '../utils/cardTarget';
 import { getEffectiveTimeCost } from '../utils/timeline';
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
+import { applyBattleCardReverts, isBattleTempUpgradeSourceCard } from '../utils/battleCardRevert';
 import { getEffectiveMaxMental } from '../utils/mentalLimits';
 import { applyDebugEnemyHp1ToEnemies } from '../utils/debugEnemyHp1';
 import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord';
@@ -215,7 +216,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   templeCarpenterMultiplier: player.templeCarpenterMultiplier,
   cliffEdgeActive: player.cliffEdgeActive ?? false,
   nextAttackTimeReduce: player.nextAttackTimeReduce ?? 0,
-  blockPersist: player.blockPersist ?? false,
+  blockPersistTurns: player.blockPersistTurns ?? 0,
   nextAttackDamageBoost: player.nextAttackDamageBoost ?? 0,
   damageImmunityThisTurn: player.damageImmunityThisTurn ?? false,
   nextTurnNoBlock: player.nextTurnNoBlock ?? false,
@@ -277,7 +278,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     templeCarpenterMultiplier: undefined,
     cliffEdgeActive: false,
     nextAttackTimeReduce: 0,
-    blockPersist: false,
+    blockPersistTurns: 0,
     nextAttackDamageBoost: 0,
     damageImmunityThisTurn: false,
     nextTurnNoBlock: false,
@@ -333,6 +334,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     ),
     executingIndex: -1,
     toolSlots: [],
+    battleCardRevertMap: {},
   };
 };
 
@@ -536,7 +538,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     templeCarpenterMultiplier: undefined,
     cliffEdgeActive: false,
     nextAttackTimeReduce: 0,
-    blockPersist: false,
+    blockPersistTurns: 0,
     nextAttackDamageBoost: 0,
     damageImmunityThisTurn: false,
     nextTurnNoBlock: false,
@@ -787,6 +789,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const upgradeRandomHandCardCount = replayActive
       ? upgradeRandomHandCardCountBase * 2
       : upgradeRandomHandCardCountBase;
+    const upgradeAllHandCard =
+      (playedCard.effects ?? []).some((effect) => effect.type === 'upgrade_all_hand_card');
+    const tempUpgradeSource = isBattleTempUpgradeSourceCard(playedCard);
+    let battleCardRevertMap: Record<string, Card> = { ...(gameState.battleCardRevertMap ?? {}) };
     let handAfterPlay = [
       ...gameState.hand.filter((item) => item.id !== cardId),
       ...drawResult.drawn,
@@ -801,11 +807,36 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           0,
           Math.min(upgradeRandomHandCardCount, upgradableCards.length),
         );
+        if (tempUpgradeSource) {
+          targetCards.forEach((entry) => {
+            battleCardRevertMap[entry.id] = { ...entry };
+          });
+        }
         const targetIds = new Set(targetCards.map((entry) => entry.id));
         handAfterPlay = handAfterPlay.map((entry) =>
           targetIds.has(entry.id) ? upgradeCardByJobId(entry, gameState.player.jobId) : entry,
         );
         targetCards.forEach((entry) => {
+          const upgradedName = handAfterPlay.find((cardInHand) => cardInHand.id === entry.id)?.name ?? `${entry.name}+`;
+          pushPopup(`🔧 ${entry.name} → ${upgradedName}`, 'player', 'buff');
+        });
+      }
+    }
+    if (upgradeAllHandCard) {
+      const upgradableAll = handAfterPlay.filter((entry) => !entry.upgraded && entry.type !== 'status' && entry.type !== 'curse');
+      if (upgradableAll.length === 0) {
+        pushPopup('強化できるカードがありません', 'player', 'buff');
+      } else {
+        if (tempUpgradeSource) {
+          upgradableAll.forEach((entry) => {
+            battleCardRevertMap[entry.id] = { ...entry };
+          });
+        }
+        const allIds = new Set(upgradableAll.map((c) => c.id));
+        handAfterPlay = handAfterPlay.map((entry) =>
+          allIds.has(entry.id) ? upgradeCardByJobId(entry, gameState.player.jobId) : entry,
+        );
+        upgradableAll.forEach((entry) => {
           const upgradedName = handAfterPlay.find((cardInHand) => cardInHand.id === entry.id)?.name ?? `${entry.name}+`;
           pushPopup(`🔧 ${entry.name} → ${upgradedName}`, 'player', 'buff');
         });
@@ -838,6 +869,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       usedTime: gameState.usedTime + effectiveTimeCost,
       maxTime: gameState.maxTime + timeBoost + mentalTimeDelta,
       shuffleAnimation: drawResult.shuffled,
+      battleCardRevertMap,
     };
 
     const nextCardDoubleConsumed = gameState.player.nextCardDoubleEffect && reserveOrDoubleMultiplier > 1;
@@ -873,6 +905,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       usedTime: prev.usedTime + effectiveTimeCost,
       maxTime: prev.maxTime + timeBoost + mentalTimeDelta,
       shuffleAnimation: drawResult.shuffled,
+      battleCardRevertMap,
     }));
     setDoubleNextCharges(
       (prev) => Math.max(0, prev - (doubleNextCharges > 0 && reserveOrDoubleMultiplier > 1 ? 1 : 0)) + gainedDoubleNext,
@@ -1000,10 +1033,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           getEffectiveMaxMental(playerAfterKill),
           playerAfterKill.mental + 1,
         );
+        const revertedVictory = applyBattleCardReverts(postCardState);
         setVictoryRewardGold(reward);
         setVictoryMentalRecovery(nextMental - playerAfterKill.mental);
         setGameState({
-          ...postCardState,
+          ...revertedVictory,
           phase: 'victory',
           timeline: [],
           player: {
@@ -1022,13 +1056,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             mental: nextMental,
           },
           deck: [
-            ...postCardState.drawPile,
-            ...postCardState.discardPile,
-            ...postCardState.hand,
-            ...postCardState.reserved,
-            ...postCardState.exhaustedCards,
-            ...postCardState.activePowers,
-            ...postCardState.toolSlots.map((slot) => slot.card),
+            ...revertedVictory.drawPile,
+            ...revertedVictory.discardPile,
+            ...revertedVictory.hand,
+            ...revertedVictory.reserved,
+            ...revertedVictory.exhaustedCards,
+            ...revertedVictory.activePowers,
+            ...revertedVictory.toolSlots.map((slot) => slot.card),
           ],
           items: battleItems,
           defeatedEnemies: result.enemies,
@@ -1196,7 +1230,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       .flatMap((power) => power.effects ?? [])
       .filter((effect) => effect.type === 'scaffold_per_turn')
       .reduce((sum, effect) => sum + effect.value, 0);
-    const keepBlock = state.player.blockPersist;
+    const blockPersistTurns = state.player.blockPersistTurns ?? 0;
+    const keepBlock = blockPersistTurns > 0;
+    const nextBlockPersistTurns = keepBlock ? Math.max(0, blockPersistTurns - 1) : 0;
     const shouldDisableBlockThisTurn = state.player.nextTurnNoBlock;
 
     // プレイヤーのburn（火傷）ダメージ処理
@@ -1229,7 +1265,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         shouldDisableBlockThisTurn
           ? 0
           : (keepBlock ? state.player.block : 0) + Math.max(0, onTurnStartBlockBonus),
-      blockPersist: false,
+      blockPersistTurns: nextBlockPersistTurns,
       scaffold: state.player.scaffold + scaffoldPerTurn,
       canBlock: !shouldDisableBlockThisTurn,
       nextTurnNoBlock: false,
@@ -1291,33 +1327,37 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   const pendingDefeatRef = useRef<{ snapshot: GameState; defeatedBy: string } | null>(null);
 
-  const buildDefeatBattleResult = (snapshot: GameState, defeatedBy: string): BattleResult => ({
-    outcome: 'defeat',
-    player: clearBattleFlags(snapshot.player),
-    deck: [
-      ...snapshot.drawPile,
-      ...snapshot.discardPile,
-      ...snapshot.hand,
-      ...snapshot.reserved,
-      ...snapshot.exhaustedCards,
-      ...snapshot.activePowers,
-      ...snapshot.toolSlots.map((slot) => slot.card),
-    ],
-    items: battleItems,
-    defeatedEnemies: snapshot.enemies,
-    rewardGold: 0,
-    mentalRecovery: 0,
-    kind: options?.setup?.kind ?? 'battle',
-    battleTurns: snapshot.turn,
-    defeatedBy,
-  });
+  const buildDefeatBattleResult = (snapshot: GameState, defeatedBy: string): BattleResult => {
+    const reverted = applyBattleCardReverts(snapshot);
+    return {
+      outcome: 'defeat',
+      player: clearBattleFlags(reverted.player),
+      deck: [
+        ...reverted.drawPile,
+        ...reverted.discardPile,
+        ...reverted.hand,
+        ...reverted.reserved,
+        ...reverted.exhaustedCards,
+        ...reverted.activePowers,
+        ...reverted.toolSlots.map((slot) => slot.card),
+      ],
+      items: battleItems,
+      defeatedEnemies: snapshot.enemies,
+      rewardGold: 0,
+      mentalRecovery: 0,
+      kind: options?.setup?.kind ?? 'battle',
+      battleTurns: snapshot.turn,
+      defeatedBy,
+    };
+  };
 
   const giveUpDefeatOffer = () => {
     const pending = pendingDefeatRef.current;
     if (!pending) return;
     pendingDefeatRef.current = null;
     const { snapshot, defeatedBy } = pending;
-    setGameState({ ...snapshot, phase: 'defeat', player: clearBattleFlags(snapshot.player) });
+    const reverted = applyBattleCardReverts(snapshot);
+    setGameState({ ...reverted, phase: 'defeat', player: clearBattleFlags(reverted.player) });
     setBattleMessage('敗北...');
     options?.onBattleFinished?.();
     options?.onBattleEnd?.(buildDefeatBattleResult(snapshot, defeatedBy));
@@ -1373,10 +1413,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         getEffectiveMaxMental(workingState.player),
         workingState.player.mental + 1,
       );
+      const revertedVictory = applyBattleCardReverts(workingState);
       setVictoryRewardGold(reward);
       setVictoryMentalRecovery(nextMental - workingState.player.mental);
       setGameState({
-        ...workingState,
+        ...revertedVictory,
         phase: 'victory',
         timeline: [],
         player: {
@@ -1395,13 +1436,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           mental: nextMental,
         },
         deck: [
-          ...workingState.drawPile,
-          ...workingState.discardPile,
-          ...workingState.hand,
-          ...workingState.reserved,
-          ...workingState.exhaustedCards,
-          ...workingState.activePowers,
-          ...workingState.toolSlots.map((slot) => slot.card),
+          ...revertedVictory.drawPile,
+          ...revertedVictory.discardPile,
+          ...revertedVictory.hand,
+          ...revertedVictory.reserved,
+          ...revertedVictory.exhaustedCards,
+          ...revertedVictory.activePowers,
+          ...revertedVictory.toolSlots.map((slot) => slot.card),
         ],
         items: battleItems,
         defeatedEnemies: workingState.enemies,
@@ -1454,10 +1495,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           getEffectiveMaxMental(workingState.player),
           workingState.player.mental + 1,
         );
+        const revertedVictory = applyBattleCardReverts(workingState);
         setVictoryRewardGold(reward);
         setVictoryMentalRecovery(nextMental - workingState.player.mental);
         setGameState({
-          ...workingState,
+          ...revertedVictory,
           phase: 'victory',
           timeline: [],
           player: {
@@ -1476,13 +1518,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             mental: nextMental,
           },
           deck: [
-            ...workingState.drawPile,
-            ...workingState.discardPile,
-            ...workingState.hand,
-            ...workingState.reserved,
-            ...workingState.exhaustedCards,
-            ...workingState.activePowers,
-            ...workingState.toolSlots.map((slot) => slot.card),
+            ...revertedVictory.drawPile,
+            ...revertedVictory.discardPile,
+            ...revertedVictory.hand,
+            ...revertedVictory.reserved,
+            ...revertedVictory.exhaustedCards,
+            ...revertedVictory.activePowers,
+            ...revertedVictory.toolSlots.map((slot) => slot.card),
           ],
           items: battleItems,
           defeatedEnemies: workingState.enemies,
@@ -1700,23 +1742,24 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   const concedeBattle = (): void => {
     if (!['battle_start', 'player_turn', 'enemy_turn', 'executing'].includes(gameState.phase)) return;
-    const clearedPlayer = clearBattleFlags(gameState.player);
+    const reverted = applyBattleCardReverts(gameState);
+    const clearedPlayer = clearBattleFlags(reverted.player);
     const deck = [
-      ...gameState.drawPile,
-      ...gameState.discardPile,
-      ...gameState.hand,
-      ...gameState.reserved,
-      ...gameState.exhaustedCards,
-      ...gameState.activePowers,
-      ...gameState.toolSlots.map((slot) => slot.card),
+      ...reverted.drawPile,
+      ...reverted.discardPile,
+      ...reverted.hand,
+      ...reverted.reserved,
+      ...reverted.exhaustedCards,
+      ...reverted.activePowers,
+      ...reverted.toolSlots.map((slot) => slot.card),
     ];
     setSelectedCardId(null);
-    setGameState((prev) => ({
-      ...prev,
+    setGameState({
+      ...reverted,
       phase: 'defeat',
       timeline: [],
       player: clearedPlayer,
-    }));
+    });
     setBattleMessage('敗北...');
     options?.onBattleFinished?.();
     options?.onBattleEnd?.({
