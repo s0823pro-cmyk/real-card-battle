@@ -119,6 +119,30 @@ function App() {
   const [bossRewardArea, setBossRewardArea] = useState<number | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
   const transitionCleanupRef = useRef<number | null>(null);
+
+  /** iOS WKWebView: ユーザー操作前の audio.play() 失敗対策（AudioContext / ダミー再生で解除） */
+  useEffect(() => {
+    const unlock = () => {
+      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (Ctor) {
+        const ctx = new Ctor();
+        void ctx.resume().then(() => {
+          void ctx.close();
+        });
+      }
+      const silent = new Audio();
+      void silent.play().catch(() => {});
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('click', unlock);
+    };
+    document.addEventListener('touchstart', unlock, { once: true });
+    document.addEventListener('click', unlock, { once: true });
+    return () => {
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('click', unlock);
+    };
+  }, []);
+
   useEffect(() => {
     const allowMapScroll =
       state.currentScreen === 'map' ||

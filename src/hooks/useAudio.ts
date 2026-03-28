@@ -194,7 +194,16 @@ export const useAudio = () => {
       const audio = new Audio(BGM_FILES[type]);
       audio.volume = bgmMutedRef.current ? 0 : bgmVolumeRef.current;
       audio.loop = LOOP_BGM.includes(type);
-      audio.play().catch(() => {});
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          const retryOnInteraction = () => {
+            void audio.play().catch(() => {});
+            document.removeEventListener('touchstart', retryOnInteraction);
+          };
+          document.addEventListener('touchstart', retryOnInteraction, { once: true });
+        });
+      }
       bgmRef.current = audio;
       currentBgmRef.current = type;
     },
