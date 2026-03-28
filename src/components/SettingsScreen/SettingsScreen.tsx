@@ -25,19 +25,8 @@ export interface SettingsScreenProps {
 }
 
 const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenProps) => {
-  const {
-    setBgmVolume,
-    setSeVolume,
-    toggleBgmMute,
-    toggleSeMute,
-    getBgmVolume,
-    getSeVolume,
-    isBgmMuted,
-    isSeMuted,
-  } = useAudioContext();
+  const { toggleBgmMute, toggleSeMute, isBgmMuted, isSeMuted } = useAudioContext();
 
-  const [bgmVol, setBgmVol] = useState(() => getBgmVolume());
-  const [seVol, setSeVol] = useState(() => getSeVolume());
   const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
   const [seMuted, setSeMuted] = useState(() => isSeMuted());
   const [openSection, setOpenSection] = useState<string | null>(null);
@@ -121,19 +110,6 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
                     {bgmMuted ? '🔇 OFF' : '🔊 ON'}
                   </button>
                 </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={bgmVol}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value);
-                    setBgmVol(v);
-                    setBgmVolume(v);
-                  }}
-                  className="settings-slider"
-                />
               </div>
 
               <div className="settings-item settings-item--audio">
@@ -150,19 +126,6 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
                     {seMuted ? '🔇 OFF' : '🔊 ON'}
                   </button>
                 </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={seVol}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value);
-                    setSeVol(v);
-                    setSeVolume(v);
-                  }}
-                  className="settings-slider"
-                />
               </div>
             </div>
           )}
