@@ -3,7 +3,7 @@ import type { Card } from '../types/game';
 import type { JobId } from '../types/game';
 import { NEUTRAL_CARD_POOL } from '../data/cards/neutralCards';
 import {
-  CARPENTER_COMMON_POOL,
+  CARPENTER_COMMON_POOL_UNFILTERED,
   CARPENTER_RARE_POOL_ALL,
   CARPENTER_UNCOMMON_POOL_UNFILTERED,
 } from '../data/jobs/carpenter';
@@ -21,7 +21,7 @@ import { getUnlockedCardIds } from './achievementSystem';
 
 /** 実績報酬は大工＋無色のみ。抽選プール用に料理人・無職の全カードも参照する */
 const CARPENTER_ALL: Card[] = [
-  ...CARPENTER_COMMON_POOL,
+  ...CARPENTER_COMMON_POOL_UNFILTERED,
   ...CARPENTER_UNCOMMON_POOL_UNFILTERED,
   ...CARPENTER_RARE_POOL_ALL,
 ];

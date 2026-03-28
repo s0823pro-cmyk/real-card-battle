@@ -4,7 +4,11 @@ import CardComponent from '../Hand/CardComponent';
 import type { Card, CardRarity, CardType, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { CARPENTER_STARTER_DECK } from '../../data/carpenterDeck';
-import { CARPENTER_COMMON_POOL, CARPENTER_UNCOMMON_POOL, CARPENTER_RARE_POOL } from '../../data/jobs/carpenter';
+import {
+  CARPENTER_COMMON_POOL_UNFILTERED,
+  CARPENTER_RARE_POOL_ALL,
+  CARPENTER_UNCOMMON_POOL_UNFILTERED,
+} from '../../data/jobs/carpenter';
 import { COOK_STARTER_DECK, COOK_COMMON_POOL, COOK_UNCOMMON_POOL, COOK_RARE_POOL } from '../../data/jobs/cook';
 import {
   UNEMPLOYED_STARTER_DECK,
@@ -62,9 +66,9 @@ const withRarity = (cards: Card[], rarity: CardRarity): Card[] =>
 const ZUKAN_CARD_POOLS = {
   carpenter: [
     ...CARPENTER_STARTER_DECK,
-    ...withRarity(CARPENTER_COMMON_POOL, 'common'),
-    ...withRarity(CARPENTER_UNCOMMON_POOL, 'uncommon'),
-    ...withRarity(CARPENTER_RARE_POOL, 'rare'),
+    ...withRarity(CARPENTER_COMMON_POOL_UNFILTERED, 'common'),
+    ...withRarity(CARPENTER_UNCOMMON_POOL_UNFILTERED, 'uncommon'),
+    ...withRarity(CARPENTER_RARE_POOL_ALL, 'rare'),
   ],
   cook: [
     ...COOK_STARTER_DECK,
@@ -504,6 +508,20 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                 }}
               >
                 <div className="zukan-card-detail" onClick={(event) => event.stopPropagation()}>
+                  {activeTab === 'carpenter' && (
+                    <div className="zukan-detail-upgrade-bar">
+                      <button
+                        type="button"
+                        className={`zukan-upgrade-toggle ${showCarpenterUpgrade ? 'zukan-upgrade-toggle--active' : ''}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setShowCarpenterUpgrade((v) => !v);
+                        }}
+                      >
+                        強化
+                      </button>
+                    </div>
+                  )}
                   <button
                     type="button"
                     className="zukan-nav-btn zukan-nav-btn--left"

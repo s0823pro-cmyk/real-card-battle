@@ -613,6 +613,12 @@ const pickFallbackRareRewardExpanding = (jobId: JobId, seen: Set<string>): Card 
  * カード報酬の3択。候補はいずれも pickOne / フォールバックともに
  * `getCardPoolsByJob` 由来（ジョブ枠はプール定義時に実績ロックID除外、中立枠は
  * `getNeutralPoolForPick` で未解放を除外）のため、実績未解除のカードは候補に出ない。
+ *
+ * 【修正履歴】大工レア／コモンは `carpenter.ts` で UNFILTERED から
+ * `ACHIEVEMENT_LOCKED_CARD_IDS` によりフィルタした `CARPENTER_RARE_POOL` /
+ * `CARPENTER_COMMON_POOL` のみを `getCardPoolsByJob` に渡す。
+ * 以前はレアだけ未フィルタのため `zenmen_kaiso`（全面改装・実績 gold_lifetime_2000）等が
+ * 報酬に混入していた（アンコモンはもともとフィルタ済み）。
  */
 export const generateCardRewardChoices = (jobId: JobId = 'carpenter', count = 3): Card[] => {
   const pickOne = (): Card => {

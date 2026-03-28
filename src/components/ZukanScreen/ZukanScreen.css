@@ -363,9 +363,19 @@
   pointer-events: all;
 }
 
+.zukan-detail-upgrade-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 4px;
+}
+
 .zukan-card-detail {
   display: grid;
   grid-template-columns: 40px auto 40px;
+  grid-template-rows: auto auto;
   justify-items: center;
   align-items: center;
   gap: 16px;

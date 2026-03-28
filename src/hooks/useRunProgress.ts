@@ -5,9 +5,9 @@ import { NEUTRAL_CARD_POOL } from '../data/cards/neutralCards';
 import { getJobConfig } from '../data/jobs';
 import { cloneRewardCard } from '../data/jobs/index';
 import {
-  CARPENTER_COMMON_POOL,
+  CARPENTER_COMMON_POOL_UNFILTERED,
   CARPENTER_RARE_POOL_ALL,
-  CARPENTER_UNCOMMON_POOL,
+  CARPENTER_UNCOMMON_POOL_UNFILTERED,
 } from '../data/jobs/carpenter';
 import {
   CARPENTER_EXPANSION_COMMON,
@@ -1905,8 +1905,8 @@ export const useRunProgress = () => {
     if (destination === 'battle_all_cards') {
       const allCarpenterCards = [
         ...CARPENTER_STARTER_DECK,
-        ...CARPENTER_COMMON_POOL,
-        ...CARPENTER_UNCOMMON_POOL,
+        ...CARPENTER_COMMON_POOL_UNFILTERED,
+        ...CARPENTER_UNCOMMON_POOL_UNFILTERED,
         ...CARPENTER_RARE_POOL_ALL,
         ...RESERVE_BONUS_CARDS,
       ];

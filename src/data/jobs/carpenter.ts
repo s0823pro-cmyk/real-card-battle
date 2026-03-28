@@ -24,7 +24,8 @@ import templeCarpenterImage from '../../assets/cards/carpenter/temple_carpenter.
 import renovationImage from '../../assets/cards/carpenter/renovation.png';
 import masterStrikeImage from '../../assets/cards/carpenter/master_strike.png';
 
-export const CARPENTER_COMMON_POOL: Card[] = [
+/** 実績報酬IDを含む（図鑑・lookup 用）。店・カード報酬には `CARPENTER_COMMON_POOL` を使う */
+export const CARPENTER_COMMON_POOL_UNFILTERED: Card[] = [
   {
     id: 'power_drill',
     name: '電動ドリル',
@@ -105,6 +106,11 @@ export const CARPENTER_COMMON_POOL: Card[] = [
   },
   ...CARPENTER_EXPANSION_COMMON,
 ];
+
+/** 店・`generateCardRewardChoices` 用：実績未解放のカードIDはプールから除外（アンコモンと同じ方針） */
+export const CARPENTER_COMMON_POOL: Card[] = CARPENTER_COMMON_POOL_UNFILTERED.filter(
+  (c) => !ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id),
+);
 
 export const CARPENTER_UNCOMMON_POOL_UNFILTERED: Card[] = [
   ...RESERVE_BONUS_CARDS.filter((card) => card.id !== 'reinforced_wall'),
@@ -229,7 +235,8 @@ export const CARPENTER_ACHIEVEMENT_RARE_CARDS: Card[] = [
   },
 ];
 
-export const CARPENTER_RARE_POOL: Card[] = [
+/** 実績報酬IDを含む（図鑑の全レア表示・lookup 用） */
+export const CARPENTER_RARE_POOL_UNFILTERED: Card[] = [
   {
     id: 'mega_nail',
     name: '超釘打ち',
@@ -261,7 +268,12 @@ export const CARPENTER_RARE_POOL: Card[] = [
   ...CARPENTER_EXPANSION_RARE,
 ];
 
-/** 大工レア全件（通常プール＋実績ロック分。図鑑・実績報酬表示用） */
-export const CARPENTER_RARE_POOL_ALL: Card[] = [...CARPENTER_RARE_POOL, ...CARPENTER_ACHIEVEMENT_RARE_CARDS];
+/** 店・`generateCardRewardChoices` 用：実績未解放のカードIDはプールから除外 */
+export const CARPENTER_RARE_POOL: Card[] = CARPENTER_RARE_POOL_UNFILTERED.filter(
+  (c) => !ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id),
+);
+
+/** 大工レア全件（拡張＋実績専用レア。図鑑・実績報酬表示用） */
+export const CARPENTER_RARE_POOL_ALL: Card[] = [...CARPENTER_RARE_POOL_UNFILTERED, ...CARPENTER_ACHIEVEMENT_RARE_CARDS];
 
 export const createCarpenterStarterDeck = (): Card[] => buildStarterDeck();

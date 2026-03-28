@@ -159,6 +159,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '累計でゴールドを2000以上獲得する',
     icon: '💎',
     tier: 'hard',
+    /** `zenmen_kaiso`＝カード「全面改装」。報酬プールは `CARPENTER_RARE_POOL`（実績ロック除外後）＋解放分のみ */
     rewardCardIds: ['tenken_sha', 'zenmen_kaiso'],
   },
   {
