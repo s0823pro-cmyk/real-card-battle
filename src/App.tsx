@@ -101,6 +101,7 @@ function App() {
     startRunFromJobSelect,
     resetRun,
     consumeDefeatRevive,
+    battleFadeOverlay,
   } = useRunProgress();
   const [savedProgress, setSavedProgress] = useState(() => loadSavedProgress());
   const [battleSave, setBattleSave] = useState<BattleSaveData | null>(() => loadBattleState());
@@ -668,6 +669,7 @@ function App() {
           style={{ animationDuration: `${screenTransition.durationMs}ms` }}
         />
       )}
+      {battleFadeOverlay && <div className="battle-fade-overlay" aria-hidden />}
       {showStory && state.currentScreen === 'job_select' && !currentStoryId && (
         <StoryScreen
           scenes={CARPENTER_STORY}

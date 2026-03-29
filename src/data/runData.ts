@@ -124,8 +124,8 @@ export const RELICS: Omamori[] = [
     name: '栄養サプリ',
     icon: '💊',
     imageUrl: supplementImage,
-    description: '休憩マスでの回復量+10',
-    effect: { type: 'passive', stat: 'rest_heal', value: 10 },
+    description: '休憩マスでの回復量+20%',
+    effect: { type: 'passive', stat: 'rest_heal_percent', value: 20 },
   },
   {
     id: 'brand_wallet',

@@ -76,6 +76,7 @@ const NODE_SPACING_SCALE_Y = 1.08;
 
 const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
   const {
+    playSe,
     setBgmVolume,
     setSeVolume,
     toggleBgmMute,
@@ -414,6 +415,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                     progress.currentScreen === 'branch_select' &&
                     progress.selectableTileIds.includes(tile.id)
                   ) {
+                    playSe('map_move');
                     onSelectTile?.(tile.id);
                   }
                 }}

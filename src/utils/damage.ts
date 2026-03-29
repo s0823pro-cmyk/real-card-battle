@@ -152,13 +152,19 @@ export const applyDamageToEnemy = (enemy: Enemy, baseDamage: number): number => 
   return damage;
 };
 
+export interface EnemyAttackOutcome {
+  hpDamage: number;
+  /** 攻撃ダメージがあり、ブロックのみで HP を削らなかった（無敵ではない） */
+  fullyBlocked: boolean;
+}
+
 export const applyEnemyAttack = (
   intent: EnemyIntent,
   enemy: Enemy,
   player: PlayerState,
-): number => {
+): EnemyAttackOutcome => {
   if (player.damageImmunityThisTurn) {
-    return 0;
+    return { hpDamage: 0, fullyBlocked: false };
   }
 
   let damage = getEnemyAttackValue(intent, enemy);
@@ -172,18 +178,18 @@ export const applyEnemyAttack = (
   if (!player.canBlock) {
     player.block = 0;
     player.currentHp = Math.max(0, player.currentHp - damage);
-    return damage;
+    return { hpDamage: damage, fullyBlocked: false };
   }
 
   if (player.block >= damage) {
     player.block -= damage;
-    return 0;
+    return { hpDamage: 0, fullyBlocked: damage > 0 };
   }
 
   const actualDamage = damage - player.block;
   player.block = 0;
   player.currentHp = Math.max(0, player.currentHp - actualDamage);
-  return actualDamage;
+  return { hpDamage: actualDamage, fullyBlocked: false };
 };
 
 /** 敵インテント表示用：プレイヤーが受ける物理攻撃の合計表示値（野良猫は3連分、脆弱で1.5倍） */

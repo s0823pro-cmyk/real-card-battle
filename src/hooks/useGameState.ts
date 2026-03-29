@@ -1563,6 +1563,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     for (let ei = 0; ei < workingState.enemies.length; ei += 1) {
       const enemy = workingState.enemies[ei];
       if (enemy.currentHp <= 0) continue;
+      const blockBeforeEnemy = workingState.player.block;
       const result = executeEnemyTurn(enemy, workingState.player);
       if (ENEMY_DEBUFF_INTENT_TYPES.includes(result.intentType)) {
         playSe('enemy_debuff');
@@ -1577,6 +1578,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       if (revivalOutcome.revived) {
         pushPopup('🔄 七転び八起き！', 'player', 'buff');
         triggerRevivalEffect();
+      }
+      if (result.intentType === 'attack') {
+        const damageTaken = result.damageToPlayer;
+        if (damageTaken === 0 && blockBeforeEnemy > result.player.block) {
+          playSe('shield');
+        } else if (damageTaken > 0) {
+          playSe('damage');
+        }
       }
       if (result.damageToPlayer > 0) {
         lastAttackerName = enemy.name;
@@ -1597,6 +1606,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         pushPopup(`🧠-${result.mentalDamageToPlayer}`, 'player', 'buff');
       }
       if (result.goldStolen > 0) {
+        playSe('gold_lost');
         pushPopup(`💰-${result.goldStolen}G 盗まれた！`, 'player', 'damage');
       }
       if (result.addCurse) {

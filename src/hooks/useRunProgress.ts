@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { BossRewardType } from '../data/bossRewards';
 import { CARPENTER_STARTER_DECK, CURSE_CARD, RESERVE_BONUS_CARDS } from '../data/carpenterDeck';
 import { NEUTRAL_CARD_POOL } from '../data/cards/neutralCards';
@@ -799,6 +799,8 @@ export const useRunProgress = () => {
    * エリア1・2のエリアボス後に誤ってストーリーが被り、VICTORY タップが奪われることがある。
    */
   const pendingArea3RunVictoryStoryRef = useRef(false);
+  const pendingBattleOpenRef = useRef<(() => void) | null>(null);
+  const [battleFadeOverlay, setBattleFadeOverlay] = useState(false);
   const prevScreenRef = useRef(state.currentScreen);
   /** ペイント前に同期しないと、VICTORY 直後のタップで cardReward が未反映の stateRef を読み進めないことがある */
   useLayoutEffect(() => {
@@ -835,78 +837,91 @@ export const useRunProgress = () => {
     }));
   }, [state.board, state.selectableTileIds]);
 
+  useEffect(() => {
+    if (!battleFadeOverlay) return;
+    const id = window.setTimeout(() => {
+      pendingBattleOpenRef.current?.();
+      pendingBattleOpenRef.current = null;
+      setBattleFadeOverlay(false);
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [battleFadeOverlay]);
+
   const onBattleTurnStart = (gameState: GameState) => {
     saveBattleState(gameState, stateRef.current);
   };
 
   const openTileScreen = (tile: BoardTile) => {
-    if (tile.type === 'enemy') {
-      const area = stateRef.current.currentArea;
-      let enemies;
-      if (area === 2) {
-        enemies = createEncounterFromTemplates(pickArea2Encounter());
-      } else if (area === 3) {
-        enemies = createEncounterFromTemplates(pickArea3Encounter());
-      } else {
-        enemies = createEncounterFromTemplateIds(pickArea1EncounterTemplateIds());
-      }
-      const setup: BattleSetup = {
-        jobId: stateRef.current.jobId,
-        kind: 'battle',
-        enemies,
-        deck: stateRef.current.deck,
-        player: stateRef.current.player,
-        omamoris: stateRef.current.omamoris,
-        items: stateRef.current.items,
+    if (tile.type === 'enemy' || tile.type === 'unique_boss' || tile.type === 'area_boss') {
+      pendingBattleOpenRef.current = () => {
+        if (tile.type === 'enemy') {
+          const area = stateRef.current.currentArea;
+          let enemies;
+          if (area === 2) {
+            enemies = createEncounterFromTemplates(pickArea2Encounter());
+          } else if (area === 3) {
+            enemies = createEncounterFromTemplates(pickArea3Encounter());
+          } else {
+            enemies = createEncounterFromTemplateIds(pickArea1EncounterTemplateIds());
+          }
+          const setup: BattleSetup = {
+            jobId: stateRef.current.jobId,
+            kind: 'battle',
+            enemies,
+            deck: stateRef.current.deck,
+            player: stateRef.current.player,
+            omamoris: stateRef.current.omamoris,
+            items: stateRef.current.items,
+          };
+          dispatch({ type: 'set_battle_setup', setup, tileType: tile.type });
+          dispatch({ type: 'set_screen', screen: 'battle' });
+          return;
+        }
+        if (tile.type === 'unique_boss') {
+          const area = stateRef.current.currentArea;
+          let eliteTemplate;
+          if (area === 2) {
+            eliteTemplate = pickArea2Elite();
+          } else if (area === 3) {
+            eliteTemplate = pickArea3Elite();
+          } else {
+            eliteTemplate = pickArea1Elite();
+          }
+          const setup: BattleSetup = {
+            jobId: stateRef.current.jobId,
+            kind: 'elite',
+            enemies: createEncounterFromTemplates([eliteTemplate]),
+            deck: stateRef.current.deck,
+            player: stateRef.current.player,
+            omamoris: stateRef.current.omamoris,
+            items: stateRef.current.items,
+          };
+          dispatch({ type: 'set_battle_setup', setup, tileType: tile.type });
+          dispatch({ type: 'set_screen', screen: 'battle' });
+          return;
+        }
+        const area = stateRef.current.currentArea;
+        let bossTemplate;
+        if (area === 2) {
+          bossTemplate = AREA2_BOSS;
+        } else if (area === 3) {
+          bossTemplate = AREA3_BOSS;
+        } else {
+          bossTemplate = AREA1_BOSS;
+        }
+        const setup: BattleSetup = {
+          jobId: stateRef.current.jobId,
+          kind: 'boss',
+          enemies: createEncounterFromTemplates([bossTemplate]),
+          deck: stateRef.current.deck,
+          player: stateRef.current.player,
+          omamoris: stateRef.current.omamoris,
+          items: stateRef.current.items,
+        };
+        dispatch({ type: 'set_battle_setup', setup, tileType: tile.type });
+        dispatch({ type: 'set_screen', screen: 'battle' });
       };
-      dispatch({ type: 'set_battle_setup', setup, tileType: tile.type });
-      dispatch({ type: 'set_screen', screen: 'battle' });
-      return;
-    }
-    if (tile.type === 'unique_boss') {
-      const area = stateRef.current.currentArea;
-      let eliteTemplate;
-      if (area === 2) {
-        eliteTemplate = pickArea2Elite();
-      } else if (area === 3) {
-        eliteTemplate = pickArea3Elite();
-      } else {
-        eliteTemplate = pickArea1Elite();
-      }
-      const setup: BattleSetup = {
-        jobId: stateRef.current.jobId,
-        kind: 'elite',
-        enemies: createEncounterFromTemplates([eliteTemplate]),
-        deck: stateRef.current.deck,
-        player: stateRef.current.player,
-        omamoris: stateRef.current.omamoris,
-        items: stateRef.current.items,
-      };
-      dispatch({ type: 'set_battle_setup', setup, tileType: tile.type });
-      dispatch({ type: 'set_screen', screen: 'battle' });
-      return;
-    }
-    if (tile.type === 'area_boss') {
-      const area = stateRef.current.currentArea;
-      let bossTemplate;
-      if (area === 2) {
-        bossTemplate = AREA2_BOSS;
-      } else if (area === 3) {
-        bossTemplate = AREA3_BOSS;
-      } else {
-        bossTemplate = AREA1_BOSS;
-      }
-      const setup: BattleSetup = {
-        jobId: stateRef.current.jobId,
-        kind: 'boss',
-        enemies: createEncounterFromTemplates([bossTemplate]),
-        deck: stateRef.current.deck,
-        player: stateRef.current.player,
-        omamoris: stateRef.current.omamoris,
-        items: stateRef.current.items,
-      };
-      dispatch({ type: 'set_battle_setup', setup, tileType: tile.type });
-      dispatch({ type: 'set_screen', screen: 'battle' });
+      setBattleFadeOverlay(true);
       return;
     }
     if (tile.type === 'event') {
@@ -1069,6 +1084,9 @@ export const useRunProgress = () => {
           ? ({ type: 'gold', value: 80 } as const)
           : ({ type: 'gold', value: -40 } as const);
       nextState = applySingleEffect(nextState, effect).state;
+      if (effect.type === 'gold' && effect.value < 0) {
+        playSeByType('gold_lost');
+      }
       dispatch({ type: 'set_player', player: nextState.player });
       dispatch({ type: 'set_deck', deck: nextState.deck });
       dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
@@ -1119,6 +1137,7 @@ export const useRunProgress = () => {
       if (event.id === 'vending_machine' && effect.type === 'gold' && effect.value === -10) {
         const rPay = applySingleEffect(nextState, effect);
         nextState = rPay.state;
+        playSeByType('gold_lost');
         gainedFromEvent.push(...rPay.gainedCards);
         // ランダム1種: お守り / ランアイテム / カード1枚（-10Gは上で既に適用）
         const roll = Math.floor(Math.random() * 3);
@@ -1155,6 +1174,9 @@ export const useRunProgress = () => {
       } else {
         if (effectIsHealOrPositiveMental(effect)) shouldPlayHealSe = true;
         if (effect.type === 'damage' && effect.value > 0) shouldPlayDamageSe = true;
+        if (effect.type === 'gold' && effect.value < 0) {
+          playSeByType('gold_lost');
+        }
         const r = applySingleEffect(nextState, effect);
         nextState = r.state;
         gainedFromEvent.push(...r.gainedCards);
@@ -1205,8 +1227,9 @@ export const useRunProgress = () => {
 
   const hotelHeal = () => {
     playSeByType('heal');
-    const bonus = stateRef.current.omamoris.find((item) => item.effect.stat === 'rest_heal')?.effect.value ?? 0;
-    const healAmount = Math.floor(stateRef.current.player.maxHp * 0.3) + bonus;
+    const restPct =
+      stateRef.current.omamoris.find((item) => item.effect.stat === 'rest_heal_percent')?.effect.value ?? 0;
+    const healAmount = Math.floor(stateRef.current.player.maxHp * 0.3 * (1 + restPct / 100));
     dispatch({
       type: 'set_player',
       player: {
@@ -1286,6 +1309,7 @@ export const useRunProgress = () => {
     if (stateRef.current.player.gold < cost) return;
     const confirmed = window.confirm(`${target.name} を ${cost}Gで削除しますか？`);
     if (!confirmed) return;
+    playSeByType('gold_lost');
     dispatch({
       type: 'set_deck',
       deck: stateRef.current.deck.filter((card) => card.id !== cardId),
@@ -1302,6 +1326,7 @@ export const useRunProgress = () => {
     if (!shop) return;
     if (stateRef.current.player.gold < shop.price) return;
 
+    playSeByType('gold_lost');
     const nextGold = stateRef.current.player.gold - shop.price;
     const nextDeck =
       shop.type === 'card' && shop.item
@@ -1372,6 +1397,7 @@ export const useRunProgress = () => {
       return;
     }
 
+    playSeByType('gold_lost');
     dispatch({
       type: 'set_player',
       player: { ...stateRef.current.player, gold: stateRef.current.player.gold - shop.price },
@@ -2135,5 +2161,6 @@ export const useRunProgress = () => {
     consumeDefeatRevive,
     proceedFromBattleVictory,
     pendingArea3RunVictoryStoryRef,
+    battleFadeOverlay,
   };
 };

@@ -569,8 +569,8 @@
 }
 
 .zukan-enemy-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -581,6 +581,9 @@
   gap: 4px;
   cursor: pointer;
   position: relative;
+  flex: 0 0 calc((100% - 24px) / 4);
+  max-width: calc((100% - 24px) / 4);
+  box-sizing: border-box;
 }
 
 .zukan-enemy-item--none,

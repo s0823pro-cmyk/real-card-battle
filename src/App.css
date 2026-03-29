@@ -100,6 +100,28 @@ body {
   }
 }
 
+/* マップ→バトル直前: 0.5s 暗転 → 0.5s 明転（計1s） */
+.battle-fade-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 13000;
+  background: #000;
+  pointer-events: none;
+  animation: battle-fade 1s ease-in-out forwards;
+}
+
+@keyframes battle-fade {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 .restore-overlay {
   position: fixed;
   inset: 0;

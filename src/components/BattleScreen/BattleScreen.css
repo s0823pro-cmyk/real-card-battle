@@ -567,9 +567,9 @@
   gap: 4px;
   box-sizing: border-box;
   /* レイアウト上の手札との間隔。画面でタイムバーを下げるには transform かプレイヤー領域の高さ削減が必要 */
-  margin-top: 24px;
-  /* 温存とタイムバーの相対位置は子の translate のまま、行全体を同じだけ下げる */
-  transform: translateY(9px);
+  margin-top: 16px;
+  /* 温存とタイムバーの相対位置は子の translate のまま、行全体を同じだけ下げる（従来比 ~8px 上） */
+  transform: translateY(1px);
 }
 
 .battle-timebar-reserve-row .battle-reserve-area {

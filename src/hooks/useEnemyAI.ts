@@ -6,6 +6,8 @@ export interface EnemyTurnResult {
   enemy: Enemy;
   player: PlayerState;
   damageToPlayer: number;
+  /** 物理攻撃がブロックのみで HP0（反射音用） */
+  attackFullyBlocked: boolean;
   mentalDamageToPlayer: number;
   goldStolen: number;
   addCurse: boolean;
@@ -75,13 +77,18 @@ export const useEnemyAI = () => {
     let updatedEnemy: Enemy = { ...enemy, block: 0, statusEffects: [...enemy.statusEffects] };
     const updatedPlayer: PlayerState = { ...player, statusEffects: [...player.statusEffects] };
 
+    let attackFullyBlocked = false;
     if (intent.type === 'attack') {
       if (enemy.name === '野良猫') {
         for (let hit = 0; hit < 3; hit += 1) {
-          damage += applyEnemyAttack(intent, updatedEnemy, updatedPlayer);
+          const out = applyEnemyAttack(intent, updatedEnemy, updatedPlayer);
+          damage += out.hpDamage;
+          attackFullyBlocked = attackFullyBlocked || out.fullyBlocked;
         }
       } else {
-        damage = applyEnemyAttack(intent, updatedEnemy, updatedPlayer);
+        const out = applyEnemyAttack(intent, updatedEnemy, updatedPlayer);
+        damage = out.hpDamage;
+        attackFullyBlocked = out.fullyBlocked;
       }
     } else if (intent.type === 'buff') {
       updatedEnemy = {
@@ -173,6 +180,7 @@ export const useEnemyAI = () => {
       enemy: updatedEnemy,
       player: updatedPlayer,
       damageToPlayer: damage,
+      attackFullyBlocked,
       mentalDamageToPlayer: mentalDamage,
       goldStolen,
       addCurse,

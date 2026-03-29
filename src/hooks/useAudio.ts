@@ -28,6 +28,8 @@ export type SeType =
   | 'attack'
   | 'damage'
   | 'block'
+  /** ブロックで攻撃を完全に防いだとき（専用ファイルが無ければ block と同音源） */
+  | 'shield'
   | 'button'
   | 'reserve'
   | 'shop_sell'
@@ -36,7 +38,11 @@ export type SeType =
   /** HP 回復・メンタル回復など */
   | 'heal'
   /** 敵のデバフ・メンタル攻撃（文句を言う等） */
-  | 'enemy_debuff';
+  | 'enemy_debuff'
+  /** ゴールド減少（盗み・購入・ペナルティ等） */
+  | 'gold_lost'
+  /** マップで1マス進んだとき */
+  | 'map_move';
 export type BgmType =
   | 'menu'
   | 'battle'
@@ -56,6 +62,7 @@ const SE_FILES: Record<SeType, string> = {
   attack: publicSoundUrl('se-attack.mp3'),
   damage: publicSoundUrl('se-damage.mp3'),
   block: publicSoundUrl('se-block.mp3'),
+  shield: publicSoundUrl('se-shield.mp3'),
   button: publicSoundUrl('se-button.mp3'),
   reserve: SE_RESERVE_SRC,
   shop_sell: publicSoundUrl('se-shop-sell.mp3'),
@@ -63,6 +70,8 @@ const SE_FILES: Record<SeType, string> = {
   upgrade: publicSoundUrl('se-upgrade.mp3'),
   heal: publicSoundUrl('se-heal.mp3'),
   enemy_debuff: publicSoundUrl('se-enemy-debuff.mp3'),
+  gold_lost: publicSoundUrl('se-gold-lost.mp3'),
+  map_move: publicSoundUrl('se-map-move.mp3'),
 };
 
 const BGM_FILES: Record<Exclude<BgmType, 'none'>, string> = {
