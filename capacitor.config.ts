@@ -6,7 +6,6 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   ios: {
     contentInset: 'always',
-    allowsLinkPreview: false,
   },
   server: {
     androidScheme: 'https',
@@ -18,7 +17,7 @@ const config: CapacitorConfig = {
     AdMob: {
       appId: 'ca-app-pub-6731542556992059~4473120758',
     },
-    /** WebView 繧偵せ繝・・繧ｿ繧ｹ繝舌・縺ｮ荳九↓驟咲ｽｮ・域里螳壹・ overlaysWebView: true 縺縺ｨ蜈ｨ髱｢縺ｫ驥阪↑繧具ｼ・*/
+    /** WebView をステータスバーの下に配置（overlaysWebView: true だと全画面に被る） */
     StatusBar: {
       overlaysWebView: false,
       style: 'DARK',

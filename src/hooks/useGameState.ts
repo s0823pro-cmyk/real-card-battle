@@ -24,7 +24,6 @@ import { getEffectiveTimeCost } from '../utils/timeline';
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
 import { applyBattleCardReverts, isBattleTempUpgradeSourceCard } from '../utils/battleCardRevert';
 import { getEffectiveMaxMental } from '../utils/mentalLimits';
-import { applyDebugEnemyHp1ToEnemies } from '../utils/debugEnemyHp1';
 import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord';
 import {
   canPlaySelfDamageBadgeCard,
@@ -336,10 +335,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
       cookingGauge: 0,
       statusEffects: [...basePlayer.statusEffects],
     }),
-    // DEV ONLY — 確認後削除（debugEnemyHp1.ts）
-    enemies: applyDebugEnemyHp1ToEnemies(
-      encounter.map((enemy) => ({ ...enemy, statusEffects: [...enemy.statusEffects] })),
-    ),
+    enemies: encounter.map((enemy) => ({ ...enemy, statusEffects: [...enemy.statusEffects] })),
     executingIndex: -1,
     toolSlots: [],
     battleCardRevertMap: {},

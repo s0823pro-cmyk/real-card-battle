@@ -50,7 +50,7 @@ function publicSoundUrl(filename: string): string {
 const SE_CARD_SRC = publicSoundUrl('se-card.mp3');
 const SE_RESERVE_SRC = publicSoundUrl('se-reserve.mp3');
 
-export type SeType =
+type SeType =
   | 'card'
   | 'attack'
   | 'damage'
@@ -124,7 +124,7 @@ function isBgmSrc(src: string): boolean {
 const LOOP_BGM: BgmType[] = ['menu', 'battle', 'boss', 'area1', 'area2', 'area3'];
 
 /** SE は AudioContext でデコード、BGM は fetch のみ（HTMLAudio 再生は従来どおり・キャッシュ温め） */
-export async function preloadAudio(src: string): Promise<void> {
+async function preloadAudio(src: string): Promise<void> {
   if (isBgmSrc(src)) {
     try {
       await fetch(src);

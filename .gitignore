@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Android SDK / 署名（各環境の local.properties。android/ 配下を追跡する場合も漏れないよう明示）
+local.properties
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

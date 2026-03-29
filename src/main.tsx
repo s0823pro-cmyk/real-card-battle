@@ -4,10 +4,8 @@ import { Capacitor } from '@capacitor/core'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import './index.css'
 import App from './App.tsx'
-import { DEBUG_ENEMY_HP1_STORAGE_KEY } from './utils/debugEnemyHp1'
-
 try {
-  localStorage.removeItem(DEBUG_ENEMY_HP1_STORAGE_KEY)
+  localStorage.removeItem('real-card-battle:debug-enemy-hp1')
 } catch {
   // ignore
 }
