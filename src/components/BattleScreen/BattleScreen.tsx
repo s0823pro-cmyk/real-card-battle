@@ -16,7 +16,7 @@ import PlayerStatus from '../PlayerStatus/PlayerStatus';
 import BattleDefeatOverlay from '../Result/BattleDefeatOverlay';
 import BattleVictoryOverlay from '../Result/BattleVictoryOverlay';
 import Timeline from '../Timeline/Timeline';
-import { RESERVE_TIME_PENALTY, useGameState } from '../../hooks/useGameState';
+import { useGameState } from '../../hooks/useGameState';
 import { ICONS } from '../../assets/icons';
 import type { Card, GameState } from '../../types/game';
 import type { BattleResult, BattleSetup, Omamori } from '../../types/run';
@@ -27,7 +27,6 @@ import {
 } from '../../utils/cardPreview';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
-import { getEffectiveTimeCost } from '../../utils/timeline';
 import { getAdsRemoved } from '../../utils/adsRemoved';
 import { showInterstitialIfAllowed } from '../../utils/adMobClient';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
@@ -95,8 +94,10 @@ const DRAG_CARD_WIDTH = 105;
 const DRAG_DISPLAY_Y_OFFSET = -(DRAG_CARD_HEIGHT - 40);
 // 判定オフセット：カード上端基準（複数プローブで使用）
 const DRAG_JUDGE_Y_OFFSET = DRAG_DISPLAY_Y_OFFSET;
-/** 温存枠ドロップから reserveCardById までの遅延（秒） */
+/** 温存枠ドロップから reserveCardById までの遅延 */
 const RESERVE_PENDING_MS = 500;
+/** 温存でタイムラインから減る秒数（実コストに合わせ、プレビューもこの固定値） */
+const RESERVE_DROP_COST = RESERVE_PENDING_MS / 1000;
 
 const BOSS_IDS = ['monster_customer', 'evil_ceo', 'world_tree_warden'];
 const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
@@ -603,6 +604,9 @@ const BattleScreen = ({
     setExpandedCardId(null);
     setHoveredEnemyId(null);
     setIsHoveringTimebar(false);
+    if (reservePendingTimeoutRef.current === null) {
+      setPendingReserveCardId(null);
+    }
     setHandDrag({
       isDragging: false,
       card: null,
@@ -1020,6 +1024,16 @@ const BattleScreen = ({
     }
   }, [gameState.hand, pendingReserveCardId, clearPendingReserveTimeout]);
 
+  /** ドラッグ中に温存枠と重なった時点でプレビュー（0.5秒確定待ち中は ref でスキップ） */
+  useEffect(() => {
+    if (reservePendingTimeoutRef.current !== null) return;
+    if (handDrag.isDragging && handDrag.dropTarget === 'reserve' && handDrag.card) {
+      setPendingReserveCardId(handDrag.card.id);
+    } else if (handDrag.isDragging && handDrag.dropTarget !== 'reserve') {
+      setPendingReserveCardId(null);
+    }
+  }, [handDrag.isDragging, handDrag.dropTarget, handDrag.card?.id]);
+
   const scheduleReserveFromDrop = useCallback(
     (cardId: string) => {
       clearPendingReserveTimeout();
@@ -1040,19 +1054,13 @@ const BattleScreen = ({
     [gameState.hand, pendingReserveCardId],
   );
 
-  /** 温存仮置き中：タイムバーにかかる時間のプレビュー（実プレイ時の所要時間 × ペナルティ係数） */
+  /** 温存仮置き中：タイムバーにかかる時間のプレビュー（温存コストは固定秒） */
   const reserveTimeUsagePreview = useMemo(() => {
     if (!pendingReserveCard) return null;
-    const effectiveCost = getEffectiveTimeCost(
-      pendingReserveCard,
-      lastPlayedCard,
-      gameState.player,
-      gameState.player.jobId,
-    );
-    const previewCost = effectiveCost * RESERVE_TIME_PENALTY;
+    const previewCost = RESERVE_DROP_COST;
     const previewRemaining = Math.max(0, remainingTime - previewCost);
     return { previewCost, previewRemaining };
-  }, [pendingReserveCard, lastPlayedCard, gameState.player, remainingTime]);
+  }, [pendingReserveCard, remainingTime]);
 
   const finalTimelinePreviewCost = reserveTimeUsagePreview?.previewCost ?? timeUsagePreview?.previewCost ?? null;
   const finalTimelinePreviewRemaining =

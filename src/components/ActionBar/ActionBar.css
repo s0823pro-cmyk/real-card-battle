@@ -85,7 +85,7 @@
 .reserve-penalty-inline {
   min-width: 80px;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: calc(11px * 0.8);
   color: #e74c3c;
   margin: 0;
   white-space: nowrap;
