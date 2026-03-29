@@ -29,6 +29,8 @@ const ShrineScreen = ({ omamoris, onPick }: Props) => {
                   src={omamori.imageUrl}
                   alt={omamori.name}
                   className="omamori-reward-img"
+                  draggable={false}
+                  onContextMenu={(e) => e.preventDefault()}
                 />
               ) : (
                 <span className="omamori-reward-icon">{omamori.icon}</span>

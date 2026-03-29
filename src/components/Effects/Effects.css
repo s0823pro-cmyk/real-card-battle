@@ -52,6 +52,11 @@
   top: 56%;
 }
 
+/* 敵へのダメージ：敵画像の上あたりに表示 */
+.damage-popup.target-enemy {
+  top: 20%;
+}
+
 /* 敵の行動ログ（result.log）。target-player より後に置き top を上書き */
 .damage-popup.damage-popup--enemy-action {
   font-size: 13px;

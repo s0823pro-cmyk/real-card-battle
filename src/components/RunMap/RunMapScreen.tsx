@@ -299,7 +299,17 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                     description={relic.description}
                   >
                     <span className="map-relic-icon">
-                      {relic.imageUrl ? <img src={relic.imageUrl} alt={relic.name} className="map-relic-image" /> : (relic.icon ?? '🎴')}
+                      {relic.imageUrl ? (
+                        <img
+                          src={relic.imageUrl}
+                          alt={relic.name}
+                          className="map-relic-image"
+                          draggable={false}
+                          onContextMenu={(e) => e.preventDefault()}
+                        />
+                      ) : (
+                        relic.icon ?? '🎴'
+                      )}
                     </span>
                   </Tooltip>
                 ))}
@@ -451,6 +461,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                     src={nodeImage}
                     alt={tile.name}
                     draggable={false}
+                    onContextMenu={(e) => e.preventDefault()}
                     onError={() =>
                       setFailedNodeImages((prev) => {
                         const next = new Set(prev);

@@ -144,7 +144,13 @@ const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
       onTouchEnd={handleTouchEnd}
     >
       {omamori.imageUrl ? (
-        <img src={omamori.imageUrl} alt={omamori.name} className="battle-omamori-img" />
+        <img
+          src={omamori.imageUrl}
+          alt={omamori.name}
+          className="battle-omamori-img"
+          draggable={false}
+          onContextMenu={(e) => e.preventDefault()}
+        />
       ) : (
         <span className="battle-omamori-icon">{omamori.icon}</span>
       )}

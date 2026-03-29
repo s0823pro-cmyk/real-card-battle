@@ -12,9 +12,20 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* iOS WKWebView: 画像長押しの保存・コールアウトを抑止 */
 img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   -webkit-user-drag: none;
   user-select: none;
+  pointer-events: none;
+}
+
+button img,
+.card img,
+.hand-card img,
+[role='button'] img {
+  pointer-events: auto;
 }
 
 body {

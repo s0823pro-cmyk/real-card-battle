@@ -87,7 +87,7 @@ interface CoinBurst {
 export interface BattlePopup {
   id: number;
   text: string;
-  target: 'player' | string;
+  target: 'player' | 'enemy' | string;
   kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action';
 }
 
@@ -381,7 +381,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const battleOmamoris = options?.setup?.omamoris ?? [];
   const prevHungryStateRef = useRef<'normal' | 'hungry' | 'awakened'>('normal');
   const endTurnRef = useRef<() => Promise<void>>(async () => {});
-  const pushPopupRef = useRef<(text: string, target: 'player' | string, kind: BattlePopup['kind']) => void>(
+  const pushPopupRef = useRef<(text: string, target: 'player' | 'enemy' | string, kind: BattlePopup['kind']) => void>(
     () => {},
   );
 
@@ -495,7 +495,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     // HPと職業変化のみを監視
   }, [gameState.player, gameState.player.currentHp, gameState.player.maxHp, gameState.player.jobId]);
 
-  function pushPopup(text: string, target: 'player' | string, kind: BattlePopup['kind']) {
+  function pushPopup(text: string, target: 'player' | 'enemy' | string, kind: BattlePopup['kind']) {
     const id = Date.now() + Math.floor(Math.random() * 10000);
     setBattlePopups((prev) => [...prev, { id, text, target, kind }]);
     const duration = kind === 'enemy_action' ? 2200 : 720;
@@ -922,7 +922,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         if (!before) continue;
         const dealt = Math.max(0, before.hp - enemy.currentHp);
         if (dealt > 0) {
-          pushPopup(`-${dealt}`, enemy.id, 'damage');
+          pushPopup(`-${dealt}`, 'enemy', 'damage');
         }
       }
     } else if (result.multiHitJabs && result.multiHitJabs.length > 0) {
@@ -930,13 +930,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       result.multiHitJabs.forEach((jab, i) => {
         window.setTimeout(() => {
           setHitEnemyId(jab.enemyId);
-          pushPopup(`-${jab.damage}`, jab.enemyId, 'damage');
+          pushPopup(`-${jab.damage}`, 'enemy', 'damage');
           window.setTimeout(() => setHitEnemyId(null), 260);
         }, i * multiHitStaggerMs);
       });
     } else if (result.damage > 0 && result.targetEnemyId) {
       setHitEnemyId(result.targetEnemyId);
-      pushPopup(`-${result.damage}`, result.targetEnemyId, 'damage');
+      pushPopup(`-${result.damage}`, 'enemy', 'damage');
       window.setTimeout(() => setHitEnemyId(null), 260);
     }
     if (result.blockGained > 0) {
@@ -1480,7 +1480,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           defeatedByRidgepole.push(enemy.templateId);
         }
         if (enemy.currentHp - nextHp > 0) {
-          pushPopup(`-${effectiveRidgepoleDamage}`, enemy.id, 'damage');
+          pushPopup(`-${effectiveRidgepoleDamage}`, 'enemy', 'damage');
         }
         return { ...enemy, currentHp: nextHp };
       });

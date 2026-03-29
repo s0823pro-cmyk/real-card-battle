@@ -1,7 +1,7 @@
 export interface PopupItem {
   id: number;
   text: string;
-  target: 'player' | string;
+  target: 'player' | 'enemy' | string;
   kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action';
 }
 
