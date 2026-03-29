@@ -16,7 +16,7 @@ import PlayerStatus from '../PlayerStatus/PlayerStatus';
 import BattleDefeatOverlay from '../Result/BattleDefeatOverlay';
 import BattleVictoryOverlay from '../Result/BattleVictoryOverlay';
 import Timeline from '../Timeline/Timeline';
-import { useGameState } from '../../hooks/useGameState';
+import { RESERVE_TIME_PENALTY, useGameState } from '../../hooks/useGameState';
 import { ICONS } from '../../assets/icons';
 import type { Card, GameState } from '../../types/game';
 import type { BattleResult, BattleSetup, Omamori } from '../../types/run';
@@ -27,6 +27,7 @@ import {
 } from '../../utils/cardPreview';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
+import { getEffectiveTimeCost } from '../../utils/timeline';
 import { getAdsRemoved } from '../../utils/adsRemoved';
 import { showInterstitialIfAllowed } from '../../utils/adMobClient';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
@@ -1025,8 +1026,8 @@ const BattleScreen = ({
       setPendingReserveCardId(cardId);
       reservePendingTimeoutRef.current = window.setTimeout(() => {
         reservePendingTimeoutRef.current = null;
-        const ok = reserveCardByIdRef.current(cardId);
-        if (ok) playSe('reserve');
+        reserveCardByIdRef.current(cardId);
+        playSe('reserve');
         setPendingReserveCardId(null);
       }, RESERVE_PENDING_MS);
     },
@@ -1038,6 +1039,26 @@ const BattleScreen = ({
       pendingReserveCardId ? (gameState.hand.find((c) => c.id === pendingReserveCardId) ?? null) : null,
     [gameState.hand, pendingReserveCardId],
   );
+
+  /** 温存仮置き中：タイムバーにかかる時間のプレビュー（実プレイ時の所要時間 × ペナルティ係数） */
+  const reserveTimeUsagePreview = useMemo(() => {
+    if (!pendingReserveCard) return null;
+    const effectiveCost = getEffectiveTimeCost(
+      pendingReserveCard,
+      lastPlayedCard,
+      gameState.player,
+      gameState.player.jobId,
+    );
+    const previewCost = effectiveCost * RESERVE_TIME_PENALTY;
+    const previewRemaining = Math.max(0, remainingTime - previewCost);
+    return { previewCost, previewRemaining };
+  }, [pendingReserveCard, lastPlayedCard, gameState.player, remainingTime]);
+
+  const finalTimelinePreviewCost = reserveTimeUsagePreview?.previewCost ?? timeUsagePreview?.previewCost ?? null;
+  const finalTimelinePreviewRemaining =
+    reserveTimeUsagePreview != null
+      ? reserveTimeUsagePreview.previewRemaining
+      : timeUsagePreview?.previewRemaining ?? null;
 
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
     damage: card.damage ?? null,
@@ -1247,9 +1268,9 @@ const BattleScreen = ({
               <Timeline
                 maxTime={gameState.maxTime}
                 remainingTime={remainingTime}
-                isDropActive={Boolean(timeUsagePreview)}
-                previewRemainingTime={timeUsagePreview?.previewRemaining ?? null}
-                previewCost={timeUsagePreview?.previewCost ?? null}
+                isDropActive={Boolean(timeUsagePreview || reserveTimeUsagePreview)}
+                previewRemainingTime={finalTimelinePreviewRemaining}
+                previewCost={finalTimelinePreviewCost}
                 gaugeStyle={timelineGaugeStyle}
                 timelineBarRef={timelineBarRef}
               />
