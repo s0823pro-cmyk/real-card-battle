@@ -39,6 +39,8 @@ import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../utils/
 const MAX_RESERVED = 2;
 /** 温存時に次ターンへ加算する時間ペナルティ（秒）。UI の温存プレビュー計算と共有 */
 export const RESERVE_TIME_PENALTY = 1.5;
+/** 温存成功時にこのターンのタイムラインで即時消費する秒（BattleScreen の RESERVE_PENDING_MS / 1000 と同じ） */
+const RESERVE_COST_SEC = 0.5;
 const DRAW_COUNT = 5;
 const SELL_ANIMATION_MS = 220;
 const INITIAL_MENTAL = 7;
@@ -1171,6 +1173,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         ...prev,
         hand: normalizedHand.filter((item) => item.id !== cardId),
         reserved: [...normalizedReserved, reservedCard],
+        usedTime: prev.usedTime + RESERVE_COST_SEC,
         player: {
           ...prev.player,
           nextCardDoubleEffect: hasReserveDouble ? true : prev.player.nextCardDoubleEffect,
