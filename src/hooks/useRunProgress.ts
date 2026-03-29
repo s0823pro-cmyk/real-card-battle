@@ -1016,6 +1016,7 @@ export const useRunProgress = () => {
       let fromId = after.currentTileId;
       for (let i = 0; i < move.passedTileIds.length; i += 1) {
         const toId = move.passedTileIds[i];
+        playSeByType('map_move');
         dispatch({ type: 'add_traveled_edge', from: fromId, to: toId });
         dispatch({ type: 'set_current_tile', tileId: toId });
         dispatch({ type: 'set_pending_steps', steps: Math.max(0, value - i - 1) });
@@ -1033,6 +1034,7 @@ export const useRunProgress = () => {
       let fromId = after.currentTileId;
       for (let i = 0; i < move.passedTileIds.length; i += 1) {
         const toId = move.passedTileIds[i];
+        playSeByType('map_move');
         dispatch({ type: 'add_traveled_edge', from: fromId, to: toId });
         dispatch({ type: 'set_current_tile', tileId: toId });
         dispatch({ type: 'set_pending_steps', steps: Math.max(0, value - i - 1) });
@@ -1062,6 +1064,7 @@ export const useRunProgress = () => {
       let fromId = current.currentTileId;
       for (let i = 0; i < move.passedTileIds.length; i += 1) {
         const toId = move.passedTileIds[i];
+        playSeByType('map_move');
         dispatch({ type: 'add_traveled_edge', from: fromId, to: toId });
         dispatch({ type: 'set_current_tile', tileId: toId });
         dispatch({ type: 'set_pending_steps', steps: Math.max(0, stepsToAdvance - i - 1) });

@@ -76,7 +76,6 @@ const NODE_SPACING_SCALE_Y = 1.08;
 
 const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
   const {
-    playSe,
     setBgmVolume,
     setSeVolume,
     toggleBgmMute,
@@ -201,12 +200,11 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
     setTooltip((current) => (current?.tileId === tileId ? null : current));
   };
 
-  /** 分岐マス選択が確定したとき（マップ移動 SE → 親へ通知） */
+  /** 分岐マス選択が確定したとき（移動 SE は useRunProgress の1マス進行ループで再生） */
   const handleBranchNodeSelect = (tile: GameProgress['board'][number]) => {
     if (progress.currentScreen !== 'branch_select' || !progress.selectableTileIds.includes(tile.id)) {
       return;
     }
-    playSe('map_move');
     onSelectTile?.(tile.id);
   };
 
