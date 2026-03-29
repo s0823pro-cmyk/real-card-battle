@@ -2,6 +2,33 @@ import { useCallback, useEffect, useRef } from 'react';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 
+let sharedAudioContext: AudioContext | null = null;
+const decodedBuffers = new Map<string, AudioBuffer>();
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+    const AudioContextClass =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    sharedAudioContext = new AudioContextClass();
+  }
+  return sharedAudioContext;
+}
+
+export async function unlockAudioContext(): Promise<void> {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') {
+    await ctx.resume();
+  }
+  const buf = ctx.createBuffer(1, 1, 22050);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
+}
+
 /**
  * public/sounds 以下のファイルを、現在のページ（document.baseURI）基準で絶対 URL にする。
  * `import.meta.env.BASE_URL` だけだと Capacitor / 一部 WebView で意図とずれることがある。
@@ -88,13 +115,45 @@ const BGM_FILES: Record<Exclude<BgmType, 'none'>, string> = {
   story_area3: publicSoundUrl('bgm-story-area3.mp3'),
 };
 
+const BGM_SRC_SET = new Set<string>(Object.values(BGM_FILES));
+
+function isBgmSrc(src: string): boolean {
+  return BGM_SRC_SET.has(src);
+}
+
 const LOOP_BGM: BgmType[] = ['menu', 'battle', 'boss', 'area1', 'area2', 'area3'];
 
-/** ブラウザにデコードを先読みさせる（初回再生の遅延を減らす） */
-export function preloadAudio(src: string): void {
-  const a = new Audio(src);
-  a.preload = 'auto';
-  a.load();
+/** SE は AudioContext でデコード、BGM は fetch のみ（HTMLAudio 再生は従来どおり・キャッシュ温め） */
+export async function preloadAudio(src: string): Promise<void> {
+  if (isBgmSrc(src)) {
+    try {
+      await fetch(src);
+    } catch {
+      const a = new Audio(src);
+      a.preload = 'auto';
+      a.load();
+    }
+    return;
+  }
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) {
+      const a = new Audio(src);
+      a.preload = 'auto';
+      a.load();
+      return;
+    }
+    if (decodedBuffers.has(src)) return;
+    const response = await fetch(src);
+    const arrayBuffer = await response.arrayBuffer();
+    const copy = arrayBuffer.slice(0);
+    const audioBuffer = await ctx.decodeAudioData(copy);
+    decodedBuffers.set(src, audioBuffer);
+  } catch {
+    const a = new Audio(src);
+    a.preload = 'auto';
+    a.load();
+  }
 }
 
 const ALL_PRELOAD_SRC = [...new Set([...Object.values(SE_FILES), ...Object.values(BGM_FILES)])];
@@ -104,13 +163,52 @@ function readStoredFloat(key: string, fallback: number): number {
   return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
 }
 
+function playSeFromSrc(src: string, volume: number): void {
+  const fallback = () => {
+    const audio = new Audio(src);
+    audio.volume = volume;
+    void audio.play().catch(() => {});
+  };
+
+  const ctx = getAudioContext();
+  const buffer = decodedBuffers.get(src);
+  if (!ctx || !buffer) {
+    fallback();
+    return;
+  }
+
+  const run = () => {
+    try {
+      const source = ctx.createBufferSource();
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = volume;
+      source.buffer = buffer;
+      source.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      source.start(0);
+    } catch {
+      fallback();
+    }
+  };
+
+  if (ctx.state === 'running') {
+    run();
+  } else {
+    void ctx.resume().then(() => {
+      if (ctx.state === 'running') {
+        run();
+      } else {
+        fallback();
+      }
+    });
+  }
+}
+
 /** フック外（useRunProgress 等）から SE を鳴らす。mute / volume は localStorage の現在値を参照 */
 export function playSeByType(type: SeType): void {
   if (typeof localStorage !== 'undefined' && localStorage.getItem('seMuted') === 'true') return;
   const vol = readStoredFloat('seVolume', 0.6);
-  const audio = new Audio(SE_FILES[type]);
-  audio.volume = vol;
-  void audio.play().catch(() => {});
+  playSeFromSrc(SE_FILES[type], vol);
 }
 
 export const useAudio = () => {
@@ -163,20 +261,7 @@ export const useAudio = () => {
 
   const playSe = useCallback((type: SeType) => {
     if (seMutedRef.current) return;
-    const tryPlay = (src: string) => {
-      const audio = new Audio(src);
-      audio.volume = seVolumeRef.current;
-      audio.addEventListener(
-        'ended',
-        () => {
-          audio.pause();
-          audio.currentTime = 0;
-        },
-        { once: true },
-      );
-      return audio.play();
-    };
-    void tryPlay(SE_FILES[type]).catch(() => {});
+    playSeFromSrc(SE_FILES[type], seVolumeRef.current);
   }, []);
 
   const stopBgmPlaybackOnly = useCallback(() => {
@@ -220,7 +305,7 @@ export const useAudio = () => {
   );
 
   useEffect(() => {
-    ALL_PRELOAD_SRC.forEach(preloadAudio);
+    void Promise.all(ALL_PRELOAD_SRC.map((src) => preloadAudio(src)));
   }, []);
 
   useEffect(() => {

@@ -26,7 +26,7 @@ import {
   OmamoriRewardScreen,
 } from './components/RunFlow/RewardScreens';
 import { BattleVictoryScreen } from './components/RunFlow/BattleVictoryScreen';
-import { useAudio, type BgmType } from './hooks/useAudio';
+import { useAudio, type BgmType, unlockAudioContext } from './hooks/useAudio';
 import { AudioCtx } from './contexts/AudioContext';
 import { useRunProgress, loadSavedProgress, clearSavedProgress } from './hooks/useRunProgress';
 import type { DevDestination } from './hooks/useRunProgress';
@@ -121,18 +121,10 @@ function App() {
   const transitionTimeoutRef = useRef<number | null>(null);
   const transitionCleanupRef = useRef<number | null>(null);
 
-  /** iOS WKWebView: ユーザー操作前の audio.play() 失敗対策（AudioContext / ダミー再生で解除） */
+  /** iOS WKWebView: ユーザー操作前の audio.play() 失敗対策（共有 AudioContext + サイレントバッファ） */
   useEffect(() => {
     const unlock = () => {
-      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (Ctor) {
-        const ctx = new Ctor();
-        void ctx.resume().then(() => {
-          void ctx.close();
-        });
-      }
-      const silent = new Audio();
-      void silent.play().catch(() => {});
+      void unlockAudioContext();
       document.removeEventListener('touchstart', unlock);
       document.removeEventListener('click', unlock);
     };
