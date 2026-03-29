@@ -241,6 +241,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   nextCardBlockMultiplier: player.nextCardBlockMultiplier ?? 1,
   timeBonusPerTurn: player.timeBonusPerTurn ?? 0,
   attackDamageBonusAllAttacks: player.attackDamageBonusAllAttacks ?? 0,
+  turnAttackDamageBonus: player.turnAttackDamageBonus ?? 0,
   fullSprintUsedCount: 0,
   mentalMaxBonus: player.mentalMaxBonus ?? 0,
 });
@@ -305,6 +306,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     timeBonusPerTurn: 0,
     nextCardDoubleEffect: false,
     attackDamageBonusAllAttacks: 0,
+    turnAttackDamageBonus: 0,
     nextCardEffectBoost: 0,
   };
 
@@ -567,6 +569,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     nextCardDoubleEffect: false,
     nextCardEffectBoost: 0,
     attackDamageBonusAllAttacks: 0,
+    turnAttackDamageBonus: 0,
     fullSprintUsedCount: 0,
   });
 
@@ -1411,6 +1414,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         nextAttackBoostCount: 0,
         nextAttackTimeReduce: 0,
         nextCardBlockMultiplier: 1,
+        turnAttackDamageBonus: 0,
       },
       enemies: gameState.enemies.map((enemy) => ({ ...enemy, statusEffects: [...enemy.statusEffects] })),
       toolSlots: [...gameState.toolSlots],

@@ -389,6 +389,7 @@ const initialPlayer: PlayerState = {
   nextCardDoubleEffect: false,
   nextCardEffectBoost: 0,
   attackDamageBonusAllAttacks: 0,
+  turnAttackDamageBonus: 0,
   mentalMaxBonus: 0,
 };
 
@@ -1486,6 +1487,7 @@ export const useRunProgress = () => {
     nextCardDoubleEffect: false,
     nextCardEffectBoost: 0,
     attackDamageBonusAllAttacks: 0,
+    turnAttackDamageBonus: 0,
     fullSprintUsedCount: 0,
     mentalMaxBonus: player.mentalMaxBonus ?? 0,
   });
@@ -1918,6 +1920,7 @@ export const useRunProgress = () => {
       nextCardDoubleEffect: false,
       nextCardEffectBoost: 0,
       attackDamageBonusAllAttacks: 0,
+      turnAttackDamageBonus: 0,
     };
     const devDeck = stateRef.current.deck.map((card) => cloneRewardCard(card));
     const devBoard = updateBoardPosition(generateBoard(), 1);

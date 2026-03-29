@@ -130,6 +130,9 @@ export const getEffectiveCardValues = (
     if (card.type === 'attack' && (player.attackDamageBonusAllAttacks ?? 0) > 0) {
       damage += player.attackDamageBonusAllAttacks ?? 0;
     }
+    if (card.type === 'attack' && (player.turnAttackDamageBonus ?? 0) > 0) {
+      damage += player.turnAttackDamageBonus ?? 0;
+    }
     if (card.type === 'attack' && player.recipeStudyBonus > 0) {
       damage += player.recipeStudyBonus;
     }

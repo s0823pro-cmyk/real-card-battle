@@ -62,8 +62,9 @@ export const NEUTRAL_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
 
   本気モード: {
     name: '本気モード+',
-    description: 'HP半分以下のとき、このターンの攻撃ダメージ+8',
-    effects: [{ type: 'low_hp_damage_boost', value: 8 }],
+    timeCost: 2,
+    description: 'このターン中、アタックカードのダメージ+12',
+    effects: [{ type: 'turn_attack_damage_bonus', value: 12 }],
   },
   鉄の意思: {
     name: '鉄の意思+',
@@ -80,7 +81,10 @@ export const NEUTRAL_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   カウンターの構え: {
     name: 'カウンターの構え+',
-    description: '次のアタックのダメージ+11',
+    timeCost: 3,
+    description: '次に使用するアタックカードのダメージ+11。使用後除外。',
+    tags: ['exhaust'],
+    badges: ['exhaust'],
     effects: [{ type: 'next_attack_damage_boost', value: 11 }],
   },
   静かな覚悟: {

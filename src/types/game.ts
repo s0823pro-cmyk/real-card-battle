@@ -39,6 +39,8 @@ export type EffectType =
   | 'mental_boost'
   | 'low_hp_damage_boost'
   | 'attack_damage_all_attacks'
+  /** このターン中にプレイするアタックカードすべてにダメージ加算（ターン終了でリセット） */
+  | 'turn_attack_damage_bonus'
   | 'first_cooking_multiplier_boost'
   | 'ridgepole_threshold'
   | 'ridgepole_damage'
@@ -192,6 +194,8 @@ export interface PlayerState {
   nextCardDoubleEffect: boolean;
   /** 逆境の才能など：パワーで付与された全アタックダメージ加算 */
   attackDamageBonusAllAttacks: number;
+  /** 本気モードなど：このターン中の全アタックに加算（ターン終了でリセット） */
+  turnAttackDamageBonus: number;
   nextCardEffectBoost: number;
   fullSprintUsedCount?: number;
 }

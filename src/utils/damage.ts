@@ -98,6 +98,10 @@ export const calculateCardDamage = (
     damage += player.attackDamageBonusAllAttacks ?? 0;
   }
 
+  if (card.type === 'attack' && (player.turnAttackDamageBonus ?? 0) > 0) {
+    damage += player.turnAttackDamageBonus ?? 0;
+  }
+
   if (card.id === 'mystery_pot') {
     damage = 15 + Math.floor(Math.random() * 16);
   }

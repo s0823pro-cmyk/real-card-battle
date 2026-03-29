@@ -251,6 +251,9 @@ export const useBattleLogic = () => {
         nextPlayer.attackDamageBonusAllAttacks =
           (nextPlayer.attackDamageBonusAllAttacks ?? 0) + effect.value;
       }
+      if (effect.type === 'turn_attack_damage_bonus') {
+        nextPlayer.turnAttackDamageBonus = (nextPlayer.turnAttackDamageBonus ?? 0) + effect.value;
+      }
       if (effect.type === 'first_cooking_multiplier_boost') {
         nextPlayer.kitchenDemonActive = true;
       }

@@ -1026,8 +1026,8 @@ const BattleScreen = ({
       reservePendingTimeoutRef.current = window.setTimeout(() => {
         reservePendingTimeoutRef.current = null;
         const ok = reserveCardByIdRef.current(cardId);
-        setPendingReserveCardId(null);
         if (ok) playSe('reserve');
+        setPendingReserveCardId(null);
       }, RESERVE_PENDING_MS);
     },
     [clearPendingReserveTimeout, playSe],
