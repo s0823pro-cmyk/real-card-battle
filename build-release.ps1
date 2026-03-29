@@ -1,23 +1,38 @@
-﻿# Real Card Battle - リリースAPKビルド & 実機インストールスクリプト
+# Real Card Battle - リリースAABビルドスクリプト
 Set-Location "C:\dev\real-card-battle"
 
-Write-Host "1/4 Webビルド中..." -ForegroundColor Cyan
+# 1. Webビルド
+Write-Host "1/3 Webビルド中..." -ForegroundColor Cyan
 npm run build
+if ($LASTEXITCODE -ne 0) { Write-Host "Webビルド失敗" -ForegroundColor Red; exit 1 }
 
-Write-Host "2/4 Capacitor同期中..." -ForegroundColor Cyan
-npx cap sync
+# 2. Capacitor同期
+Write-Host "2/3 Capacitor同期中..." -ForegroundColor Cyan
+npx cap sync android
+if ($LASTEXITCODE -ne 0) { Write-Host "cap sync失敗" -ForegroundColor Red; exit 1 }
 
-Write-Host "3/4 リリースAPKビルド中..." -ForegroundColor Cyan
-Set-Location "C:\dev\real-card-battle\android"
-.\gradlew assembleRelease `
-  "-Pandroid.injected.signing.store.file=C:/dev/real-card-battle/keystore.jks" `
-  "-Pandroid.injected.signing.store.password=password123" `
-  "-Pandroid.injected.signing.key.alias=key0" `
-  "-Pandroid.injected.signing.key.password=password123"
+# 3. versionCode を自動インクリメント
+$gradlePath = "android\app\build.gradle"
+$content = Get-Content $gradlePath -Raw
+if ($content -match 'versionCode\s+(\d+)') {
+    $currentVersion = [int]$Matches[1]
+    $newVersion = $currentVersion + 1
+    $content = $content -replace "versionCode\s+$currentVersion", "versionCode $newVersion"
+    [System.IO.File]::WriteAllText((Resolve-Path $gradlePath), $content)
+    Write-Host "versionCode: $currentVersion → $newVersion" -ForegroundColor Yellow
+}
 
-Write-Host "4/4 スマホにインストール中..." -ForegroundColor Cyan
-adb uninstall com.s0823pro.realcardbattle
-adb install "C:\dev\real-card-battle\android\app\build\outputs\apk\release\app-release.apk"
+# 4. AABビルド
+Write-Host "3/3 AABビルド中..." -ForegroundColor Cyan
+Set-Location "android"
+.\gradlew bundleRelease
+$result = $LASTEXITCODE
+Set-Location ".."
 
-Write-Host "完了！スマホでアプリを確認してください" -ForegroundColor Green
-Set-Location "C:\dev\real-card-battle"
+if ($result -eq 0) {
+    Write-Host "完了！AABはこちら:" -ForegroundColor Green
+    Write-Host "android\app\build\outputs\bundle\release\app-release.aab"
+} else {
+    Write-Host "AABビルド失敗" -ForegroundColor Red
+    exit 1
+}
