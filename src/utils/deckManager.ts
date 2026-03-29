@@ -1,5 +1,11 @@
 import type { Card } from '../types/game';
+import { shouldTrackReserveDrawCount } from './cardBadgeRules';
 import { shuffle } from './shuffle';
+
+const bumpReserveDrawCountIfNeeded = (card: Card): Card => {
+  if (!shouldTrackReserveDrawCount(card)) return card;
+  return { ...card, reserveDrawCount: (card.reserveDrawCount ?? 0) + 1 };
+};
 
 /** 不安カード（createAnxietyCards は anxiety_<suffix> のID）。シャッフル時に山札から除去する */
 export const isAnxietyCard = (card: Card): boolean =>
@@ -55,10 +61,10 @@ export const drawCards = (
       const drawableIdx = drawPile.findLastIndex((c) => !nonDrawableIds.has(c.id));
       if (drawableIdx === -1) break;
       const [card] = drawPile.splice(drawableIdx, 1);
-      drawn.push(card);
+      drawn.push(bumpReserveDrawCountIfNeeded(card));
     } else {
       const card = drawPile.pop();
-      if (card) drawn.push(card);
+      if (card) drawn.push(bumpReserveDrawCountIfNeeded(card));
     }
   }
 

@@ -7,6 +7,8 @@ import './ActionBar.css';
 
 interface Props {
   reserved: Card[];
+  /** 温存確定前の仮置き（手札に残っている間、枠に半透明表示） */
+  pendingReserveCard: Card | null;
   jobId: JobId;
   isDragging: boolean;
   activeDropTarget: 'enemy' | 'field' | 'timebar' | 'hand' | 'reserve' | 'sell' | null;
@@ -16,6 +18,7 @@ interface Props {
 
 const ActionBar = ({
   reserved,
+  pendingReserveCard,
   jobId,
   isDragging: _isDragging,
   activeDropTarget,
@@ -29,6 +32,16 @@ const ActionBar = ({
       : '';
 
   const noop = () => {};
+
+  const maxReserveSlots = 2;
+  const reserveSlots: Array<{ kind: 'reserved' | 'pending' | 'empty'; card?: Card }> = [];
+  reserved.forEach((c) => reserveSlots.push({ kind: 'reserved', card: c }));
+  if (pendingReserveCard) {
+    reserveSlots.push({ kind: 'pending', card: pendingReserveCard });
+  }
+  while (reserveSlots.length < maxReserveSlots) {
+    reserveSlots.push({ kind: 'empty' });
+  }
 
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
     damage: card.damage ?? null,
@@ -61,30 +74,31 @@ const ActionBar = ({
             }`}
             ref={reserveDropRef}
           >
-            <div className={`reserve-slots${reserved.length >= 3 ? ' reserve-slots--scrollable' : ''}`}>
-              {reserved.length === 0 ? (
-                <>
-                  <Tooltip
-                    label="温存枠"
-                    description="カードをここにドロップすると温存できます。温存したカードは次ターン開始時に手札に戻ります。温存1枚につき次ターンの時間が1.5秒減少します。"
-                  >
-                    <div className="reserved-card-mini empty" />
-                  </Tooltip>
-                  <Tooltip
-                    label="温存枠"
-                    description="カードをここにドロップすると温存できます。温存したカードは次ターン開始時に手札に戻ります。温存1枚につき次ターンの時間が1.5秒減少します。"
-                  >
-                    <div className="reserved-card-mini empty" />
-                  </Tooltip>
-                </>
-              ) : (
-                reserved.map((card, index) => (
-                  <Tooltip
-                    key={`reserved-${index}`}
-                    label={card.name}
-                    description={card.description ?? ''}
-                  >
-                    <div className="reserve-slot-item">
+            <div
+              className={`reserve-slots${
+                reserved.length + (pendingReserveCard ? 1 : 0) >= 3 ? ' reserve-slots--scrollable' : ''
+              }`}
+            >
+              {reserveSlots.map((slot, index) => {
+                if (slot.kind === 'empty') {
+                  return (
+                    <Tooltip
+                      key={`reserve-empty-${index}`}
+                      label="温存枠"
+                      description="カードをここにドロップすると温存できます。温存したカードは次ターン開始時に手札に戻ります。温存1枚につき次ターンの時間が1.5秒減少します。"
+                    >
+                      <div className="reserved-card-mini empty" />
+                    </Tooltip>
+                  );
+                }
+                const card = slot.card!;
+                const key =
+                  slot.kind === 'pending' ? `reserve-pending-${card.id}` : `reserved-${card.id}-${index}`;
+                return (
+                  <Tooltip key={key} label={card.name} description={card.description ?? ''}>
+                    <div
+                      className={`reserve-slot-item${slot.kind === 'pending' ? ' reserve-slot--pending' : ''}`}
+                    >
                       <CardComponent
                         card={card}
                         jobId={jobId}
@@ -118,8 +132,8 @@ const ActionBar = ({
                       />
                     </div>
                   </Tooltip>
-                ))
-              )}
+                );
+              })}
             </div>
           </div>
         </div>

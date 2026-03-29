@@ -135,9 +135,10 @@ export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {
   },
   '安全ヘルメット': {
     name: '安全ヘルメット+',
-    timeCost: 2.5,
-    description: '毎ターン+5ブロック',
-    effects: [{ type: 'block_per_turn', value: 5 }],
+    timeCost: 2,
+    block: 0,
+    description: '毎ターン+3ブロック',
+    effects: [{ type: 'block_per_turn', value: 3 }],
   },
   '鉄壁工法': {
     name: '鉄壁工法+',

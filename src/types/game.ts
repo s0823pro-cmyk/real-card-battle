@@ -87,6 +87,8 @@ export interface Card {
   reserveBonus?: ReserveBonus;
   wasReserved?: boolean;
   reservedThisTurn?: boolean;
+  /** 温存系（段取り／集中力など）が手札に戻ってきた回数。2以上で温存ボーナスを失効 */
+  reserveDrawCount?: number;
   cookingMultiplier?: number;
   scaffoldMultiplier?: number;
   preparationTimeCost?: number;
@@ -167,6 +169,8 @@ export interface PlayerState {
   damageImmunityThisTurn: boolean;
   nextTurnNoBlock: boolean;
   nextTurnTimePenalty: number;
+  /** 次の自分ターンの maxTime に加算する秒（ターン終了時に5秒以上残していれば 0.5） */
+  nextTurnTimeBonus?: number;
   canBlock: boolean;
   lowHpDamageBoost: number;
   kitchenDemonActive: boolean;

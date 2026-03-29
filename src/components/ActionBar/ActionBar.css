@@ -120,6 +120,10 @@
   display: none;
 }
 
+.reserve-slot-item.reserve-slot--pending {
+  opacity: 0.5;
+}
+
 .reserve-slot-item {
   flex-shrink: 0;
   position: relative;

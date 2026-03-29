@@ -1,5 +1,10 @@
 import type { Card, PlayerState, ToolSlot } from '../types/game';
-import { DANDORI_BASE_MULTIPLIER, prevCardGrantsDandori, reserveBonusActiveForCard } from './cardBadgeRules';
+import {
+  DANDORI_BASE_MULTIPLIER,
+  isReserveDoubleNextEffectActive,
+  prevCardGrantsDandori,
+  reserveBonusActiveForCard,
+} from './cardBadgeRules';
 import { getHungryDamageBonus, getHungryState } from './hungrySystem';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from './playCardMultipliers';
 import { getEffectiveTimeCost } from './timeline';
@@ -57,8 +62,7 @@ export const getEffectiveCardValues = (
   const nextCardEffectBoost = Math.max(0, player.nextCardEffectBoost ?? 0);
   const reserveOrDoubleMultiplierPreview =
     doubleNextReplayCharges > 0 || doubleNextCharges > 0 || player.nextCardDoubleEffect ? 2 : 1;
-  const isReserveDoubleNextCard =
-    (card.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false;
+  const isReserveDoubleNextCard = isReserveDoubleNextEffectActive(card);
   const shouldApplyNextCardEffectBoost =
     nextCardEffectBoost > 0 && reserveOrDoubleMultiplierPreview <= 1 && !isReserveDoubleNextCard;
   const isDandoriActive = dandoriMultiplier > 1;

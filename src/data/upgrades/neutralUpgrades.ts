@@ -40,9 +40,10 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
   },
   起死回生: {
     name: '起死回生+',
-    damage: 18,
-    lowHpBonus: { threshold: 0.3, damage: 32 },
-    description: '18ダメージ。HP30%以下で32ダメージ',
+    timeCost: 4,
+    damage: 12,
+    lowHpBonus: { threshold: 0.5, damage: 20 },
+    description: '12ダメージ。HP50%以下で20ダメージ（その場合使用後除外）',
   },
   奇跡の一手: {
     name: '奇跡の一手+',

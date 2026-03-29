@@ -94,7 +94,8 @@ const DRAG_CARD_WIDTH = 105;
 const DRAG_DISPLAY_Y_OFFSET = -(DRAG_CARD_HEIGHT - 40);
 // 判定オフセット：カード上端基準（複数プローブで使用）
 const DRAG_JUDGE_Y_OFFSET = DRAG_DISPLAY_Y_OFFSET;
-type ReserveConfirmState = { card: Card; visible: boolean } | null;
+/** 温存枠ドロップから reserveCardById までの遅延（秒） */
+const RESERVE_PENDING_MS = 500;
 
 const BOSS_IDS = ['monster_customer', 'evil_ceo', 'world_tree_warden'];
 const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
@@ -244,6 +245,9 @@ const BattleScreen = ({
     onDefeatReviveConsumed,
   });
 
+  const reserveCardByIdRef = useRef(reserveCardById);
+  reserveCardByIdRef.current = reserveCardById;
+
   const isBoss = useMemo(
     () => gameState.enemies.some((e) => BOSS_IDS.includes(e.templateId)),
     [gameState.enemies],
@@ -267,6 +271,7 @@ const BattleScreen = ({
   const reserveAreaRef = useRef<HTMLDivElement | null>(null);
   const timelineBarRef = useRef<HTMLDivElement | null>(null);
   const reserveDropRef = useRef<HTMLDivElement | null>(null);
+  const reservePendingTimeoutRef = useRef<number | null>(null);
   const sellDropRef = useRef<HTMLDivElement | null>(null);
   const dragStartRef = useRef<DragStartState | null>(null);
   const activeTouchPointerIdRef = useRef<number | null>(null);
@@ -284,7 +289,7 @@ const BattleScreen = ({
   const [hoveredEnemyId, setHoveredEnemyId] = useState<string | null>(null);
   const [isHoveringTimebar, setIsHoveringTimebar] = useState(false);
   const [showPile, setShowPile] = useState<PileView>(null);
-  const [reserveConfirm, setReserveConfirm] = useState<ReserveConfirmState>(null);
+  const [pendingReserveCardId, setPendingReserveCardId] = useState<string | null>(null);
   const [showBattleSettings, setShowBattleSettings] = useState(false);
   const [battleVolumeOpen, setBattleVolumeOpen] = useState(false);
   const [showBattleGlossary, setShowBattleGlossary] = useState(false);
@@ -636,7 +641,7 @@ const BattleScreen = ({
         const probes = getDragProbePositions(event.clientX, event.clientY);
         const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card, event.clientX, event.clientY);
         if (finalDetection.target === 'reserve') {
-          setReserveConfirm({ card: handDrag.card, visible: true });
+          scheduleReserveFromDrop(handDrag.card.id);
         }
         resetDragInteraction();
         return;
@@ -708,7 +713,7 @@ const BattleScreen = ({
           if (result.blockGained > 0) playSe('block');
         }
       } else if (finalTarget === 'reserve') {
-        setReserveConfirm({ card: handDrag.card, visible: true });
+        scheduleReserveFromDrop(handDrag.card.id);
       } else if (finalTarget === 'sell') {
         sellCardById(handDrag.card.id);
       }
@@ -996,6 +1001,44 @@ const BattleScreen = ({
   }, [gameState.player.statusEffects]);
 
   const reserveFull = gameState.reserved.length >= 2;
+
+  const clearPendingReserveTimeout = useCallback(() => {
+    if (reservePendingTimeoutRef.current !== null) {
+      window.clearTimeout(reservePendingTimeoutRef.current);
+      reservePendingTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearPendingReserveTimeout(), [clearPendingReserveTimeout]);
+
+  useEffect(() => {
+    if (!pendingReserveCardId) return;
+    if (!gameState.hand.some((c) => c.id === pendingReserveCardId)) {
+      clearPendingReserveTimeout();
+      setPendingReserveCardId(null);
+    }
+  }, [gameState.hand, pendingReserveCardId, clearPendingReserveTimeout]);
+
+  const scheduleReserveFromDrop = useCallback(
+    (cardId: string) => {
+      clearPendingReserveTimeout();
+      setPendingReserveCardId(cardId);
+      reservePendingTimeoutRef.current = window.setTimeout(() => {
+        reservePendingTimeoutRef.current = null;
+        const ok = reserveCardByIdRef.current(cardId);
+        setPendingReserveCardId(null);
+        if (ok) playSe('reserve');
+      }, RESERVE_PENDING_MS);
+    },
+    [clearPendingReserveTimeout, playSe],
+  );
+
+  const pendingReserveCard = useMemo(
+    () =>
+      pendingReserveCardId ? (gameState.hand.find((c) => c.id === pendingReserveCardId) ?? null) : null,
+    [gameState.hand, pendingReserveCardId],
+  );
+
   const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
     damage: card.damage ?? null,
     block: card.block ?? null,
@@ -1153,6 +1196,7 @@ const BattleScreen = ({
           <div className="battle-reserve-area battle-reserve-area--gauge-expand" ref={reserveAreaRef}>
             <ActionBar
               reserved={gameState.reserved}
+              pendingReserveCard={pendingReserveCard}
               jobId={gameState.player.jobId}
               isDragging={handDrag.isDragging}
               activeDropTarget={handDrag.dropTarget}
@@ -1552,32 +1596,6 @@ const BattleScreen = ({
       )}
       {showBattleGlossary && (
         <GlossaryModal onClose={() => setShowBattleGlossary(false)} />
-      )}
-      {reserveConfirm?.visible && (
-        <div className="reserve-confirm-overlay">
-          <div className="reserve-confirm-dialog">
-            <p className="reserve-confirm-title">「{reserveConfirm.card.name}」を温存しますか？</p>
-            <p className="reserve-confirm-note">次ターン -1.5秒</p>
-            <div className="reserve-confirm-buttons">
-              <button type="button" className="btn-reserve-cancel" onClick={() => setReserveConfirm(null)}>
-                キャンセル
-              </button>
-              <button
-                type="button"
-                className="btn-reserve-ok"
-                onClick={() => {
-                  const id = reserveConfirm.card.id;
-                  /** ユーザー操作と同一スタックで先に鳴らす（モバイルの音声制限・成否判定より前） */
-                  playSe('reserve');
-                  reserveCardById(id);
-                  setReserveConfirm(null);
-                }}
-              >
-                温存する
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </main>
   );

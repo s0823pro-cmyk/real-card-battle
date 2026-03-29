@@ -1,5 +1,5 @@
 import type { Card, PlayerState } from '../types/game';
-import { reserveBonusActiveForCard } from './cardBadgeRules';
+import { isReserveDoubleNextEffectActive, reserveBonusActiveForCard } from './cardBadgeRules';
 
 /** 温存ボーナス適用後のカード（playCardInstant と同じ） */
 export const getEnhancedCardForPlay = (card: Card): Card => {
@@ -35,8 +35,7 @@ export const applyMultiplierAndBoostToCard = (
         ? 2
         : 1;
   const nextCardEffectBoostRate = Math.max(0, player.nextCardEffectBoost ?? 0);
-  const isReserveDoubleNextPlay =
-    (enhancedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false;
+  const isReserveDoubleNextPlay = isReserveDoubleNextEffectActive(enhancedCard);
   const shouldUseTenBoost =
     reserveOrDoubleMultiplier <= 1 && nextCardEffectBoostRate > 0 && !isReserveDoubleNextPlay;
   const applyBoostWithMinOne = (value: number): number => {

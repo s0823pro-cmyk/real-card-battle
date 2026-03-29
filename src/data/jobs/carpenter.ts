@@ -170,9 +170,9 @@ export const CARPENTER_UNCOMMON_POOL_UNFILTERED: Card[] = [
     type: 'tool',
     timeCost: 3,
     description: '毎ターン+3ブロック',
+    block: 3,
     icon: '⛑️',
     sellValue: 12,
-    effects: [{ type: 'block_per_turn', value: 3 }],
     imageUrl: safetyHelmetImage,
   },
   {

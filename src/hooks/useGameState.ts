@@ -29,8 +29,11 @@ import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord'
 import {
   canPlaySelfDamageBadgeCard,
   cardExhaustsWhenPlayed,
+  comebackShouldExhaustAfterPlay,
   exhaustsWhenIdleInReserveAtTurnStart,
+  isReserveDoubleNextEffectActive,
   reserveBonusActiveForCard,
+  shouldTrackReserveDrawCount,
 } from '../utils/cardBadgeRules';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../utils/playCardMultipliers';
 
@@ -221,6 +224,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   damageImmunityThisTurn: player.damageImmunityThisTurn ?? false,
   nextTurnNoBlock: player.nextTurnNoBlock ?? false,
   nextTurnTimePenalty: player.nextTurnTimePenalty ?? 0,
+  nextTurnTimeBonus: player.nextTurnTimeBonus ?? 0,
   canBlock: player.canBlock ?? true,
   lowHpDamageBoost: player.lowHpDamageBoost ?? 0,
   kitchenDemonActive: player.kitchenDemonActive ?? false,
@@ -283,6 +287,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     damageImmunityThisTurn: false,
     nextTurnNoBlock: false,
     nextTurnTimePenalty: 0,
+    nextTurnTimeBonus: 0,
     canBlock: true,
     lowHpDamageBoost: 0,
     kitchenDemonActive: false,
@@ -371,6 +376,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const [hungryFlash, setHungryFlash] = useState<'hungry' | 'awakened' | null>(null);
   const [showRevivalEffect, setShowRevivalEffect] = useState(false);
   const [pendingHandUpgradeCount, setPendingHandUpgradeCount] = useState(0);
+  const pendingHandUpgradeCountRef = useRef(0);
   const [curseImmunityUsed, setCurseImmunityUsed] = useState(false);
   const canPlayWithHandCondition = (card: Card, hand: Card[]): boolean => {
     const isSoloPlayOnlyCard = card.tags?.includes('solo_play_only') ?? false;
@@ -543,6 +549,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     damageImmunityThisTurn: false,
     nextTurnNoBlock: false,
     nextTurnTimePenalty: 0,
+    nextTurnTimeBonus: 0,
     canBlock: true,
     lowHpDamageBoost: 0,
     kitchenDemonActive: false,
@@ -600,6 +607,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const activePendingHandUpgradeCount =
     pendingHandUpgradeCount > 0 && upgradeableHandCards.length > 0 ? pendingHandUpgradeCount : 0;
 
+  pendingHandUpgradeCountRef.current = pendingHandUpgradeCount;
+
   const selectCard = (cardId: string): void => {
     if (gameState.phase !== 'player_turn') return;
     setSelectedCardId((prev) => (prev === cardId ? null : cardId));
@@ -630,8 +639,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           ? 2
           : 1;
     const nextCardEffectBoostRate = Math.max(0, gameState.player.nextCardEffectBoost ?? 0);
-    const isReserveDoubleNextPlay =
-      (enhancedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false;
+    const isReserveDoubleNextPlay = isReserveDoubleNextEffectActive(enhancedCard);
     const shouldUseTenBoost =
       reserveOrDoubleMultiplier <= 1 && nextCardEffectBoostRate > 0 && !isReserveDoubleNextPlay;
     const multipliedCard = applyMultiplierAndBoostToCard(enhancedCard, gameState.player, doubleNextCharges, {
@@ -778,7 +786,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const gainedDoubleReplay = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'double_next_replay')
       .reduce((sum, effect) => sum + effect.value, 0);
-    const shouldExhaust = cardExhaustsWhenPlayed(card, cardWasReserved);
+    const shouldExhaust =
+      cardExhaustsWhenPlayed(card, cardWasReserved) || comebackShouldExhaustAfterPlay(card, gameState.player);
     const activePowers =
       playedCard.type === 'power' && !shouldExhaust
         ? [...gameState.activePowers, { ...playedCard }]
@@ -874,9 +883,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
     const nextCardDoubleConsumed = gameState.player.nextCardDoubleEffect && reserveOrDoubleMultiplier > 1;
     const nextCardEffectBoostConsumed = shouldUseTenBoost;
-    const playedReserveDoubleCardNormally =
-      !cardWasReserved &&
-      ((playedCard.effects ?? []).some((effect) => effect.type === 'reserve_double_next') ?? false);
+    const playedReserveDoubleCardNormally = !cardWasReserved && isReserveDoubleNextEffectActive(card);
     const nextCardEffectBoostAfterPlay = playedReserveDoubleCardNormally
       ? 0.1
       : nextCardEffectBoostConsumed
@@ -1132,18 +1139,19 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   };
 
   const reserveCardById = (cardId: string): boolean => {
-    if (gameState.phase !== 'player_turn') return false;
-    if (activePendingHandUpgradeCount > 0) return false;
-
-    /** 手札の有無は古い gameState のクロージャではなく、更新関数の prev だけで判定する（取りこぼしで false になり温存SEが鳴らないのを防ぐ） */
+    /** phase / 手札強化待ち / 温存可否はすべて prev と ref で判定（stale closure・遅延呼び出しでも nextCardDoubleEffect を誤って落とさない） */
     let didReserve = false;
     setGameState((prev) => {
       if (prev.phase !== 'player_turn') return prev;
+      const upgradeableCount = prev.hand.filter(
+        (c) => !c.upgraded && c.type !== 'status' && c.type !== 'curse',
+      ).length;
+      if (pendingHandUpgradeCountRef.current > 0 && upgradeableCount > 0) return prev;
       if (prev.reserved.length >= MAX_RESERVED) return prev;
       const card = prev.hand.find((item) => item.id === cardId);
       if (!card || card.type === 'status' || card.type === 'curse') return prev;
       didReserve = true;
-      const hasReserveDouble = card.effects?.some((e) => e.type === 'reserve_double_next') ?? false;
+      const hasReserveDouble = isReserveDoubleNextEffectActive(card);
       const reservedCard: Card = {
         ...card,
         wasReserved: false,
@@ -1220,11 +1228,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const cliffEdgeDrawBonus = cliffEdgeAwakened ? 2 : 0;
     const onTurnStartDrawBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'draw');
     const onTurnStartBlockBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'block');
+    const nextTurnTimeBonusSec = state.player.nextTurnTimeBonus ?? 0;
     const nextMaxTime = Math.max(
       3,
       getMaxTime(state.player.mental, state.player.timeBonusPerTurn) +
         cliffEdgeTimeBonus -
-        state.player.nextTurnTimePenalty,
+        state.player.nextTurnTimePenalty +
+        nextTurnTimeBonusSec,
     );
     const scaffoldPerTurn = state.activePowers
       .flatMap((power) => power.effects ?? [])
@@ -1270,6 +1280,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       canBlock: !shouldDisableBlockThisTurn,
       nextTurnNoBlock: false,
       nextTurnTimePenalty: 0,
+      nextTurnTimeBonus: 0,
       damageImmunityThisTurn: false,
       firstCookingUsedThisTurn: false,
       lastTurnDamageTaken: state.player.currentTurnDamageTaken,
@@ -1292,11 +1303,15 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     );
     const exhaustedReserved = state.reserved.filter((c) => exhaustsWhenIdleInReserveAtTurnStart(c));
     const keptReserved = state.reserved.filter((c) => !exhaustsWhenIdleInReserveAtTurnStart(c));
-    const reservedToHand = keptReserved.map((card) => ({
-      ...card,
-      wasReserved: Boolean(card.reservedThisTurn),
-      reservedThisTurn: false,
-    }));
+    const reservedToHand = keptReserved.map((card) => {
+      const base = {
+        ...card,
+        wasReserved: Boolean(card.reservedThisTurn),
+        reservedThisTurn: false,
+      };
+      if (!shouldTrackReserveDrawCount(base)) return base;
+      return { ...base, reserveDrawCount: (base.reserveDrawCount ?? 0) + 1 };
+    });
     const exhaustedFromReserve = exhaustedReserved.map((card) => ({
       ...card,
       wasReserved: false,
@@ -1382,12 +1397,15 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (gameState.phase !== 'player_turn') return;
     if (activePendingHandUpgradeCount > 0) return;
     setSelectedCardId(null);
+    const remainingTurnTimeSec = gameState.maxTime - gameState.usedTime;
+    const nextTurnTimeBonusFromSurplus = remainingTurnTimeSec >= 5 ? 0.5 : 0;
     let workingState: GameState = {
       ...gameState,
       phase: 'enemy_turn',
       executingIndex: -1,
       player: {
         ...gameState.player,
+        nextTurnTimeBonus: nextTurnTimeBonusFromSurplus,
         // 同ターン内のみ有効（ターン終了で失効）
         nextAttackBoostValue: 0,
         nextAttackBoostCount: 0,
