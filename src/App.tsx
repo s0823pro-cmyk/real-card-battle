@@ -669,7 +669,13 @@ function App() {
           style={{ animationDuration: `${screenTransition.durationMs}ms` }}
         />
       )}
-      {battleFadeOverlay && <div className="battle-fade-overlay" aria-hidden />}
+      {battleFadeOverlay && (
+        <div
+          key={battleFadeOverlay}
+          className={`battle-fade-overlay battle-fade-overlay--${battleFadeOverlay}`}
+          aria-hidden
+        />
+      )}
       {showStory && state.currentScreen === 'job_select' && !currentStoryId && (
         <StoryScreen
           scenes={CARPENTER_STORY}

@@ -201,6 +201,15 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
     setTooltip((current) => (current?.tileId === tileId ? null : current));
   };
 
+  /** 分岐マス選択が確定したとき（マップ移動 SE → 親へ通知） */
+  const handleBranchNodeSelect = (tile: GameProgress['board'][number]) => {
+    if (progress.currentScreen !== 'branch_select' || !progress.selectableTileIds.includes(tile.id)) {
+      return;
+    }
+    playSe('map_move');
+    onSelectTile?.(tile.id);
+  };
+
   const getHpClass = (): 'hp-high' | 'hp-mid' | 'hp-low' => {
     const ratio = progress.player.currentHp / Math.max(1, progress.player.maxHp);
     if (ratio <= 0.3) return 'hp-low';
@@ -411,13 +420,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                     return;
                   }
                   touchMovedRef.current = false;
-                  if (
-                    progress.currentScreen === 'branch_select' &&
-                    progress.selectableTileIds.includes(tile.id)
-                  ) {
-                    playSe('map_move');
-                    onSelectTile?.(tile.id);
-                  }
+                  handleBranchNodeSelect(tile);
                 }}
                 onMouseEnter={() => {
                   if (isSelecting) return;

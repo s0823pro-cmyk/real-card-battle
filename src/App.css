@@ -100,24 +100,37 @@ body {
   }
 }
 
-/* マップ→バトル直前: 0.5s 暗転 → 0.5s 明転（計1s） */
+/* マップ→バトル: マップ上で 0.5s 暗転 → 暗転完了でバトルへ → バトル上で 0.5s 明転 */
 .battle-fade-overlay {
   position: fixed;
   inset: 0;
   z-index: 13000;
   background: #000;
   pointer-events: none;
-  animation: battle-fade 1s ease-in-out forwards;
 }
 
-@keyframes battle-fade {
-  0% {
+.battle-fade-overlay--in {
+  animation: battle-fade-in 0.5s ease-in forwards;
+}
+
+.battle-fade-overlay--out {
+  animation: battle-fade-out 0.5s ease-out forwards;
+}
+
+@keyframes battle-fade-in {
+  from {
     opacity: 0;
   }
-  50% {
+  to {
     opacity: 1;
   }
-  100% {
+}
+
+@keyframes battle-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
     opacity: 0;
   }
 }

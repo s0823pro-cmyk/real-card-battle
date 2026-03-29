@@ -800,7 +800,9 @@ export const useRunProgress = () => {
    */
   const pendingArea3RunVictoryStoryRef = useRef(false);
   const pendingBattleOpenRef = useRef<(() => void) | null>(null);
-  const [battleFadeOverlay, setBattleFadeOverlay] = useState(false);
+  /** マップ→バトル: 'in' で暗転、'out' で明転、null で非表示 */
+  const [battleFadeOverlay, setBattleFadeOverlay] = useState<'in' | 'out' | null>(null);
+  const battleFadeTimersRef = useRef<{ t1?: number; t2?: number; t3?: number }>({});
   const prevScreenRef = useRef(state.currentScreen);
   /** ペイント前に同期しないと、VICTORY 直後のタップで cardReward が未反映の stateRef を読み進めないことがある */
   useLayoutEffect(() => {
@@ -838,14 +840,13 @@ export const useRunProgress = () => {
   }, [state.board, state.selectableTileIds]);
 
   useEffect(() => {
-    if (!battleFadeOverlay) return;
-    const id = window.setTimeout(() => {
-      pendingBattleOpenRef.current?.();
-      pendingBattleOpenRef.current = null;
-      setBattleFadeOverlay(false);
-    }, 1000);
-    return () => window.clearTimeout(id);
-  }, [battleFadeOverlay]);
+    return () => {
+      const t = battleFadeTimersRef.current;
+      if (t.t1) window.clearTimeout(t.t1);
+      if (t.t2) window.clearTimeout(t.t2);
+      if (t.t3) window.clearTimeout(t.t3);
+    };
+  }, []);
 
   const onBattleTurnStart = (gameState: GameState) => {
     saveBattleState(gameState, stateRef.current);
@@ -921,7 +922,22 @@ export const useRunProgress = () => {
         dispatch({ type: 'set_battle_setup', setup, tileType: tile.type });
         dispatch({ type: 'set_screen', screen: 'battle' });
       };
-      setBattleFadeOverlay(true);
+      const t = battleFadeTimersRef.current;
+      if (t.t1) window.clearTimeout(t.t1);
+      if (t.t2) window.clearTimeout(t.t2);
+      if (t.t3) window.clearTimeout(t.t3);
+      setBattleFadeOverlay('in');
+      battleFadeTimersRef.current.t1 = window.setTimeout(() => {
+        const openBattle = pendingBattleOpenRef.current;
+        pendingBattleOpenRef.current = null;
+        openBattle?.();
+        battleFadeTimersRef.current.t2 = window.setTimeout(() => {
+          setBattleFadeOverlay('out');
+          battleFadeTimersRef.current.t3 = window.setTimeout(() => {
+            setBattleFadeOverlay(null);
+          }, 500);
+        }, 100);
+      }, 500);
       return;
     }
     if (tile.type === 'event') {
