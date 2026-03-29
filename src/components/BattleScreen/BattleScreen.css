@@ -556,7 +556,7 @@
   padding-top: 4px;
 }
 
-/* 手札エリア(z-index:10)より手前に描画（margin だけではカードに隠れて見えない問題の対策） */
+/* タイムバー行は手札より z-index 低め（26）で、translate で重なるカード下端が手札側でヒットテストされる（iOS 対策）。margin だけではカードに隠れて見えない問題は別途調整 */
 .battle-timebar-reserve-row {
   display: flex;
   flex-direction: row;
@@ -714,7 +714,8 @@
   margin-top: 0;
   transform: translateY(4px);
   position: relative;
-  z-index: 10;
+  /* .battle-timebar-reserve-row(25) より手前にし、手札下端のタップがタイムバー行に奪われないようにする（iOS） */
+  z-index: 26;
 }
 
 /* 時計ゲージ時のみ手札を下げる。バー表示時は手札の translate をいじらない（タイムバー位置は .battle-timebar-reserve-row の margin-top のみ） */
@@ -726,6 +727,7 @@
   height: 220px;
   transform: translateY(-48px);
   overflow: visible;
+  pointer-events: auto;
 }
 
 .battle-reserve-area {
