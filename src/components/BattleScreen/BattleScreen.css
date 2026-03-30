@@ -18,7 +18,7 @@
   overflow: hidden;
   background-color: #0d1117;
   /* RunMap 等と同様、--sat より詰めてヘッダー行をステータスバー直下に寄せる */
-  --battle-header-top: max(0px, calc(var(--sat) - 56px));
+  --battle-header-top: max(0px, calc(var(--sat) - 56px - var(--root-safe-top, 0px)));
 }
 
 .battle-screen-bg-root {

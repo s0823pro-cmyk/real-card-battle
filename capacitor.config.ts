@@ -6,8 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   ios: {
     /**
-     * always だと WKWebView がネイティブでセーフエリア分を取り、CSS の env(safe-area-inset-top) / --sat とも重なり
-     * タッチの Y と描画がずれることがある。セーフエリアは CSS 側に一本化する。
+     * always だとネイティブ + CSS の env(--sat) で二重になりタッチ Y がずれるため never。
+     * 上余白は App.css の html.cap-ios #root { padding-top: var(--sat) } と --root-safe-top で各画面を補正。
      */
     contentInset: 'never',
   },

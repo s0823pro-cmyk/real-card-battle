@@ -77,14 +77,6 @@ body,
   height: 100dvh;
 }
 
-/* iOS: 100dvh 単独だと一部端末でレイアウトとタッチの縦位置がずれる。fill-available でビューポートと揃える */
-html.cap-ios,
-html.cap-ios body,
-html.cap-ios #root {
-  min-height: -webkit-fill-available;
-  height: -webkit-fill-available;
-}
-
 .rotate-warning {
   display: none;
   position: fixed;

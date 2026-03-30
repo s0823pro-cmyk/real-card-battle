@@ -6,6 +6,12 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+  /* iOS + contentInset:never 時のみ #root で上余白を取る。通常フロー画面の calc(var(--sat) - …) から差し引く */
+  --root-safe-top: 0px;
+}
+
+html.cap-ios {
+  --root-safe-top: var(--sat);
 }
 
 * {
@@ -41,6 +47,11 @@ body {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+}
+
+/* iOS: WKWebView contentInset:never 時はネイティブがセーフエリアを取らないため、ルートで env と揃える */
+html.cap-ios #root {
+  padding-top: var(--sat);
 }
 
 /* デスクトップブラウザで不要な下余白を付けない（max(sab,12px) は PC で常に 12px 足していた） */
