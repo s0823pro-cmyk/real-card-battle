@@ -163,7 +163,7 @@ export const NEUTRAL_EXPANSION_CARDS: Card[] = [
     id: 'honki_mode',
     name: '本気モード',
     type: 'skill',
-    timeCost: 2.5,
+    timeCost: 4.5,
     description: 'このターン中、アタックカードのダメージ+10',
     icon: '🔥',
     rarity: 'uncommon',

@@ -62,9 +62,9 @@ export const NEUTRAL_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
 
   本気モード: {
     name: '本気モード+',
-    timeCost: 2,
-    description: 'このターン中、アタックカードのダメージ+12',
-    effects: [{ type: 'turn_attack_damage_bonus', value: 12 }],
+    timeCost: 4.5,
+    description: 'このターン中、アタックカードのダメージ+15',
+    effects: [{ type: 'turn_attack_damage_bonus', value: 15 }],
   },
   鉄の意思: {
     name: '鉄の意思+',

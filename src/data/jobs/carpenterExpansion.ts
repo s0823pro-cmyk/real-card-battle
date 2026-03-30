@@ -255,7 +255,7 @@ export const CARPENTER_EXPANSION_COMMON: Card[] = [
     type: 'attack',
     timeCost: 2.5,
     damage: 8,
-    description: '8ダメージ（所要時間2.5秒）',
+    description: '8ダメージ。',
     icon: '🏠',
     sellValue: 6,
     imageUrl: yaneuraKakuninImage,

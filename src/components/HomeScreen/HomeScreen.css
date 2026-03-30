@@ -1208,8 +1208,8 @@
   padding-left: 16px;
   padding-right: 16px;
   padding-bottom: 8px;
-  /* ステータスバー直下に寄せる（図鑑の .zukan-header と同値） */
-  padding-top: max(0px, calc(var(--sat) - 20px - var(--overlay-screen-nudge-up, 0px)));
+  /* .records-page は fixed 全画面のため #root のセーフエリアを自前で確保（図鑑 .zukan-header と同じ） */
+  padding-top: max(var(--sat, 0px), 8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
   background: rgba(13, 17, 23, 0.8);

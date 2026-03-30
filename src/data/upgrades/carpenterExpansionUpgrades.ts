@@ -81,7 +81,7 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
     name: '屋根裏確認+',
     damage: 11,
     timeCost: 2.5,
-    description: '11ダメージ（所要時間2.5秒）',
+    description: '11ダメージ。',
   },
   釘袋整理: {
     name: '釘袋整理+',
