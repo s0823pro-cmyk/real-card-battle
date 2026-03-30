@@ -1160,6 +1160,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         ...card,
         wasReserved: false,
         reservedThisTurn: true,
+        // ドローで既に +1 されていると戻り時に +1 で 2 になり温存ボーナスが死ぬため、枠に入れた時点で手札入りカウントを切り直す
+        ...(shouldTrackReserveDrawCount(card) ? { reserveDrawCount: 0 } : {}),
       };
       const normalizedHand = prev.hand.map((item) => ({
         ...item,

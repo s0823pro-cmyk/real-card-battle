@@ -83,10 +83,29 @@ export const ENEMY_TEMPLATES: Record<TemplateKey, EnemyTemplate> = {
 };
 
 export const BATTLE_ENCOUNTERS: TemplateKey[][] = [
+  // 1体 = 50%（10/20）
+  ['claimer'],
   ['claimer'],
   ['drunk'],
-  ['wildCat', 'wildCat'],
+  ['drunk'],
+  ['wildCat'],
+  ['wildCat'],
+  ['bicycle'],
+  ['bicycle'],
+  ['solicitor'],
+  ['solicitor'],
+  // 2体 = 45%（9/20）
   ['claimer', 'drunk'],
+  ['claimer', 'wildCat'],
+  ['drunk', 'wildCat'],
+  ['claimer', 'solicitor'],
+  ['drunk', 'bicycle'],
+  ['wildCat', 'wildCat'],
+  ['bicycle', 'solicitor'],
+  ['claimer', 'bicycle'],
+  ['drunk', 'solicitor'],
+  // 3体 = 5%（1/20）
+  ['wildCat', 'wildCat', 'wildCat'],
 ];
 
 let enemySerial = 0;
