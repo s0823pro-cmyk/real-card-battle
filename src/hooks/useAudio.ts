@@ -338,6 +338,16 @@ export const useAudio = () => {
 
     document.addEventListener('visibilitychange', onVisibility);
 
+    /** PiP 中は BGM のみ止める（SE は継続）。イベントは video からバブルする */
+    const onEnterPip = () => {
+      suspendForBackground();
+    };
+    const onLeavePip = () => {
+      resumeAfterBackground();
+    };
+    document.addEventListener('enterpictureinpicture', onEnterPip);
+    document.addEventListener('leavepictureinpicture', onLeavePip);
+
     let removeAppListener: (() => void) | undefined;
     if (Capacitor.isNativePlatform()) {
       void App.addListener('appStateChange', ({ isActive }) => {
@@ -355,6 +365,8 @@ export const useAudio = () => {
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('enterpictureinpicture', onEnterPip);
+      document.removeEventListener('leavepictureinpicture', onLeavePip);
       removeAppListener?.();
     };
   }, [playBgm, stopBgmPlaybackOnly]);
