@@ -713,12 +713,15 @@
   padding-top: 2px;
 }
 
+/* 子の .hand-area 以外はヒットしない（高 z-index の枠の空きが端末でタッチを食うのを防ぐ） */
 .battle-hand-area {
   height: 236px;
   flex-shrink: 0;
   margin-top: 0;
   transform: translateY(4px);
   position: relative;
+  overflow: visible;
+  pointer-events: none;
   /* .battle-timebar-reserve-row(25) より手前。.battle-status-row(30) より上で手札下端のタッチを奪わない（iOS） */
   z-index: 31;
 }
@@ -728,10 +731,10 @@
   transform: translateY(32px);
 }
 
-/* タイムバー行との重なりを減らすため上方向へオフセット（親は上に移動分だけ高さを確保） */
+/* 上方向オフセットは margin でレイアウトと一致（translate だと iOS でヒット領域と見た目がずれることがある） */
 .battle-hand-area .hand-area {
   height: 220px;
-  transform: translateY(-64px);
+  margin-top: -64px;
   overflow: visible;
   pointer-events: auto;
 }

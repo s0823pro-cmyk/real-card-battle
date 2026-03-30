@@ -16,6 +16,20 @@ interface TooltipProps {
 
 const PADDING = 8;
 
+/** iOS WebView 等で innerHeight と実表示領域がずれる場合があるため visualViewport を優先 */
+function getViewportRect(): { left: number; top: number; width: number; height: number } {
+  const vv = window.visualViewport;
+  if (vv) {
+    return {
+      left: vv.offsetLeft,
+      top: vv.offsetTop,
+      width: vv.width,
+      height: vv.height,
+    };
+  }
+  return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+}
+
 const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: -9999, left: -9999 });
@@ -60,30 +74,41 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
 
       const wrapRect = wrapperRef.current.getBoundingClientRect();
       const tipRect = tooltipRef.current.getBoundingClientRect();
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
+      const vp = getViewportRect();
+      const minL = vp.left + PADDING;
+      const minT = vp.top + PADDING;
+      const maxR = vp.left + vp.width - PADDING;
+      const maxB = vp.top + vp.height - PADDING;
 
       let top = wrapRect.top - tipRect.height - 8;
       let left = wrapRect.left + wrapRect.width / 2 - tipRect.width / 2;
 
-      if (top < PADDING) {
+      if (top < minT) {
         top = wrapRect.bottom + 8;
       }
 
-      if (left < PADDING) {
-        left = PADDING;
+      if (left < minL) {
+        left = minL;
       }
 
-      if (left + tipRect.width > vw - PADDING) {
-        left = vw - tipRect.width - PADDING;
+      if (left + tipRect.width > maxR) {
+        left = maxR - tipRect.width;
       }
 
-      if (top + tipRect.height > vh - PADDING) {
+      if (top + tipRect.height > maxB) {
         top = wrapRect.top - tipRect.height - 8;
       }
 
-      if (top < PADDING) {
-        top = PADDING;
+      if (top < minT) {
+        top = minT;
+      }
+
+      if (top + tipRect.height > maxB) {
+        top = Math.max(minT, maxB - tipRect.height);
+      }
+
+      if (left + tipRect.width > maxR) {
+        left = minL;
       }
 
       setPosition({ top, left });
@@ -95,10 +120,15 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
     adjustPosition();
     window.addEventListener('resize', adjustPosition);
     window.addEventListener('scroll', adjustPosition, true);
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', adjustPosition);
+    vv?.addEventListener('scroll', adjustPosition);
 
     return () => {
       window.removeEventListener('resize', adjustPosition);
       window.removeEventListener('scroll', adjustPosition, true);
+      vv?.removeEventListener('resize', adjustPosition);
+      vv?.removeEventListener('scroll', adjustPosition);
     };
   }, [visible]);
 
@@ -183,7 +213,8 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
             visibility: visible && calculated ? 'visible' : 'hidden',
             opacity: visible && calculated ? 1 : 0,
             transition: calculated ? 'opacity 0.15s ease' : 'none',
-            pointerEvents: 'none',
+            /* 内側スクロールのため auto（CSS と整合） */
+            pointerEvents: visible && calculated ? 'auto' : 'none',
           }}
         >
           <div className="tooltip-label">{data.label}</div>

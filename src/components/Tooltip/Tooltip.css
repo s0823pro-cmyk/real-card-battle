@@ -12,7 +12,12 @@
   padding: 8px 12px;
   min-width: 180px;
   max-width: 240px;
-  pointer-events: none;
+  /* html/body overflow:hidden でも本文が見切れないよう縦は制限して内側スクロール */
+  max-height: min(70dvh, calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  pointer-events: auto;
   animation: tooltip-fade-in 0.15s ease;
 }
 
