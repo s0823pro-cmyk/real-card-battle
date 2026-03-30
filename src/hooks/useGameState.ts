@@ -1311,7 +1311,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const reservedToHand = keptReserved.map((card) => {
       const base = {
         ...card,
-        wasReserved: Boolean(card.reservedThisTurn),
+        // 温存枠から手札に戻るカードはすべて「温存から戻った」扱い（reservedThisTurn は2枚目温存時に先に入れた枚が false になるため使わない）
+        wasReserved: true,
         reservedThisTurn: false,
       };
       if (!shouldTrackReserveDrawCount(base)) return base;
