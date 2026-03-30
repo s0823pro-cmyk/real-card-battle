@@ -30,12 +30,15 @@ export const cardExhaustsWhenPlayed = (card: Card, playedAfterReserve = false): 
   return true;
 };
 
-/** 起死回生：プレイ時点で HP が閾値以下ならボーナスダメージ発動 → そのプレイのみ除外 */
+/** 起死回生：プレイ時点で HP が閾値以下ならボーナスダメージ発動 → そのプレイのみ除外（【追込】） */
 export const comebackShouldExhaustAfterPlay = (card: Card, player: PlayerState): boolean => {
   if (card.id !== 'comeback' && card.id !== 'comeback_plus') return false;
-  if (!card.tags?.includes('low_hp_bonus') || !card.lowHpBonus) return false;
+  if (!card.lowHpBonus) return false;
+  const hasLowHpMechanic =
+    card.tags?.includes('low_hp_bonus') || card.badges?.includes('oikomi');
+  if (!hasLowHpMechanic) return false;
   const ratio = player.currentHp / Math.max(1, player.maxHp);
-  return ratio <= card.lowHpBonus.threshold;
+  return ratio <= card.lowHpBonus.threshold + 1e-9;
 };
 
 /** 温存スロットに残したまま次プレイヤーターン開始時、除外山へ送るか（集中力は戻さず除外） */

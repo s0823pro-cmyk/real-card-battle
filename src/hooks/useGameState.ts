@@ -788,6 +788,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const gainedDoubleReplay = (playedCard.effects ?? [])
       .filter((effect) => effect.type === 'double_next_replay')
       .reduce((sum, effect) => sum + effect.value, 0);
+    // 捨て札ではなく exhaustedCards へ：【消耗】/集中力温存プレイ + 起死回生の【追込】（HP閾値以下）
     const shouldExhaust =
       cardExhaustsWhenPlayed(card, cardWasReserved) || comebackShouldExhaustAfterPlay(card, gameState.player);
     const activePowers =
