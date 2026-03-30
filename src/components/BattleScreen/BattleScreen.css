@@ -714,7 +714,7 @@
 }
 
 .battle-hand-area {
-  height: 220px;
+  height: 236px;
   flex-shrink: 0;
   margin-top: 0;
   transform: translateY(4px);
@@ -728,10 +728,10 @@
   transform: translateY(32px);
 }
 
-/* margin-top で移動（translateY だとヒット領域と親要素の高さがずれることがある：iOS 手札タップ対策） */
+/* タイムバー行との重なりを減らすため上方向へオフセット（親は上に移動分だけ高さを確保） */
 .battle-hand-area .hand-area {
   height: 220px;
-  margin-top: -48px;
+  transform: translateY(-64px);
   overflow: visible;
   pointer-events: auto;
 }
