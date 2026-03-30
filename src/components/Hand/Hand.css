@@ -462,7 +462,8 @@
 .card-badge--exhaust,
 .card-badge--setup,
 .card-badge--self_damage,
-.card-badge--reserve {
+.card-badge--reserve,
+.card-badge--oikomi {
   font-family: var(--font-display);
   font-size: 7px !important;
   font-weight: 500 !important;

@@ -44,6 +44,7 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
     damage: 12,
     lowHpBonus: { threshold: 0.5, damage: 20 },
     description: '12ダメージ。HP50%以下で20ダメージ（その場合使用後除外）',
+    badges: ['oikomi'],
   },
   奇跡の一手: {
     name: '奇跡の一手+',

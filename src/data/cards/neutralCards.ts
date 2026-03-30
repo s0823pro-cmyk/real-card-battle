@@ -111,6 +111,7 @@ export const NEUTRAL_CARD_POOL: Card[] = [
     neutral: true,
     tags: ['low_hp_bonus'],
     lowHpBonus: { threshold: 0.3, damage: 18 },
+    badges: ['oikomi'],
     imageUrl: comebackImage,
   },
   {

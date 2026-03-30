@@ -136,6 +136,7 @@ const CardComponent = ({
     setup: '準備',
     self_damage: '自傷',
     reserve: '温存',
+    oikomi: '追込',
   };
   const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const replaceChangedValue = (

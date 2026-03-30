@@ -32,7 +32,7 @@ export const cardExhaustsWhenPlayed = (card: Card, playedAfterReserve = false): 
 
 /** 起死回生：プレイ時点で HP が閾値以下ならボーナスダメージ発動 → そのプレイのみ除外 */
 export const comebackShouldExhaustAfterPlay = (card: Card, player: PlayerState): boolean => {
-  if (card.id !== 'comeback') return false;
+  if (card.id !== 'comeback' && card.id !== 'comeback_plus') return false;
   if (!card.tags?.includes('low_hp_bonus') || !card.lowHpBonus) return false;
   const ratio = player.currentHp / Math.max(1, player.maxHp);
   return ratio <= card.lowHpBonus.threshold;
