@@ -16,11 +16,16 @@ if (Capacitor.isNativePlatform()) {
   StatusBar.setBackgroundColor({ color: '#000000' })
 }
 
-/** Android WebView では env(safe-area-inset-top) が 0 のことが多い。MainActivity 注入までの一瞬の被りを減らす粗い既定値 */
+/** Android: decorFitsSystemWindows(true) で WebView は既にステータスバー下から始まる。--android-inset-top を足すと表示とタッチの Y がズレやすいので 0 */
 if (Capacitor.getPlatform() === 'android') {
-  document.documentElement.style.setProperty('--android-inset-top', '14px')
+  document.documentElement.style.setProperty('--android-inset-top', '0px')
   /* env(safe-area-inset-bottom) が 0 でもナビゲーション／ジェスチャー帯と被らないよう確保 */
   document.documentElement.style.setProperty('--android-inset-bottom', '20px')
+}
+
+/** iOS WKWebView: 高さ・セーフエリアを CSS で揃える（index.css の .cap-ios） */
+if (Capacitor.getPlatform() === 'ios') {
+  document.documentElement.classList.add('cap-ios')
 }
 
 createRoot(document.getElementById('root')!).render(

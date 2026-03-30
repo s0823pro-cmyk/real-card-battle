@@ -5,7 +5,11 @@ const config: CapacitorConfig = {
   appName: 'Real Card Battle',
   webDir: 'dist',
   ios: {
-    contentInset: 'always',
+    /**
+     * always だと WKWebView がネイティブでセーフエリア分を取り、CSS の env(safe-area-inset-top) / --sat とも重なり
+     * タッチの Y と描画がずれることがある。セーフエリアは CSS 側に一本化する。
+     */
+    contentInset: 'never',
   },
   server: {
     androidScheme: 'https',

@@ -53,9 +53,10 @@
 body {
   margin: 0;
   padding: 0;
-  min-height: 100dvh;
   background: var(--bg-primary);
   color: var(--text-primary);
+  /* タッチとレイアウトの縦ズレを減らす（WebView で height:100% だけだと実ビューポートと不一致になることがある） */
+  touch-action: manipulation;
 }
 
 button {
@@ -70,8 +71,18 @@ html,
 body,
 #root {
   overflow: hidden;
-  height: 100%;
   width: 100%;
+  min-height: 100dvh;
+  height: 100%;
+  height: 100dvh;
+}
+
+/* iOS: 100dvh 単独だと一部端末でレイアウトとタッチの縦位置がずれる。fill-available でビューポートと揃える */
+html.cap-ios,
+html.cap-ios body,
+html.cap-ios #root {
+  min-height: -webkit-fill-available;
+  height: -webkit-fill-available;
 }
 
 .rotate-warning {
