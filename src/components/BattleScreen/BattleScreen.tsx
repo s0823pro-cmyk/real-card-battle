@@ -457,6 +457,8 @@ const BattleScreen = ({
     card: Card,
     clientX: number,
     clientY: number,
+    remainingTimeSec: number,
+    reserveSlotsFull: boolean,
   ): { target: DropTarget; index: number | null } => {
     const detections = probes.map((probe) => detectDropTarget(probe.x, probe.y, card));
 
@@ -479,7 +481,11 @@ const BattleScreen = ({
         anchorX <= zoneRight &&
         anchorY >= zoneTop &&
         anchorY <= zoneBottom;
-      if (inReserveLeftZone) {
+      if (
+        inReserveLeftZone &&
+        !reserveSlotsFull &&
+        remainingTimeSec + 1e-9 >= RESERVE_DROP_COST
+      ) {
         return { target: 'reserve' as const, index: null };
       }
     }
@@ -551,7 +557,14 @@ const BattleScreen = ({
     }
     if (!canPlayCard(start.card)) {
       const probes = getDragProbePositions(event.clientX, event.clientY);
-      const detection = resolveDropTargetFromProbes(probes, start.card, event.clientX, event.clientY);
+      const detection = resolveDropTargetFromProbes(
+        probes,
+        start.card,
+        event.clientX,
+        event.clientY,
+        remainingTime,
+        gameState.reserved.length >= 2,
+      );
       const reserveOnlyTarget: DropTarget = detection.target === 'reserve' ? 'reserve' : null;
       setIsHoveringTimebar(false);
       setHoveredEnemyId(null);
@@ -567,7 +580,14 @@ const BattleScreen = ({
       return;
     }
     const probes = getDragProbePositions(event.clientX, event.clientY);
-    const detection = resolveDropTargetFromProbes(probes, start.card, event.clientX, event.clientY);
+    const detection = resolveDropTargetFromProbes(
+      probes,
+      start.card,
+      event.clientX,
+      event.clientY,
+      remainingTime,
+      gameState.reserved.length >= 2,
+    );
     const enemyTargetCard = isEnemyTargetCard(start.card);
     const timebarRect = timebarRowRef.current?.getBoundingClientRect();
     const isOverTimebar = timebarRect
@@ -644,7 +664,14 @@ const BattleScreen = ({
     if (handDrag.isDragging && handDrag.card) {
       if (!canPlayCard(handDrag.card)) {
         const probes = getDragProbePositions(event.clientX, event.clientY);
-        const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card, event.clientX, event.clientY);
+        const finalDetection = resolveDropTargetFromProbes(
+          probes,
+          handDrag.card,
+          event.clientX,
+          event.clientY,
+          remainingTime,
+          gameState.reserved.length >= 2,
+        );
         if (finalDetection.target === 'reserve') {
           scheduleReserveFromDrop(handDrag.card.id);
         }
@@ -653,7 +680,14 @@ const BattleScreen = ({
       }
 
       const probes = getDragProbePositions(event.clientX, event.clientY);
-      const finalDetection = resolveDropTargetFromProbes(probes, handDrag.card, event.clientX, event.clientY);
+      const finalDetection = resolveDropTargetFromProbes(
+        probes,
+        handDrag.card,
+        event.clientX,
+        event.clientY,
+        remainingTime,
+        gameState.reserved.length >= 2,
+      );
       const finalTarget = finalDetection.target;
       const enemyTargetCard = isEnemyTargetCard(handDrag.card);
 
@@ -1036,16 +1070,18 @@ const BattleScreen = ({
 
   const scheduleReserveFromDrop = useCallback(
     (cardId: string) => {
+      if (remainingTime + 1e-9 < RESERVE_DROP_COST) return;
+      if (gameState.reserved.length >= 2) return;
       clearPendingReserveTimeout();
       setPendingReserveCardId(cardId);
       reservePendingTimeoutRef.current = window.setTimeout(() => {
         reservePendingTimeoutRef.current = null;
-        reserveCardByIdRef.current(cardId);
-        playSe('reserve');
+        const ok = reserveCardByIdRef.current(cardId);
+        if (ok) playSe('reserve');
         setPendingReserveCardId(null);
       }, RESERVE_PENDING_MS);
     },
-    [clearPendingReserveTimeout, playSe],
+    [clearPendingReserveTimeout, playSe, remainingTime, gameState.reserved.length],
   );
 
   const pendingReserveCard = useMemo(

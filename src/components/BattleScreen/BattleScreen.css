@@ -734,7 +734,7 @@
 /* 上方向オフセットは margin でレイアウトと一致（translate だと iOS でヒット領域と見た目がずれることがある） */
 .battle-hand-area .hand-area {
   height: 220px;
-  margin-top: -64px;
+  margin-top: -56px;
   overflow: visible;
   pointer-events: auto;
 }

@@ -1150,6 +1150,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       ).length;
       if (pendingHandUpgradeCountRef.current > 0 && upgradeableCount > 0) return prev;
       if (prev.reserved.length >= MAX_RESERVED) return prev;
+      const remainingTime = prev.maxTime - prev.usedTime;
+      if (remainingTime + 1e-9 < RESERVE_COST_SEC) return prev;
       const card = prev.hand.find((item) => item.id === cardId);
       if (!card || card.type === 'status' || card.type === 'curse') return prev;
       didReserve = true;
