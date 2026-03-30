@@ -693,12 +693,13 @@
 }
 
 /* translateY で下げると overflow:hidden の画面下端でステータスが切れるため margin のみ使用 */
+/* z-index 30: アイテム確認モーダル（PlayerStatus 内 fixed）が手札 .battle-hand-area(26) より手前に来るよう、行全体のスタックを上げる */
 .battle-status-row {
   flex-shrink: 0;
   padding-top: 2px;
   margin-top: 12px;
   position: relative;
-  z-index: 10;
+  z-index: 30;
   touch-action: auto;
   overflow: visible;
 }
@@ -723,9 +724,10 @@
   transform: translateY(32px);
 }
 
+/* margin-top で移動（translateY だとヒット領域と親要素の高さがずれることがある：iOS 手札タップ対策） */
 .battle-hand-area .hand-area {
   height: 220px;
-  transform: translateY(-48px);
+  margin-top: -48px;
   overflow: visible;
   pointer-events: auto;
 }

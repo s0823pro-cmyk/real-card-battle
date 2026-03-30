@@ -77,7 +77,12 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
     effects: [{ type: 'next_attack_damage_boost', value: 7 }],
   },
   作業台: { name: '作業台+', block: 6, description: '6ブロック' },
-  屋根裏確認: { name: '屋根裏確認+', damage: 10, timeCost: 3, description: '10ダメージ（所要時間3秒）' },
+  屋根裏確認: {
+    name: '屋根裏確認+',
+    damage: 11,
+    timeCost: 2.5,
+    description: '11ダメージ（所要時間2.5秒）',
+  },
   釘袋整理: {
     name: '釘袋整理+',
     timeCost: 1.5,
