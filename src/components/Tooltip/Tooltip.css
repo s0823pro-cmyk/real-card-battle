@@ -3,6 +3,8 @@
   display: inline-flex;
   align-items: center;
   cursor: help;
+  /* 横スクロール行の touch-action: pan-x より優先し、タップ座標の取り違えを減らす */
+  touch-action: manipulation;
 }
 
 .tooltip-box {

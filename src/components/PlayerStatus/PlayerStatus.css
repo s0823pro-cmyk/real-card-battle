@@ -61,6 +61,9 @@
   font-weight: 700;
   font-family: var(--font-display);
   align-items: flex-start;
+  /* 下段（アイテム枠等）と縦方向で重なったとき、装備行のヒットを優先 */
+  position: relative;
+  z-index: 5;
 }
 
 .player-main-stats {
@@ -190,6 +193,8 @@
   padding: 2px 0;
   overflow: visible;
   margin-left: var(--player-sub-row-shift-x);
+  position: relative;
+  z-index: 1;
 }
 
 .player-sub-spacer {
@@ -454,6 +459,10 @@
 
 .battle-slots-row * {
   touch-action: pan-x;
+}
+
+.battle-slots-row .tooltip-wrapper {
+  touch-action: manipulation;
 }
 
 .slots-divider {

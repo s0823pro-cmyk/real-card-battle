@@ -714,11 +714,11 @@
 }
 
 /* 子の .hand-area 以外はヒットしない（高 z-index の枠の空きが端末でタッチを食うのを防ぐ） */
+/* translate は iOS で子のヒット領域と描画がずれることがあるため margin で縦位置を合わせる */
 .battle-hand-area {
   height: 236px;
   flex-shrink: 0;
-  margin-top: 0;
-  transform: translateY(4px);
+  margin-top: 4px;
   position: relative;
   overflow: visible;
   pointer-events: none;
@@ -726,9 +726,9 @@
   z-index: 31;
 }
 
-/* 時計ゲージ時のみ手札を下げる。バー表示時は手札の translate をいじらない（タイムバー位置は .battle-timebar-reserve-row の margin-top のみ） */
+/* 時計ゲージ時のみ手札を下げる（未使用クラス互換：margin のみ） */
 .battle-hand-area--clock-align {
-  transform: translateY(32px);
+  margin-top: 32px;
 }
 
 /* 上方向オフセットは margin でレイアウトと一致（translate だと iOS でヒット領域と見た目がずれることがある） */

@@ -16,18 +16,15 @@ interface TooltipProps {
 
 const PADDING = 8;
 
-/** iOS WebView 等で innerHeight と実表示領域がずれる場合があるため visualViewport を優先 */
-function getViewportRect(): { left: number; top: number; width: number; height: number } {
-  const vv = window.visualViewport;
-  if (vv) {
-    return {
-      left: vv.offsetLeft,
-      top: vv.offsetTop,
-      width: vv.width,
-      height: vv.height,
-    };
-  }
-  return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+/**
+ * position:fixed の top/left は getBoundingClientRect と同じレイアウトビューポート座標で揃える。
+ * visualViewport.offsetTop を min/max に混ぜると、一部 WebView で固定レイヤとクランプが二重ずれする。
+ */
+function getLayoutViewportSize(): { width: number; height: number } {
+  const d = document.documentElement;
+  const w = window.innerWidth || d.clientWidth;
+  const h = window.innerHeight || d.clientHeight;
+  return { width: w, height: h };
 }
 
 const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => {
@@ -74,11 +71,11 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
 
       const wrapRect = wrapperRef.current.getBoundingClientRect();
       const tipRect = tooltipRef.current.getBoundingClientRect();
-      const vp = getViewportRect();
-      const minL = vp.left + PADDING;
-      const minT = vp.top + PADDING;
-      const maxR = vp.left + vp.width - PADDING;
-      const maxB = vp.top + vp.height - PADDING;
+      const { width: vw, height: vh } = getLayoutViewportSize();
+      const minL = PADDING;
+      const minT = PADDING;
+      const maxR = vw - PADDING;
+      const maxB = vh - PADDING;
 
       let top = wrapRect.top - tipRect.height - 8;
       let left = wrapRect.left + wrapRect.width / 2 - tipRect.width / 2;
