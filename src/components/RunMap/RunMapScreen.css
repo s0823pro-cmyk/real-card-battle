@@ -115,15 +115,15 @@
 }
 
 .map-stat--hp.hp-high {
-  color: #2ecc71;
+  color: #e6edf3;
 }
 
-.map-stat--hp.hp-mid {
-  color: #f0b429;
+.map-stat--hp.hp-warning {
+  color: #f5c518;
 }
 
-.map-stat--hp.hp-low {
-  color: #e74c3c;
+.map-stat--hp.hp-critical {
+  color: #e03c3c;
 }
 
 .map-stat--mental.mental-high {

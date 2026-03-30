@@ -53,7 +53,8 @@ const PlayerStatus = ({
 }: Props) => {
   const displayCurrentHp = previewHp != null ? previewHp : player.currentHp;
   const hpRatio = displayCurrentHp / Math.max(1, player.maxHp);
-  const hpClass = hpRatio <= 0.3 ? 'hp-low' : hpRatio <= 0.7 ? 'hp-mid' : 'hp-high';
+  const hpColorClass =
+    hpRatio <= 0.3 ? 'hp-critical' : hpRatio <= 0.5 ? 'hp-warning' : '';
   const awakeThreshold = Math.floor(player.maxHp * 0.3);
   const remainingToAwake = Math.max(0, player.currentHp - awakeThreshold);
   const unemployedLabel =
@@ -111,7 +112,7 @@ const PlayerStatus = ({
             <div className="player-hp-block-column">
               <div className="player-hp-row">
                 <Tooltip tooltipKey="hp">
-                  <span className={`hp ${hpClass}`}>
+                  <span className={`hp ${hpColorClass}`}>
                     <img src={ICONS.hp} alt="HP" className="status-icon" draggable={false} />
                     <span className="hp-value">
                       <span

@@ -247,7 +247,8 @@
 }
 
 .hp {
-  color: #2ecc71;
+  /* HP 50%超：通常（白系） */
+  color: #e6edf3;
   font-size: clamp(1em, 2.55vw, 1.15em);
   line-height: 1;
   white-space: nowrap;
@@ -269,12 +270,13 @@
   height: 6px;
 }
 
-.hp.hp-mid {
-  color: #f0b429;
+/* HP 50%以下：黄 / 30%以下：赤 */
+.hp.hp-warning {
+  color: #f5c518;
 }
 
-.hp.hp-low {
-  color: #e74c3c;
+.hp.hp-critical {
+  color: #e03c3c;
 }
 
 .block {

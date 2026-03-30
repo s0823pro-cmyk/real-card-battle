@@ -208,10 +208,10 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
     onSelectTile?.(tile.id);
   };
 
-  const getHpClass = (): 'hp-high' | 'hp-mid' | 'hp-low' => {
+  const getHpClass = (): 'hp-high' | 'hp-warning' | 'hp-critical' => {
     const ratio = progress.player.currentHp / Math.max(1, progress.player.maxHp);
-    if (ratio <= 0.3) return 'hp-low';
-    if (ratio <= 0.7) return 'hp-mid';
+    if (ratio <= 0.3) return 'hp-critical';
+    if (ratio <= 0.5) return 'hp-warning';
     return 'hp-high';
   };
 
