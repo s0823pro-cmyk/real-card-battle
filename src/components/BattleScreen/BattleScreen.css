@@ -693,7 +693,7 @@
 }
 
 /* translateY で下げると overflow:hidden の画面下端でステータスが切れるため margin のみ使用 */
-/* z-index 30: アイテム確認モーダル（PlayerStatus 内 fixed）が手札 .battle-hand-area(26) より手前に来るよう、行全体のスタックを上げる */
+/* 通常は手札(.battle-hand-area 31)より下にし、手札下端のタッチを奪わない。モーダル表示時のみ :has で行を上げる（fixed は親スタック内のため） */
 .battle-status-row {
   flex-shrink: 0;
   padding-top: 2px;
@@ -702,6 +702,10 @@
   z-index: 30;
   touch-action: auto;
   overflow: visible;
+}
+
+.battle-status-row:has(.reserve-confirm-overlay) {
+  z-index: 40;
 }
 
 .battle-status-row--extend-up {
@@ -715,8 +719,8 @@
   margin-top: 0;
   transform: translateY(4px);
   position: relative;
-  /* .battle-timebar-reserve-row(25) より手前にし、手札下端のタップがタイムバー行に奪われないようにする（iOS） */
-  z-index: 26;
+  /* .battle-timebar-reserve-row(25) より手前。.battle-status-row(30) より上で手札下端のタッチを奪わない（iOS） */
+  z-index: 31;
 }
 
 /* 時計ゲージ時のみ手札を下げる。バー表示時は手札の translate をいじらない（タイムバー位置は .battle-timebar-reserve-row の margin-top のみ） */
