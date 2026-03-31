@@ -150,7 +150,7 @@ export const TutorialOverlay = ({ step, onNext, onSkip }: TutorialOverlayProps) 
         return;
       }
       const br = bubble.getBoundingClientRect();
-      const spotlightBottom = rect.bottom + spotlightExpandY + spotlightTranslateY;
+      const spotlightBottom = rect.top + rect.height + spotlightExpandY + spotlightTranslateY;
       const endY = spotlightBottom + 22;
       let startY = br.top - 120;
       if (endY < startY + 40) startY = endY - 48;
