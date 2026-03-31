@@ -1,0 +1,41 @@
+---
+description: iOS アプリ（App Store）向けビルド・Capacitor sync・Xcode Archive 手順
+alwaysApply: true
+---
+
+# Capacitor / iOS ビルド手順
+
+## 毎回必ずこの順番で実行する
+
+リポジトリルートで（例: `~/Desktop/real-card-battle` または `C:\dev\real-card-battle`）:
+
+```bash
+cd ~/Desktop/real-card-battle   # またはローカルのクローンルート
+nvm use 22
+git stash          # useAudio.ts などローカル変更がある場合
+git pull
+git stash pop      # stash した場合のみ
+npm run build
+npx cap sync ios
+```
+
+- **`nvm use 22`** を忘れると `cap sync` が失敗することがある。
+- **`npm run build`** を忘れると **古い `dist` が sync** される。
+- **`git pull` 前に stash しないと** ローカル変更で merge が Abort されやすい。
+
+## その後 Xcode で
+
+1. **`ios/App/App.xcworkspace` を開く**（`.xcodeproj` ではなく **`.xcworkspace`**）。
+2. **Product → Archive**
+3. **Distribute App → App Store Connect → Upload**
+
+## Android と iOS の sync は別
+
+- **`npx cap sync android` や Android 向けビルドだけでは iOS プロジェクトは更新されない**（`dist` は共有でも、コピー先が別）。
+- フロント変更を **iOS にも反映**するには、毎回 **`npm run build` のあと `npx cap sync ios`** を実行する。両方まとめてよい場合は **`npx cap sync`**（引数なしで全プラットフォーム）。
+- Mac 以外の環境で `ios` フォルダが未整備だと `pod install` が失敗することがある。その場合は **Mac で上記 sync** する。
+
+## 補足
+
+- Android の `npm run cap:build`（ルートのスクリプト）と同様、**フロント変更後は必ず `npm run build` してから `cap sync ios`** すること。
+- エージェントが iOS 用に sync する場合も、**このリポジトリルート**で `npm run build` 済みであることを確認してから `npx cap sync ios` を実行する。
