@@ -98,7 +98,7 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
             <div className="settings-accordion-body">
               <div className="settings-item settings-item--audio">
                 <div className="settings-item-header">
-                  <span className="settings-item-label">BGM音量</span>
+                  <span className="settings-item-label">BGM</span>
                   <button
                     type="button"
                     className={`btn-mute ${bgmMuted ? 'btn-mute--off' : 'btn-mute--on'}`}
@@ -114,7 +114,7 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
 
               <div className="settings-item settings-item--audio">
                 <div className="settings-item-header">
-                  <span className="settings-item-label">SE音量</span>
+                  <span className="settings-item-label">SE</span>
                   <button
                     type="button"
                     className={`btn-mute ${seMuted ? 'btn-mute--off' : 'btn-mute--on'}`}

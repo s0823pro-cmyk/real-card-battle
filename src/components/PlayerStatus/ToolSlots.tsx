@@ -77,7 +77,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
         onMouseDown={handleMouseDown}
       >
         <div
-          className="tool-slots-inline tool-slots-inline--scrollable"
+          className="tool-slots-inline tool-slots-inline--scrollable equipment-slot"
           style={{
             display: 'flex',
             flexWrap: 'nowrap',
@@ -175,7 +175,7 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
         onMouseDown={handleMouseDown}
       >
         <div
-          className="power-slots power-slots--scrollable"
+          className="power-slots power-slots--scrollable power-slot"
           style={{
             display: 'flex',
             flexWrap: 'nowrap',

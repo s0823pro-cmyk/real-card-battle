@@ -1,0 +1,2 @@
+# scripts/export_carpenter_cards_xlsx.py 用
+openpyxl>=3.1.0

@@ -29,6 +29,7 @@ import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
 import { getAdsRemoved } from '../../utils/adsRemoved';
 import { showInterstitialIfAllowed } from '../../utils/adMobClient';
+import { hasTutorialSeen, markTutorialSeen } from '../../utils/tutorialState';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
 import { isEnemyTargetCard } from '../../utils/cardTarget';
 import {
@@ -49,8 +50,18 @@ import '../Effects/Effects.css';
 import '../PlayerStatus/PlayerStatus.css';
 import '../Result/Result.css';
 import './BattleScreen.css';
+import { TutorialOverlay } from '../Tutorial/TutorialOverlay';
 
 type DropTarget = 'enemy' | 'field' | 'timebar' | 'hand' | 'reserve' | 'sell' | null;
+
+const BATTLE_TUTORIAL_STEPS = [
+  'battle_hand',
+  'battle_reserve',
+  'battle_attack',
+  'battle_skill',
+  'battle_equipment',
+  'battle_power',
+] as const;
 type PileView = 'draw' | 'discard' | 'exhaust' | null;
 
 interface HandDragState {
@@ -182,17 +193,11 @@ const BattleScreen = ({
     playSe,
     playBgm,
     stopBgm,
-    setBgmVolume,
-    setSeVolume,
     toggleBgmMute,
     toggleSeMute,
-    getBgmVolume,
-    getSeVolume,
     isBgmMuted,
     isSeMuted,
   } = useAudioContext();
-  const [bgmVol, setBgmVol] = useState(() => getBgmVolume());
-  const [seVol, setSeVol] = useState(() => getSeVolume());
   const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
   const [seMuted, setSeMuted] = useState(() => isSeMuted());
   const {
@@ -302,6 +307,14 @@ const BattleScreen = ({
   const lastCardPlayTimeRef = useRef<number>(0);
   const CARD_PLAY_COOLDOWN = 600;
 
+  const [battleTutorialIndex, setBattleTutorialIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (hasTutorialSeen('battle')) return;
+    const t = window.setTimeout(() => setBattleTutorialIndex(0), 0);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     const heavyPlayerHit = battlePopups.some((popup) => {
       if (popup.target !== 'player' || popup.kind !== 'damage') return false;
@@ -325,17 +338,16 @@ const BattleScreen = ({
   useEffect(() => {
     if (gameState.phase === 'victory' || gameState.phase === 'defeat') {
       setShowBattleSettings(false);
+      setBattleTutorialIndex(null);
     }
   }, [gameState.phase]);
 
   useEffect(() => {
     if (!showBattleSettings) return;
-    setBgmVol(getBgmVolume());
-    setSeVol(getSeVolume());
     setBgmMuted(isBgmMuted());
     setSeMuted(isSeMuted());
     setBattleVolumeOpen(false);
-  }, [showBattleSettings, getBgmVolume, getSeVolume, isBgmMuted, isSeMuted]);
+  }, [showBattleSettings, isBgmMuted, isSeMuted]);
 
   useEffect(() => {
     playBgm(isBoss ? 'boss' : 'battle');
@@ -1150,6 +1162,22 @@ const BattleScreen = ({
     concedeBattle();
   };
 
+  const handleBattleTutorialNext = () => {
+    setBattleTutorialIndex((i) => {
+      if (i === null) return null;
+      if (i >= BATTLE_TUTORIAL_STEPS.length - 1) {
+        markTutorialSeen('battle');
+        return null;
+      }
+      return i + 1;
+    });
+  };
+
+  const handleBattleTutorialSkip = () => {
+    markTutorialSeen('battle');
+    setBattleTutorialIndex(null);
+  };
+
   return (
     <main
       className={`battle-screen ${screenShake ? 'battle-screen--shake' : ''} ${
@@ -1208,7 +1236,7 @@ const BattleScreen = ({
         </button>
       )}
       <section
-        className={`enemy-placeholder battle-enemy-area ${
+        className={`enemy-placeholder battle-enemy-area enemy-area ${
           handDrag.isDragging && handDrag.dropTarget === 'enemy' ? 'drop-active' : ''
         }`}
         ref={enemyAreaRef}
@@ -1258,7 +1286,10 @@ const BattleScreen = ({
         </div>
 
         <div className="battle-timebar-reserve-row">
-          <div className="battle-reserve-area battle-reserve-area--gauge-expand" ref={reserveAreaRef}>
+          <div
+            className="battle-reserve-area battle-reserve-area--gauge-expand reserve-slot"
+            ref={reserveAreaRef}
+          >
             <ActionBar
               reserved={gameState.reserved}
               pendingReserveCard={pendingReserveCard}
@@ -1271,7 +1302,7 @@ const BattleScreen = ({
           </div>
 
           <div
-            className={`battle-timebar-row ${isHoveringTimebar ? 'timebar-row--active' : ''}`}
+            className={`battle-timebar-row time-bar ${isHoveringTimebar ? 'timebar-row--active' : ''}`}
             ref={timebarRowRef}
           >
             <div className="battle-timebar-wrap">
@@ -1586,7 +1617,7 @@ const BattleScreen = ({
                 <div className="battle-settings-audio">
                   <div className="battle-settings-audio-item">
                     <div className="battle-settings-audio-head">
-                      <span className="battle-settings-audio-title">BGM音量</span>
+                      <span className="battle-settings-audio-title">BGM</span>
                       <button
                         type="button"
                         className={`battle-settings-mute ${bgmMuted ? 'battle-settings-mute--off' : 'battle-settings-mute--on'}`}
@@ -1598,23 +1629,10 @@ const BattleScreen = ({
                         {bgmMuted ? '🔇 OFF' : '🔊 ON'}
                       </button>
                     </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={bgmVol}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        setBgmVol(v);
-                        setBgmVolume(v);
-                      }}
-                      className="battle-settings-range"
-                    />
                   </div>
                   <div className="battle-settings-audio-item">
                     <div className="battle-settings-audio-head">
-                      <span className="battle-settings-audio-title">SE音量</span>
+                      <span className="battle-settings-audio-title">SE</span>
                       <button
                         type="button"
                         className={`battle-settings-mute ${seMuted ? 'battle-settings-mute--off' : 'battle-settings-mute--on'}`}
@@ -1626,19 +1644,6 @@ const BattleScreen = ({
                         {seMuted ? '🔇 OFF' : '🔊 ON'}
                       </button>
                     </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={seVol}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        setSeVol(v);
-                        setSeVolume(v);
-                      }}
-                      className="battle-settings-range"
-                    />
                   </div>
                 </div>
               )}
@@ -1661,6 +1666,13 @@ const BattleScreen = ({
       )}
       {showBattleGlossary && (
         <GlossaryModal onClose={() => setShowBattleGlossary(false)} />
+      )}
+      {battleTutorialIndex !== null && (
+        <TutorialOverlay
+          step={BATTLE_TUTORIAL_STEPS[battleTutorialIndex]}
+          onNext={handleBattleTutorialNext}
+          onSkip={handleBattleTutorialSkip}
+        />
       )}
     </main>
   );

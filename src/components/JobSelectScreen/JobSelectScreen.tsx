@@ -6,6 +6,8 @@ import carpenterSymbolImage from '../../assets/jobs/carpenter_symbol.png';
 import cookSymbolImage from '../../assets/jobs/cook_symbol.png';
 import unemployedSymbolImage from '../../assets/jobs/unemployed_symbol.png';
 import jobSelectBackgroundImage from '../../assets/job_select_background.png';
+import { hasTutorialSeen, markTutorialSeen } from '../../utils/tutorialState';
+import { TutorialOverlay } from '../Tutorial/TutorialOverlay';
 import './JobSelectScreen.css';
 
 interface JobCard {
@@ -128,6 +130,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const [imageLoadFailed, setImageLoadFailed] = useState<Set<string>>(() => new Set());
   const [handAreaWidth, setHandAreaWidth] = useState(360);
   const [viewportHeight, setViewportHeight] = useState(900);
+  const [showJobTutorial, setShowJobTutorial] = useState(false);
 
   const meltCanvasRef = useRef<HTMLCanvasElement>(null);
   const handAreaRef = useRef<HTMLDivElement>(null);
@@ -135,6 +138,20 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const meltResetTimerRef = useRef<number | null>(null);
 
   const expandedJob = expandedIndex !== null ? JOB_CARDS[expandedIndex] : null;
+
+  useEffect(() => {
+    if (!hasTutorialSeen('job_select')) {
+      const timer = setTimeout(() => {
+        setShowJobTutorial(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleJobTutorialDone = () => {
+    markTutorialSeen('job_select');
+    setShowJobTutorial(false);
+  };
 
   // ---- melt particles ----
   const startMeltParticles = (job: JobCard, originX: number, originY: number) => {
@@ -566,6 +583,9 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
             style={{ '--melt-color': meltColor } as CSSProperties}
           />
         </>
+      )}
+      {showJobTutorial && (
+        <TutorialOverlay step="job_select" onNext={handleJobTutorialDone} onSkip={handleJobTutorialDone} />
       )}
     </main>
   );

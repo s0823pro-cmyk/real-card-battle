@@ -402,6 +402,16 @@
   padding: 12px;
 }
 
+.home-modal-overlay--tutorial-reset {
+  z-index: 2600;
+}
+
+.home-modal-tutorial-reset-msg {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #c9d1d9;
+}
+
 .home-modal-box {
   width: min(360px, 92vw);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -845,6 +855,20 @@
   border: 1px solid rgba(255, 71, 87, 0.45);
   border-radius: 8px;
   color: #ff9aa5;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.settings-btn-secondary {
+  background: rgba(85, 85, 85, 0.2);
+  border: 1px solid rgba(100, 100, 100, 0.55);
+  border-radius: 8px;
+  color: #c8cdd5;
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 700;

@@ -33,6 +33,7 @@ import {
 } from '../../utils/achievementSystem';
 import { loadAchievementCounters } from '../../utils/achievementCounters';
 import { getAdsRemoved, PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
+import { resetTutorial } from '../../utils/tutorialState';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
 import type { AchievementTier } from '../../utils/achievementTypes';
 
@@ -274,6 +275,7 @@ const HomeScreen = ({
 }: HomeScreenProps) => {
   const [modal, setModal] = useState<ModalType>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showTutorialResetModal, setShowTutorialResetModal] = useState(false);
   const [showHomeGlossary, setShowHomeGlossary] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [achievementRefreshKey, setAchievementRefreshKey] = useState(0);
@@ -387,18 +389,12 @@ const HomeScreen = ({
   const {
     playSe,
     playBgm,
-    setBgmVolume,
-    setSeVolume,
     toggleBgmMute,
     toggleSeMute,
-    getBgmVolume,
-    getSeVolume,
     isBgmMuted,
     isSeMuted,
   } = useAudioContext();
 
-  const [bgmVol, setBgmVol] = useState(() => getBgmVolume());
-  const [seVol, setSeVol] = useState(() => getSeVolume());
   const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
   const [seMuted, setSeMuted] = useState(() => isSeMuted());
   const [openSettingsSection, setOpenSettingsSection] = useState<string | null>(null);
@@ -585,7 +581,7 @@ const HomeScreen = ({
           <div className="settings-accordion-body">
             <div className="settings-item settings-item--audio">
               <div className="settings-item-header">
-                <span className="settings-item-label">BGM音量</span>
+                <span className="settings-item-label">BGM</span>
                 <button
                   type="button"
                   className={`btn-mute ${bgmMuted ? 'btn-mute--off' : 'btn-mute--on'}`}
@@ -597,23 +593,10 @@ const HomeScreen = ({
                   {bgmMuted ? '🔇 OFF' : '🔊 ON'}
                 </button>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={bgmVol}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  setBgmVol(v);
-                  setBgmVolume(v);
-                }}
-                className="settings-slider"
-              />
             </div>
             <div className="settings-item settings-item--audio">
               <div className="settings-item-header">
-                <span className="settings-item-label">SE音量</span>
+                <span className="settings-item-label">SE</span>
                 <button
                   type="button"
                   className={`btn-mute ${seMuted ? 'btn-mute--off' : 'btn-mute--on'}`}
@@ -625,19 +608,6 @@ const HomeScreen = ({
                   {seMuted ? '🔇 OFF' : '🔊 ON'}
                 </button>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={seVol}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  setSeVol(v);
-                  setSeVolume(v);
-                }}
-                className="settings-slider"
-              />
             </div>
           </div>
         )}
@@ -662,6 +632,24 @@ const HomeScreen = ({
                 用語・カードバッジ・ステータス表示などの説明を表示します。
               </span>
             </button>
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">チュートリアルリセット</p>
+                <p className="settings-item-desc">
+                  チュートリアルをリセットして次回起動時に再表示します。
+                </p>
+              </div>
+              <button
+                type="button"
+                className="settings-btn-secondary"
+                onClick={() => {
+                  resetTutorial();
+                  setShowTutorialResetModal(true);
+                }}
+              >
+                リセット
+              </button>
+            </div>
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
                 <p className="settings-item-title">データ初期化</p>
@@ -898,6 +886,27 @@ const HomeScreen = ({
           </div>
         </main>
         {showHomeGlossary && <GlossaryModal onClose={() => setShowHomeGlossary(false)} />}
+        {showTutorialResetModal && (
+          <div
+            className="home-modal-overlay home-modal-overlay--tutorial-reset"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tutorial-reset-done-title"
+            onClick={() => setShowTutorialResetModal(false)}
+          >
+            <div className="home-modal-box" onClick={(e) => e.stopPropagation()}>
+              <h2 id="tutorial-reset-done-title">チュートリアルリセット</h2>
+              <p className="home-modal-tutorial-reset-msg">チュートリアルをリセットしました。</p>
+              <button
+                type="button"
+                className="home-modal-close"
+                onClick={() => setShowTutorialResetModal(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
       </>
     );
   }

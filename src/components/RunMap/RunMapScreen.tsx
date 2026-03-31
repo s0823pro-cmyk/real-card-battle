@@ -76,17 +76,11 @@ const NODE_SPACING_SCALE_Y = 1.08;
 
 const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
   const {
-    setBgmVolume,
-    setSeVolume,
     toggleBgmMute,
     toggleSeMute,
-    getBgmVolume,
-    getSeVolume,
     isBgmMuted,
     isSeMuted,
   } = useAudioContext();
-  const [bgmVol, setBgmVol] = useState(() => getBgmVolume());
-  const [seVol, setSeVol] = useState(() => getSeVolume());
   const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
   const [seMuted, setSeMuted] = useState(() => isSeMuted());
   const [mapVolumeOpen, setMapVolumeOpen] = useState(false);
@@ -155,12 +149,10 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
 
   useEffect(() => {
     if (!showMapSettings) return;
-    setBgmVol(getBgmVolume());
-    setSeVol(getSeVolume());
     setBgmMuted(isBgmMuted());
     setSeMuted(isSeMuted());
     setMapVolumeOpen(false);
-  }, [showMapSettings, getBgmVolume, getSeVolume, isBgmMuted, isSeMuted]);
+  }, [showMapSettings, isBgmMuted, isSeMuted]);
 
   const minX = Math.min(...progress.board.map((tile) => tile.x));
   const maxX = Math.max(...progress.board.map((tile) => tile.x));
@@ -536,7 +528,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
               <div className="map-settings-audio">
                 <div className="map-settings-audio-item">
                   <div className="map-settings-audio-head">
-                    <span className="map-settings-audio-title">BGM音量</span>
+                    <span className="map-settings-audio-title">BGM</span>
                     <button
                       type="button"
                       className={`map-settings-mute ${bgmMuted ? 'map-settings-mute--off' : 'map-settings-mute--on'}`}
@@ -548,23 +540,10 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                       {bgmMuted ? '🔇 OFF' : '🔊 ON'}
                     </button>
                   </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={bgmVol}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value);
-                      setBgmVol(v);
-                      setBgmVolume(v);
-                    }}
-                    className="map-settings-range"
-                  />
                 </div>
                 <div className="map-settings-audio-item">
                   <div className="map-settings-audio-head">
-                    <span className="map-settings-audio-title">SE音量</span>
+                    <span className="map-settings-audio-title">SE</span>
                     <button
                       type="button"
                       className={`map-settings-mute ${seMuted ? 'map-settings-mute--off' : 'map-settings-mute--on'}`}
@@ -576,19 +555,6 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                       {seMuted ? '🔇 OFF' : '🔊 ON'}
                     </button>
                   </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={seVol}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value);
-                      setSeVol(v);
-                      setSeVolume(v);
-                    }}
-                    className="map-settings-range"
-                  />
                 </div>
               </div>
             )}
