@@ -7,8 +7,85 @@ import cookSymbolImage from '../../assets/jobs/cook_symbol.png';
 import unemployedSymbolImage from '../../assets/jobs/unemployed_symbol.png';
 import jobSelectBackgroundImage from '../../assets/job_select_background.png';
 import { hasTutorialSeen, markTutorialSeen } from '../../utils/tutorialState';
+import { hasSeenJobUnlock, isJobUnlocked, markJobUnlockSeen } from '../../utils/jobUnlockSystem';
 import { TutorialOverlay } from '../Tutorial/TutorialOverlay';
 import './JobSelectScreen.css';
+
+/** アニメ終了はフレーム数では切らず、onComplete で UI を閉じる */
+const CONFETTI_MAX_FRAMES = 520;
+
+function runCookUnlockConfetti(
+  canvas: HTMLCanvasElement | null,
+  onComplete?: () => void,
+): () => void {
+  const finish = () => {
+    queueMicrotask(() => onComplete?.());
+  };
+  if (!canvas) {
+    finish();
+    return () => {};
+  }
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    finish();
+    return () => {};
+  }
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  canvas.width = w;
+  canvas.height = h;
+  const colors = ['#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7', '#00cec9', '#dfe6e9', '#ffeaa7'];
+  /** 画面下〜手前から立ち上がり、横に揺れながら舞い上がる */
+  const pieces = Array.from({ length: 160 }, () => ({
+    x: Math.random() * w,
+    y: h - 20 + Math.random() * 140,
+    w: 3 + Math.random() * 7,
+    h: 4 + Math.random() * 9,
+    vy: -(3.2 + Math.random() * 5.5),
+    vx: (Math.random() - 0.5) * 2.2,
+    phase: Math.random() * Math.PI * 2,
+    wobbleAmp: 1.2 + Math.random() * 2.2,
+    rot: Math.random() * Math.PI * 2,
+    vr: (Math.random() - 0.5) * 0.22,
+    color: colors[Math.floor(Math.random() * colors.length)]!,
+    opacity: 1,
+  }));
+  let frame = 0;
+  let animId = 0;
+  let cancelled = false;
+  const animate = () => {
+    if (cancelled) return;
+    ctx.clearRect(0, 0, w, h);
+    pieces.forEach((p) => {
+      const flutter = Math.sin(frame * 0.11 + p.phase) * p.wobbleAmp;
+      p.x += p.vx + flutter * 0.35;
+      p.y += p.vy;
+      p.vy += 0.045;
+      p.rot += p.vr + Math.sin(frame * 0.08 + p.phase) * 0.02;
+      p.opacity -= 0.004;
+      if (p.opacity <= 0) return;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.max(0, p.opacity);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    frame += 1;
+    const allFaded = pieces.every((p) => p.opacity <= 0.01);
+    if (allFaded || frame >= CONFETTI_MAX_FRAMES) {
+      if (!cancelled) finish();
+      return;
+    }
+    animId = window.requestAnimationFrame(animate);
+  };
+  animId = window.requestAnimationFrame(animate);
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(animId);
+  };
+}
 
 interface JobCard {
   id: string;
@@ -46,12 +123,11 @@ const JOB_CARDS: JobCard[] = [
     icon: '🔪',
     imageUrl: cookSymbolImage,
     color: '#f9ca24',
-    hp: 80,
+    hp: 100,
     timeBar: 10.4,
     mental: 6,
     mechanic: '調理ゲージを爆発させる',
     catchphrase: '厨房は戦場だ',
-    comingSoon: true,
   },
   {
     id: 'unemployed',
@@ -131,6 +207,14 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const [handAreaWidth, setHandAreaWidth] = useState(360);
   const [viewportHeight, setViewportHeight] = useState(900);
   const [showJobTutorial, setShowJobTutorial] = useState(false);
+  const [showCookUnlockCelebration, setShowCookUnlockCelebration] = useState(false);
+
+  const cookUnlocked = isJobUnlocked('cook');
+  const isCookCardLocked = (job: JobCard) => job.id === 'cook' && !cookUnlocked;
+
+  const celebrationRanRef = useRef(false);
+  const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
+  const confettiCleanupRef = useRef<(() => void) | null>(null);
 
   const meltCanvasRef = useRef<HTMLCanvasElement>(null);
   const handAreaRef = useRef<HTMLDivElement>(null);
@@ -148,9 +232,48 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
     }
   }, []);
 
+  const tryStartCookUnlockCelebration = () => {
+    if (celebrationRanRef.current) return;
+    if (!isJobUnlocked('cook') || hasSeenJobUnlock('cook')) return;
+    celebrationRanRef.current = true;
+    setShowCookUnlockCelebration(true);
+  };
+
+  useEffect(() => {
+    if (!showCookUnlockCelebration) {
+      confettiCleanupRef.current?.();
+      confettiCleanupRef.current = null;
+      return;
+    }
+    const id = window.requestAnimationFrame(() => {
+      confettiCleanupRef.current = runCookUnlockConfetti(confettiCanvasRef.current, () => {
+        markJobUnlockSeen('cook');
+        setShowCookUnlockCelebration(false);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(id);
+      confettiCleanupRef.current?.();
+      confettiCleanupRef.current = null;
+    };
+  }, [showCookUnlockCelebration]);
+
+  useEffect(() => {
+    if (!isJobUnlocked('cook') || hasSeenJobUnlock('cook')) return;
+    if (!hasTutorialSeen('job_select')) return;
+    const t = window.setTimeout(() => tryStartCookUnlockCelebration(), 450);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- マウント時のみ（チュートリアル済みで初回のみ演出）
+  }, []);
+
   const handleJobTutorialDone = () => {
     markTutorialSeen('job_select');
     setShowJobTutorial(false);
+    window.setTimeout(() => {
+      if (isJobUnlocked('cook') && !hasSeenJobUnlock('cook')) {
+        tryStartCookUnlockCelebration();
+      }
+    }, 350);
   };
 
   // ---- melt particles ----
@@ -204,6 +327,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   // ---- melt trigger ----
   const triggerMeltEffect = (job: JobCard, originX: number, originY: number) => {
     if (!job.selectableJobId) return;
+    if (isCookCardLocked(job)) return;
     setMeltColor('#ffffff');
     setIsMelting(true);
     startMeltParticles(job, originX, originY);
@@ -234,7 +358,8 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   // ---- pointer handlers on hand cards ----
   const handlePointerDown = (e: React.PointerEvent, index: number) => {
     if (isMelting) return;
-    if (JOB_CARDS[index].comingSoon) {
+    const job = JOB_CARDS[index];
+    if (job.comingSoon || isCookCardLocked(job)) {
       e.preventDefault();
       return;
     }
@@ -373,7 +498,9 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
       </button>
 
       {/* 拡大表示パネル（手札とは独立） */}
-      {expandedJob && !expandedJob.comingSoon && (
+      {expandedJob &&
+        !expandedJob.comingSoon &&
+        !(expandedJob.id === 'cook' && !cookUnlocked) && (
         <div className="job-detail-area">
           <div
             className="job-detail-card"
@@ -466,6 +593,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
         {JOB_CARDS.map((job, index) => {
           const item = handLayout[index];
           const isDragging = draggingIndex === index;
+          const cookLocked = isCookCardLocked(job);
 
           // ドラッグ中は「指の位置 - カード内オフセット」でカード左上を配置
           const cardW = item?.width ?? 88;
@@ -509,7 +637,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
           return (
             <div
               key={job.id}
-              className={`job-hand-card-wrapper${job.comingSoon ? ' job-hand-card-wrapper--coming-soon' : ''}${isDragging ? ' job-hand-card-wrapper--dragging' : ''}`}
+              className={`job-hand-card-wrapper${job.comingSoon ? ' job-hand-card-wrapper--coming-soon' : ''}${cookLocked ? ' job-hand-card-wrapper--job-locked' : ''}${isDragging ? ' job-hand-card-wrapper--dragging' : ''}`}
               style={wrapperStyle as CSSProperties}
               onPointerDown={(e) => handlePointerDown(e, index)}
               onPointerMove={(e) => handlePointerMove(e, index)}
@@ -539,10 +667,16 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
               >
                 <div className="job-hand-card-topline" style={{ background: job.color }} />
                 <div className="job-hand-card-name-area">
-                  <span className="job-hand-card-name">{job.name}</span>
+                  <span className="job-hand-card-name">
+                    {cookLocked || job.comingSoon ? '？？？' : job.name}
+                  </span>
                 </div>
                 <div className="job-hand-card-symbol">
-                  {job.comingSoon || !job.imageUrl || imageLoadFailed.has(job.id) ? (
+                  {cookLocked ? (
+                    <span className="job-hand-card-emoji job-hand-card-emoji--lock" aria-hidden>
+                      🔒
+                    </span>
+                  ) : job.comingSoon || !job.imageUrl || imageLoadFailed.has(job.id) ? (
                     <span className="job-hand-card-emoji">{job.icon}</span>
                   ) : (
                     <img
@@ -582,6 +716,14 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
             className="melt-flash"
             style={{ '--melt-color': meltColor } as CSSProperties}
           />
+        </>
+      )}
+      {showCookUnlockCelebration && (
+        <>
+          <canvas ref={confettiCanvasRef} className="job-cook-unlock-confetti" aria-hidden />
+          <div className="job-cook-unlock-overlay" role="dialog" aria-live="polite">
+            <p className="job-cook-unlock-message">🔪 料理人が解放されました！</p>
+          </div>
         </>
       )}
       {showJobTutorial && (

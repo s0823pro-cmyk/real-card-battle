@@ -57,7 +57,7 @@ export const CARPENTER_CONFIG: JobConfig = {
 
 export const COOK_CONFIG: JobConfig = {
   id: 'cook',
-  initialHp: 80,
+  initialHp: 100,
   initialMental: 6,
   maxMental: 8,
   createStarterDeck: () => createFixedStarterDeck(COOK_STARTER_DECK),

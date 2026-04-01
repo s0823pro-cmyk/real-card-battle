@@ -30,6 +30,9 @@ const resolveStorySeenKey = (jobId: string): string => {
   if (jobId === 'carpenter_opening') {
     return 'carpenter';
   }
+  if (jobId === 'cook_opening') {
+    return 'cook';
+  }
   return jobId;
 };
 

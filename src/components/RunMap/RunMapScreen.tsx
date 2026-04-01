@@ -4,7 +4,7 @@ import type { BranchPreview, GameProgress, TileType } from '../../types/run';
 import type { Card } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { getEffectiveMaxMental } from '../../utils/mentalLimits';
-import { getMapBackground } from '../../data/mapBackgrounds';
+import { getMapBackgroundForJob } from '../../data/mapBackgrounds';
 import { TILE_LABELS } from '../../data/runData';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
@@ -236,7 +236,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
 
   const noop = () => {};
   const sortedDeck = [...progress.deck].sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
-  const bgUrl = progress.jobId === 'carpenter' ? getMapBackground(progress.currentArea) : null;
+  const bgUrl = getMapBackgroundForJob(progress.jobId, progress.currentArea);
 
   return (
     <main

@@ -103,7 +103,7 @@ export const calculateCardDamage = (
   }
 
   if (card.id === 'mystery_pot') {
-    damage = 15 + Math.floor(Math.random() * 16);
+    damage = 10 + Math.floor(Math.random() * 16);
   }
 
   if (card.type === 'attack') {

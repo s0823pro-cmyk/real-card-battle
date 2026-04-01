@@ -10,6 +10,12 @@ import {
   CARPENTER_STORY,
   hasSeenStory,
 } from '../../data/stories/carpenterStory';
+import {
+  COOK_STORY,
+  COOK_E1_STORY,
+  COOK_E2_STORY,
+  COOK_E3_STORY,
+} from '../../data/stories/cookStory';
 import type { StoryScene } from '../../data/stories/carpenterStory';
 import type { GameProgress } from '../../types/run';
 import type { DevDestination } from '../../hooks/useRunProgress';
@@ -33,9 +39,12 @@ import {
 } from '../../utils/achievementSystem';
 import { loadAchievementCounters } from '../../utils/achievementCounters';
 import { getAdsRemoved, PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
+import { DEBUG_ENEMY_HP1_KEY, getDebugEnemyHp1, setDebugEnemyHp1 } from '../../utils/debugEnemyHp1';
+import { unlockJob } from '../../utils/jobUnlockSystem';
 import { resetTutorial } from '../../utils/tutorialState';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
 import type { AchievementTier } from '../../utils/achievementTypes';
+import type { JobId } from '../../types/game';
 
 const TIER_LABEL: Record<AchievementTier, string> = {
   easy: '（アンコモン×2）',
@@ -64,12 +73,24 @@ interface HomeScreenProps {
 type ModalType = 'howto' | 'credits' | null;
 type HowtoTab = 'glossary' | 'story';
 type StoryJobKey = 'carpenter' | 'cook' | 'unemployed';
+
+/** 実績一覧の職業タブ（「全て」＋職業・共通） */
+type AchievementJobTab = 'all' | JobId | 'common';
+
+const achievementRewardModalJobId = (a: Achievement | null): JobId => {
+  const j = a?.jobId;
+  if (j === 'cook' || j === 'unemployed' || j === 'carpenter') return j;
+  return 'carpenter';
+};
 type StoryEpisodeId =
   | 'carpenter_opening'
   | 'carpenter_e1'
   | 'carpenter_e2'
   | 'carpenter_e3'
-  | 'cook_planned'
+  | 'cook_opening'
+  | 'cook_e1'
+  | 'cook_e2'
+  | 'cook_e3'
   | 'unemployed_planned';
 
 interface FireflyParticle {
@@ -279,6 +300,7 @@ const HomeScreen = ({
   const [showHomeGlossary, setShowHomeGlossary] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [achievementRefreshKey, setAchievementRefreshKey] = useState(0);
+  const [achievementJobTab, setAchievementJobTab] = useState<AchievementJobTab>('all');
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const [activeHowtoTab, setActiveHowtoTab] = useState<HowtoTab>('glossary');
   const [openedHowtoEntry, setOpenedHowtoEntry] = useState<string | null>(null);
@@ -308,6 +330,10 @@ const HomeScreen = ({
   };
 
   const unlockedIds = useMemo(() => getUnlockedAchievementIds(), [achievementRefreshKey]);
+  const filteredAchievements = useMemo(() => {
+    if (achievementJobTab === 'all') return ACHIEVEMENTS;
+    return ACHIEVEMENTS.filter((a) => a.jobId === achievementJobTab);
+  }, [achievementJobTab]);
   const cumulativeDisplayState = useMemo(() => {
     return {
       counters: loadAchievementCounters(),
@@ -340,7 +366,12 @@ const HomeScreen = ({
       jobKey: 'cook',
       jobName: '料理人',
       icon: '🔪',
-      episodes: [{ id: 'cook_planned', chapterName: '実装予定', scenes: [], planned: true }],
+      episodes: [
+        { id: 'cook_opening', chapterName: '序章', scenes: COOK_STORY },
+        { id: 'cook_e1', chapterName: '第1章', scenes: COOK_E1_STORY },
+        { id: 'cook_e2', chapterName: '第2章', scenes: COOK_E2_STORY },
+        { id: 'cook_e3', chapterName: 'エンディング', scenes: COOK_E3_STORY },
+      ],
     },
     {
       jobKey: 'unemployed',
@@ -400,6 +431,7 @@ const HomeScreen = ({
   const [openSettingsSection, setOpenSettingsSection] = useState<string | null>(null);
   const [isAdFree, setIsAdFree] = useState(() => getAdsRemoved());
   const [iapBusy, setIapBusy] = useState(false);
+  const [debugEnemyHp1, setDebugEnemyHp1Local] = useState(() => getDebugEnemyHp1());
 
   const toggleSettingsSection = (section: string) => {
     setOpenSettingsSection((prev) => (prev === section ? null : section));
@@ -672,11 +704,14 @@ const HomeScreen = ({
                   /** 課金・広告削除（real-card-battle:ads-removed）は意図的に除外 */
                   const keysToDelete = [
                     PENDING_DEFEAT_INTERSTITIAL_KEY,
+                    DEBUG_ENEMY_HP1_KEY,
                     'real-card-battle:save-data',
                     'jobless_battle_save',
                     'jobless_enemy_records',
                     'jobless_enemy_defeat_counts',
                     'real-card-battle:unlocked-card-names',
+                    'real-card-battle:unlocked-jobs',
+                    'real-card-battle:job-unlock-seen-cook',
                     'real-card-battle:tutorial-seen',
                     'story_seen_carpenter',
                     'story_seen_carpenter_e1',
@@ -857,6 +892,20 @@ const HomeScreen = ({
             <button type="button" className="btn-dev" onClick={() => onDevAddExpansionCards?.()}>
               拡張カード全追加（×2）
             </button>
+            <button
+              type="button"
+              className="btn-dev"
+              onClick={() => {
+                const next = !debugEnemyHp1;
+                setDebugEnemyHp1(next);
+                setDebugEnemyHp1Local(next);
+              }}
+            >
+              敵HP1 {debugEnemyHp1 ? 'ON' : 'OFF'}
+            </button>
+            <button type="button" className="btn-dev" onClick={() => unlockJob('cook')}>
+              (料理人解放)
+            </button>
           </div>
         </div>
       )}
@@ -937,8 +986,30 @@ const HomeScreen = ({
                 </button>
               </div>
             )}
+            <div className="zukan-job-tabs records-page-achievement-job-tabs">
+              {(
+                [
+                  { id: 'all' as const, label: '全て' },
+                  { id: 'carpenter' as const, label: '大工🔨' },
+                  { id: 'cook' as const, label: '料理人🔪' },
+                  { id: 'common' as const, label: '共通⭐' },
+                ] satisfies { id: AchievementJobTab; label: string }[]
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`zukan-job-tab ${achievementJobTab === tab.id ? 'zukan-job-tab--active' : ''}`}
+                  onClick={() => {
+                    setAchievementJobTab(tab.id);
+                    setSelectedAchievement(null);
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
             <div className="achievement-list">
-              {ACHIEVEMENTS.map((a) => {
+              {filteredAchievements.map((a) => {
                 const isUnlocked = unlockedIds.has(a.id);
                 return (
                   <button
@@ -974,7 +1045,7 @@ const HomeScreen = ({
           <AchievementRewardModal
             selected={selectedAchievement}
             onClose={() => setSelectedAchievement(null)}
-            jobId="carpenter"
+            jobId={achievementRewardModalJobId(selectedAchievement)}
           />
         </div>
       </main>

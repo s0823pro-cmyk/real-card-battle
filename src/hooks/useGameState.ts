@@ -6,6 +6,7 @@ import { applyOneToolSlotToPlayer, useBattleLogic } from './useBattleLogic';
 import { clearBattleState } from '../utils/battleSave';
 import { clearSavedProgress } from './useRunProgress';
 import { getAdsRemoved, setPendingDefeatInterstitial } from '../utils/adsRemoved';
+import { getDebugEnemyHp1 } from '../utils/debugEnemyHp1';
 import type { CardResolveResult } from './useBattleLogic';
 import { useEnemyAI } from './useEnemyAI';
 import type { Card, EnemyIntent, EnemyIntentType, GameState, JobId, PlayerState } from '../types/game';
@@ -337,7 +338,13 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
       cookingGauge: 0,
       statusEffects: [...basePlayer.statusEffects],
     }),
-    enemies: encounter.map((enemy) => ({ ...enemy, statusEffects: [...enemy.statusEffects] })),
+    enemies: encounter.map((enemy) => {
+      const e = { ...enemy, statusEffects: [...enemy.statusEffects] };
+      if (import.meta.env.DEV && getDebugEnemyHp1()) {
+        return { ...e, maxHp: 1, currentHp: 1 };
+      }
+      return e;
+    }),
     executingIndex: -1,
     toolSlots: [],
     battleCardRevertMap: {},

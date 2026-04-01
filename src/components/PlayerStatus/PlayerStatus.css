@@ -392,7 +392,48 @@
 
 .cooking-gauge {
   color: #ff9f43;
+}
+
+/* 下段の調理ゲージ：足場（.scaffold--sub-row）と同じレイアウト */
+.cooking-gauge--sub-row {
+  position: relative;
+  left: var(--scaffold-sub-visual-right);
+  top: var(--block-row-sub-nudge-y);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+  white-space: nowrap;
+  font-size: clamp(13.8px, 2.55vw, 16.2px);
+  font-weight: 700;
+  font-family: var(--font-display);
+  line-height: 1;
+  gap: 0;
+  font-variant-numeric: tabular-nums;
+  color: #ff9f43;
   animation: cooking-bounce 0.3s ease-out;
+}
+
+.cooking-gauge--sub-row .cooking-gauge-icon {
+  width: var(--status-stat-icon-width);
+  height: var(--status-stat-icon-width);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+.cooking-gauge--sub-row .cooking-gauge-value {
+  font-size: inherit;
+  font-weight: inherit;
+  margin-left: var(--status-stat-value-inset);
+  display: inline-block;
+  width: 4ch;
+  text-align: left;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .hungry-state {

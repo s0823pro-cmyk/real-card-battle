@@ -45,6 +45,12 @@ import bgBattleArea3 from '../../assets/backgrounds/bg_battle_area3.png';
 import bgBossArea1 from '../../assets/backgrounds/bg_boss_area1.png';
 import bgBossArea2 from '../../assets/backgrounds/bg_boss_area2.png';
 import bgBossArea3 from '../../assets/backgrounds/bg_boss_area3.png';
+import bgBattleCookArea1 from '../../assets/backgrounds/bg_battle_cook_area1.png';
+import bgBattleCookArea2 from '../../assets/backgrounds/bg_battle_cook_area2.png';
+import bgBattleCookArea3 from '../../assets/backgrounds/bg_battle_cook_area3.png';
+import bgBossCookArea1 from '../../assets/backgrounds/bg_boss_cook_area1.png';
+import bgBossCookArea2 from '../../assets/backgrounds/bg_boss_cook_area2.png';
+import bgBossCookArea3 from '../../assets/backgrounds/bg_boss_cook_area3.png';
 import '../Enemy/Enemy.css';
 import '../Effects/Effects.css';
 import '../PlayerStatus/PlayerStatus.css';
@@ -263,6 +269,17 @@ const BattleScreen = ({
   const battleBackgroundSrc = useMemo(() => {
     const area = Math.min(3, Math.max(1, currentArea));
     const isBossBattle = setup?.kind === 'boss';
+    const jid = gameState.player.jobId;
+    if (jid === 'cook') {
+      if (isBossBattle) {
+        if (area === 1) return bgBossCookArea1;
+        if (area === 2) return bgBossCookArea2;
+        return bgBossCookArea3;
+      }
+      if (area === 1) return bgBattleCookArea1;
+      if (area === 2) return bgBattleCookArea2;
+      return bgBattleCookArea3;
+    }
     if (isBossBattle) {
       if (area === 1) return bgBossArea1;
       if (area === 2) return bgBossArea2;
@@ -271,7 +288,7 @@ const BattleScreen = ({
     if (area === 1) return bgBattleArea1;
     if (area === 2) return bgBattleArea2;
     return bgBattleArea3;
-  }, [currentArea, setup?.kind]);
+  }, [currentArea, setup?.kind, gameState.player.jobId]);
 
   const enemyAreaRef = useRef<HTMLElement | null>(null);
   const timebarRowRef = useRef<HTMLDivElement | null>(null);
@@ -339,6 +356,7 @@ const BattleScreen = ({
     if (gameState.phase === 'victory' || gameState.phase === 'defeat') {
       setShowBattleSettings(false);
       setBattleTutorialIndex(null);
+      markTutorialSeen('battle');
     }
   }, [gameState.phase]);
 

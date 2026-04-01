@@ -24,6 +24,12 @@ import {
   CARPENTER_E3_STORY,
   hasSeenStory,
 } from '../../data/stories/carpenterStory';
+import {
+  COOK_STORY,
+  COOK_E1_STORY,
+  COOK_E2_STORY,
+  COOK_E3_STORY,
+} from '../../data/stories/cookStory';
 import type { StoryScene } from '../../data/stories/carpenterStory';
 import { StoryScreen } from '../StoryScreen/StoryScreen';
 import { ENEMY_ZUKAN_DATA } from '../../data/enemyZukanData';
@@ -34,7 +40,7 @@ import { upgradeCardByJobId } from '../../utils/cardUpgrade';
 import './ZukanScreen.css';
 
 type MainTab = 'cards' | 'stories' | 'enemies';
-type JobTab = 'carpenter' | 'neutral';
+type JobTab = 'carpenter' | 'cook' | 'neutral';
 type RarityFilter = 'all' | CardRarity;
 type TypeFilter = 'all' | Extract<CardType, 'attack' | 'skill' | 'power' | 'tool'>;
 type EnemyTypeFilter = 'all' | 'normal' | 'elite' | 'boss';
@@ -52,10 +58,15 @@ const STORY_LIST: StoryEntry[] = [
   { storyId: 'carpenter_e1',      name: '大工 - 第1章',        icon: '🔨', scenes: CARPENTER_E1_STORY },
   { storyId: 'carpenter_e2',      name: '大工 - 第2章',        icon: '🔨', scenes: CARPENTER_E2_STORY },
   { storyId: 'carpenter_e3',      name: '大工 - エンディング', icon: '🔨', scenes: CARPENTER_E3_STORY },
+  { storyId: 'cook_opening',      name: '料理人 - 序章',       icon: '🔪', scenes: COOK_STORY },
+  { storyId: 'cook_e1',           name: '料理人 - 第1章',      icon: '🔪', scenes: COOK_E1_STORY },
+  { storyId: 'cook_e2',           name: '料理人 - 第2章',      icon: '🔪', scenes: COOK_E2_STORY },
+  { storyId: 'cook_e3',           name: '料理人 - エンディング', icon: '🔪', scenes: COOK_E3_STORY },
 ];
 
 const JOB_TABS: { id: JobTab; label: string; icon: string }[] = [
   { id: 'carpenter', label: '大工', icon: '🔨' },
+  { id: 'cook', label: '料理人', icon: '🔪' },
   { id: 'neutral', label: '無色', icon: '⬜' },
 ];
 
@@ -87,6 +98,7 @@ const ZUKAN_CARD_POOLS = {
 
 const ALL_CARDS: Record<JobTab, Card[]> = {
   carpenter: ZUKAN_CARD_POOLS.carpenter,
+  cook: ZUKAN_CARD_POOLS.cook,
   neutral: ZUKAN_CARD_POOLS.neutral,
 };
 

@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { getAdsRemoved } from '../../utils/adsRemoved';
+import { getDebugEnemyHp1, setDebugEnemyHp1 } from '../../utils/debugEnemyHp1';
+import { unlockJob } from '../../utils/jobUnlockSystem';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
 import { useAudioContext } from '../../contexts/AudioContext';
 import type { DevDestination } from '../../hooks/useRunProgress';
@@ -32,6 +34,7 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [isAdFree, setIsAdFree] = useState(() => getAdsRemoved());
   const [iapBusy, setIapBusy] = useState(false);
+  const [debugEnemyHp1, setDebugEnemyHp1Local] = useState(() => getDebugEnemyHp1());
 
   const toggleSection = (section: string) => {
     setOpenSection((prev) => (prev === section ? null : section));
@@ -295,6 +298,20 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_expansion_x2')}>
                 初期＋拡張バトル開始
+              </button>
+              <button
+                type="button"
+                className="btn-dev"
+                onClick={() => {
+                  const next = !debugEnemyHp1;
+                  setDebugEnemyHp1(next);
+                  setDebugEnemyHp1Local(next);
+                }}
+              >
+                敵HP1 {debugEnemyHp1 ? 'ON' : 'OFF'}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => unlockJob('cook')}>
+                (料理人解放)
               </button>
             </div>
           </div>

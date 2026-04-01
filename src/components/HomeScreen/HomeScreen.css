@@ -1298,6 +1298,35 @@
   transform: scale(0.99);
 }
 
+/* 実績ページ職業タブ（図鑑 .zukan-job-tabs と同じ見た目） */
+.records-page .records-page-achievement-job-tabs.zukan-job-tabs {
+  margin-bottom: 12px;
+}
+
+.records-page .zukan-job-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.records-page .zukan-job-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: #8b949e;
+  padding: max(6px, calc(10px - var(--overlay-screen-nudge-up, 0px))) 4px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease;
+}
+
+.records-page .zukan-job-tab--active {
+  color: #e6edf3;
+  border-bottom-color: #f0b429;
+}
+
 .credits-content {
   display: flex;
   flex-direction: column;

@@ -1,8 +1,17 @@
 import './GlossaryModal.css';
+import { ICONS } from '../../assets/icons';
 
 type GlossaryEntry =
   | { type: 'heading'; term: string }
   | { type: 'item'; term: string; desc: string };
+
+const BADGE_ICONS: Record<string, string> = {
+  '脆弱（アイコン表示）': ICONS.badgeVulnerable,
+  '弱体（アイコン表示）': ICONS.badgeWeak,
+  '炎上（アイコン表示）': ICONS.badgeBurn,
+  '攻撃デバフ（アイコン表示）': ICONS.badgeAttackDown,
+  '強化（敵のバフ表示）': ICONS.badgeStrength,
+};
 
 const GLOSSARY_ITEMS: GlossaryEntry[] = [
   { type: 'heading', term: '基本システム' },
@@ -258,7 +267,16 @@ export const GlossaryModal = ({ onClose }: Props) => (
           }
           return (
             <div key={`${item.term}-${idx}`} className="glossary-item">
-              <p className="glossary-term">{item.term}</p>
+              <p className="glossary-term">
+                {BADGE_ICONS[item.term] && (
+                  <img
+                    src={BADGE_ICONS[item.term]}
+                    alt=""
+                    style={{ height: '18px', width: '18px', verticalAlign: 'middle', marginRight: '4px' }}
+                  />
+                )}
+                {item.term}
+              </p>
               <p className="glossary-desc">{item.desc}</p>
             </div>
           );

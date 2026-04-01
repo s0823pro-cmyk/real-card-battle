@@ -38,6 +38,7 @@ import {
   hasSeenStory,
   markStorySeen,
 } from './data/stories/carpenterStory';
+import { COOK_STORY, COOK_E1_STORY, COOK_E2_STORY, COOK_E3_STORY } from './data/stories/cookStory';
 import type { BossReward } from './data/bossRewards';
 import type { StoryScene } from './data/stories/carpenterStory';
 import { loadBattleState, clearBattleState, restoreGameState } from './utils/battleSave';
@@ -324,21 +325,38 @@ function App() {
         setShowStory(true);
         return;
       }
+      if (jobId === 'cook' && !hasSeenStory('cook_opening')) {
+        setPendingJobId(jobId);
+        setShowStory(true);
+        return;
+      }
       startRunFromJobSelect(jobId);
     }, 400, 500);
   };
 
   const handleStoryComplete = () => {
-    markStorySeen('carpenter');
-    setShowStory(false);
     const nextJobId = pendingJobId ?? 'carpenter';
+    markStorySeen(nextJobId === 'cook' ? 'cook' : 'carpenter');
+    setShowStory(false);
     setPendingJobId(null);
     startRunFromJobSelect(nextJobId);
   };
 
   const showAreaStory = (area: 1 | 2 | 3, onDone: () => void) => {
-    const storyId = `carpenter_e${area}`;
-    const scenes = area === 1 ? CARPENTER_E1_STORY : area === 2 ? CARPENTER_E2_STORY : CARPENTER_E3_STORY;
+    const jid = state.jobId;
+    const storyId = jid === 'cook' ? `cook_e${area}` : `carpenter_e${area}`;
+    const scenes =
+      jid === 'cook'
+        ? area === 1
+          ? COOK_E1_STORY
+          : area === 2
+            ? COOK_E2_STORY
+            : COOK_E3_STORY
+        : area === 1
+          ? CARPENTER_E1_STORY
+          : area === 2
+            ? CARPENTER_E2_STORY
+            : CARPENTER_E3_STORY;
     pendingAreaTransitionRef.current = onDone;
     setCurrentStoryId(storyId);
     setCurrentStoryScenes(scenes);
@@ -367,9 +385,9 @@ function App() {
       setShowBossReward(true);
     };
 
-    // エリアクリア報酬はストーリー視聴後（大工 e1/e2 初回のみストーリー→報酬の順）
-    if (state.jobId === 'carpenter' && area >= 1 && area <= 2) {
-      const storyId = `carpenter_e${area}`;
+    // エリアクリア報酬はストーリー視聴後（大工・料理人 e1/e2 初回のみストーリー→報酬の順）
+    if ((state.jobId === 'carpenter' || state.jobId === 'cook') && area >= 1 && area <= 2) {
+      const storyId = state.jobId === 'cook' ? `cook_e${area}` : `carpenter_e${area}`;
       if (!hasSeenStory(storyId)) {
         showAreaStory(area as 1 | 2, openBossReward);
         return;
@@ -384,7 +402,7 @@ function App() {
     // ランクリア（onBattleEnd が実際に nextScreen: victory を積んだ）ときだけ e3 ストーリー。App の currentArea だけではエリア1・2ボス後に誤被せしうる
     if (pendingArea3RunVictoryStoryRef.current) {
       pendingArea3RunVictoryStoryRef.current = false;
-      if (state.jobId === 'carpenter') {
+      if (state.jobId === 'carpenter' || state.jobId === 'cook') {
         showAreaStory(3, () => {});
       }
     }
@@ -599,7 +617,9 @@ function App() {
             cardsAcquired={state.cardsAcquired}
             newAchievements={state.lastBattleNewAchievements}
             adsRemoved={getAdsRemoved()}
-            suppressNativeBanner={showStory && currentStoryId === 'carpenter_e3'}
+            suppressNativeBanner={
+              showStory && (currentStoryId === 'carpenter_e3' || currentStoryId === 'cook_e3')
+            }
             onHome={goHomeWithInterstitial}
           />
         );
@@ -670,7 +690,7 @@ function App() {
       )}
       {showStory && state.currentScreen === 'job_select' && !currentStoryId && (
         <StoryScreen
-          scenes={CARPENTER_STORY}
+          scenes={pendingJobId === 'cook' ? COOK_STORY : CARPENTER_STORY}
           onComplete={handleStoryComplete}
           currentArea={state.currentArea}
         />
@@ -681,7 +701,11 @@ function App() {
           onComplete={handleAreaStoryComplete}
           showStartButton={false}
           storyBgmArea={
-            currentStoryId === 'carpenter_e1' ? 2 : currentStoryId === 'carpenter_e2' ? 3 : 3
+            currentStoryId === 'carpenter_e1' || currentStoryId === 'cook_e1'
+              ? 2
+              : currentStoryId === 'carpenter_e2' || currentStoryId === 'cook_e2'
+                ? 3
+                : 3
           }
         />
       )}

@@ -947,7 +947,7 @@ export const useRunProgress = () => {
       return;
     }
     if (tile.type === 'shrine') {
-      recordShrineVisitForAchievements();
+      recordShrineVisitForAchievements(stateRef.current.jobId);
       dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'shrine' });
       dispatch({ type: 'set_screen', screen: 'shrine' });
       return;
@@ -986,7 +986,7 @@ export const useRunProgress = () => {
       return;
     }
     if (tile.type === 'hotel') {
-      recordHotelVisitForAchievements();
+      recordHotelVisitForAchievements(stateRef.current.jobId);
       dispatch({ type: 'set_hotel_item_received', used: false });
       dispatch({ type: 'set_screen', screen: 'hotel' });
       return;
@@ -1008,7 +1008,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_dice', value, rolling: false });
     await wait(500);
     dispatch({ type: 'set_dice', value: null, rolling: false });
-    recordDiceRollForAchievements();
+    recordDiceRollForAchievements(stateRef.current.jobId);
     dispatch({ type: 'set_screen', screen: 'map' });
     const after = stateRef.current;
     const move = movePlayerBySteps(after.board, after.currentTileId, value, after.selectedBranchTileId);
@@ -1111,7 +1111,7 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_deck', deck: nextState.deck });
       dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
       dispatch({ type: 'set_event', event: null });
-      recordEventResolvedForAchievements();
+      recordEventResolvedForAchievements(stateRef.current.jobId);
       dispatch({ type: 'set_screen', screen: 'map' });
       return;
     }
@@ -1131,7 +1131,7 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_deck', deck: nextState.deck });
       dispatch({ type: 'set_omamoris', omamoris: nextState.omamoris });
       dispatch({ type: 'set_event', event: null });
-      recordEventResolvedForAchievements();
+      recordEventResolvedForAchievements(stateRef.current.jobId);
       dispatch({ type: 'set_screen', screen: 'map' });
       return;
     }
@@ -1223,7 +1223,7 @@ export const useRunProgress = () => {
       value: nextState.pendingItemReplacement ?? null,
     });
     dispatch({ type: 'set_event', event: null });
-    recordEventResolvedForAchievements();
+    recordEventResolvedForAchievements(stateRef.current.jobId);
     if (gainedFromEvent.length > 0) {
       dispatch({
         type: 'show_event_card_preview',
@@ -1379,7 +1379,7 @@ export const useRunProgress = () => {
       ),
     });
     if (shop.type === 'card') {
-      recordShopCardBuyForAchievements();
+      recordShopCardBuyForAchievements(stateRef.current.jobId);
     }
   };
 

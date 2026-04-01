@@ -9,8 +9,8 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   },
   'エプロン防御': {
     name: 'エプロン防御+',
-    block: 8,
-    description: '8ブロック',
+    block: 7,
+    description: '7ブロック',
   },
   '玉ねぎを切る': {
     name: '玉ねぎを切る+',
@@ -20,9 +20,9 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   },
   'フランベ': {
     name: 'フランベ+',
-    damage: 10,
+    damage: 6,
     cookingMultiplier: 4,
-    description: '10ダメージ+調理×4',
+    description: '6ダメージ+調理×4。使用後調理ゲージ0',
   },
   '仕込み': {
     name: '仕込み+',
@@ -37,8 +37,8 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   // コモン
   'にんにく投げ': {
     name: 'にんにく投げ+',
-    damage: 7,
-    description: '7ダメージ、弱体2付与、調理+1',
+    damage: 5,
+    description: '5ダメージ、弱体2付与、調理+1',
     effects: [
       { type: 'weak', value: 2 },
       { type: 'cooking_gauge', value: 1 },
@@ -46,20 +46,20 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   },
   '鉄のフライパン': {
     name: '鉄のフライパン+',
-    damage: 12,
-    description: '12ダメージ',
+    damage: 10,
+    description: '10ダメージ',
   },
   'まな板ガード': {
     name: 'まな板ガード+',
-    block: 8,
-    description: '8ブロック、次の食材+5ダメージ',
+    block: 7,
+    description: '7ブロック、次の食材+5ダメージ',
     effects: [{ type: 'next_ingredient_bonus', value: 5 }],
   },
   '肉を叩く': {
     name: '肉を叩く+',
-    damage: 10,
+    damage: 8,
     timeCost: 1,
-    description: '10ダメージ、調理+2（所要時間1秒）',
+    description: '8ダメージ、調理+2（所要時間1秒）',
     effects: [{ type: 'cooking_gauge', value: 2 }],
   },
   '塩コショウ': {
@@ -73,9 +73,9 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   '包丁研ぎ': {
     name: '包丁研ぎ+',
     timeCost: 0,
-    description: '次のアタックカード+8ダメージ、調理+1（所要時間0秒）',
+    description: '次のアタックカード+6ダメージ、調理+1（所要時間0秒）',
     effects: [
-      { type: 'next_attack_damage_boost', value: 8 },
+      { type: 'next_attack_damage_boost', value: 6 },
       { type: 'cooking_gauge', value: 1 },
     ],
   },
@@ -101,17 +101,17 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   },
   '寝かせた生地': {
     name: '寝かせた生地+',
-    damage: 10,
+    damage: 8,
     reserveBonus: {
-      damageMultiplier: 2.2,
+      damageMultiplier: 2.0,
       extraEffects: [{ type: 'cooking_gauge', value: 3 }],
     },
-    description: '10ダメージ。温存時：22ダメージ、調理+3',
+    description: '8ダメージ。温存時：16ダメージ、調理+3',
   },
   '出前配達': {
     name: '出前配達+',
-    damage: 5,
-    description: 'ランダム敵に5ダメージ×4回',
+    damage: 4,
+    description: 'ランダム敵に4ダメージ×4回',
     effects: [{ type: 'hit_count', value: 4 }],
   },
   '煮込み': {
@@ -159,13 +159,13 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   '闇鍋': {
     name: '闇鍋+',
     timeCost: 2,
-    description: 'ランダムで20〜40ダメージ（所要時間2秒）',
+    description: 'ランダムで10〜25ダメージ（所要時間2秒）',
   },
   '炎のフランベ': {
     name: '炎のフランベ+',
-    damage: 15,
+    damage: 12,
     timeCost: 3,
     cookingMultiplier: 5,
-    description: '15ダメージ+調理×5。全体攻撃（所要時間3秒）',
+    description: '12ダメージ+調理×5。全体攻撃（所要時間3秒）',
   },
 };

@@ -13,6 +13,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'はじめてバトルに勝利する',
     icon: '🔨',
     tier: 'easy',
+    jobId: 'carpenter',
     rewardCardIds: ['focus', 'guts'],
   },
   {
@@ -21,6 +22,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '累計3回バトルに敗北する',
     icon: '💀',
     tier: 'easy',
+    jobId: 'carpenter',
     rewardCardIds: ['comeback', 'honki_mode'],
   },
   {
@@ -29,6 +31,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'はじめてエリート戦に勝利する',
     icon: '👹',
     tier: 'easy',
+    jobId: 'carpenter',
     rewardCardIds: ['tetsu_ishi', 'yomiai'],
   },
   {
@@ -37,6 +40,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '累計10回バトルに勝利する',
     icon: '⚔️',
     tier: 'easy',
+    jobId: 'carpenter',
     rewardCardIds: ['counter_kamae', 'shizuka_kakugo'],
   },
   {
@@ -45,6 +49,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'サイコロを累計25回振る',
     icon: '🎲',
     tier: 'easy',
+    jobId: 'carpenter',
     rewardCardIds: ['kanazuchi_tap', 'sumitsubo_makijaku'],
   },
   {
@@ -53,6 +58,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '神社マスを累計5回訪れる',
     icon: '⛩️',
     tier: 'easy',
+    jobId: 'carpenter',
     rewardCardIds: ['dodge', 'first_aid'],
   },
   {
@@ -61,6 +67,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '質屋でカードを累計8回購入する',
     icon: '🏪',
     tier: 'easy',
+    jobId: 'carpenter',
     rewardCardIds: ['iron_wall', 'reinforced_concrete'],
   },
   {
@@ -69,6 +76,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '累計でゴールドを500以上獲得する（バトル報酬など）',
     icon: '💰',
     tier: 'easy',
+    jobId: 'carpenter',
     rewardCardIds: ['power_drill', 'quick_hammer'],
   },
   // --- medium（アンコモン+レア）---
@@ -78,6 +86,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'エリア1のエリアボスに勝利する',
     icon: '🏗️',
     tier: 'medium',
+    jobId: 'carpenter',
     rewardCardIds: ['shizuka_shoheki', 'ridgepole'],
   },
   {
@@ -86,6 +95,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '1バトルで足場を10以上積んだ状態で勝利する',
     icon: '🏗️',
     tier: 'medium',
+    jobId: 'carpenter',
     rewardCardIds: ['tora_shisen', 'master_strike'],
   },
   {
@@ -94,6 +104,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'HPが10以下の状態で敵にとどめを刺す',
     icon: '😤',
     tier: 'medium',
+    jobId: 'carpenter',
     rewardCardIds: ['saikido', 'miracle'],
   },
   {
@@ -102,6 +113,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'イベントを累計10回完了する',
     icon: '❓',
     tier: 'medium',
+    jobId: 'carpenter',
     rewardCardIds: ['kensei', 'hidden_power'],
   },
   {
@@ -110,6 +122,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'ホテルマスを累計5回訪れる',
     icon: '🏨',
     tier: 'medium',
+    jobId: 'carpenter',
     rewardCardIds: ['defense_wall', 'temple_carpenter'],
   },
   {
@@ -118,6 +131,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'エリート戦に累計5回勝利する',
     icon: '⚡',
     tier: 'medium',
+    jobId: 'carpenter',
     rewardCardIds: ['mega_nail', 'shinshin_choritu'],
   },
   // --- hard（レア×2）---
@@ -127,6 +141,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'エリア2のエリアボスに勝利する',
     icon: '🏆',
     tier: 'hard',
+    jobId: 'carpenter',
     rewardCardIds: ['renovation', 'niju_ashiba'],
   },
   {
@@ -135,6 +150,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'エリア3のエリアボスに勝利する（ゲームクリア）',
     icon: '👑',
     tier: 'hard',
+    jobId: 'carpenter',
     rewardCardIds: ['ishizue_ichigeki', 'cho_mabashira'],
   },
   {
@@ -143,6 +159,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'メンタルが0以下の状態でバトルに勝利する',
     icon: '🌟',
     tier: 'hard',
+    jobId: 'carpenter',
     rewardCardIds: ['last_word', 'gyakkyou_sainou'],
   },
   {
@@ -151,6 +168,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '累計25回バトルに勝利する',
     icon: '🛡️',
     tier: 'hard',
+    jobId: 'carpenter',
     rewardCardIds: ['koryo_setsugo', 'meisho_nomi'],
   },
   {
@@ -159,6 +177,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: '累計でゴールドを2000以上獲得する',
     icon: '💎',
     tier: 'hard',
+    jobId: 'carpenter',
     /** `zenmen_kaiso`＝カード「全面改装」。報酬プールは `CARPENTER_RARE_POOL`（実績ロック除外後）＋解放分のみ */
     rewardCardIds: ['tenken_sha', 'zenmen_kaiso'],
   },
@@ -168,6 +187,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'サイコロを累計80回振る',
     icon: '🎲',
     tier: 'hard',
+    jobId: 'carpenter',
     rewardCardIds: ['yane_fuki', 'toshi_bashira'],
   },
 ];

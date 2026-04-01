@@ -163,13 +163,6 @@ const PlayerStatus = ({
             )}
           </div>
           <div className="player-info-row-icons">
-            {player.jobId === 'cook' && (
-              <Tooltip tooltipKey="cooking">
-                <span key={`cook-${player.cookingGauge}`} className="cooking-gauge scaffold-bounce">
-                  🍳 {player.cookingGauge}
-                </span>
-              </Tooltip>
-            )}
             {player.jobId === 'unemployed' && (
               <Tooltip tooltipKey="hungry">
                 <span className={unemployedClass}>{unemployedLabel}</span>
@@ -204,6 +197,19 @@ const PlayerStatus = ({
               >
                 {previewScaffold != null ? previewScaffold : player.scaffold}
               </span>
+            </span>
+          </Tooltip>
+        )}
+        {player.jobId === 'cook' && (
+          <Tooltip tooltipKey="cooking">
+            <span
+              key={`cook-${player.cookingGauge}`}
+              className="cooking-gauge cooking-gauge--sub-row scaffold-bounce"
+            >
+              <span className="cooking-gauge-icon" aria-hidden>
+                🍳
+              </span>
+              <span className="cooking-gauge-value">{player.cookingGauge}</span>
             </span>
           </Tooltip>
         )}
