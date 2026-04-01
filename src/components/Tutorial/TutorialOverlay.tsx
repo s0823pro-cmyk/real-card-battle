@@ -53,8 +53,8 @@ const STEP_CONFIG: Record<
     highlightSelector: '.enemy-area',
     /** ハイライトをやや下に（見た目の敵エリアに合わせる） */
     spotlightTranslateY: 48,
-    /** スポットライトを縦に少しだけ広げる */
-    spotlightExpandY: 18,
+    /** スポットライトの縦拡張（アタックは枠をややタイトに） */
+    spotlightExpandY: 6,
   },
   battle_skill: {
     message: 'スキルカード：タイムバーに\nドラッグして発動します',
@@ -62,13 +62,22 @@ const STEP_CONFIG: Record<
   },
 };
 
+/** 中央吹き出し（.tutorial-top-panel--center の transform 前提）と揃えた縦位置 */
+const TUTORIAL_PANEL_CENTER_OFFSET_PX = 120;
+
+/** 敵スポット下端〜吹き出し上端の中点から、ガイドを少し上へ */
+const ATTACK_ARROW_NUDGE_UP_PX = 52;
+
+const ATTACK_GUIDE_SVG_WIDTH = 22;
+const ATTACK_GUIDE_SVG_HEIGHT = 44;
+
 /** ハイライト上＋中心 X：斜め回転はせず横（←→）か縦（↑↓）のみ（温存・装備・パワー・タイムバーで共通） */
 function slotHighlightArrowProps(rect: { top: number; left: number; width: number; height: number }): {
   glyph: string;
   style: CSSProperties;
 } {
   const vw = window.innerWidth;
-  const panelCenterY = window.innerHeight / 2 - 36;
+  const panelCenterY = window.innerHeight / 2 - TUTORIAL_PANEL_CENTER_OFFSET_PX;
   const bubbleBottomY = panelCenterY + 44;
   const centerX = vw / 2;
   const slotCx = rect.left + rect.width / 2;
@@ -109,12 +118,8 @@ export const TutorialOverlay = ({ step, onNext, onSkip }: TutorialOverlayProps) 
     width: number;
     height: number;
   } | null>(null);
-  /** アタック：吹き出しを実測して ↑ の位置を決める（数式だとスポット側クランプで動かない問題の回避） */
-  const [attackGuideLayout, setAttackGuideLayout] = useState<{
-    cx: number;
-    startY: number;
-    endY: number;
-  } | null>(null);
+  /** アタック：固定サイズ SVG の縦中心（画面中央 X は CSS で 50%） */
+  const [attackGuideAnchorY, setAttackGuideAnchorY] = useState<number | null>(null);
 
   const updateRect = useCallback(() => {
     const { highlightSelector } = STEP_CONFIG[step];
@@ -138,33 +143,21 @@ export const TutorialOverlay = ({ step, onNext, onSkip }: TutorialOverlayProps) 
 
   useLayoutEffect(() => {
     if (step !== 'battle_attack' || !rect) {
-      setAttackGuideLayout(null);
+      setAttackGuideAnchorY(null);
       return;
     }
     const measure = () => {
       const bubble = document.querySelector(
-        '.tutorial-top-panel.tutorial-top-panel--center .tutorial-text-bubble',
+        '.tutorial-top-panel.tutorial-top-panel--attack .tutorial-text-bubble',
       );
       if (!bubble) {
-        setAttackGuideLayout(null);
+        setAttackGuideAnchorY(null);
         return;
       }
       const br = bubble.getBoundingClientRect();
       const spotlightBottom = rect.top + rect.height + spotlightExpandY + spotlightTranslateY;
-      const endY = spotlightBottom + 22;
-      let startY = br.top - 120;
-      if (endY < startY + 40) startY = endY - 48;
-      const height = endY - startY;
-      /* 矢印32px + 縦線のため最低限の高さ */
-      if (height < 36) {
-        setAttackGuideLayout(null);
-        return;
-      }
-      setAttackGuideLayout({
-        cx: br.left + br.width / 2,
-        startY,
-        endY,
-      });
+      const anchorY = (spotlightBottom + br.top) / 2 - ATTACK_ARROW_NUDGE_UP_PX;
+      setAttackGuideAnchorY(anchorY);
     };
     measure();
     const raf = requestAnimationFrame(measure);
@@ -226,7 +219,7 @@ export const TutorialOverlay = ({ step, onNext, onSkip }: TutorialOverlayProps) 
           step === 'battle_skill'
             ? ' tutorial-top-panel--center'
             : ''
-        }`}
+        }${step === 'battle_attack' ? ' tutorial-top-panel--attack' : ''}`}
       >
         <div className="tutorial-text-bubble">
           {step === 'job_select' ? (
@@ -257,20 +250,33 @@ export const TutorialOverlay = ({ step, onNext, onSkip }: TutorialOverlayProps) 
           <span className="tutorial-arrow-reserve__bob">{slotHighlightArrow.glyph}</span>
         </div>
       ) : null}
-      {attackGuideLayout ? (
+      {attackGuideAnchorY !== null ? (
         <div
           className="tutorial-attack-guide"
           style={{
-            left: attackGuideLayout.cx,
-            top: attackGuideLayout.startY,
-            height: attackGuideLayout.endY - attackGuideLayout.startY,
+            left: '50%',
+            top: attackGuideAnchorY,
+            width: ATTACK_GUIDE_SVG_WIDTH,
+            height: ATTACK_GUIDE_SVG_HEIGHT,
           }}
           aria-hidden
         >
-          <span className="tutorial-attack-guide__arrowWrap">
-            <span className="tutorial-attack-guide__arrowInner">↑</span>
-          </span>
-          <div className="tutorial-attack-guide__stem" />
+          <svg
+            className="tutorial-attack-guide__svg"
+            width={ATTACK_GUIDE_SVG_WIDTH}
+            height={ATTACK_GUIDE_SVG_HEIGHT}
+            viewBox={`0 0 ${ATTACK_GUIDE_SVG_WIDTH} ${ATTACK_GUIDE_SVG_HEIGHT}`}
+            aria-hidden
+          >
+            <path
+              d="M 11 5 L 5 14 L 17 14 Z M 11 14 L 11 40"
+              fill="none"
+              stroke="#7dd3fc"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
       ) : null}
       <div className="tutorial-actions">
