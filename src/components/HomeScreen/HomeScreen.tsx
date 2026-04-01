@@ -721,7 +721,7 @@ const HomeScreen = ({
                   disabled={iapBusy}
                   onClick={() => void handleIapPurchase(IAP_PRODUCTS.REMOVE_ADS)}
                 >
-                  ¥250
+                  ¥300
                 </button>
               </div>
             )}
@@ -750,7 +750,7 @@ const HomeScreen = ({
                 disabled={iapBusy}
                 onClick={() => void handleIapPurchase(IAP_PRODUCTS.BUNDLE_PACK)}
               >
-                ¥600
+                ¥700
               </button>
             </div>
             <div className="settings-item settings-item--row">
@@ -804,7 +804,7 @@ const HomeScreen = ({
 
       <div className="settings-legal">
         <p className="settings-legal-text">
-          広告削除（¥250）は買い切りです。購入後は同一Apple ID / Google アカウントで無制限にご利用いただけます。
+          広告削除（¥300）は買い切りです。購入後は同一Apple ID / Google アカウントで無制限にご利用いただけます。
         </p>
       </div>
 
