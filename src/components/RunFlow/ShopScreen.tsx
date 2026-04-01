@@ -5,7 +5,7 @@ import { FLOW_BG_SHOP } from '../../data/flowBackgrounds';
 import { getSellPrice } from '../../data/runData';
 import type { Card, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
-import { useAudio } from '../../hooks/useAudio';
+import { useAudioContext } from '../../contexts/AudioContext';
 import CardComponent from '../Hand/CardComponent';
 
 interface Props {
@@ -45,7 +45,7 @@ const ShopScreen = ({
   hasUsedSellThisVisit,
   onClose,
 }: Props) => {
-  const { playSe } = useAudio();
+  const { playSe } = useAudioContext();
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [showCardRemove, setShowCardRemove] = useState(false);
   const [showCardSell, setShowCardSell] = useState(false);

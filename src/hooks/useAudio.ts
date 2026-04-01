@@ -123,6 +123,74 @@ function isBgmSrc(src: string): boolean {
 
 const LOOP_BGM: BgmType[] = ['menu', 'battle', 'boss', 'area1', 'area2', 'area3'];
 
+/** BGM はアプリ全体で 1 つの HTMLAudioElement を共有（二重再生防止） */
+let bgmElement: HTMLAudioElement | null = null;
+let currentBgmType: BgmType = 'none';
+let bgmSuspended = false;
+let bgmSnapBeforeSuspend: BgmType = 'none';
+
+let lifecycleListenerRefCount = 0;
+let lifecycleCleanup: (() => void) | null = null;
+
+function stopBgmPlaybackOnlyModule(): void {
+  if (bgmElement) {
+    bgmElement.pause();
+    bgmElement.currentTime = 0;
+  }
+  currentBgmType = 'none';
+}
+
+function stopBgmModule(): void {
+  bgmSuspended = false;
+  bgmSnapBeforeSuspend = 'none';
+  stopBgmPlaybackOnlyModule();
+}
+
+function playBgmModule(type: BgmType, volume: number, muted: boolean): void {
+  if (type === currentBgmType) return;
+  stopBgmModule();
+  if (type === 'none') return;
+
+  if (!bgmElement) {
+    bgmElement = new Audio();
+  }
+  bgmElement.src = BGM_FILES[type];
+  bgmElement.loop = LOOP_BGM.includes(type);
+  bgmElement.volume = muted ? 0 : volume;
+  const playPromise = bgmElement.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      const retryOnInteraction = () => {
+        void bgmElement?.play().catch(() => {});
+        document.removeEventListener('touchstart', retryOnInteraction);
+      };
+      document.addEventListener('touchstart', retryOnInteraction, { once: true });
+    });
+  }
+  currentBgmType = type;
+}
+
+function suspendForBackgroundModule(): void {
+  if (bgmSuspended) return;
+  const cur = currentBgmType;
+  if (cur === 'none') return;
+  bgmSnapBeforeSuspend = cur;
+  bgmSuspended = true;
+  stopBgmPlaybackOnlyModule();
+}
+
+function resumeAfterBackgroundModule(): void {
+  if (!bgmSuspended) return;
+  bgmSuspended = false;
+  const snap = bgmSnapBeforeSuspend;
+  bgmSnapBeforeSuspend = 'none';
+  if (snap !== 'none') {
+    const vol = readStoredFloat('bgmVolume', 0.4);
+    const muted = typeof localStorage !== 'undefined' && localStorage.getItem('bgmMuted') === 'true';
+    playBgmModule(snap, vol, muted);
+  }
+}
+
 /** SE は AudioContext でデコード、BGM は fetch のみ（HTMLAudio 再生は従来どおり・キャッシュ温め） */
 async function preloadAudio(src: string): Promise<void> {
   if (isBgmSrc(src)) {
@@ -212,12 +280,6 @@ export function playSeByType(type: SeType): void {
 }
 
 export const useAudio = () => {
-  const bgmRef = useRef<HTMLAudioElement | null>(null);
-  const currentBgmRef = useRef<BgmType>('none');
-  /** OS バックグラウンド等で一時停止したときの復帰用（stopBgm とは独立） */
-  const bgmSuspendedRef = useRef(false);
-  const bgmSnapBeforeSuspendRef = useRef<BgmType>('none');
-
   const bgmVolumeRef = useRef<number>(readStoredFloat('bgmVolume', 0.4));
   const seVolumeRef = useRef<number>(readStoredFloat('seVolume', 0.6));
   const bgmMutedRef = useRef<boolean>(localStorage.getItem('bgmMuted') === 'true');
@@ -227,8 +289,8 @@ export const useAudio = () => {
     const clamped = Math.min(1, Math.max(0, vol));
     bgmVolumeRef.current = clamped;
     localStorage.setItem('bgmVolume', String(clamped));
-    if (bgmRef.current) {
-      bgmRef.current.volume = bgmMutedRef.current ? 0 : clamped;
+    if (bgmElement) {
+      bgmElement.volume = bgmMutedRef.current ? 0 : clamped;
     }
   }, []);
 
@@ -241,8 +303,8 @@ export const useAudio = () => {
   const toggleBgmMute = useCallback((): boolean => {
     bgmMutedRef.current = !bgmMutedRef.current;
     localStorage.setItem('bgmMuted', String(bgmMutedRef.current));
-    if (bgmRef.current) {
-      bgmRef.current.volume = bgmMutedRef.current ? 0 : bgmVolumeRef.current;
+    if (bgmElement) {
+      bgmElement.volume = bgmMutedRef.current ? 0 : bgmVolumeRef.current;
     }
     return bgmMutedRef.current;
   }, []);
@@ -255,7 +317,7 @@ export const useAudio = () => {
 
   const getBgmVolume = useCallback(() => bgmVolumeRef.current, []);
   const getSeVolume = useCallback(() => seVolumeRef.current, []);
-  const getCurrentBgm = useCallback(() => currentBgmRef.current, []);
+  const getCurrentBgm = useCallback(() => currentBgmType, []);
   const isBgmMuted = useCallback(() => bgmMutedRef.current, []);
   const isSeMuted = useCallback(() => seMutedRef.current, []);
 
@@ -264,118 +326,70 @@ export const useAudio = () => {
     playSeFromSrc(SE_FILES[type], seVolumeRef.current);
   }, []);
 
-  const stopBgmPlaybackOnly = useCallback(() => {
-    if (bgmRef.current) {
-      bgmRef.current.pause();
-      bgmRef.current.currentTime = 0;
-      bgmRef.current = null;
-    }
-    currentBgmRef.current = 'none';
+  const stopBgm = useCallback(() => {
+    stopBgmModule();
   }, []);
 
-  const stopBgm = useCallback(() => {
-    bgmSuspendedRef.current = false;
-    bgmSnapBeforeSuspendRef.current = 'none';
-    stopBgmPlaybackOnly();
-  }, [stopBgmPlaybackOnly]);
-
-  const playBgm = useCallback(
-    (type: BgmType) => {
-      if (type === currentBgmRef.current) return;
-      stopBgm();
-      if (type === 'none') return;
-
-      const audio = new Audio(BGM_FILES[type]);
-      audio.volume = bgmMutedRef.current ? 0 : bgmVolumeRef.current;
-      audio.loop = LOOP_BGM.includes(type);
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          const retryOnInteraction = () => {
-            void audio.play().catch(() => {});
-            document.removeEventListener('touchstart', retryOnInteraction);
-          };
-          document.addEventListener('touchstart', retryOnInteraction, { once: true });
-        });
-      }
-      bgmRef.current = audio;
-      currentBgmRef.current = type;
-    },
-    [stopBgm],
-  );
+  const playBgm = useCallback((type: BgmType) => {
+    playBgmModule(type, bgmVolumeRef.current, bgmMutedRef.current);
+  }, []);
 
   useEffect(() => {
     void Promise.all(ALL_PRELOAD_SRC.map((src) => preloadAudio(src)));
   }, []);
 
   useEffect(() => {
-    const suspendForBackground = () => {
-      if (bgmSuspendedRef.current) return;
-      const cur = currentBgmRef.current;
-      if (cur === 'none') return;
-      bgmSnapBeforeSuspendRef.current = cur;
-      bgmSuspendedRef.current = true;
-      stopBgmPlaybackOnly();
-    };
-
-    const resumeAfterBackground = () => {
-      if (!bgmSuspendedRef.current) return;
-      bgmSuspendedRef.current = false;
-      const snap = bgmSnapBeforeSuspendRef.current;
-      bgmSnapBeforeSuspendRef.current = 'none';
-      if (snap !== 'none') {
-        playBgm(snap);
-      }
-    };
-
-    const onVisibility = () => {
-      if (document.hidden) {
-        suspendForBackground();
-      } else {
-        resumeAfterBackground();
-      }
-    };
-
-    document.addEventListener('visibilitychange', onVisibility);
-
-    /** PiP 中は BGM のみ止める（SE は継続）。イベントは video からバブルする */
-    const onEnterPip = () => {
-      suspendForBackground();
-    };
-    const onLeavePip = () => {
-      resumeAfterBackground();
-    };
-    document.addEventListener('enterpictureinpicture', onEnterPip);
-    document.addEventListener('leavepictureinpicture', onLeavePip);
-
-    let removeAppListener: (() => void) | undefined;
-    if (Capacitor.isNativePlatform()) {
-      void App.addListener('appStateChange', ({ isActive }) => {
-        if (!isActive) {
-          suspendForBackground();
+    lifecycleListenerRefCount += 1;
+    if (lifecycleListenerRefCount === 1) {
+      const onVisibility = () => {
+        if (document.hidden) {
+          suspendForBackgroundModule();
         } else {
-          resumeAfterBackground();
+          resumeAfterBackgroundModule();
         }
-      }).then((handle) => {
-        removeAppListener = () => {
-          void handle.remove();
-        };
-      });
+      };
+      document.addEventListener('visibilitychange', onVisibility);
+
+      /** PiP 中は BGM のみ止める（SE は継続）。イベントは video からバブルする */
+      const onEnterPip = () => {
+        suspendForBackgroundModule();
+      };
+      const onLeavePip = () => {
+        resumeAfterBackgroundModule();
+      };
+      document.addEventListener('enterpictureinpicture', onEnterPip);
+      document.addEventListener('leavepictureinpicture', onLeavePip);
+
+      let removeAppListener: (() => void) | undefined;
+      if (Capacitor.isNativePlatform()) {
+        void App.addListener('appStateChange', ({ isActive }) => {
+          if (!isActive) {
+            suspendForBackgroundModule();
+          } else {
+            resumeAfterBackgroundModule();
+          }
+        }).then((handle) => {
+          removeAppListener = () => {
+            void handle.remove();
+          };
+        });
+      }
+
+      lifecycleCleanup = () => {
+        document.removeEventListener('visibilitychange', onVisibility);
+        document.removeEventListener('enterpictureinpicture', onEnterPip);
+        document.removeEventListener('leavepictureinpicture', onLeavePip);
+        removeAppListener?.();
+      };
     }
-
     return () => {
-      document.removeEventListener('visibilitychange', onVisibility);
-      document.removeEventListener('enterpictureinpicture', onEnterPip);
-      document.removeEventListener('leavepictureinpicture', onLeavePip);
-      removeAppListener?.();
+      lifecycleListenerRefCount -= 1;
+      if (lifecycleListenerRefCount === 0) {
+        lifecycleCleanup?.();
+        lifecycleCleanup = null;
+      }
     };
-  }, [playBgm, stopBgmPlaybackOnly]);
-
-  useEffect(() => {
-    return () => {
-      stopBgm();
-    };
-  }, [stopBgm]);
+  }, []);
 
   return {
     playSe,
