@@ -232,6 +232,9 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
     isHealBuffed: false,
     isHealDebuffed: false,
     isAttackDamageWeakDebuffed: false,
+    isBoosted: false,
+    isDamageBoosted: false,
+    isBlockBoosted: false,
   });
 
   const noop = () => {};

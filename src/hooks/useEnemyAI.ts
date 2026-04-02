@@ -22,6 +22,12 @@ const MIN_PLAYER_DEBUFF_TURNS_FROM_ENEMY = 2;
 const upsertStatus = (statuses: StatusEffect[], next: StatusEffect): StatusEffect[] => {
   const found = statuses.find((status) => status.type === next.type);
   if (!found) return [...statuses, next];
+  if (next.type === 'burn' || next.type === 'poison') {
+    const duration = found.duration + next.duration;
+    return statuses.map((status) =>
+      status.type === next.type ? { ...status, duration, value: duration } : status,
+    );
+  }
   return statuses.map((status) =>
     status.type === next.type
       ? {
@@ -111,7 +117,12 @@ export const useEnemyAI = () => {
         currentHp: Math.min(updatedEnemy.maxHp, updatedEnemy.currentHp + intent.value),
       };
     } else if (intent.type === 'random_debuff') {
-      const debuffTypes: Array<'vulnerable' | 'weak' | 'burn'> = ['vulnerable', 'weak', 'burn'];
+      const debuffTypes: Array<'vulnerable' | 'weak' | 'burn' | 'poison'> = [
+        'vulnerable',
+        'weak',
+        'burn',
+        'poison',
+      ];
       const picked = debuffTypes[Math.floor(Math.random() * debuffTypes.length)];
       updatedPlayer.statusEffects = upsertStatus(updatedPlayer.statusEffects, {
         type: picked,
@@ -135,11 +146,32 @@ export const useEnemyAI = () => {
       });
     }
 
-    // 行動後に状態異常を更新。火傷は行動後ダメージを与えて消去。
+    // 行動後：火傷（残りターン=ダメ）→毒（残りHPの5%切り上げ）→脆弱・弱体・攻撃デバフのターン経過
+    const rest = updatedEnemy.statusEffects.filter((s) => s.type !== 'burn' && s.type !== 'poison');
+    const burns = updatedEnemy.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
+    const poisons = updatedEnemy.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
+    let enemyHp = updatedEnemy.currentHp;
+    const newBurns: StatusEffect[] = [];
+    for (const s of burns) {
+      enemyHp = Math.max(0, enemyHp - s.duration);
+      const nd = s.duration - 1;
+      if (nd > 0) newBurns.push({ ...s, duration: nd, value: nd });
+    }
+    const newPoisons: StatusEffect[] = [];
+    if (enemyHp > 0) {
+      for (const s of poisons) {
+        const dmg = Math.ceil(enemyHp * 0.05);
+        enemyHp = Math.max(0, enemyHp - dmg);
+        const nd = s.duration - 1;
+        if (nd > 0) newPoisons.push({ ...s, duration: nd, value: nd });
+      }
+    }
+    updatedEnemy = { ...updatedEnemy, currentHp: enemyHp, statusEffects: [...rest, ...newBurns, ...newPoisons] };
+
     const nextStatuses: StatusEffect[] = [];
     for (const status of updatedEnemy.statusEffects) {
-      if (status.type === 'burn') {
-        updatedEnemy.currentHp = Math.max(0, updatedEnemy.currentHp - status.value);
+      if (status.type === 'burn' || status.type === 'poison') {
+        nextStatuses.push(status);
         continue;
       }
       if (status.type === 'vulnerable' || status.type === 'weak') {

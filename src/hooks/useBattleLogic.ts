@@ -1,7 +1,9 @@
+import { isIngredientCard } from '../utils/cardBadgeRules';
 import { getEffectiveMaxMental } from '../utils/mentalLimits';
 import type { Card, Enemy, PlayerState, ToolSlot } from '../types/game';
 import { applyDamageToEnemy, calculateEffectiveDamage, getDandoriBonus } from '../utils/damage';
 import { getHungryState } from '../utils/hungrySystem';
+import { isCardIdVariantOf } from '../utils/cardIds';
 
 export interface CardResolveResult {
   player: PlayerState;
@@ -11,6 +13,9 @@ export interface CardResolveResult {
   blockGained: number;
   scaffoldGained: number;
   cookingGaugeGained: number;
+  fullnessGaugeGained: number;
+  /** 満腹ゲージが5以上で自動回復が発動した（ポップ用） */
+  fullnessAutoHealTriggered: boolean;
   equippedTool: Card | null;
   isDandoriActive: boolean;
   goldGained: number;
@@ -18,6 +23,11 @@ export interface CardResolveResult {
   attackBuff: { value: number; charges: number } | null;
   /** multi_hit 時：各ヒットの敵IDと実ダメージ（演出用） */
   multiHitJabs?: { enemyId: string; damage: number }[];
+  /** 闇鍋：結果表示・演出用 */
+  mysteryPotOutcome?: 'aoe' | 'single' | 'self_damage' | 'cooking' | 'poison';
+  mysteryPotLabel?: string;
+  mysteryPotPopupTarget?: 'player' | 'enemy' | string;
+  mysteryPotHitEnemyId?: string | null;
 }
 
 export type ApplyOneToolSlotOptions = {
@@ -36,7 +46,7 @@ export const applyOneToolSlotToPlayer = (
 ): PlayerState => {
   const nextPlayer = { ...player };
   const hungryState = getHungryState(nextPlayer);
-  if (tool.card.id === 'cardboard_house') {
+  if (isCardIdVariantOf(tool.card.id, 'cardboard_house')) {
     if (nextPlayer.canBlock) {
       const hasAwakeningEffect = tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened');
       if (!hasAwakeningEffect) {
@@ -71,11 +81,22 @@ export const useBattleLogic = () => {
   ): void => {
     const idx = enemy.statusEffects.findIndex((status) => status.type === type);
     if (idx < 0) {
+      if (type === 'burn' || type === 'poison') {
+        const turns = Math.max(1, value);
+        enemy.statusEffects.push({ type, duration: turns, value: turns });
+        return;
+      }
       const baseDuration = Math.max(1, durationTurns);
       enemy.statusEffects.push({ type, value, duration: baseDuration });
       return;
     }
     const current = enemy.statusEffects[idx];
+    if (type === 'burn' || type === 'poison') {
+      const addTurns = Math.max(1, value);
+      const nextDur = current.duration + addTurns;
+      enemy.statusEffects[idx] = { type, duration: nextDur, value: nextDur };
+      return;
+    }
     if (type === 'vulnerable' || type === 'weak') {
       const turns = Math.max(1, durationTurns);
       enemy.statusEffects[idx] = {
@@ -118,7 +139,11 @@ export const useBattleLogic = () => {
     preferredTargetEnemyId: string | null = null,
     toolSlots: ToolSlot[] = [],
   ): CardResolveResult => {
-    const nextPlayer: PlayerState = { ...player };
+    const nextPlayer: PlayerState = {
+      ...player,
+      fullnessGauge: player.fullnessGauge ?? 0,
+      fullnessGainedThisTurn: player.fullnessGainedThisTurn ?? false,
+    };
     const nextEnemies: Enemy[] = enemies.map((enemy) => ({
       ...enemy,
       statusEffects: [...enemy.statusEffects],
@@ -133,11 +158,115 @@ export const useBattleLogic = () => {
     let blockGained = 0;
     let scaffoldGained = 0;
     let cookingGaugeGained = 0;
+    let fullnessGaugeGained = 0;
     let equippedTool: Card | null = null;
     let goldGained = 0;
     let lighterBurnApplied = false;
     let attackBuff: { value: number; charges: number } | null = null;
     let multiHitJabs: { enemyId: string; damage: number }[] | undefined;
+
+    if (card.id === 'mystery_pot' || card.id.startsWith('mystery_pot_')) {
+      const upgraded = Boolean(card.upgraded);
+      const roll = Math.floor(Math.random() * 5);
+      const aoeDmg = upgraded ? 25 : 20;
+      const singleDmg = upgraded ? 50 : 40;
+      const selfDmg = upgraded ? 12 : 15;
+      const poisonTurns = upgraded ? 4 : 5;
+
+      let np: PlayerState = { ...nextPlayer };
+      const ne = nextEnemies;
+      let damageOut = 0;
+      let tid: string | null = null;
+      let cgGained = 0;
+
+      const upsertPlayerPoison = (player: PlayerState, add: number): PlayerState => {
+        const list = [...player.statusEffects];
+        const idx = list.findIndex((s) => s.type === 'poison');
+        if (idx < 0) {
+          list.push({ type: 'poison', duration: add, value: add });
+        } else {
+          const cur = list[idx];
+          const nd = cur.duration + add;
+          list[idx] = { type: 'poison', duration: nd, value: nd };
+        }
+        return { ...player, statusEffects: list };
+      };
+
+      let mysteryPotOutcome: CardResolveResult['mysteryPotOutcome'];
+      let mysteryPotLabel: string | undefined;
+      let mysteryPotPopupTarget: 'player' | 'enemy' | string = 'player';
+      let mysteryPotHitEnemyId: string | null = null;
+
+      if (roll === 0) {
+        mysteryPotOutcome = 'aoe';
+        mysteryPotPopupTarget = 'enemy';
+        mysteryPotHitEnemyId = ne.find((e) => e.currentHp > 0)?.id ?? null;
+        mysteryPotLabel = `🫕 全体${aoeDmg}ダメージ`;
+        for (const enemy of ne) {
+          if (enemy.currentHp > 0) {
+            damageOut += applyDamageToEnemy(enemy, aoeDmg);
+          }
+        }
+      } else if (roll === 1) {
+        mysteryPotOutcome = 'single';
+        mysteryPotPopupTarget = 'enemy';
+        const alive = ne.filter((e) => e.currentHp > 0);
+        if (alive.length > 0) {
+          const t = alive[Math.floor(Math.random() * alive.length)];
+          damageOut = applyDamageToEnemy(t, singleDmg);
+          tid = t.id;
+          mysteryPotHitEnemyId = tid;
+        }
+        mysteryPotLabel = `🫕 単体${singleDmg}ダメージ`;
+      } else if (roll === 2) {
+        mysteryPotOutcome = 'self_damage';
+        mysteryPotPopupTarget = 'player';
+        mysteryPotLabel = `🫕 自分に${selfDmg}ダメージ`;
+        np.currentHp = Math.max(0, np.currentHp - selfDmg);
+      } else if (roll === 3) {
+        mysteryPotOutcome = 'cooking';
+        mysteryPotPopupTarget = 'player';
+        mysteryPotLabel = '🫕 調理+10';
+        np.cookingGauge += 10;
+        cgGained = 10;
+      } else {
+        mysteryPotOutcome = 'poison';
+        mysteryPotPopupTarget = 'player';
+        mysteryPotLabel = `🫕 毒${poisonTurns}ターン`;
+        np = upsertPlayerPoison(np, poisonTurns);
+      }
+
+      let fullnessAutoHealTriggered = false;
+      if ((np.fullnessGauge ?? 0) >= 5) {
+        if (!np.deathWishActive) {
+          np.currentHp = Math.min(np.maxHp, np.currentHp + 5);
+        }
+        np.fullnessGauge = 0;
+        fullnessAutoHealTriggered = true;
+      }
+
+      return {
+        player: np,
+        enemies: ne,
+        targetEnemyId: tid,
+        damage: damageOut,
+        blockGained: 0,
+        scaffoldGained: 0,
+        cookingGaugeGained: cgGained,
+        fullnessGaugeGained: 0,
+        fullnessAutoHealTriggered,
+        equippedTool: null,
+        isDandoriActive: false,
+        goldGained: 0,
+        lighterBurnApplied: false,
+        attackBuff: null,
+        multiHitJabs: undefined,
+        mysteryPotOutcome,
+        mysteryPotLabel,
+        mysteryPotPopupTarget,
+        mysteryPotHitEnemyId,
+      };
+    }
 
     // ダメージ処理（attack / skill / power 共通）
     if (card.type === 'attack' || ((card.type === 'skill' || card.type === 'power') && card.damage)) {
@@ -212,6 +341,11 @@ export const useBattleLogic = () => {
         nextPlayer.cookingGauge += effect.value;
         cookingGaugeGained += effect.value;
       }
+      if (effect.type === 'fullness_gauge' && !nextPlayer.fullnessGainedThisTurn) {
+        nextPlayer.fullnessGauge += 1;
+        nextPlayer.fullnessGainedThisTurn = true;
+        fullnessGaugeGained += 1;
+      }
       if (effect.type === 'heal') {
         if (!nextPlayer.deathWishActive) {
           const boostedHeal = isDandoriActive ? Math.floor(effect.value * bonus.damageMultiplier) : effect.value;
@@ -254,9 +388,6 @@ export const useBattleLogic = () => {
       if (effect.type === 'turn_attack_damage_bonus') {
         nextPlayer.turnAttackDamageBonus = (nextPlayer.turnAttackDamageBonus ?? 0) + effect.value;
       }
-      if (effect.type === 'first_cooking_multiplier_boost') {
-        nextPlayer.kitchenDemonActive = true;
-      }
       if (effect.type === 'attack_buff') {
         attackBuff = { value: effect.value, charges: effect.duration ?? 2 };
       }
@@ -287,9 +418,11 @@ export const useBattleLogic = () => {
                   ? 'attack_down'
                   : 'weak';
           const statusDuration =
-            effect.type === 'vulnerable' || effect.type === 'weak'
-              ? effect.duration ?? effect.value
-              : effect.duration ?? 1;
+            effect.type === 'burn'
+              ? effect.value
+              : effect.type === 'vulnerable' || effect.type === 'weak'
+                ? effect.duration ?? effect.value
+                : effect.duration ?? 1;
           upsertEnemyStatus(nextEnemies[targetIndex], statusType, effect.value, statusDuration);
         }
       }
@@ -313,17 +446,23 @@ export const useBattleLogic = () => {
       }
     }
 
+    let fullnessAutoHealTriggered = false;
+    if (nextPlayer.fullnessGauge >= 5) {
+      if (!nextPlayer.deathWishActive) {
+        nextPlayer.currentHp = Math.min(nextPlayer.maxHp, nextPlayer.currentHp + 5);
+      }
+      nextPlayer.fullnessGauge = 0;
+      fullnessAutoHealTriggered = true;
+    }
+
     if (card.tags?.includes('cooking_consume')) {
       nextPlayer.cookingGauge = 0;
     }
 
-    if (card.tags?.includes('cooking') && nextPlayer.kitchenDemonActive && !nextPlayer.firstCookingUsedThisTurn) {
-      nextPlayer.firstCookingUsedThisTurn = true;
-    }
-
-    if (card.tags?.includes('ingredient')) {
+    if (isIngredientCard(card)) {
       if (nextPlayer.recipeStudyActive) {
-        nextPlayer.recipeStudyBonus += 2;
+        nextPlayer.cookingGauge += 1;
+        cookingGaugeGained += 1;
       }
       if (nextPlayer.nextIngredientBonus > 0) {
         nextPlayer.nextIngredientBonus = 0;
@@ -331,10 +470,6 @@ export const useBattleLogic = () => {
       if (nextPlayer.threeStarActive && !nextPlayer.firstIngredientUsedThisTurn) {
         nextPlayer.firstIngredientUsedThisTurn = true;
       }
-    }
-
-    if (card.id === 'cutting_board') {
-      nextPlayer.nextIngredientBonus += 3;
     }
 
     if (card.id === 'vending_kick') {
@@ -345,7 +480,7 @@ export const useBattleLogic = () => {
     }
 
     if (card.type === 'attack') {
-      const lighterSlot = toolSlots.find((slot) => slot.card.id === 'lighter');
+      const lighterSlot = toolSlots.find((slot) => isCardIdVariantOf(slot.card.id, 'lighter'));
       if (lighterSlot) {
         const chanceEffect = lighterSlot.card.effects?.find((e) => e.type === 'lighter_chance');
         const chance = chanceEffect?.value ?? 0.2;
@@ -372,6 +507,8 @@ export const useBattleLogic = () => {
       blockGained,
       scaffoldGained,
       cookingGaugeGained,
+      fullnessGaugeGained,
+      fullnessAutoHealTriggered,
       equippedTool,
       isDandoriActive,
       goldGained,

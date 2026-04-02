@@ -3,7 +3,11 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
-import { reserveBonusActiveForCard } from '../../utils/cardBadgeRules';
+import {
+  bumpFirstCookingGaugeInTextForRecipeStudy,
+  isIngredientCard,
+  reserveBonusActiveForCard,
+} from '../../utils/cardBadgeRules';
 interface Props {
   card: Card;
   jobId: JobId;
@@ -15,6 +19,8 @@ interface Props {
   isGhost: boolean;
   isDragging: boolean;
   isDragUnavailable: boolean;
+  /** パワー枠のレシピ研究など、説明の調理+1 を表示に反映 */
+  recipeStudyDisplay?: boolean;
   zukanMode?: 'list' | 'detail';
   style?: CSSProperties;
   effectiveValues: EffectiveCardValues;
@@ -38,6 +44,7 @@ const CardComponent = ({
   isGhost,
   isDragging,
   isDragUnavailable,
+  recipeStudyDisplay = false,
   zukanMode,
   style: styleProp,
   effectiveValues,
@@ -137,7 +144,23 @@ const CardComponent = ({
     self_damage: '自傷',
     reserve: '温存',
     oikomi: '追込',
+    ingredient: '食材',
+    cooking: '調理',
   };
+
+  /** 名前行左：温存・消耗・追込・自傷（card.badges の順） */
+  const genericNameBadges: CardBadge[] = (card.badges ?? []).filter((b) =>
+    b === 'exhaust' || b === 'reserve' || b === 'oikomi' || b === 'self_damage',
+  );
+  /** タイプバッジ左：準備 */
+  const hasSetupBadge = (card.badges ?? []).includes('setup');
+  /** タイプバッジ左（単独時）／左：調理 */
+  const hasCookingBadge =
+    card.tags?.includes('cooking') || card.effects?.some((e) => e.type === 'cooking_gauge');
+  const hasIngredientBadge = isIngredientCard(card);
+  /** 調理+食材のときだけ【食材】をタイプの右。食材のみのときは左に出す */
+  const ingredientAfterType = hasCookingBadge && hasIngredientBadge;
+  const ingredientBeforeType = hasIngredientBadge && !ingredientAfterType;
   const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const replaceChangedValue = (
     source: ReactNode[],
@@ -176,6 +199,15 @@ const CardComponent = ({
       return rebuilt;
     });
   };
+  const displayDescription =
+    recipeStudyDisplay && isIngredientCard(card)
+      ? bumpFirstCookingGaugeInTextForRecipeStudy(card.description)
+      : card.description;
+  const displayReserveBonusDescription =
+    recipeStudyDisplay && isIngredientCard(card) && card.reserveBonus
+      ? bumpFirstCookingGaugeInTextForRecipeStudy(card.reserveBonus.description)
+      : card.reserveBonus?.description;
+
   const getRenderedDescription = (description: string): ReactNode => {
     let nodes: ReactNode[] = [description];
     nodes = replaceChangedValue(
@@ -273,28 +305,59 @@ const CardComponent = ({
         </div>
 
         <div className="card-text-band">
-          <span ref={nameRef} className="card-name">
-            {card.name}
-          </span>
-          <div className="card-type-row">
-            <div
-              className="card-type-badge"
-              style={{ background: typeColor.bg, color: typeColor.text }}
-            >
-              {typeColor.label}
-            </div>
-            {card.badges && card.badges.length > 0 && (
-              <div className="card-sub-badges">
-                {card.badges.map((badge, index) => (
-                  <span key={`${badge}-${index}`} className={`card-badge card-badge--${badge}`}>
-                    {BADGE_LABELS[badge]}
-                  </span>
-                ))}
+          <div className="card-name-row">
+            <div className="card-name-cluster">
+              <div className="card-name-cluster__side card-name-cluster__side--left">
+                {genericNameBadges.length > 0 && (
+                  <div className="card-name-badges">
+                    {genericNameBadges.map((badge, index) => (
+                      <span key={`name-${badge}-${index}`} className={`card-badge card-badge--${badge}`}>
+                        {BADGE_LABELS[badge]}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+              <div className="card-name-cluster__center">
+                <span ref={nameRef} className="card-name">
+                  {card.name}
+                </span>
+              </div>
+              <div className="card-name-cluster__side card-name-cluster__side--right" aria-hidden />
+            </div>
           </div>
-          <div className="card-description">{getRenderedDescription(card.description)}</div>
-          {card.reserveBonus && <p className="card-reserve-bonus">{card.reserveBonus.description}</p>}
+          <div className="card-type-row">
+            <div className="card-type-cluster">
+              <div className="card-type-cluster__side card-type-cluster__side--left">
+                {hasSetupBadge && (
+                  <span className="card-badge card-badge--setup">{BADGE_LABELS.setup}</span>
+                )}
+                {hasCookingBadge && (
+                  <span className="card-badge card-badge--cooking">{BADGE_LABELS.cooking}</span>
+                )}
+                {ingredientBeforeType && (
+                  <span className="card-badge card-badge--ingredient">{BADGE_LABELS.ingredient}</span>
+                )}
+              </div>
+              <div className="card-type-cluster__center">
+                <div
+                  className="card-type-badge"
+                  style={{ background: typeColor.bg, color: typeColor.text }}
+                >
+                  {typeColor.label}
+                </div>
+              </div>
+              <div className="card-type-cluster__side card-type-cluster__side--right">
+                {ingredientAfterType && (
+                  <span className="card-badge card-badge--ingredient">{BADGE_LABELS.ingredient}</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="card-description">{getRenderedDescription(displayDescription)}</div>
+          {card.reserveBonus && displayReserveBonusDescription != null && (
+            <p className="card-reserve-bonus">{displayReserveBonusDescription}</p>
+          )}
         </div>
       </div>
       {isDragUnavailable && (

@@ -10,6 +10,12 @@ import {
   CARPENTER_UNCOMMON_POOL_UNFILTERED,
 } from '../data/jobs/carpenter';
 import {
+  COOK_COMMON_POOL,
+  COOK_RARE_POOL_UNFILTERED,
+  COOK_STARTER_DECK,
+  COOK_UNCOMMON_POOL_UNFILTERED,
+} from '../data/jobs/cook';
+import {
   CARPENTER_EXPANSION_COMMON,
   CARPENTER_EXPANSION_RARE,
   CARPENTER_EXPANSION_UNCOMMON,
@@ -63,6 +69,7 @@ import {
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
 import { getEffectiveMaxMental } from '../utils/mentalLimits';
 import { clearBattleState, saveBattleState } from '../utils/battleSave';
+import { resetDeliveryCardTimeCostForRun } from '../utils/deliveryCard';
 import type { Achievement } from '../utils/achievementSystem';
 import {
   evaluateAchievementsAfterBattle,
@@ -160,6 +167,8 @@ export type DevDestination =
   | 'battle_boss_2'
   | 'battle_boss_3'
   | 'battle_all_cards'
+  /** 開発用: 料理人のカード定義を全種類、各2枚ずつで戦闘開始 */
+  | 'battle_cook_all_x2'
   /** 初期デッキ + 拡張のうちチェックリスト [効果調整] のみ各1枚（[o] 済みは含めない）で戦闘開始 */
   | 'battle_expansion_x2'
   | 'shop'
@@ -355,6 +364,8 @@ const initialPlayer: PlayerState = {
   gold: 0,
   scaffold: 0,
   cookingGauge: 0,
+  fullnessGauge: 0,
+  fullnessGainedThisTurn: false,
   mental: 7,
   statusEffects: [],
   hasRevival: false,
@@ -381,6 +392,7 @@ const initialPlayer: PlayerState = {
   recipeStudyBonus: 0,
   nextIngredientBonus: 0,
   threeStarActive: false,
+  threeStarFirstIngredientFree: false,
   firstIngredientUsedThisTurn: false,
   nextAttackBoostValue: 0,
   nextAttackBoostCount: 0,
@@ -1455,6 +1467,8 @@ export const useRunProgress = () => {
     block: 0,
     scaffold: 0,
     cookingGauge: 0,
+    fullnessGauge: 0,
+    fullnessGainedThisTurn: false,
     statusEffects: [],
     hasRevival: false,
     revivalUsed: false,
@@ -1480,6 +1494,7 @@ export const useRunProgress = () => {
     recipeStudyBonus: 0,
     nextIngredientBonus: 0,
     threeStarActive: false,
+    threeStarFirstIngredientFree: false,
     firstIngredientUsedThisTurn: false,
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
@@ -1504,9 +1519,9 @@ export const useRunProgress = () => {
     const battleArea = stateRef.current.currentArea;
     recordBattleEndForAchievements(result);
     const newAchievements = evaluateAchievementsAfterBattle(result, battleArea);
-    const cleanedDeck = result.deck.filter(
-      (card) => card.type !== 'status' && card.type !== 'curse',
-    );
+    const cleanedDeck = result.deck
+      .filter((card) => card.type !== 'status' && card.type !== 'curse')
+      .map(resetDeliveryCardTimeCostForRun);
     const preservedLastTileType =
       stateRef.current.lastTileType ??
       inferLastTileTypeFromSetup(stateRef.current.battleSetup) ??
@@ -1719,6 +1734,8 @@ export const useRunProgress = () => {
       gold: 0,
       scaffold: 0,
       cookingGauge: 0,
+      fullnessGauge: 0,
+      fullnessGainedThisTurn: false,
       mental: jobConfig.initialMental,
       statusEffects: [],
       hasRevival: false,
@@ -1745,6 +1762,7 @@ export const useRunProgress = () => {
       recipeStudyBonus: 0,
       nextIngredientBonus: 0,
       threeStarActive: false,
+      threeStarFirstIngredientFree: false,
       firstIngredientUsedThisTurn: false,
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
@@ -1874,7 +1892,7 @@ export const useRunProgress = () => {
   };
 
   const startDevNavigation = (destination: Exclude<DevDestination, 'boss_reward' | 'story'>) => {
-    const jobId: JobId = 'carpenter';
+    const jobId: JobId = destination === 'battle_cook_all_x2' ? 'cook' : 'carpenter';
     const jobConfig = getJobConfig(jobId);
     const area = destination === 'battle_boss_2' ? 2 : destination === 'battle_boss_3' ? 3 : 1;
     const devPlayer: PlayerState = {
@@ -1885,6 +1903,8 @@ export const useRunProgress = () => {
       block: 0,
       scaffold: 0,
       cookingGauge: 0,
+      fullnessGauge: 0,
+      fullnessGainedThisTurn: false,
       mental: jobConfig.initialMental,
       gold: 100,
       statusEffects: [],
@@ -1912,6 +1932,7 @@ export const useRunProgress = () => {
       recipeStudyBonus: 0,
       nextIngredientBonus: 0,
       threeStarActive: false,
+      threeStarFirstIngredientFree: false,
       firstIngredientUsedThisTurn: false,
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,
@@ -1961,6 +1982,29 @@ export const useRunProgress = () => {
       const allNeutralCards = [...NEUTRAL_CARD_POOL];
       const allCards = [...allCarpenterCards, ...allNeutralCards];
       const deck: Card[] = allCards.flatMap((card) => [cloneRewardCard(card), cloneRewardCard(card)]);
+      const setup: BattleSetup = {
+        jobId,
+        kind: 'battle',
+        enemies: createEncounterFromTemplateIds(['claimer']),
+        deck,
+        player: devPlayer,
+        omamoris: [],
+        items: [],
+      };
+      dispatch({ type: 'set_deck', deck });
+      dispatch({ type: 'set_battle_setup', setup, tileType: 'enemy' });
+      dispatch({ type: 'set_screen', screen: 'battle' });
+      return;
+    }
+
+    if (destination === 'battle_cook_all_x2') {
+      const allCookCards = [
+        ...COOK_STARTER_DECK,
+        ...COOK_COMMON_POOL,
+        ...COOK_UNCOMMON_POOL_UNFILTERED,
+        ...COOK_RARE_POOL_UNFILTERED,
+      ];
+      const deck: Card[] = allCookCards.flatMap((card) => [cloneRewardCard(card), cloneRewardCard(card)]);
       const setup: BattleSetup = {
         jobId,
         kind: 'battle',
@@ -2078,6 +2122,8 @@ export const useRunProgress = () => {
       block: 0,
       scaffold: 0,
       cookingGauge: 0,
+      fullnessGauge: 0,
+      fullnessGainedThisTurn: false,
       mental: jobConfig.initialMental,
       statusEffects: [],
       hasRevival: false,
@@ -2104,6 +2150,7 @@ export const useRunProgress = () => {
       recipeStudyBonus: 0,
       nextIngredientBonus: 0,
       threeStarActive: false,
+      threeStarFirstIngredientFree: false,
       firstIngredientUsedThisTurn: false,
       nextAttackBoostValue: 0,
       nextAttackBoostCount: 0,

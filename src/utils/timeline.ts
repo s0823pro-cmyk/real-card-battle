@@ -1,5 +1,5 @@
 import type { Card, JobId, PlayerState, TimelineSlot } from '../types/game';
-import { prevCardGrantsDandori } from './cardBadgeRules';
+import { isIngredientCard, prevCardGrantsDandori } from './cardBadgeRules';
 import { getHungryState } from './hungrySystem';
 
 export const getEffectiveTimeCost = (
@@ -20,12 +20,11 @@ export const getEffectiveTimeCost = (
   if (activeJobId === 'unemployed' && player && getHungryState(player) === 'awakened') {
     cost -= 1;
   }
-  if (
-    player?.threeStarActive &&
-    card.tags?.includes('ingredient') &&
-    !player.firstIngredientUsedThisTurn
-  ) {
-    return 0;
+  if (player?.threeStarActive && isIngredientCard(card) && !player.firstIngredientUsedThisTurn) {
+    if (player.threeStarFirstIngredientFree) {
+      return 0;
+    }
+    return Math.max(1, Math.ceil(cost * 0.5));
   }
   if ((card.id === 'full_sprint' || card.id.startsWith('full_sprint_')) && player?.fullSprintUsedCount) {
     const reduction = Math.min(card.timeCost, player.fullSprintUsedCount * 0.5);

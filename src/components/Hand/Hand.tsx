@@ -3,6 +3,7 @@ import type { Card, PlayerState, ToolSlot } from '../../types/game';
 import type { CSSProperties, RefObject } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { getEffectiveCardValues } from '../../utils/cardPreview';
+import { isIngredientCard, isRecipeStudyInEffect } from '../../utils/cardBadgeRules';
 import { getEffectiveTimeCost } from '../../utils/timeline';
 import CardComponent from './CardComponent';
 import './Hand.css';
@@ -18,6 +19,8 @@ interface Props {
   attackItemBuff?: { value: number; charges: number } | null;
   /** ナイフセット等（calculateCardDamage と整合） */
   toolSlots?: ToolSlot[];
+  /** パワー枠のレシピ研究を含め、食材カード説明の調理+1 を表示に反映 */
+  activePowers?: Card[];
   usedTime: number;
   lastPlayedCard: Card | null;
   selectedCardId: string | null;
@@ -75,6 +78,7 @@ const Hand = ({
   doubleNextReplayCharges = 0,
   attackItemBuff = null,
   toolSlots,
+  activePowers,
   usedTime,
   lastPlayedCard,
   selectedCardId,
@@ -136,6 +140,8 @@ const Hand = ({
             toolSlots,
             doubleNextReplayCharges,
           );
+          const recipeStudyDisplay =
+            isRecipeStudyInEffect(player, activePowers) && isIngredientCard(card);
           const isExpanded = expandedCardId === card.id;
           const isDraggingCard = draggedCardId === card.id;
           const current = layout[cardIndex];
@@ -175,6 +181,7 @@ const Hand = ({
                 isGhost={draggedCardId === card.id}
                 isDragging={isDraggingCard}
                 isDragUnavailable={placeDisabled}
+                recipeStudyDisplay={recipeStudyDisplay}
                 effectiveValues={effectiveValues}
                 onSelect={() => onSelectCard(card.id)}
                 onPointerDown={(event) => onCardPointerDown(card, cardIndex, event)}

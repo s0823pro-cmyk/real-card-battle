@@ -23,6 +23,11 @@ export const STATUS_TOOLTIPS = {
     label: '🍳 調理ゲージ',
     description: '【食材】カードで上昇。【調理】カードのダメージがゲージ×倍率で増加。戦闘終了時にリセット。',
   },
+  fullness: {
+    label: '🍖 満腹ゲージ',
+    description:
+      '【食材】の満腹効果は1ターンに1回まで+1。5に達するとHP5回復し、ゲージが0にリセットされる。',
+  },
   hungry: {
     label: '💢 ハングリー精神',
     description: 'HP50%以下でダメージ+3（ハングリー）、HP30%以下でダメージ+6＋時間-1秒（覚醒）。',
@@ -52,7 +57,7 @@ export const ENEMY_ACTION_TOOLTIPS = {
   },
   debuff: {
     label: '💢 デバフ付与',
-    description: 'プレイヤーに状態異常（脆弱・弱体・炎上など）を付与する。',
+    description: 'プレイヤーに状態異常（脆弱・弱体・炎上・毒など）を付与する。',
   },
   steal_gold: {
     label: '💰 ゴールド盗取',
@@ -64,7 +69,7 @@ export const ENEMY_ACTION_TOOLTIPS = {
   },
   random_debuff: {
     label: '🎲 ランダムデバフ',
-    description: 'プレイヤーにランダムな状態異常（脆弱・弱体・炎上のいずれか）を付与する。',
+    description: 'プレイヤーにランダムな状態異常（脆弱・弱体・炎上・毒のいずれか）を付与する。',
   },
   add_curse: {
     label: '🌑 呪いカード追加',

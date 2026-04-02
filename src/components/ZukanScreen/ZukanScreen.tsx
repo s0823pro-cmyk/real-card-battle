@@ -116,6 +116,9 @@ const STATIC_EFFECTIVE_VALUES: EffectiveCardValues = {
   isHealBuffed: false,
   isHealDebuffed: false,
   isAttackDamageWeakDebuffed: false,
+  isBoosted: false,
+  isDamageBoosted: false,
+  isBlockBoosted: false,
 };
 
 const noopPointer = (event: ReactPointerEvent) => {

@@ -71,7 +71,13 @@ const getIntentValueText = (intent: EnemyIntent, enemy: Enemy): string => {
   if (intent.type === 'debuff') {
     /* 1行目の enemy-action-label と同じ description を重ねない */
     const kind =
-      intent.debuffType === 'vulnerable' ? '脆弱' : intent.debuffType === 'weak' ? '弱体' : '火傷';
+      intent.debuffType === 'vulnerable'
+        ? '脆弱'
+        : intent.debuffType === 'weak'
+          ? '弱体'
+          : intent.debuffType === 'poison'
+            ? '毒'
+            : '火傷';
     return `${kind}×${intent.value}`;
   }
   if (intent.type === 'steal_gold') {

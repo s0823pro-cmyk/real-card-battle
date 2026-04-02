@@ -23,6 +23,7 @@ import type { BattleResult, BattleSetup, Omamori } from '../../types/run';
 import {
   cardHasDamageImmunityThisTurn,
   getEffectiveCardValues,
+  getPreviewCookingFullnessAfterPlay,
   getPreviewScaffoldAfterPlay,
 } from '../../utils/cardPreview';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
@@ -38,6 +39,7 @@ import {
   cardDealsDamageForEnemyPreview,
   cardHasEnemyDebuffPreviewEffects,
 } from '../../utils/enemyDebuffPreview';
+import { isIngredientCard, isRecipeStudyInEffect } from '../../utils/cardBadgeRules';
 import { useAudioContext } from '../../contexts/AudioContext';
 import bgBattleArea1 from '../../assets/backgrounds/bg_battle_area1.png';
 import bgBattleArea2 from '../../assets/backgrounds/bg_battle_area2.png';
@@ -1025,6 +1027,29 @@ const BattleScreen = ({
     return getPreviewScaffoldAfterPlay(handDrag.card, gameState.player, doubleNextCharges, doubleNextReplayCharges);
   }, [canPlayCard, handDrag.isDragging, handDrag.card, gameState.player, doubleNextCharges, doubleNextReplayCharges]);
 
+  /** 調理・満腹：ドラッグ中または選択中のプレイ可能カードで予測 */
+  const statusPreviewCard = useMemo((): Card | null => {
+    if (handDrag.isDragging && handDrag.card && canPlayCard(handDrag.card)) {
+      return handDrag.card;
+    }
+    if (!handDrag.isDragging && selectedCardId) {
+      const c = gameState.hand.find((x) => x.id === selectedCardId);
+      if (c && canPlayCard(c)) return c;
+    }
+    return null;
+  }, [handDrag.isDragging, handDrag.card, selectedCardId, gameState.hand, canPlayCard]);
+
+  const cookingFullnessPreview = useMemo(() => {
+    if (!statusPreviewCard || gameState.player.jobId !== 'cook') return null;
+    return getPreviewCookingFullnessAfterPlay(
+      statusPreviewCard,
+      gameState.player,
+      doubleNextCharges,
+      doubleNextReplayCharges,
+      gameState.activePowers,
+    );
+  }, [statusPreviewCard, gameState.player, doubleNextCharges, doubleNextReplayCharges, gameState.activePowers]);
+
   /** ダメージ無効スキル（居直り・点検車等）ドラッグ中：ブロック数値はそのまま、金色で「このターン無敵」を示す */
   const previewBlockImmunityDrag = useMemo(
     () =>
@@ -1063,10 +1088,12 @@ const BattleScreen = ({
       .filter((s) => s.type === 'weak' && s.duration > 0)
       .reduce((sum, s) => sum + s.value, 0);
     const burnFx = p.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
-    const burnDamage = burnFx.reduce((a, s) => a + s.value, 0);
+    const burnDamage = burnFx.reduce((a, s) => a + s.duration, 0);
     const burnTurns = burnFx.length ? Math.max(...burnFx.map((s) => s.duration)) : 0;
-    if (vulnerable === 0 && weak === 0 && burnDamage === 0) return null;
-    return { vulnerable, weak, burnDamage, burnTurns };
+    const poisonFx = p.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
+    const poisonTurns = poisonFx.reduce((a, s) => a + s.duration, 0);
+    if (vulnerable === 0 && weak === 0 && burnDamage === 0 && poisonTurns === 0) return null;
+    return { vulnerable, weak, burnDamage, burnTurns, poisonTurns };
   }, [gameState.player.statusEffects]);
 
   const reserveFull = gameState.reserved.length >= 2;
@@ -1150,6 +1177,9 @@ const BattleScreen = ({
     isHealBuffed: false,
     isHealDebuffed: false,
     isAttackDamageWeakDebuffed: false,
+    isBoosted: false,
+    isDamageBoosted: false,
+    isBlockBoosted: false,
   });
   const currentPileCards = useMemo(() => {
     if (showPile === 'draw') {
@@ -1284,6 +1314,7 @@ const BattleScreen = ({
             doubleNextReplayCharges={doubleNextReplayCharges}
             attackItemBuff={attackItemBuff}
             toolSlots={gameState.toolSlots}
+            activePowers={gameState.activePowers}
             usedTime={gameState.usedTime}
             lastPlayedCard={lastPlayedCard}
             selectedCardId={selectedCardId}
@@ -1348,11 +1379,21 @@ const BattleScreen = ({
                   {playerDebuffStrip.burnDamage > 0 && (
                     <Tooltip
                       label="炎上"
-                      description={`ターン終了時に${playerDebuffStrip.burnDamage}ダメージ。残り${playerDebuffStrip.burnTurns}ターン`}
+                      description={`次の自分ターン開始時に${playerDebuffStrip.burnDamage}ダメージ（残りターン数と同じ）。残り${playerDebuffStrip.burnTurns}ターン`}
                     >
                       <span className="status-badge status-badge--burn">
                         <img src={ICONS.badgeBurn} alt="" className="status-icon" />
                         {playerDebuffStrip.burnDamage}
+                      </span>
+                    </Tooltip>
+                  )}
+                  {playerDebuffStrip.poisonTurns > 0 && (
+                    <Tooltip
+                      label="毒"
+                      description={`次の自分ターン開始時に残りHPの5%（切り上げ）のダメージ。残り${playerDebuffStrip.poisonTurns}ターン`}
+                    >
+                      <span className="status-badge status-badge--poison" aria-hidden>
+                        ☠️{playerDebuffStrip.poisonTurns}
                       </span>
                     </Tooltip>
                   )}
@@ -1378,6 +1419,7 @@ const BattleScreen = ({
             previewBlockImmunity={previewBlockImmunityDrag}
             previewHp={previewHpValue}
             previewScaffold={previewScaffoldValue}
+            cookingFullnessPreview={cookingFullnessPreview}
             toolSlots={gameState.toolSlots}
             activePowers={gameState.activePowers}
             battleItems={battleItems}
@@ -1423,6 +1465,10 @@ const BattleScreen = ({
             isGhost={false}
             isDragging
             isDragUnavailable={false}
+            recipeStudyDisplay={
+              isRecipeStudyInEffect(gameState.player, gameState.activePowers) &&
+              isIngredientCard(handDrag.card)
+            }
             effectiveValues={getEffectiveCardValues(
               handDrag.card,
               gameState.player,

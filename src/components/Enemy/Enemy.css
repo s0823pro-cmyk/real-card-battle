@@ -298,6 +298,11 @@
   background: rgba(249, 115, 22, 0.2);
 }
 
+.status-badge--poison {
+  color: #86efac;
+  background: rgba(22, 101, 52, 0.35);
+}
+
 .status-badge--debuff {
   color: #a78bfa;
   background: rgba(139, 92, 246, 0.2);

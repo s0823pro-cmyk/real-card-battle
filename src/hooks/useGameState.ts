@@ -9,7 +9,15 @@ import { getAdsRemoved, setPendingDefeatInterstitial } from '../utils/adsRemoved
 import { getDebugEnemyHp1 } from '../utils/debugEnemyHp1';
 import type { CardResolveResult } from './useBattleLogic';
 import { useEnemyAI } from './useEnemyAI';
-import type { Card, EnemyIntent, EnemyIntentType, GameState, JobId, PlayerState } from '../types/game';
+import type {
+  Card,
+  EnemyIntent,
+  EnemyIntentType,
+  GameState,
+  JobId,
+  PlayerState,
+  StatusEffect,
+} from '../types/game';
 import { useAudioContext } from '../contexts/AudioContext';
 import type { BattleResult, BattleSetup, Omamori, RunItem } from '../types/run';
 import {
@@ -94,7 +102,7 @@ export interface BattlePopup {
   id: number;
   text: string;
   target: 'player' | 'enemy' | string;
-  kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action';
+  kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action' | 'mystery_pot';
 }
 
 export interface UseGameStateResult {
@@ -178,6 +186,66 @@ const rollAnxietyCardsForDrawCount = (drawCount: number, mentalAtMin: boolean): 
   return hits > 0 ? createAnxietyCards(hits) : [];
 };
 
+/** プレイヤーターン開始時：火傷（残りターン=ダメ）→毒（残りHPの5%切り上げ）→その他のターン経過 */
+const processPlayerTurnStartStatuses = (
+  player: PlayerState,
+): {
+  currentHp: number;
+  statusEffects: StatusEffect[];
+  burnDamage: number;
+  poisonDamage: number;
+  dotLethal?: 'burn' | 'poison';
+} => {
+  let hp = player.currentHp;
+  let burnDamage = 0;
+  let poisonDamage = 0;
+  let dotLethal: 'burn' | 'poison' | undefined;
+
+  const rest = player.statusEffects.filter((s) => s.type !== 'burn' && s.type !== 'poison');
+  const burns = player.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
+  const poisons = player.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
+
+  const newBurns: StatusEffect[] = [];
+  for (const s of burns) {
+    const dmg = s.duration;
+    burnDamage += dmg;
+    hp = Math.max(0, hp - dmg);
+    const nd = s.duration - 1;
+    if (nd > 0) newBurns.push({ ...s, duration: nd, value: nd });
+    if (hp <= 0 && !dotLethal) dotLethal = 'burn';
+  }
+
+  const newPoisons: StatusEffect[] = [];
+  if (hp > 0) {
+    for (const s of poisons) {
+      const dmg = Math.ceil(hp * 0.05);
+      poisonDamage += dmg;
+      hp = Math.max(0, hp - dmg);
+      const nd = s.duration - 1;
+      if (nd > 0) newPoisons.push({ ...s, duration: nd, value: nd });
+      if (hp <= 0) dotLethal = 'poison';
+    }
+  }
+
+  const merged = [...rest, ...newBurns, ...newPoisons];
+  const statusEffects = merged
+    .map((status) => {
+      if (status.type === 'vulnerable' || status.type === 'weak') {
+        return { ...status, duration: status.duration - 1, value: status.value - 1 };
+      }
+      if (status.type === 'attack_down') {
+        return { ...status, duration: status.duration - 1 };
+      }
+      return status;
+    })
+    .filter((status) => {
+      if (status.type === 'attack_down') return status.duration > 0 && status.value > 0;
+      return status.duration > 0 && status.value > 0;
+    });
+
+  return { currentHp: hp, statusEffects, burnDamage, poisonDamage, dotLethal };
+};
+
 const mergeCardResolveResults = (a: CardResolveResult, b: CardResolveResult): CardResolveResult => ({
   player: b.player,
   enemies: b.enemies,
@@ -186,6 +254,8 @@ const mergeCardResolveResults = (a: CardResolveResult, b: CardResolveResult): Ca
   blockGained: a.blockGained + b.blockGained,
   scaffoldGained: a.scaffoldGained + b.scaffoldGained,
   cookingGaugeGained: a.cookingGaugeGained + b.cookingGaugeGained,
+  fullnessGaugeGained: a.fullnessGaugeGained + b.fullnessGaugeGained,
+  fullnessAutoHealTriggered: a.fullnessAutoHealTriggered || b.fullnessAutoHealTriggered,
   equippedTool: b.equippedTool ?? a.equippedTool,
   isDandoriActive: b.isDandoriActive,
   goldGained: a.goldGained + b.goldGained,
@@ -238,6 +308,7 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   recipeStudyBonus: player.recipeStudyBonus ?? 0,
   nextIngredientBonus: player.nextIngredientBonus ?? 0,
   threeStarActive: player.threeStarActive ?? false,
+  threeStarFirstIngredientFree: player.threeStarFirstIngredientFree ?? false,
   firstIngredientUsedThisTurn: player.firstIngredientUsedThisTurn ?? false,
   nextAttackBoostValue: player.nextAttackBoostValue ?? 0,
   nextAttackBoostCount: player.nextAttackBoostCount ?? 0,
@@ -247,6 +318,8 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   turnAttackDamageBonus: player.turnAttackDamageBonus ?? 0,
   fullSprintUsedCount: 0,
   mentalMaxBonus: player.mentalMaxBonus ?? 0,
+  fullnessGauge: player.fullnessGauge ?? 0,
+  fullnessGainedThisTurn: player.fullnessGainedThisTurn ?? false,
 });
 
 const createInitialGameState = (setup?: BattleSetup | null): GameState => {
@@ -275,6 +348,8 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     gold: 0,
     scaffold: 0,
     cookingGauge: 0,
+    fullnessGauge: 0,
+    fullnessGainedThisTurn: false,
     mental: fallbackConfig.initialMental ?? INITIAL_MENTAL,
     statusEffects: [],
     hasRevival: false,
@@ -302,6 +377,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     recipeStudyBonus: 0,
     nextIngredientBonus: 0,
     threeStarActive: false,
+    threeStarFirstIngredientFree: false,
     firstIngredientUsedThisTurn: false,
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
@@ -336,6 +412,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
       ...basePlayer,
       block: (basePlayer.block ?? 0) + Math.max(0, startBlockBonus),
       cookingGauge: 0,
+      fullnessGauge: 0,
       statusEffects: [...basePlayer.statusEffects],
     }),
     enemies: encounter.map((enemy) => {
@@ -395,9 +472,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const battleOmamoris = options?.setup?.omamoris ?? [];
   const prevHungryStateRef = useRef<'normal' | 'hungry' | 'awakened'>('normal');
   const endTurnRef = useRef<() => Promise<void>>(async () => {});
-  const pushPopupRef = useRef<(text: string, target: 'player' | 'enemy' | string, kind: BattlePopup['kind']) => void>(
-    () => {},
-  );
+  const pushPopupRef = useRef<
+    (text: string, target: 'player' | 'enemy' | string, kind: BattlePopup['kind'], durationMs?: number) => void
+  >(() => {});
 
   useEffect(() => {
     if (!options?.setup) return;
@@ -509,10 +586,15 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     // HPと職業変化のみを監視
   }, [gameState.player, gameState.player.currentHp, gameState.player.maxHp, gameState.player.jobId]);
 
-  function pushPopup(text: string, target: 'player' | 'enemy' | string, kind: BattlePopup['kind']) {
+  function pushPopup(
+    text: string,
+    target: 'player' | 'enemy' | string,
+    kind: BattlePopup['kind'],
+    durationMs?: number,
+  ) {
     const id = Date.now() + Math.floor(Math.random() * 10000);
     setBattlePopups((prev) => [...prev, { id, text, target, kind }]);
-    const duration = kind === 'enemy_action' ? 2200 : 720;
+    const duration = durationMs ?? (kind === 'enemy_action' ? 2200 : 720);
     window.setTimeout(() => {
       setBattlePopups((prev) => prev.filter((popup) => popup.id !== id));
     }, duration);
@@ -542,6 +624,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     block: 0,
     scaffold: 0,
     cookingGauge: 0,
+    fullnessGauge: 0,
+    fullnessGainedThisTurn: false,
     statusEffects: [],
     hasRevival: false,
     revivalUsed: false,
@@ -568,6 +652,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     recipeStudyBonus: 0,
     nextIngredientBonus: 0,
     threeStarActive: false,
+    threeStarFirstIngredientFree: false,
     firstIngredientUsedThisTurn: false,
     nextAttackBoostValue: 0,
     nextAttackBoostCount: 0,
@@ -663,7 +748,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         : multipliedCard;
     const playedCard: Card = { ...buffedCard, wasReserved: false, reservedThisTurn: false };
     // 捨て札/除外には温存ボーナス適用前の基礎値を保持する
-    const cardForDiscard: Card = { ...card, wasReserved: false, reservedThisTurn: false };
+    let cardForDiscard: Card = { ...card, wasReserved: false, reservedThisTurn: false };
+    if (isCardVariantId(card.id, 'delivery')) {
+      cardForDiscard = {
+        ...cardForDiscard,
+        timeCost: Math.max(0, Number((cardForDiscard.timeCost - 0.5).toFixed(1))),
+      };
+    }
 
     let result = resolveCard(
       playedCard,
@@ -719,7 +810,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         return { ...result.player, recipeStudyActive: true };
       }
       if (isCardVariantId(playedCard.id, 'three_star')) {
-        return { ...result.player, threeStarActive: true };
+        return {
+          ...result.player,
+          threeStarActive: true,
+          threeStarFirstIngredientFree: Boolean(playedCard.upgraded),
+        };
+      }
+      if (isCardVariantId(playedCard.id, 'kitchen_demon')) {
+        return { ...result.player, kitchenDemonActive: true };
       }
       return result.player;
     })();
@@ -933,7 +1031,26 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
     setLastPlayedCard(playedCard);
     setSelectedCardId(null);
-    if (playedCard.tags?.includes('aoe')) {
+
+    const playedMysteryPot = isCardVariantId(playedCard.id, 'mystery_pot');
+    if (playedMysteryPot && result.mysteryPotLabel) {
+      if (result.mysteryPotHitEnemyId) {
+        setHitEnemyId(result.mysteryPotHitEnemyId);
+        window.setTimeout(() => setHitEnemyId(null), 420);
+      }
+      if (result.mysteryPotOutcome === 'self_damage') {
+        setIsPlayerHit(true);
+        window.setTimeout(() => setIsPlayerHit(false), 420);
+      }
+      pushPopup(
+        result.mysteryPotLabel,
+        result.mysteryPotPopupTarget ?? 'player',
+        'mystery_pot',
+        2400,
+      );
+    }
+
+    if (!playedMysteryPot && playedCard.tags?.includes('aoe')) {
       for (const enemy of result.enemies) {
         const before = enemiesBefore.find((item) => item.id === enemy.id);
         if (!before) continue;
@@ -942,7 +1059,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           pushPopup(`-${dealt}`, 'enemy', 'damage');
         }
       }
-    } else if (result.multiHitJabs && result.multiHitJabs.length > 0) {
+    } else if (!playedMysteryPot && result.multiHitJabs && result.multiHitJabs.length > 0) {
       const multiHitStaggerMs = 280;
       result.multiHitJabs.forEach((jab, i) => {
         window.setTimeout(() => {
@@ -951,7 +1068,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           window.setTimeout(() => setHitEnemyId(null), 260);
         }, i * multiHitStaggerMs);
       });
-    } else if (result.damage > 0 && result.targetEnemyId) {
+    } else if (!playedMysteryPot && result.damage > 0 && result.targetEnemyId) {
       setHitEnemyId(result.targetEnemyId);
       pushPopup(`-${result.damage}`, 'enemy', 'damage');
       window.setTimeout(() => setHitEnemyId(null), 260);
@@ -982,8 +1099,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (result.scaffoldGained > 0) {
       pushPopup(`+${result.scaffoldGained}足場`, 'player', 'buff');
     }
-    if (result.cookingGaugeGained > 0) {
+    if (result.cookingGaugeGained > 0 && !playedMysteryPot) {
       pushPopup(`+${result.cookingGaugeGained}🍳`, 'player', 'buff');
+    }
+    if (result.fullnessAutoHealTriggered) {
+      pushPopup('+🍖', 'player', 'buff');
     }
     if (drawAmount > 0) {
       pushPopup(`+${drawAmount}ドロー`, 'player', 'buff');
@@ -1260,32 +1380,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const nextBlockPersistTurns = keepBlock ? Math.max(0, blockPersistTurns - 1) : 0;
     const shouldDisableBlockThisTurn = state.player.nextTurnNoBlock;
 
-    // プレイヤーのburn（火傷）ダメージ処理
-    let playerHpAfterBurn = state.player.currentHp;
-    let burnDamageTotal = 0;
-    for (const status of state.player.statusEffects) {
-      if (status.type === 'burn' && status.duration > 0 && status.value > 0) {
-        burnDamageTotal += status.value;
-        playerHpAfterBurn = Math.max(0, playerHpAfterBurn - status.value);
-      }
-    }
-
-    // プレイヤーの状態異常ターン経過処理
-    const tickedPlayerStatuses = state.player.statusEffects
-      .map((status) => {
-        if (status.type === 'vulnerable' || status.type === 'weak') {
-          return { ...status, duration: status.duration - 1, value: status.value - 1 };
-        }
-        if (status.type === 'burn') {
-          return { ...status, duration: status.duration - 1 };
-        }
-        return status;
-      })
-      .filter((status) => status.duration > 0 && status.value > 0);
+    const dot = processPlayerTurnStartStatuses(state.player);
 
     const playerAfterReset = applyToolEffects(state.toolSlots, {
       ...state.player,
-      currentHp: playerHpAfterBurn,
+      currentHp: dot.currentHp,
       block:
         shouldDisableBlockThisTurn
           ? 0
@@ -1303,8 +1402,15 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       firstIngredientUsedThisTurn: false,
       nextCardDoubleEffect: false,
       nextCardEffectBoost: state.player.nextCardEffectBoost ?? 0,
-      statusEffects: tickedPlayerStatuses,
+      fullnessGainedThisTurn: false,
+      statusEffects: dot.statusEffects,
     });
+    const playerAfterKitchenDemon = state.player.kitchenDemonActive
+      ? {
+          ...playerAfterReset,
+          cookingGauge: playerAfterReset.cookingGauge + 1,
+        }
+      : playerAfterReset;
     const powerDrawPerTurn = state.activePowers
       .flatMap((power) => power.effects ?? [])
       .filter((effect) => effect.type === 'draw_per_turn')
@@ -1335,7 +1441,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     }));
     const anxietyHandBonus = rollAnxietyCardsForDrawCount(
       drawResult.drawn.length,
-      playerAfterReset.mental <= 0,
+      playerAfterKitchenDemon.mental <= 0,
     );
     return {
       ...state,
@@ -1351,7 +1457,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       drawPileDisplayOrder: createShuffledDrawPileDisplayOrder(drawResult.drawPile.length),
       discardPile: drawResult.discardPile,
       exhaustedCards: [...state.exhaustedCards, ...exhaustedFromReserve],
-      player: playerAfterReset,
+      player: playerAfterKitchenDemon,
       executingIndex: -1,
     };
   };
@@ -1685,12 +1791,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return;
     }
 
-    // burnダメージのポップアップ通知（moveToNextTurn適用前に表示）
-    const burnTotal = workingState.player.statusEffects
-      .filter((s) => s.type === 'burn' && s.duration > 0 && s.value > 0)
-      .reduce((sum, s) => sum + s.value, 0);
-    if (burnTotal > 0) {
-      pushPopup(`🔥-${burnTotal}`, 'player', 'damage');
+    // ターン開始DoTのポップアップ（moveToNextTurn と同じ processPlayerTurnStartStatuses）
+    const dotPreview = processPlayerTurnStartStatuses(workingState.player);
+    if (dotPreview.burnDamage > 0) {
+      pushPopup(`🔥-${dotPreview.burnDamage}`, 'player', 'damage');
+      await wait(400);
+    }
+    if (dotPreview.poisonDamage > 0) {
+      pushPopup(`☠️-${dotPreview.poisonDamage}`, 'player', 'damage');
       await wait(400);
     }
 
@@ -1700,10 +1808,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       pushPopup(`⛑️ +${onTurnStartBlockBonus}ブロック`, 'player', 'buff');
     }
 
-    // burnダメージによる敗北判定
+    // 火傷・毒による敗北判定
     if (next.player.currentHp <= 0) {
+      const defeatedByDot = dotPreview.dotLethal === 'poison' ? '毒' : '火傷';
       if (options?.canOfferDefeatRevive) {
-        pendingDefeatRef.current = { snapshot: next, defeatedBy: '火傷' };
+        pendingDefeatRef.current = { snapshot: next, defeatedBy: defeatedByDot };
         clearBattleState();
         clearSavedProgress();
         if (!getAdsRemoved()) setPendingDefeatInterstitial(true);
@@ -1718,7 +1827,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       setGameState({ ...next, phase: 'defeat', player: clearBattleFlags(next.player) });
       setBattleMessage('敗北...');
       options?.onBattleFinished?.();
-      options?.onBattleEnd?.(buildDefeatBattleResult(next, '火傷'));
+      options?.onBattleEnd?.(buildDefeatBattleResult(next, defeatedByDot));
       return;
     }
 

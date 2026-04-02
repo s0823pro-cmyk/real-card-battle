@@ -1,4 +1,5 @@
 import type { Card, PlayerState } from '../types/game';
+import { isCardIdVariantOf } from './cardIds';
 
 /** 段取り：直前カードが【準備】バッジで、次カードに適用する基礎倍率（宮大工の技で上書き） */
 export const DANDORI_BASE_MULTIPLIER = 1.2;
@@ -67,3 +68,24 @@ export const reserveBonusActiveForCard = (card: Card): boolean =>
       card.badges?.includes('reserve') &&
       (card.reserveDrawCount ?? 0) < 2,
   );
+
+/** 食材カード：`ingredient` タグまたは【食材】バッジ（三ツ星の極意・レシピ研究・具材ボーナス等で共通） */
+export const isIngredientCard = (card: Card): boolean =>
+  Boolean(card.tags?.includes('ingredient') || card.badges?.includes('ingredient'));
+
+/** `recipeStudyActive` またはパワー枠にレシピ研究があるとき（プレビュー・説明文表示で実戦と揃える） */
+export function isRecipeStudyInEffect(player: PlayerState, activePowers?: readonly Card[] | null): boolean {
+  if (player.recipeStudyActive) return true;
+  if (!activePowers?.length) return false;
+  return activePowers.some((p) => isCardIdVariantOf(p.id, 'recipe_study'));
+}
+
+/** 説明文の最初の「調理+N」だけ +1（レシピ研究が有効な食材カードの表示用） */
+export function bumpFirstCookingGaugeInTextForRecipeStudy(text: string): string {
+  let done = false;
+  return text.replace(/調理\+(\d+)/g, (match, d: string) => {
+    if (done) return match;
+    done = true;
+    return `調理+${Number(d) + 1}`;
+  });
+}

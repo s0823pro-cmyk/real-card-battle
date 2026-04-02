@@ -165,6 +165,23 @@
   color: #ffffff !important;
 }
 
+/* 調理・満腹：プレビュー先の数値（点滅のみ HP/足場と同じ。色は各ゲージの通常色と揃え緑に変えない） */
+.stat-value-preview--cooking {
+  color: #ff9f43 !important;
+}
+
+.stat-value-preview--fullness {
+  color: #27ae60 !important;
+}
+
+.gauge-preview-trigger {
+  color: #27ae60;
+  font-size: 0.82em;
+  margin-left: 3px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stat-value-preview {
     animation: none;
@@ -434,6 +451,64 @@
   text-align: left;
   box-sizing: border-box;
   white-space: nowrap;
+}
+
+.cooking-gauge--preview .cooking-gauge-value {
+  width: auto;
+  min-width: 4ch;
+  max-width: none;
+}
+
+.fullness-gauge {
+  color: #27ae60;
+}
+
+/* 下段の満腹ゲージ：調理ゲージと同じレイアウト */
+.fullness-gauge--sub-row {
+  position: relative;
+  left: var(--scaffold-sub-visual-right);
+  top: var(--block-row-sub-nudge-y);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+  white-space: nowrap;
+  font-size: clamp(13.8px, 2.55vw, 16.2px);
+  font-weight: 700;
+  font-family: var(--font-display);
+  line-height: 1;
+  gap: 0;
+  font-variant-numeric: tabular-nums;
+  color: #27ae60;
+  animation: cooking-bounce 0.3s ease-out;
+}
+
+.fullness-gauge--sub-row .fullness-gauge-icon {
+  width: var(--status-stat-icon-width);
+  height: var(--status-stat-icon-width);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+.fullness-gauge--sub-row .fullness-gauge-value {
+  font-size: inherit;
+  font-weight: inherit;
+  margin-left: var(--status-stat-value-inset);
+  display: inline-block;
+  width: 4ch;
+  text-align: left;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.fullness-gauge--preview .fullness-gauge-value {
+  width: auto;
+  min-width: 4ch;
+  max-width: none;
 }
 
 .hungry-state {

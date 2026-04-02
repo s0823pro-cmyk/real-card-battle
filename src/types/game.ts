@@ -1,5 +1,12 @@
 export type CardType = 'attack' | 'skill' | 'power' | 'tool' | 'status' | 'curse';
-export type CardBadge = 'exhaust' | 'setup' | 'self_damage' | 'reserve' | 'oikomi';
+export type CardBadge =
+  | 'exhaust'
+  | 'setup'
+  | 'self_damage'
+  | 'reserve'
+  | 'oikomi'
+  | 'ingredient'
+  | 'cooking';
 export type JobId = 'carpenter' | 'cook' | 'unemployed';
 export type GamePhase =
   | 'battle_start'
@@ -17,6 +24,7 @@ export type EffectType =
   | 'weak'
   | 'heal'
   | 'cooking_gauge'
+  | 'fullness_gauge'
   | 'vulnerable'
   | 'burn'
   | 'debuff_enemy_atk'
@@ -59,7 +67,13 @@ export interface LowHpBonus {
   threshold: number;
   damage: number;
 }
-export type StatusEffectType = 'weak' | 'vulnerable' | 'strength_up' | 'burn' | 'attack_down';
+export type StatusEffectType =
+  | 'weak'
+  | 'vulnerable'
+  | 'strength_up'
+  | 'burn'
+  | 'poison'
+  | 'attack_down';
 export type EnemyIntentType =
   | 'attack'
   | 'defend'
@@ -127,7 +141,7 @@ export interface EnemyIntent {
   type: EnemyIntentType;
   value: number;
   mentalDamage?: number;
-  debuffType?: 'vulnerable' | 'weak' | 'burn';
+  debuffType?: 'vulnerable' | 'weak' | 'burn' | 'poison';
   description: string;
   icon: string;
 }
@@ -154,6 +168,9 @@ export interface PlayerState {
   gold: number;
   scaffold: number;
   cookingGauge: number;
+  fullnessGauge: number;
+  /** 満腹ゲージは1ターン1回まで。ターン開始で false にリセット */
+  fullnessGainedThisTurn: boolean;
   mental: number;
   statusEffects: StatusEffect[];
   hasRevival: boolean;
@@ -183,6 +200,8 @@ export interface PlayerState {
   recipeStudyBonus: number;
   nextIngredientBonus: number;
   threeStarActive: boolean;
+  /** 三ツ星の極意+：毎ターン最初の食材カードのコストを0にする（未強化は50%カット・最低1） */
+  threeStarFirstIngredientFree?: boolean;
   firstIngredientUsedThisTurn: boolean;
   nextAttackBoostValue: number;
   nextAttackBoostCount: number;

@@ -30,8 +30,11 @@ const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
   isBlockDebuffed: false,
   isHealBuffed: false,
   isHealDebuffed: false,
-  isAttackDamageWeakDebuffed: false,
-});
+    isAttackDamageWeakDebuffed: false,
+    isBoosted: false,
+    isDamageBoosted: false,
+    isBlockBoosted: false,
+  });
 
 const generateRareRewardCards = (jobId: JobId): Card[] => {
   const picked: Card[] = [];

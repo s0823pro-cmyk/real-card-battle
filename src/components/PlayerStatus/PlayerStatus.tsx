@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Card, PlayerState, ToolSlot } from '../../types/game';
 import type { RunItem } from '../../types/run';
 import type { HungryState } from '../../utils/hungrySystem';
+import type { CookingFullnessPreview } from '../../utils/cardPreview';
 import { ICONS } from '../../assets/icons';
 import ToolSlots from './ToolSlots';
 import Tooltip from '../Tooltip/Tooltip';
@@ -14,6 +15,8 @@ interface Props {
   previewBlockImmunity?: boolean;
   previewHp?: number | null;
   previewScaffold?: number | null;
+  /** 調理職：カード使用後の調理・満腹ゲージ予測 */
+  cookingFullnessPreview?: CookingFullnessPreview | null;
   toolSlots: ToolSlot[];
   activePowers: Card[];
   battleItems: RunItem[];
@@ -36,6 +39,7 @@ const PlayerStatus = ({
   previewBlockImmunity = false,
   previewHp = null,
   previewScaffold = null,
+  cookingFullnessPreview = null,
   toolSlots,
   activePowers,
   battleItems,
@@ -69,6 +73,12 @@ const PlayerStatus = ({
   const showBlockImmunityPreview = previewBlockImmunity;
   const showBlockNumberPreview = previewBlock != null;
   const blockPreviewActive = showBlockNumberPreview || showBlockImmunityPreview;
+  const showCookingGaugePreview =
+    cookingFullnessPreview != null && cookingFullnessPreview.cookingFrom !== cookingFullnessPreview.cookingTo;
+  const showFullnessGaugePreview =
+    cookingFullnessPreview != null &&
+    (cookingFullnessPreview.fullnessFrom !== cookingFullnessPreview.fullnessTo ||
+      cookingFullnessPreview.fullnessTriggerHint);
   const [itemConfirm, setItemConfirm] = useState<RunItem | null>(null);
   const itemSlotsRow = (
     <div className="stat-items stat-items--sub-row">
@@ -201,17 +211,55 @@ const PlayerStatus = ({
           </Tooltip>
         )}
         {player.jobId === 'cook' && (
-          <Tooltip tooltipKey="cooking">
-            <span
-              key={`cook-${player.cookingGauge}`}
-              className="cooking-gauge cooking-gauge--sub-row scaffold-bounce"
-            >
-              <span className="cooking-gauge-icon" aria-hidden>
-                🍳
+          <>
+            <Tooltip tooltipKey="cooking">
+              <span
+                key={`cook-${player.cookingGauge}`}
+                className={`cooking-gauge cooking-gauge--sub-row scaffold-bounce${
+                  showCookingGaugePreview ? ' cooking-gauge--preview' : ''
+                }`}
+              >
+                <span className="cooking-gauge-icon" aria-hidden>
+                  🍳
+                </span>
+                <span className="cooking-gauge-value">
+                  {showCookingGaugePreview && cookingFullnessPreview ? (
+                    <span className="stat-value-preview stat-value-preview--cooking">
+                      {cookingFullnessPreview.cookingTo}
+                    </span>
+                  ) : (
+                    player.cookingGauge
+                  )}
+                </span>
               </span>
-              <span className="cooking-gauge-value">{player.cookingGauge}</span>
-            </span>
-          </Tooltip>
+            </Tooltip>
+            <Tooltip tooltipKey="fullness">
+              <span
+                key={`fullness-${player.fullnessGauge}`}
+                className={`fullness-gauge fullness-gauge--sub-row scaffold-bounce${
+                  showFullnessGaugePreview ? ' fullness-gauge--preview' : ''
+                }`}
+              >
+                <span className="fullness-gauge-icon" aria-hidden>
+                  🍖
+                </span>
+                <span className="fullness-gauge-value">
+                  {showFullnessGaugePreview && cookingFullnessPreview ? (
+                    <>
+                      <span className="stat-value-preview stat-value-preview--fullness">
+                        {cookingFullnessPreview.fullnessTo}
+                      </span>
+                      {cookingFullnessPreview.fullnessTriggerHint && (
+                        <span className="gauge-preview-trigger">(発動!)</span>
+                      )}
+                    </>
+                  ) : (
+                    player.fullnessGauge
+                  )}
+                </span>
+              </span>
+            </Tooltip>
+          </>
         )}
         <div className="player-sub-spacer" />
         <div className="player-sub-prep-items">

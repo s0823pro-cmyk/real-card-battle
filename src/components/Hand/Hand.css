@@ -387,18 +387,56 @@
   gap: 2px;
 }
 
+/* 名前行：左バッジ・中央名（固定）・右空欄の3カラムで名前を常にカード中央に */
+.card-name-row {
+  width: 100%;
+  min-width: 0;
+}
+
+.card-name-cluster {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 3px;
+  width: 100%;
+}
+
+.card-name-cluster__side--left {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.card-name-cluster__side--right {
+  min-width: 0;
+}
+
+.card-name-cluster__center {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.card-name-badges {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 1.5px;
+}
+
 .card-name {
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
   min-width: 0;
-  flex: 1;
+  max-width: 100%;
   font-family: var(--font-display);
   font-weight: 700;
   color: #ffffff;
   line-height: 1.2;
-  width: 100%;
   text-align: center;
   padding: 0;
   font-size: clamp(var(--card-name-min-size, 6px), 2vw, 11px);
@@ -420,7 +458,6 @@
 }
 
 .card-type-row {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -428,29 +465,72 @@
   margin-bottom: 2px;
 }
 
-.card-type-badge {
-  display: block !important;
-  width: fit-content !important;
-  margin: 0 !important;
-  padding: 0 5px !important;
-  border-radius: 2px !important;
-  font-size: 7px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.04em !important;
-  line-height: 1.4 !important;
-  height: auto !important;
-  text-transform: uppercase;
+/* 左・中央(タイプ固定)・右の3カラム。タイプは常にカード幅の中央 */
+.card-type-cluster {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  column-gap: 3px;
+  width: 100%;
+  max-width: 100%;
 }
 
-.card-sub-badges {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  /* 準備・温存・自傷：中央寄りを避け右寄せに近づける */
-  transform: translate(6px, -50%);
+.card-type-cluster__side {
   display: flex;
-  gap: 2px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 0;
+}
+
+.card-type-cluster__side--left {
+  justify-content: flex-end;
+}
+
+.card-type-cluster__side--right {
+  justify-content: flex-start;
+}
+
+.card-type-cluster__center {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.card-type-badge {
+  display: inline-flex !important;
   align-items: center;
+  justify-content: center;
+  width: fit-content !important;
+  margin: 0 !important;
+  /* 上下パディングは従来 3px の約60% */
+  padding: calc(3px * 0.6) 3px !important;
+  border-radius: 2px !important;
+  font-size: 6.3px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.036em !important;
+  line-height: 1 !important;
+  box-sizing: border-box;
+  text-transform: uppercase;
+  /* 枠付き固有バッジと同じボックスモデルで高さを揃えやすくする */
+  border: 1px solid transparent;
+}
+
+.card-type-cluster__side .card-badge {
+  align-self: stretch;
+  justify-content: center;
+  box-sizing: border-box;
+  height: auto;
+  min-height: 0;
+}
+
+/* タイプ行の【準備】【調理】【食材】：上下パディングをタイプバッジと同率で詰める */
+.card-type-cluster__side .card-badge--setup,
+.card-type-cluster__side .card-badge--cooking,
+.card-type-cluster__side .card-badge--ingredient {
+  padding: calc(3px * 0.6) 3px !important;
+  line-height: 1 !important;
 }
 
 .card-badge {
@@ -465,15 +545,47 @@
 .card-badge--reserve,
 .card-badge--oikomi {
   font-family: var(--font-display);
-  font-size: 7px !important;
+  font-size: 5.6px !important;
   font-weight: 500 !important;
-  padding: 0 4px !important;
-  border-radius: 3px !important;
+  padding: 0 3px !important;
+  border-radius: 2px !important;
   letter-spacing: 0.05em !important;
   line-height: inherit !important;
   background: rgba(255, 255, 255, 0.12);
   border: none;
   color: rgba(255, 255, 255, 0.72);
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+
+.card-badge--ingredient {
+  font-family: var(--font-display);
+  font-size: 5.6px !important;
+  font-weight: 600 !important;
+  padding: 0 3px !important;
+  border-radius: 2px !important;
+  letter-spacing: 0.05em !important;
+  line-height: inherit !important;
+  background: rgba(39, 174, 96, 0.42);
+  border: 1px solid rgba(39, 174, 96, 0.65);
+  color: #e8fff0;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+
+.card-badge--cooking {
+  font-family: var(--font-display);
+  font-size: 5.6px !important;
+  font-weight: 600 !important;
+  padding: 0 3px !important;
+  border-radius: 2px !important;
+  letter-spacing: 0.05em !important;
+  line-height: inherit !important;
+  background: rgba(243, 156, 18, 0.4);
+  border: 1px solid rgba(243, 156, 18, 0.7);
+  color: #fff8e8;
   display: inline-flex;
   align-items: center;
   height: 100%;

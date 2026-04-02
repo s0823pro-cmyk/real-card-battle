@@ -62,6 +62,7 @@ const EnemyDisplay = ({
         const strengthUp = getStatusValue(enemy, 'strength_up');
         const attackDown = getStatusValue(enemy, 'attack_down');
         const burn = getStatusValue(enemy, 'burn');
+        const poison = getStatusValue(enemy, 'poison');
         const weak = getStatusValue(enemy, 'weak');
         const vulnerable = getStatusValue(enemy, 'vulnerable');
         const targetedClass = previewInfo
@@ -171,10 +172,24 @@ const EnemyDisplay = ({
                 </Tooltip>
               )}
               {burn > 0 && (
-                <Tooltip label="火傷" description={`ターン終了時に${burn}ダメージ`}>
+                <Tooltip
+                  label="火傷"
+                  description={`ターン終了時に残りターン数（${burn}）と同じダメージ。ターンごとに1減る`}
+                >
                   <span className="status-badge status-badge--burn">
                     <img src={ICONS.badgeBurn} alt="" className="status-icon" />
                     {burn}
+                  </span>
+                </Tooltip>
+              )}
+              {poison > 0 && (
+                <Tooltip
+                  label="毒"
+                  description={`ターン終了時に残りHPの5%（切り上げ）のダメージ。残り${poison}ターン`}
+                >
+                  <span className="status-badge status-badge--poison" aria-hidden>
+                    ☠️
+                    {poison}
                   </span>
                 </Tooltip>
               )}

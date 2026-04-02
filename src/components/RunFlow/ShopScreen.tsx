@@ -81,6 +81,9 @@ const ShopScreen = ({
     isHealBuffed: false,
     isHealDebuffed: false,
     isAttackDamageWeakDebuffed: false,
+    isBoosted: false,
+    isDamageBoosted: false,
+    isBlockBoosted: false,
   });
 
   const mainStyle = {

@@ -298,6 +298,9 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_all_cards')}>
                 全カード戦闘
               </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_cook_all_x2')}>
+                料理人全カード×2戦闘
+              </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_expansion_x2')}>
                 初期＋拡張バトル開始
               </button>

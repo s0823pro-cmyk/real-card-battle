@@ -63,7 +63,13 @@ export function formatZukanIntentDetail(intent: EnemyIntent, templateId: string)
   }
   if (intent.type === 'debuff') {
     const label =
-      intent.debuffType === 'vulnerable' ? '脆弱' : intent.debuffType === 'weak' ? '弱体' : '火傷';
+      intent.debuffType === 'vulnerable'
+        ? '脆弱'
+        : intent.debuffType === 'weak'
+          ? '弱体'
+          : intent.debuffType === 'poison'
+            ? '毒'
+            : '火傷';
     return `${label}（${intent.value}ターン）`;
   }
   if (intent.type === 'steal_gold') {
@@ -73,7 +79,7 @@ export function formatZukanIntentDetail(intent: EnemyIntent, templateId: string)
     return `HP+${intent.value}`;
   }
   if (intent.type === 'random_debuff') {
-    return `脆弱・弱体・火傷のいずれか（${intent.value}ターン）`;
+    return `脆弱・弱体・炎上・毒のいずれか（${intent.value}ターン）`;
   }
   if (intent.type === 'add_curse') {
     return '呪いカードを捨て札へ';

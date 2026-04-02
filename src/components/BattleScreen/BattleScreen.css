@@ -645,6 +645,13 @@
   flex-shrink: 0;
 }
 
+.battle-timebar-debuff-overlay .status-badge--poison {
+  color: #86efac;
+  background: rgba(22, 101, 52, 0.4);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
 .battle-timebar-row {
   flex-shrink: 0;
   display: flex;

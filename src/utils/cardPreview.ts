@@ -1,6 +1,8 @@
 import type { Card, PlayerState, ToolSlot } from '../types/game';
 import {
   DANDORI_BASE_MULTIPLIER,
+  isIngredientCard,
+  isRecipeStudyInEffect,
   isReserveDoubleNextEffectActive,
   prevCardGrantsDandori,
   reserveBonusActiveForCard,
@@ -8,6 +10,17 @@ import {
 import { getHungryDamageBonus, getHungryState } from './hungrySystem';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from './playCardMultipliers';
 import { getEffectiveTimeCost } from './timeline';
+import { isCardIdVariantOf } from './cardIds';
+
+/** 調理・満腹のプレビュー（PlayerStatus の 🍳🍖 用） */
+export type CookingFullnessPreview = {
+  cookingFrom: number;
+  cookingTo: number;
+  fullnessFrom: number;
+  fullnessTo: number;
+  /** 満腹5到達で自動回復が発動する見た目用（表示は to=5 + 文言） */
+  fullnessTriggerHint: boolean;
+};
 
 /** このターンの被ダメージ無効（居直り・点検車など） */
 export const cardHasDamageImmunityThisTurn = (card: Card): boolean =>
@@ -28,6 +41,12 @@ export interface EffectiveCardValues {
   isHealDebuffed: boolean;
   /** 弱体中のアタック：説明文のダメージ数値を青色で優先表示 */
   isAttackDamageWeakDebuffed: boolean;
+  /** 包丁セット・次アタック加算など、装備・パワー由来で数値が上振れ */
+  isBoosted: boolean;
+  /** 装備・パワー由来で実効ダメージがベースラインより高い（手札の攻撃数値を緑に） */
+  isDamageBoosted: boolean;
+  /** 同上・ブロック */
+  isBlockBoosted: boolean;
 }
 
 const hasWeak = (player: PlayerState): boolean =>
@@ -38,15 +57,16 @@ const getStrengthBonus = (player: PlayerState): number =>
     .filter((status) => status.type === 'strength_up' && status.duration > 0)
     .reduce((total, status) => total + status.value, 0);
 
-export const getEffectiveCardValues = (
+/** 装備の包丁セット・次アタック加算・戦闘パワー由来の加算を除いたベースライン（isBoosted 比較用） */
+function computeEffectiveCardValuesInner(
   card: Card,
   player: PlayerState,
   lastPlayedCard: Card | null,
-  doubleNextCharges: number = 0,
-  attackItemBuff: { value: number; charges: number } | null | undefined = undefined,
-  toolSlots: ToolSlot[] | undefined = undefined,
-  doubleNextReplayCharges: number = 0,
-): EffectiveCardValues => {
+  doubleNextCharges: number,
+  attackItemBuff: { value: number; charges: number } | null | undefined,
+  toolSlots: ToolSlot[] | undefined,
+  doubleNextReplayCharges: number,
+): Omit<EffectiveCardValues, 'isBoosted' | 'isDamageBoosted' | 'isBlockBoosted'> {
   let damage = card.damage ?? null;
   let block = card.block ?? null;
   const baseHeal = (card.effects ?? [])
@@ -78,7 +98,11 @@ export const getEffectiveCardValues = (
       const scaffoldMultiplier = card.scaffoldMultiplier ?? 2;
       damage += player.scaffold * scaffoldMultiplier;
     }
-    if (player.jobId === 'cook' && card.tags?.includes('cooking') && card.cookingMultiplier) {
+    if (
+      player.jobId === 'cook' &&
+      (card.tags?.includes('cooking') || card.tags?.includes('cooking_consume')) &&
+      card.cookingMultiplier
+    ) {
       damage += player.cookingGauge * card.cookingMultiplier;
     }
     if (player.jobId === 'unemployed') {
@@ -133,16 +157,16 @@ export const getEffectiveCardValues = (
     if (card.type === 'attack' && (player.turnAttackDamageBonus ?? 0) > 0) {
       damage += player.turnAttackDamageBonus ?? 0;
     }
-    if (card.type === 'attack' && player.recipeStudyBonus > 0) {
-      damage += player.recipeStudyBonus;
-    }
-    if (card.type === 'attack' && player.nextIngredientBonus > 0 && card.tags?.includes('ingredient')) {
+    if (card.type === 'attack' && player.nextIngredientBonus > 0 && isIngredientCard(card)) {
       damage += player.nextIngredientBonus;
     }
     if (card.type === 'attack') {
-      const knifeSetCount = (toolSlots ?? []).filter((slot) => slot.card.id === 'knife_set').length;
-      if (knifeSetCount > 0) {
-        damage += knifeSetCount * 2;
+      const knifeBonus = (toolSlots ?? []).reduce((sum, slot) => {
+        if (!isCardIdVariantOf(slot.card.id, 'knife_set')) return sum;
+        return sum + (slot.card.upgraded ? 4 : 2);
+      }, 0);
+      if (knifeBonus > 0) {
+        damage += knifeBonus;
       }
     }
     const strengthBonus = getStrengthBonus(player);
@@ -228,7 +252,126 @@ export const getEffectiveCardValues = (
     isHealDebuffed: heal !== null && heal < baseHeal,
     isAttackDamageWeakDebuffed: attackWeakDebuffed,
   };
+}
+
+export const getEffectiveCardValues = (
+  card: Card,
+  player: PlayerState,
+  lastPlayedCard: Card | null,
+  doubleNextCharges: number = 0,
+  attackItemBuff: { value: number; charges: number } | null | undefined = undefined,
+  toolSlots: ToolSlot[] | undefined = undefined,
+  doubleNextReplayCharges: number = 0,
+): EffectiveCardValues => {
+  const full = computeEffectiveCardValuesInner(
+    card,
+    player,
+    lastPlayedCard,
+    doubleNextCharges,
+    attackItemBuff,
+    toolSlots,
+    doubleNextReplayCharges,
+  );
+  const boostBaselinePlayer: PlayerState = {
+    ...player,
+    nextAttackDamageBoost: 0,
+    nextAttackBoostCount: 0,
+    nextAttackBoostValue: 0,
+    attackDamageBonusAllAttacks: 0,
+    turnAttackDamageBonus: 0,
+  };
+  const boostBaselineSlots = (toolSlots ?? []).filter(
+    (s) => s?.card && !isCardIdVariantOf(s.card.id, 'knife_set'),
+  );
+  const stripped = computeEffectiveCardValuesInner(
+    card,
+    boostBaselinePlayer,
+    lastPlayedCard,
+    doubleNextCharges,
+    null,
+    boostBaselineSlots,
+    doubleNextReplayCharges,
+  );
+  const isDamageBoosted =
+    full.damage != null && stripped.damage != null && full.damage > stripped.damage;
+  const isBlockBoosted = full.block != null && stripped.block != null && full.block > stripped.block;
+  const isBoosted = isDamageBoosted || isBlockBoosted;
+  return { ...full, isBoosted, isDamageBoosted, isBlockBoosted };
 };
+
+/**
+ * ドラッグ／選択中：playCardInstant と同じ合成カードで調理・満腹の予測（闇鍋等ランダムは不可のため null）
+ */
+export function getPreviewCookingFullnessAfterPlay(
+  card: Card,
+  player: PlayerState,
+  doubleNextCharges: number,
+  doubleNextReplayCharges: number = 0,
+  activePowers?: Card[],
+): CookingFullnessPreview | null {
+  const effectivePlayer =
+    isRecipeStudyInEffect(player, activePowers) && !player.recipeStudyActive
+      ? { ...player, recipeStudyActive: true }
+      : player;
+  if (effectivePlayer.jobId !== 'cook') return null;
+  if (card.id === 'mystery_pot' || card.id.startsWith('mystery_pot_')) return null;
+
+  const replayActive = doubleNextReplayCharges > 0;
+  const enhanced = getEnhancedCardForPlay(card);
+  const multiplied = applyMultiplierAndBoostToCard(enhanced, effectivePlayer, doubleNextCharges, {
+    ignoreDoubleMultiplier: replayActive,
+  });
+
+  let cooking = effectivePlayer.cookingGauge;
+  let fullness = effectivePlayer.fullnessGauge ?? 0;
+  let fullnessGainedThisTurn = effectivePlayer.fullnessGainedThisTurn ?? false;
+  const cookingFrom = cooking;
+  const fullnessFrom = fullness;
+
+  for (const effect of multiplied.effects ?? []) {
+    if (effect.type === 'cooking_gauge') {
+      cooking += effect.value;
+    }
+    if (effect.type === 'fullness_gauge' && !fullnessGainedThisTurn) {
+      fullness += 1;
+      fullnessGainedThisTurn = true;
+    }
+  }
+
+  let fullnessTriggerHint = false;
+  let fullnessTo = fullness;
+  if (fullness >= 5) {
+    fullnessTriggerHint = true;
+    fullnessTo = 5;
+    fullness = 0;
+  }
+
+  if (multiplied.tags?.includes('cooking_consume')) {
+    cooking = 0;
+  }
+
+  if (isIngredientCard(multiplied) && effectivePlayer.recipeStudyActive) {
+    cooking += 1;
+  }
+
+  const cookingTo = cooking;
+
+  if (
+    cookingTo === cookingFrom &&
+    fullnessTo === fullnessFrom &&
+    !fullnessTriggerHint
+  ) {
+    return null;
+  }
+
+  return {
+    cookingFrom,
+    cookingTo,
+    fullnessFrom,
+    fullnessTo,
+    fullnessTriggerHint,
+  };
+}
 
 /**
  * ドラッグ中プレビュー用：カード使用後の足場（playCardInstant と同じ強化・倍率を反映）

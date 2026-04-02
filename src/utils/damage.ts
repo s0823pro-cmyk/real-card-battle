@@ -1,4 +1,6 @@
 import type { Card, Enemy, EnemyIntent, PlayerState, StatusEffect, ToolSlot } from '../types/game';
+import { isIngredientCard } from './cardBadgeRules';
+import { isCardIdVariantOf } from './cardIds';
 import { DANDORI_BASE_MULTIPLIER, prevCardGrantsDandori, reserveBonusActiveForCard } from './cardBadgeRules';
 import { getHungryDamageBonus, getHungryState } from './hungrySystem';
 
@@ -43,10 +45,12 @@ export const calculateCardDamage = (
     damage += player.scaffold * scaffoldMultiplier;
   }
 
-  if (player.jobId === 'cook' && card.tags?.includes('cooking') && card.cookingMultiplier) {
-    const cookingMultiplierBoost =
-      player.kitchenDemonActive && !player.firstCookingUsedThisTurn ? 2 : 0;
-    damage += player.cookingGauge * (card.cookingMultiplier + cookingMultiplierBoost);
+  if (
+    player.jobId === 'cook' &&
+    (card.tags?.includes('cooking') || card.tags?.includes('cooking_consume')) &&
+    card.cookingMultiplier
+  ) {
+    damage += player.cookingGauge * card.cookingMultiplier;
   }
 
   if (player.jobId === 'unemployed') {
@@ -102,20 +106,16 @@ export const calculateCardDamage = (
     damage += player.turnAttackDamageBonus ?? 0;
   }
 
-  if (card.id === 'mystery_pot') {
-    damage = 10 + Math.floor(Math.random() * 16);
-  }
-
   if (card.type === 'attack') {
-    if (player.recipeStudyBonus > 0) {
-      damage += player.recipeStudyBonus;
-    }
-    if (player.nextIngredientBonus > 0 && card.tags?.includes('ingredient')) {
+    if (player.nextIngredientBonus > 0 && isIngredientCard(card)) {
       damage += player.nextIngredientBonus;
     }
-    const knifeSetCount = safeToolSlots.filter((slot) => slot.card.id === 'knife_set').length;
-    if (knifeSetCount > 0) {
-      damage += knifeSetCount * 2;
+    const knifeSetBonus = safeToolSlots.reduce((sum, slot) => {
+      if (!isCardIdVariantOf(slot.card.id, 'knife_set')) return sum;
+      return sum + (slot.card.upgraded ? 4 : 2);
+    }, 0);
+    if (knifeSetBonus > 0) {
+      damage += knifeSetBonus;
     }
   }
 

@@ -43,6 +43,9 @@ const getBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
   isHealBuffed: false,
   isHealDebuffed: false,
   isAttackDamageWeakDebuffed: false,
+  isBoosted: false,
+  isDamageBoosted: false,
+  isBlockBoosted: false,
 });
 
 interface EventCardGainPreviewProps {

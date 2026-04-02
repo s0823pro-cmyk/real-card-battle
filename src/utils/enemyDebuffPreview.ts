@@ -11,11 +11,22 @@ function upsertStatusClone(
   const list = effects.map((s) => ({ ...s }));
   const idx = list.findIndex((s) => s.type === type);
   if (idx < 0) {
+    if (type === 'burn' || type === 'poison') {
+      const turns = Math.max(1, value);
+      list.push({ type, duration: turns, value: turns });
+      return list;
+    }
     const baseDuration = Math.max(1, durationTurns);
     list.push({ type, value, duration: baseDuration });
     return list;
   }
   const current = list[idx];
+  if (type === 'burn' || type === 'poison') {
+    const addTurns = Math.max(1, value);
+    const nextDur = current.duration + addTurns;
+    list[idx] = { type, duration: nextDur, value: nextDur };
+    return list;
+  }
   if (type === 'vulnerable' || type === 'weak') {
     const turns = Math.max(1, durationTurns);
     list[idx] = {
@@ -61,9 +72,11 @@ export function applyPendingDebuffPreviewToEnemy(enemy: Enemy, card: Card): Enem
               ? 'attack_down'
               : 'weak';
       const statusDuration =
-        effect.type === 'vulnerable' || effect.type === 'weak'
-          ? effect.duration ?? effect.value
-          : effect.duration ?? 1;
+        effect.type === 'burn'
+          ? effect.value
+          : effect.type === 'vulnerable' || effect.type === 'weak'
+            ? effect.duration ?? effect.value
+            : effect.duration ?? 1;
       statusEffects = upsertStatusClone(statusEffects, statusType, effect.value, statusDuration);
     }
   }
