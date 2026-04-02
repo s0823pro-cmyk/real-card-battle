@@ -774,20 +774,22 @@ const HomeScreen = ({
                 ¥500
               </button>
             </div>
-            <div className="settings-item settings-item--row">
-              <div className="settings-item-info">
-                <p className="settings-item-title">お得セット</p>
-                <p className="settings-item-desc">広告削除を含むセットです。</p>
+            {!isAdFree && (
+              <div className="settings-item settings-item--row">
+                <div className="settings-item-info">
+                  <p className="settings-item-title">お得セット</p>
+                  <p className="settings-item-desc">広告削除を含むセットです。</p>
+                </div>
+                <button
+                  type="button"
+                  className="settings-btn-purchase"
+                  disabled={iapBusy}
+                  onClick={() => void handleIapPurchase(IAP_PRODUCTS.BUNDLE_PACK)}
+                >
+                  ¥700
+                </button>
               </div>
-              <button
-                type="button"
-                className="settings-btn-purchase"
-                disabled={iapBusy}
-                onClick={() => void handleIapPurchase(IAP_PRODUCTS.BUNDLE_PACK)}
-              >
-                ¥700
-              </button>
-            </div>
+            )}
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
                 <p className="settings-item-title">購入の復元</p>

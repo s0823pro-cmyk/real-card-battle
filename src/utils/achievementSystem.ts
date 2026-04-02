@@ -4,7 +4,6 @@ import type { JobId } from '../types/game';
 import type { BattleResult } from '../types/run';
 import type { AchievementCounters } from './achievementCounters';
 import { clearAchievementCounters, loadAchievementCounters, saveAchievementCounters } from './achievementCounters';
-import { unlockJob } from './jobUnlockSystem';
 
 export type { Achievement, AchievementTier } from './achievementTypes';
 export { ACHIEVEMENTS, ACHIEVEMENT_LOCKED_CARD_IDS } from '../data/achievementDefinitions';
@@ -247,7 +246,8 @@ export const evaluateAchievementsAfterBattle = (
       if (currentArea === 1) achievementIds.push('area1_clear');
       if (currentArea === 2) {
         achievementIds.push('area2_clear');
-        unlockJob('cook');
+        // TODO: コック職カード拡張後に有効化する
+        // unlockJob('cook');
       }
       if (currentArea === 3) achievementIds.push('area3_clear');
     }
@@ -261,7 +261,8 @@ export const evaluateAchievementsAfterBattle = (
 
   if (result.outcome === 'defeat') {
     const count = incrementDefeatCount();
-    if (count >= 20) unlockJob('cook');
+    // TODO: コック職カード拡張後に有効化する
+    // if (count >= 20) unlockJob('cook');
     if (count >= 3) achievementIds.push('defeat_3');
   }
 
