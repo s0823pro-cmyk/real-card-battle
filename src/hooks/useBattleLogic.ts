@@ -243,6 +243,7 @@ export const useBattleLogic = () => {
         }
         np.fullnessGauge = 0;
         fullnessAutoHealTriggered = true;
+        np.fullnessBonusCount = (np.fullnessBonusCount ?? 0) + 1;
       }
 
       return {
@@ -340,6 +341,7 @@ export const useBattleLogic = () => {
       if (effect.type === 'cooking_gauge') {
         nextPlayer.cookingGauge += effect.value;
         cookingGaugeGained += effect.value;
+        nextPlayer.totalCookingGaugeGained = (nextPlayer.totalCookingGaugeGained ?? 0) + effect.value;
       }
       if (effect.type === 'fullness_gauge' && !nextPlayer.fullnessGainedThisTurn) {
         nextPlayer.fullnessGauge += 1;
@@ -453,6 +455,7 @@ export const useBattleLogic = () => {
       }
       nextPlayer.fullnessGauge = 0;
       fullnessAutoHealTriggered = true;
+      nextPlayer.fullnessBonusCount = (nextPlayer.fullnessBonusCount ?? 0) + 1;
     }
 
     if (card.tags?.includes('cooking_consume')) {

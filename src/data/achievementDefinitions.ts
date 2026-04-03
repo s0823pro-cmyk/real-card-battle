@@ -10,7 +10,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'first_win',
     name: '初陣の誉れ',
-    description: 'はじめてバトルに勝利する',
+    description: '大工ではじめてバトルに勝利する',
     icon: '🔨',
     tier: 'easy',
     jobId: 'carpenter',
@@ -19,7 +19,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'defeat_3',
     name: '不屈の学び',
-    description: '累計3回バトルに敗北する',
+    description: '大工で累計3回バトルに敗北する',
     icon: '💀',
     tier: 'easy',
     jobId: 'carpenter',
@@ -28,7 +28,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'elite_first',
     name: '強敵との初対面',
-    description: 'はじめてエリート戦に勝利する',
+    description: '大工ではじめてエリート戦に勝利する',
     icon: '👹',
     tier: 'easy',
     jobId: 'carpenter',
@@ -37,7 +37,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'win_10',
     name: '連戦の慣れ',
-    description: '累計10回バトルに勝利する',
+    description: '大工で累計10回バトルに勝利する',
     icon: '⚔️',
     tier: 'easy',
     jobId: 'carpenter',
@@ -46,7 +46,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'dice_25',
     name: '歩みを重ねて',
-    description: 'サイコロを累計25回振る',
+    description: '大工でサイコロを累計25回振る',
     icon: '🎲',
     tier: 'easy',
     jobId: 'carpenter',
@@ -55,7 +55,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'shrine_5',
     name: '神社の常連',
-    description: '神社マスを累計5回訪れる',
+    description: '大工で神社マスを累計5回訪れる',
     icon: '⛩️',
     tier: 'easy',
     jobId: 'carpenter',
@@ -64,7 +64,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'shop_cards_8',
     name: '質屋の顧客',
-    description: '質屋でカードを累計8回購入する',
+    description: '大工で質屋でカードを累計8回購入する',
     icon: '🏪',
     tier: 'easy',
     jobId: 'carpenter',
@@ -73,7 +73,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'gold_lifetime_500',
     name: '小金が貯まる',
-    description: '累計でゴールドを500以上獲得する（バトル報酬など）',
+    description: '大工で累計ゴールドを500以上獲得する',
     icon: '💰',
     tier: 'easy',
     jobId: 'carpenter',
@@ -83,7 +83,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'area1_clear',
     name: '一区切り',
-    description: 'エリア1のエリアボスに勝利する',
+    description: '大工でエリア1のエリアボスに勝利する',
     icon: '🏗️',
     tier: 'medium',
     jobId: 'carpenter',
@@ -92,7 +92,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'scaffold_10',
     name: '足場の鬼',
-    description: '1バトルで足場を10以上積んだ状態で勝利する',
+    description: '大工で1バトルで足場を10以上積んだ状態で勝利する',
     icon: '🏗️',
     tier: 'medium',
     jobId: 'carpenter',
@@ -101,7 +101,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'low_hp_kill',
     name: '綱渡りの勝利',
-    description: 'HPが10以下の状態で敵にとどめを刺す',
+    description: '大工でHPが10以下の状態で敵にとどめを刺す',
     icon: '😤',
     tier: 'medium',
     jobId: 'carpenter',
@@ -110,7 +110,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'events_10',
     name: 'イベントマスター',
-    description: 'イベントを累計10回完了する',
+    description: '大工でイベントを累計10回完了する',
     icon: '❓',
     tier: 'medium',
     jobId: 'carpenter',
@@ -119,7 +119,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'hotel_5',
     name: 'ホテル常宿',
-    description: 'ホテルマスを累計5回訪れる',
+    description: '大工でホテルマスを累計5回訪れる',
     icon: '🏨',
     tier: 'medium',
     jobId: 'carpenter',
@@ -128,7 +128,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'elite_wins_5',
     name: '強敵狩り',
-    description: 'エリート戦に累計5回勝利する',
+    description: '大工でエリート戦に累計5回勝利する',
     icon: '⚡',
     tier: 'medium',
     jobId: 'carpenter',
@@ -138,7 +138,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'area2_clear',
     name: 'さらなる高み',
-    description: 'エリア2のエリアボスに勝利する',
+    description: '大工でエリア2のエリアボスに勝利する',
     icon: '🏆',
     tier: 'hard',
     jobId: 'carpenter',
@@ -147,7 +147,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'area3_clear',
     name: '伝説の職人',
-    description: 'エリア3のエリアボスに勝利する（ゲームクリア）',
+    description: '大工でエリア3のエリアボスに勝利する（ゲームクリア）',
     icon: '👑',
     tier: 'hard',
     jobId: 'carpenter',
@@ -156,7 +156,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'zero_mental_survive',
     name: '底力覚醒',
-    description: 'メンタルが0以下の状態でバトルに勝利する',
+    description: '大工でメンタルが0以下の状態でバトルに勝利する',
     icon: '🌟',
     tier: 'hard',
     jobId: 'carpenter',
@@ -165,7 +165,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'win_25',
     name: '百戦錬磨',
-    description: '累計25回バトルに勝利する',
+    description: '大工で累計25回バトルに勝利する',
     icon: '🛡️',
     tier: 'hard',
     jobId: 'carpenter',
@@ -174,7 +174,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'gold_lifetime_2000',
     name: '財が成る',
-    description: '累計でゴールドを2000以上獲得する',
+    description: '大工で累計ゴールドを2000以上獲得する',
     icon: '💎',
     tier: 'hard',
     jobId: 'carpenter',
@@ -184,12 +184,39 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'dice_80',
     name: '果てまで歩く',
-    description: 'サイコロを累計80回振る',
+    description: '大工でサイコロを累計80回振る',
     icon: '🎲',
     tier: 'hard',
     jobId: 'carpenter',
     rewardCardIds: ['yane_fuki', 'toshi_bashira'],
   },
+
+  // ===== 料理人実績 =====
+  // easy (8件)
+  { id: 'cook_first_win', name: '初めての一皿', description: '料理人ではじめてバトルに勝利する', icon: '🍳', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_defeat_3', name: '厨房の失敗', description: '料理人で累計3回バトルに敗北する', icon: '😰', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_elite_first', name: '裏社会の味', description: '料理人ではじめてエリート戦に勝利する', icon: '🔪', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_win_10', name: '腕が上がる', description: '料理人で累計10回バトルに勝利する', icon: '📈', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_cooking_10', name: '仕込み上手', description: '1バトルで調理ゲージを累計10以上貯める', icon: '🍳', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_fullness_3', name: '満腹三昧', description: '1バトルで満腹ボーナスを3回発動する', icon: '🍖', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_shrine_5', name: '料理人の祈り', description: '料理人で神社マスを累計5回訪れる', icon: '⛩️', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_gold_500', name: '食材の元手', description: '料理人で累計ゴールドを500以上獲得する', icon: '💰', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
+
+  // medium (6件)
+  { id: 'cook_area1_clear', name: '市場の浄化', description: '料理人でエリア1のエリアボスに勝利する', icon: '🏪', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_cooking_20', name: '調理の達人', description: '1バトルで調理ゲージを累計20以上貯める', icon: '🔥', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_low_hp_kill', name: '火加減ギリギリ', description: '料理人でHPが10以下の状態で敵にとどめを刺す', icon: '💀', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_events_10', name: '食の探求者', description: '料理人でイベントを累計10回完了する', icon: '🗺️', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_hotel_5', name: '旅の宿', description: '料理人でホテルマスを累計5回訪れる', icon: '🏨', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_elite_wins_5', name: '裏社会の料理人', description: '料理人でエリート戦に累計5回勝利する', icon: '⚔️', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
+
+  // hard (6件)
+  { id: 'cook_area2_clear', name: '毒を制す者', description: '料理人でエリア2のエリアボスに勝利する', icon: '☠️', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_area3_clear', name: '飢えを満たす者', description: '料理人でエリア3のエリアボスに勝利する（ゲームクリア）', icon: '🌳', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_zero_mental', name: '折れない心', description: '料理人でメンタルが0以下の状態でバトルに勝利する', icon: '💪', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_win_25', name: '歴戦の料理人', description: '料理人で累計25回バトルに勝利する', icon: '👨‍🍳', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_gold_2000', name: '食の帝国', description: '料理人で累計ゴールドを2000以上獲得する', icon: '👑', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_dice_80', name: '果てまで歩く料理人', description: '料理人でサイコロを累計80回振る', icon: '🎲', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
 ];
 
 export const ACHIEVEMENT_LOCKED_CARD_IDS = new Set(

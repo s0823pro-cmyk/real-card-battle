@@ -44,6 +44,17 @@ import {
   pickArea3Elite,
   pickEvent,
 } from '../data/runData';
+import {
+  COOK_AREA1_BOSS,
+  COOK_AREA2_BOSS,
+  COOK_AREA3_BOSS,
+  pickCookArea1Encounter,
+  pickCookArea1Elite,
+  pickCookArea2Encounter,
+  pickCookArea2Elite,
+  pickCookArea3Encounter,
+  pickCookArea3Elite,
+} from '../data/cookEnemies';
 import { createEncounterFromTemplateIds, createEncounterFromTemplates } from '../data/enemies';
 import type { Card, GameState, JobId, PlayerState } from '../types/game';
 import type {
@@ -403,6 +414,8 @@ const initialPlayer: PlayerState = {
   attackDamageBonusAllAttacks: 0,
   turnAttackDamageBonus: 0,
   mentalMaxBonus: 0,
+  totalCookingGaugeGained: 0,
+  fullnessBonusCount: 0,
 };
 
 const makeInitialProgress = (): GameProgress => {
@@ -870,8 +883,17 @@ export const useRunProgress = () => {
       pendingBattleOpenRef.current = () => {
         if (tile.type === 'enemy') {
           const area = stateRef.current.currentArea;
+          const isCook = stateRef.current.jobId === 'cook';
           let enemies;
-          if (area === 2) {
+          if (isCook) {
+            if (area === 2) {
+              enemies = createEncounterFromTemplates(pickCookArea2Encounter());
+            } else if (area === 3) {
+              enemies = createEncounterFromTemplates(pickCookArea3Encounter());
+            } else {
+              enemies = createEncounterFromTemplates(pickCookArea1Encounter());
+            }
+          } else if (area === 2) {
             enemies = createEncounterFromTemplates(pickArea2Encounter());
           } else if (area === 3) {
             enemies = createEncounterFromTemplates(pickArea3Encounter());
@@ -893,8 +915,17 @@ export const useRunProgress = () => {
         }
         if (tile.type === 'unique_boss') {
           const area = stateRef.current.currentArea;
+          const isCook = stateRef.current.jobId === 'cook';
           let eliteTemplate;
-          if (area === 2) {
+          if (isCook) {
+            if (area === 2) {
+              eliteTemplate = pickCookArea2Elite();
+            } else if (area === 3) {
+              eliteTemplate = pickCookArea3Elite();
+            } else {
+              eliteTemplate = pickCookArea1Elite();
+            }
+          } else if (area === 2) {
             eliteTemplate = pickArea2Elite();
           } else if (area === 3) {
             eliteTemplate = pickArea3Elite();
@@ -915,8 +946,17 @@ export const useRunProgress = () => {
           return;
         }
         const area = stateRef.current.currentArea;
+        const isCookBoss = stateRef.current.jobId === 'cook';
         let bossTemplate;
-        if (area === 2) {
+        if (isCookBoss) {
+          if (area === 2) {
+            bossTemplate = COOK_AREA2_BOSS;
+          } else if (area === 3) {
+            bossTemplate = COOK_AREA3_BOSS;
+          } else {
+            bossTemplate = COOK_AREA1_BOSS;
+          }
+        } else if (area === 2) {
           bossTemplate = AREA2_BOSS;
         } else if (area === 3) {
           bossTemplate = AREA3_BOSS;

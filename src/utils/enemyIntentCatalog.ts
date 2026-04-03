@@ -10,6 +10,17 @@ import {
   AREA3_ELITES,
   AREA3_NORMAL_ENEMIES,
 } from '../data/runData';
+import {
+  COOK_AREA1_BOSS,
+  COOK_AREA1_ELITES,
+  COOK_AREA1_NORMAL_ENEMIES,
+  COOK_AREA2_BOSS,
+  COOK_AREA2_ELITES,
+  COOK_AREA2_NORMAL_ENEMIES,
+  COOK_AREA3_BOSS,
+  COOK_AREA3_ELITES,
+  COOK_AREA3_NORMAL_ENEMIES,
+} from '../data/cookEnemies';
 import { getEnemyAttackValue } from './damage';
 
 const CATALOG: Record<string, EnemyIntent[]> = {};
@@ -26,6 +37,16 @@ CATALOG[AREA2_BOSS.templateId] = AREA2_BOSS.intents;
 for (const entry of AREA3_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
 for (const entry of AREA3_ELITES) CATALOG[entry.templateId] = entry.intents;
 CATALOG[AREA3_BOSS.templateId] = AREA3_BOSS.intents;
+
+for (const entry of COOK_AREA1_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
+for (const entry of COOK_AREA1_ELITES) CATALOG[entry.templateId] = entry.intents;
+CATALOG[COOK_AREA1_BOSS.templateId] = COOK_AREA1_BOSS.intents;
+for (const entry of COOK_AREA2_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
+for (const entry of COOK_AREA2_ELITES) CATALOG[entry.templateId] = entry.intents;
+CATALOG[COOK_AREA2_BOSS.templateId] = COOK_AREA2_BOSS.intents;
+for (const entry of COOK_AREA3_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
+for (const entry of COOK_AREA3_ELITES) CATALOG[entry.templateId] = entry.intents;
+CATALOG[COOK_AREA3_BOSS.templateId] = COOK_AREA3_BOSS.intents;
 
 export function getEnemyIntentsForZukan(templateId: string): EnemyIntent[] {
   return CATALOG[templateId] ?? [];

@@ -443,6 +443,8 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   mentalMaxBonus: player.mentalMaxBonus ?? 0,
   fullnessGauge: player.fullnessGauge ?? 0,
   fullnessGainedThisTurn: player.fullnessGainedThisTurn ?? false,
+  totalCookingGaugeGained: 0,
+  fullnessBonusCount: 0,
 });
 
 const createInitialGameState = (setup?: BattleSetup | null): GameState => {
@@ -548,6 +550,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     executingIndex: -1,
     toolSlots: [],
     battleCardRevertMap: {},
+    pendingCurseCards: [],
   };
 };
 
@@ -1597,6 +1600,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       drawResult.drawn.length,
       playerAfterKitchenDemon.mental <= 0,
     );
+    const pendingCurses = state.pendingCurseCards ?? [];
     return {
       ...state,
       phase: 'player_turn',
@@ -1604,7 +1608,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       maxTime: nextMaxTime,
       usedTime: 0,
       shuffleAnimation: drawResult.shuffled,
-      hand: [...reservedToHand, ...drawResult.drawn, ...anxietyHandBonus],
+      hand: [...reservedToHand, ...drawResult.drawn, ...anxietyHandBonus, ...pendingCurses],
       reserved: [],
       timeline: [],
       drawPile: drawResult.drawPile,
@@ -1613,6 +1617,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       exhaustedCards: [...state.exhaustedCards, ...exhaustedFromReserve],
       player: playerAfterKitchenDemon,
       executingIndex: -1,
+      pendingCurseCards: [],
     };
   };
 
@@ -1905,7 +1910,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           };
           workingState = {
             ...workingState,
-            discardPile: [...workingState.discardPile, curseCard],
+            pendingCurseCards: [...(workingState.pendingCurseCards ?? []), curseCard],
           };
           pushPopup('🌑 呪いカード追加！', 'player', 'damage');
         }
@@ -2005,6 +2010,53 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           ),
         };
         setGameState({ ...workingState });
+      }
+
+      if (workingState.enemies.every((e) => e.currentHp <= 0)) {
+        const reward = workingState.enemies.reduce((sum, e) => sum + getEnemyReward(e.templateId), 0);
+        const nextMental = Math.min(
+          getEffectiveMaxMental(workingState.player),
+          workingState.player.mental + 1,
+        );
+        const revertedVictory = applyBattleCardReverts(workingState);
+        setVictoryRewardGold(reward);
+        setVictoryMentalRecovery(nextMental - workingState.player.mental);
+        setGameState({
+          ...revertedVictory,
+          phase: 'victory',
+          timeline: [],
+          player: {
+            ...clearBattleFlags(workingState.player),
+            gold: workingState.player.gold + reward,
+            mental: nextMental,
+          },
+        });
+        setBattleMessage('勝利！');
+        options?.onBattleFinished?.();
+        options?.onBattleEnd?.({
+          outcome: 'victory',
+          player: {
+            ...clearBattleFlags(workingState.player),
+            gold: workingState.player.gold + reward,
+            mental: nextMental,
+          },
+          deck: [
+            ...revertedVictory.drawPile,
+            ...revertedVictory.discardPile,
+            ...revertedVictory.hand,
+            ...revertedVictory.reserved,
+            ...revertedVictory.exhaustedCards,
+            ...revertedVictory.activePowers,
+            ...revertedVictory.toolSlots.map((slot) => slot.card),
+          ],
+          items: battleItems,
+          defeatedEnemies: workingState.enemies,
+          rewardGold: reward,
+          mentalRecovery: nextMental - workingState.player.mental,
+          kind: options?.setup?.kind ?? 'battle',
+          battleTurns: workingState.turn,
+        });
+        return;
       }
 
       if (workingState.player.currentHp <= 0) break;

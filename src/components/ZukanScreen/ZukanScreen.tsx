@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useAudioContext } from '../../contexts/AudioContext';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import CardComponent from '../Hand/CardComponent';
 import type { Card, CardRarity, CardType, JobId } from '../../types/game';
@@ -149,6 +150,7 @@ interface ZukanScreenProps {
 }
 
 export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanScreenProps) => {
+  const { playBgm } = useAudioContext();
   const [mainTab, setMainTab] = useState<MainTab>('cards');
   const [activeTab, setActiveTab] = useState<JobTab>('carpenter');
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
@@ -160,6 +162,11 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   const [enemySkillsOpen, setEnemySkillsOpen] = useState(false);
   const [showCarpenterUpgrade, setShowCarpenterUpgrade] = useState(false);
   const suppressOverlayCloseRef = useRef(false);
+
+  const handleStoryComplete = useCallback(() => {
+    setPlayingStory(null);
+    playBgm('menu');
+  }, [playBgm]);
 
   useEffect(() => {
     setEnemySkillsOpen(false);
@@ -229,11 +236,20 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   };
 
   if (playingStory) {
+    const isCook = playingStory.storyId.startsWith('cook');
+    const storyBgmArea =
+      playingStory.storyId.endsWith('_e1')
+        ? 2
+        : playingStory.storyId.endsWith('_e2') || playingStory.storyId.endsWith('_e3')
+          ? 3
+          : 1;
     return (
       <StoryScreen
         scenes={playingStory.scenes}
-        onComplete={() => setPlayingStory(null)}
+        onComplete={handleStoryComplete}
         showStartButton={false}
+        jobId={isCook ? 'cook' : 'carpenter'}
+        storyBgmArea={storyBgmArea}
       />
     );
   }

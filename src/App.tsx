@@ -174,12 +174,18 @@ function App() {
     if (screen !== 'map' && screen !== 'dice_rolling' && screen !== 'branch_select') return;
     const id = window.setTimeout(() => {
       const area = Math.min(3, Math.max(1, state.currentArea));
-      if (area === 1) playBgm('area1');
-      else if (area === 2) playBgm('area2');
-      else playBgm('area3');
+      if (state.jobId === 'cook') {
+        if (area === 1) playBgm('cook_area1');
+        else if (area === 2) playBgm('cook_area2');
+        else playBgm('cook_area3');
+      } else {
+        if (area === 1) playBgm('area1');
+        else if (area === 2) playBgm('area2');
+        else playBgm('area3');
+      }
     }, 0);
     return () => window.clearTimeout(id);
-  }, [state.currentScreen, state.currentArea, showStory, playBgm]);
+  }, [state.currentScreen, state.currentArea, state.jobId, showStory, playBgm]);
 
   useEffect(() => {
     return () => {
@@ -530,6 +536,7 @@ function App() {
             icon={state.eventGainModal.icon}
             kind={state.eventGainModal.kind}
             currentArea={state.currentArea}
+            jobId={state.jobId}
             onContinue={closeEventGainModal}
           />
         ) : null;
@@ -693,6 +700,7 @@ function App() {
           scenes={pendingJobId === 'cook' ? COOK_STORY : CARPENTER_STORY}
           onComplete={handleStoryComplete}
           currentArea={state.currentArea}
+          jobId={pendingJobId ?? state.jobId}
         />
       )}
       {showStory && currentStoryId && currentStoryScenes && (
@@ -707,6 +715,7 @@ function App() {
                 ? 3
                 : 3
           }
+          jobId={state.jobId}
         />
       )}
       {showBossReward && bossRewardArea !== null && (

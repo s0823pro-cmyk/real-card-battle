@@ -99,8 +99,8 @@ const EnemyDisplay = ({
               <div className="enemy-hp-text">
                 <span className="enemy-hp-fraction">
                   <img
-                    src={enemy.block > 0 ? ICONS.block : ICONS.hp}
-                    alt={enemy.block > 0 ? 'Block' : 'HP'}
+                    src={ICONS.hp}
+                    alt="HP"
                     className="status-icon"
                     draggable={false}
                   />
@@ -113,17 +113,10 @@ const EnemyDisplay = ({
                           : 'enemy-hp-num-single'
                     }
                   >
-                    {isPreviewTarget ? previewHp : enemy.currentHp}
+                    {isPreviewTarget ? previewHp + enemy.block : enemy.currentHp + enemy.block}
                   </span>
                 </span>
               </div>
-            </div>
-            <div className="enemy-buffs">
-              {strengthUp > 0 && (
-                <span className="enemy-buff--positive">
-                  <img src={ICONS.buff} alt="Buff" className="status-icon" />+{strengthUp}
-                </span>
-              )}
             </div>
             <div className="enemy-illustration">
               {enemy.imageUrl && !failedImageEnemyIds.has(enemy.id) ? (
@@ -155,10 +148,15 @@ const EnemyDisplay = ({
               />
             )}
             <div className="enemy-status-effects">
+              {strengthUp > 0 && (
+                <span className="enemy-buff--positive">
+                  <img src={ICONS.buff} alt="Buff" className="status-icon" />+{strengthUp}
+                </span>
+              )}
               {vulnerable > 0 && (
                 <Tooltip label="脆弱" description={`受けるダメージ+50%。残り${vulnerable}ターン`}>
                   <span className="status-badge status-badge--vulnerable">
-                    <img src={ICONS.badgeVulnerable} alt="" className="status-icon" />
+                    <img src={ICONS.badgeVulnerable} alt="" className="debuff-icon" />
                     {vulnerable}
                   </span>
                 </Tooltip>
@@ -166,7 +164,7 @@ const EnemyDisplay = ({
               {weak > 0 && (
                 <Tooltip label="弱体" description={`与えるダメージが25％減少。残り${weak}ターン`}>
                   <span className="status-badge status-badge--weak">
-                    <img src={ICONS.badgeWeak} alt="" className="status-icon" />
+                    <img src={ICONS.badgeWeak} alt="" className="debuff-icon" />
                     {weak}
                   </span>
                 </Tooltip>
@@ -177,7 +175,7 @@ const EnemyDisplay = ({
                   description={`ターン終了時に残りターン数（${burn}）と同じダメージ。ターンごとに1減る`}
                 >
                   <span className="status-badge status-badge--burn">
-                    <img src={ICONS.badgeBurn} alt="" className="status-icon" />
+                    <img src={ICONS.badgeBurn} alt="" className="debuff-icon" />
                     {burn}
                   </span>
                 </Tooltip>
@@ -196,7 +194,7 @@ const EnemyDisplay = ({
               {attackDown > 0 && (
                 <Tooltip label="攻撃デバフ" description={`攻撃力-${attackDown}（このターンのみ）`}>
                   <span className="status-badge status-badge--debuff">
-                    <img src={ICONS.badgeAttackDown} alt="" className="status-icon" />
+                    <img src={ICONS.badgeAttackDown} alt="" className="debuff-icon" />
                     {attackDown}
                   </span>
                 </Tooltip>

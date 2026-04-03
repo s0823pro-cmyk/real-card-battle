@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { StoryScene } from '../../data/stories/carpenterStory';
 import { useAudioContext } from '../../contexts/AudioContext';
+import type { JobId } from '../../types/game';
 import './StoryScreen.css';
 
 interface StoryScreenProps {
@@ -14,6 +15,8 @@ interface StoryScreenProps {
    * エリア1ボス後ストーリー→2（bgm-story-area2）、エリア2ボス後→3（area3）など。
    */
   storyBgmArea?: number;
+  /** コック用ストーリーBGMに切り替えるために使用 */
+  jobId?: JobId;
 }
 
 export const StoryScreen = ({
@@ -22,6 +25,7 @@ export const StoryScreen = ({
   showStartButton = true,
   currentArea = 1,
   storyBgmArea,
+  jobId,
 }: StoryScreenProps) => {
   const { stopBgm, playBgm } = useAudioContext();
   const [sceneIndex, setSceneIndex] = useState(0);
@@ -39,16 +43,22 @@ export const StoryScreen = ({
     const bgmArea = storyBgmArea ?? (showStartButton ? currentArea : undefined);
     if (bgmArea != null) {
       const area = Math.min(3, Math.max(1, bgmArea));
-      if (area === 1) playBgm('story_area1');
-      else if (area === 2) playBgm('story_area2');
-      else playBgm('story_area3');
+      if (jobId === 'cook') {
+        if (area === 1) playBgm('cook_story_area1');
+        else if (area === 2) playBgm('cook_story_area2');
+        else playBgm('cook_story_area3');
+      } else {
+        if (area === 1) playBgm('story_area1');
+        else if (area === 2) playBgm('story_area2');
+        else playBgm('story_area3');
+      }
       return () => {
         stopBgm();
       };
     }
     stopBgm();
     return undefined;
-  }, [storyBgmArea, showStartButton, currentArea, playBgm, stopBgm]);
+  }, [storyBgmArea, showStartButton, currentArea, jobId, playBgm, stopBgm]);
 
   const finishStory = useCallback(() => {
     stopBgm();

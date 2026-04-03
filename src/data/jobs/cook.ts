@@ -112,7 +112,7 @@ export const COOK_COMMON_POOL: Card[] = [
     sellValue: 5,
     imageUrl: meatPoundImage,
   },
-  { id: 'salt', name: '塩コショウ', type: 'skill', timeCost: 1, description: '敵に脆弱2付与、調理+1、満腹+1', icon: '🧂', tags: ['ingredient'], effects: [{ type: 'cooking_gauge', value: 1 }, { type: 'fullness_gauge', value: 1 }, { type: 'vulnerable', value: 2 }], sellValue: 5, imageUrl: saltPepperImage },
+  { id: 'salt', name: '塩コショウ', type: 'skill', timeCost: 1, description: '敵に脆弱2付与、調理+1、満腹+1', icon: '🧂', tags: ['ingredient'], effects: [{ type: 'cooking_gauge', value: 1 }, { type: 'fullness_gauge', value: 1 }, { type: 'vulnerable', value: 1, duration: 2 }], sellValue: 5, imageUrl: saltPepperImage },
   {
     id: 'knife_sharpening',
     name: '包丁研ぎ',

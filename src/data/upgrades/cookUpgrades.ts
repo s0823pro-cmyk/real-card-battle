@@ -66,7 +66,7 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
     name: '塩コショウ+',
     description: '脆弱3ターン。調理+2、満腹+1',
     effects: [
-      { type: 'vulnerable', value: 3 },
+      { type: 'vulnerable', value: 1, duration: 3 },
       { type: 'cooking_gauge', value: 2 },
       { type: 'fullness_gauge', value: 1 },
     ],

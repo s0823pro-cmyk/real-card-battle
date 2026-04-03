@@ -118,7 +118,7 @@ const RESERVE_PENDING_MS = 500;
 /** 温存でタイムラインから減る秒数（実コストに合わせ、プレビューもこの固定値） */
 const RESERVE_DROP_COST = RESERVE_PENDING_MS / 1000;
 
-const BOSS_IDS = ['monster_customer', 'evil_ceo', 'world_tree_warden'];
+
 const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
   if ((card.damage ?? 0) > 0) return 'damage';
   if ((card.block ?? 0) > 0) return 'block';
@@ -265,11 +265,6 @@ const BattleScreen = ({
   const reserveCardByIdRef = useRef(reserveCardById);
   reserveCardByIdRef.current = reserveCardById;
 
-  const isBoss = useMemo(
-    () => gameState.enemies.some((e) => BOSS_IDS.includes(e.templateId)),
-    [gameState.enemies],
-  );
-
   const battleBackgroundSrc = useMemo(() => {
     const area = Math.min(3, Math.max(1, currentArea));
     const isBossBattle = setup?.kind === 'boss';
@@ -372,11 +367,12 @@ const BattleScreen = ({
   }, [showBattleSettings, isBgmMuted, isSeMuted]);
 
   useEffect(() => {
-    playBgm(isBoss ? 'boss' : 'battle');
+    const isBossBgm = setup?.kind === 'boss';
+    playBgm(isBossBgm ? 'boss' : 'battle');
     return () => {
       playBgm('none');
     };
-  }, [isBoss, playBgm]);
+  }, [setup?.kind, playBgm]);
 
   const prevPopupsLenRef = useRef(0);
   useEffect(() => {
@@ -1371,7 +1367,7 @@ const BattleScreen = ({
                       description={`受けるダメージ+50%。敵の攻撃表示は1.5倍で表示されます。残り${playerDebuffStrip.vulnerable}ターン`}
                     >
                       <span className="status-badge status-badge--vulnerable">
-                        <img src={ICONS.badgeVulnerable} alt="" className="status-icon" />
+                        <img src={ICONS.badgeVulnerable} alt="" className="debuff-icon" />
                         {playerDebuffStrip.vulnerable}
                       </span>
                     </Tooltip>
@@ -1379,7 +1375,7 @@ const BattleScreen = ({
                   {playerDebuffStrip.weak > 0 && (
                     <Tooltip label="弱体" description={`与えるダメージが25％減少。残り${playerDebuffStrip.weak}ターン`}>
                       <span className="status-badge status-badge--weak">
-                        <img src={ICONS.badgeWeak} alt="" className="status-icon" />
+                        <img src={ICONS.badgeWeak} alt="" className="debuff-icon" />
                         {playerDebuffStrip.weak}
                       </span>
                     </Tooltip>
@@ -1390,7 +1386,7 @@ const BattleScreen = ({
                       description={`次の自分ターン開始時に${playerDebuffStrip.burnDamage}ダメージ（残りターン数と同じ）。残り${playerDebuffStrip.burnTurns}ターン`}
                     >
                       <span className="status-badge status-badge--burn">
-                        <img src={ICONS.badgeBurn} alt="" className="status-icon" />
+                        <img src={ICONS.badgeBurn} alt="" className="debuff-icon" />
                         {playerDebuffStrip.burnDamage}
                       </span>
                     </Tooltip>
@@ -1524,7 +1520,7 @@ const BattleScreen = ({
                   void (async () => {
                     await showInterstitialIfAllowed(getAdsRemoved(), () => {
                       stopBgm();
-                      playBgm(isBoss ? 'boss' : 'battle');
+                      playBgm(setup?.kind === 'boss' ? 'boss' : 'battle');
                     });
                     reviveAfterDefeatOffer();
                   })();

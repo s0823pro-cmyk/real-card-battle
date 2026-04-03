@@ -61,6 +61,7 @@ interface EventGainModalProps {
   icon: string;
   kind: 'omamori' | 'item';
   currentArea: number;
+  jobId?: JobId;
   onContinue: () => void;
 }
 
@@ -70,15 +71,22 @@ export const EventGainModalScreen = ({
   icon,
   kind,
   currentArea,
+  jobId,
   onContinue,
 }: EventGainModalProps) => {
   const { playBgm } = useAudioContext();
   useEffect(() => {
     const area = Math.min(3, Math.max(1, currentArea));
-    if (area === 1) playBgm('area1');
-    else if (area === 2) playBgm('area2');
-    else playBgm('area3');
-  }, [currentArea, playBgm]);
+    if (jobId === 'cook') {
+      if (area === 1) playBgm('cook_area1');
+      else if (area === 2) playBgm('cook_area2');
+      else playBgm('cook_area3');
+    } else {
+      if (area === 1) playBgm('area1');
+      else if (area === 2) playBgm('area2');
+      else playBgm('area3');
+    }
+  }, [currentArea, jobId, playBgm]);
 
   const mainStyle = {
     '--flow-bg-image': `url(${FLOW_BG_CARD_REWARD})`,
@@ -118,10 +126,16 @@ export const EventCardGainPreviewScreen = ({
   const { playBgm } = useAudioContext();
   useEffect(() => {
     const area = Math.min(3, Math.max(1, currentArea));
-    if (area === 1) playBgm('area1');
-    else if (area === 2) playBgm('area2');
-    else playBgm('area3');
-  }, [currentArea, playBgm]);
+    if (jobId === 'cook') {
+      if (area === 1) playBgm('cook_area1');
+      else if (area === 2) playBgm('cook_area2');
+      else playBgm('cook_area3');
+    } else {
+      if (area === 1) playBgm('area1');
+      else if (area === 2) playBgm('area2');
+      else playBgm('area3');
+    }
+  }, [currentArea, jobId, playBgm]);
 
   const noop = () => {};
   const rewardListRef = useRef<HTMLDivElement | null>(null);

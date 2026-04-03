@@ -563,6 +563,7 @@ const HomeScreen = ({
     setPlayingStory(null);
     setActiveHowtoTab('story');
     setModal('howto');
+    playBgm('menu');
   };
 
   const homeButtons = [
@@ -1297,7 +1298,21 @@ const HomeScreen = ({
         </div>
       )}
       {playingStory && (
-        <StoryScreen scenes={getStoryScenes(playingStory)} onComplete={handleHowtoStoryComplete} showStartButton={false} />
+        <StoryScreen
+          scenes={getStoryScenes(playingStory)}
+          onComplete={handleHowtoStoryComplete}
+          showStartButton={false}
+          jobId={playingStory.startsWith('cook') ? 'cook' : 'carpenter'}
+          storyBgmArea={
+            playingStory === 'carpenter_e1' || playingStory === 'cook_e1'
+              ? 2
+              : playingStory === 'carpenter_e2' || playingStory === 'cook_e2'
+                ? 3
+                : playingStory === 'carpenter_e3' || playingStory === 'cook_e3'
+                  ? 3
+                  : 1
+          }
+        />
       )}
     </main>
   );

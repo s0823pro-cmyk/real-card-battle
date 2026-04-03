@@ -217,6 +217,10 @@ export interface PlayerState {
   turnAttackDamageBonus: number;
   nextCardEffectBoost: number;
   fullSprintUsedCount?: number;
+  /** バトル中の調理ゲージ獲得累計（cook_cooking_10/20 実績用） */
+  totalCookingGaugeGained?: number;
+  /** バトル中の満腹ボーナス（HP回復）発動回数（cook_fullness_3 実績用） */
+  fullnessBonusCount?: number;
 }
 
 export interface ToolSlot {
@@ -251,4 +255,6 @@ export interface GameState {
   toolSlots: ToolSlot[];
   /** 全面改装／リフォーム系のバトル中のみの強化を終了時に戻すため id→強化前 */
   battleCardRevertMap?: Record<string, Card>;
+  /** 次のターン開始時に手札に強制追加される呪いカード（add_curse で付与） */
+  pendingCurseCards?: Card[];
 }
