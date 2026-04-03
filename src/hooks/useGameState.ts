@@ -8,9 +8,15 @@ import { clearSavedProgress } from './useRunProgress';
 import { getAdsRemoved, setPendingDefeatInterstitial } from '../utils/adsRemoved';
 import { getDebugEnemyHp1 } from '../utils/debugEnemyHp1';
 import type { CardResolveResult } from './useBattleLogic';
-import { useEnemyAI } from './useEnemyAI';
+import {
+  applyOneEnemyDotTick,
+  buildEnemyDotStepQueue,
+  finalizeEnemyAfterDotTicks,
+  useEnemyAI,
+} from './useEnemyAI';
 import type {
   Card,
+  Enemy,
   EnemyIntent,
   EnemyIntentType,
   GameState,
@@ -86,6 +92,119 @@ const ENEMY_GOLD_REWARDS: Record<string, number> = {
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/** 各敵のインテント表示後のディレイ（このあとにその敵のDoT等） */
+const MS_AFTER_ENEMY_ACTION_DISPLAY = 540;
+/** 敵ターンで最後に行動する敵のインテント表示後は、ターン終了までを短くする */
+const MS_AFTER_LAST_ENEMY_ACTION_DISPLAY = 300;
+/** 全敵の行動が終わってから次処理（プレイヤーDoT等）へ入るまでのほんの少しの間 */
+const MS_AFTER_ENEMY_TURN_END = 380;
+/** 敵のインテント表示から最初の（敵自身の）火傷・毒DoTまで */
+const MS_AFTER_ENEMY_ACTION_TO_FIRST_DOT = 350;
+/** 敵ターン最後の敵のみ、その敵のDoT開始までを短くする */
+const MS_AFTER_LAST_ENEMY_TO_SELF_DOT = 220;
+/** 敵の通常攻撃完了から最初のプレイヤーDoTまで（敵ターン終了後） */
+const MS_AFTER_ENEMY_TURN_TO_PLAYER_FIRST_DOT = 350;
+/** 同一種DoTスタック間 */
+const MS_BETWEEN_SAME_KIND_DOT = 400;
+/** 火傷フェーズ終了後〜毒フェーズ開始前（400〜500ms） */
+const MS_AFTER_BURN_PHASE_BEFORE_POISON = 450;
+/** 全DoT終了後〜カードドロー前（400〜500ms） */
+const MS_AFTER_ALL_DOT_BEFORE_DRAW = 450;
+
+type PlayerDotStep = { kind: 'burn' | 'poison'; damage: number };
+
+const buildPlayerDotStepQueue = (player: PlayerState): PlayerDotStep[] => {
+  const steps: PlayerDotStep[] = [];
+  let hp = player.currentHp;
+  const burns = player.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
+  const poisons = player.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
+  for (const s of burns) {
+    steps.push({ kind: 'burn', damage: s.duration });
+    hp = Math.max(0, hp - s.duration);
+  }
+  if (hp > 0) {
+    for (const _ of poisons) {
+      const dmg = Math.ceil(hp * 0.05);
+      steps.push({ kind: 'poison', damage: dmg });
+      hp = Math.max(0, hp - dmg);
+    }
+  }
+  return steps;
+};
+
+/** 敵の火傷・毒の「残りターン」合計（UI・SE 用。複数エントリは加算） */
+const sumEnemyBurnTurns = (enemy: Enemy): number =>
+  enemy.statusEffects
+    .filter((s) => s.type === 'burn' && s.duration > 0)
+    .reduce((a, s) => a + s.duration, 0);
+
+const sumEnemyPoisonTurns = (enemy: Enemy): number =>
+  enemy.statusEffects
+    .filter((s) => s.type === 'poison' && s.duration > 0)
+    .reduce((a, s) => a + s.duration, 0);
+
+const applyOnePlayerDotTick = (
+  player: PlayerState,
+): { nextPlayer: PlayerState; step: PlayerDotStep } | null => {
+  const rest = player.statusEffects.filter((s) => s.type !== 'burn' && s.type !== 'poison');
+  const burns = player.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
+  if (burns.length > 0) {
+    const s = burns[0];
+    const dmg = s.duration;
+    const hp = Math.max(0, player.currentHp - dmg);
+    const nd = s.duration - 1;
+    const newFirst = nd > 0 ? [{ ...s, duration: nd, value: nd }] : [];
+    const otherBurns = burns.slice(1);
+    const poisons = player.statusEffects.filter((x) => x.type === 'poison' && x.duration > 0);
+    return {
+      nextPlayer: {
+        ...player,
+        currentHp: hp,
+        statusEffects: [...rest, ...newFirst, ...otherBurns, ...poisons],
+      },
+      step: { kind: 'burn', damage: dmg },
+    };
+  }
+  const poisons = player.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
+  if (player.currentHp > 0 && poisons.length > 0) {
+    const s = poisons[0];
+    const dmg = Math.ceil(player.currentHp * 0.05);
+    const hp = Math.max(0, player.currentHp - dmg);
+    const nd = s.duration - 1;
+    const newFirst = nd > 0 ? [{ ...s, duration: nd, value: nd }] : [];
+    const otherPoisons = poisons.slice(1);
+    const burnRemain = player.statusEffects.filter((x) => x.type === 'burn' && x.duration > 0);
+    return {
+      nextPlayer: {
+        ...player,
+        currentHp: hp,
+        statusEffects: [...rest, ...burnRemain, ...newFirst, ...otherPoisons],
+      },
+      step: { kind: 'poison', damage: dmg },
+    };
+  }
+  return null;
+};
+
+/** 火傷・毒のターン処理後：脆弱等のターン経過（processPlayerTurnStartStatuses の後半と同一） */
+const finalizePlayerTurnStartFromPostDotPlayer = (player: PlayerState): PlayerState => {
+  const statusEffects = player.statusEffects
+    .map((status) => {
+      if (status.type === 'vulnerable' || status.type === 'weak') {
+        return { ...status, duration: status.duration - 1, value: status.value - 1 };
+      }
+      if (status.type === 'attack_down') {
+        return { ...status, duration: status.duration - 1 };
+      }
+      return status;
+    })
+    .filter((status) => {
+      if (status.type === 'attack_down') return status.duration > 0 && status.value > 0;
+      return status.duration > 0 && status.value > 0;
+    });
+  return { ...player, statusEffects };
+};
+
 /** 敵のデバフ・メンタル・呪い付与などに共通 SE */
 const ENEMY_DEBUFF_INTENT_TYPES: readonly EnemyIntentType[] = [
   'debuff',
@@ -102,7 +221,7 @@ export interface BattlePopup {
   id: number;
   text: string;
   target: 'player' | 'enemy' | string;
-  kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action' | 'mystery_pot';
+  kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action' | 'mystery_pot' | 'burn' | 'poison';
 }
 
 export interface UseGameStateResult {
@@ -115,6 +234,10 @@ export interface UseGameStateResult {
   sellingCardId: string | null;
   returningCardId: string | null;
   isPlayerHit: boolean;
+  /** プレイヤー火傷 DoT 時の画面フラッシュ（battle-screen--burn-flash） */
+  dotBurnFlash: boolean;
+  /** プレイヤー毒 DoT 時の画面フラッシュ（battle-screen--poison-flash） */
+  dotPoisonFlash: boolean;
   hitEnemyId: string | null;
   shieldEffect: boolean;
   isMentalHit: boolean;
@@ -449,6 +572,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const skipBattleStartAnimationRef = useRef(!!options?.initialGameState);
   const [hitEnemyId, setHitEnemyId] = useState<string | null>(null);
   const [isPlayerHit, setIsPlayerHit] = useState(false);
+  const [dotBurnFlash, setDotBurnFlash] = useState(false);
+  const [dotPoisonFlash, setDotPoisonFlash] = useState(false);
   const [isMentalHit, setIsMentalHit] = useState(false);
   const [shieldEffect, setShieldEffect] = useState(false);
   const [lastPlayedCard, setLastPlayedCard] = useState<Card | null>(null);
@@ -472,6 +597,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const battleOmamoris = options?.setup?.omamoris ?? [];
   const prevHungryStateRef = useRef<'normal' | 'hungry' | 'awakened'>('normal');
   const endTurnRef = useRef<() => Promise<void>>(async () => {});
+  /** 敵ターン終了〜プレイヤーDoT直列演出中はカード操作を拒否 */
+  const dotSequenceInProgressRef = useRef(false);
   const pushPopupRef = useRef<
     (text: string, target: 'player' | 'enemy' | string, kind: BattlePopup['kind'], durationMs?: number) => void
   >(() => {});
@@ -501,6 +628,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setShowStartBanner(true);
     setHitEnemyId(null);
     setIsPlayerHit(false);
+    setDotBurnFlash(false);
+    setDotPoisonFlash(false);
     setIsMentalHit(false);
     setShieldEffect(false);
     setLastPlayedCard(null);
@@ -670,6 +799,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   );
   const remainingTime = gameState.maxTime - gameState.usedTime;
   const canPlayCard = (card: Card): boolean => {
+    if (dotSequenceInProgressRef.current) return false;
     if (gameState.phase !== 'player_turn') return false;
     if (card.type === 'status' || card.type === 'curse') return false;
     if (card.tags?.includes('require_below_half_hp')) {
@@ -704,6 +834,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   pendingHandUpgradeCountRef.current = pendingHandUpgradeCount;
 
   const selectCard = (cardId: string): void => {
+    if (dotSequenceInProgressRef.current) return;
     if (gameState.phase !== 'player_turn') return;
     setSelectedCardId((prev) => (prev === cardId ? null : cardId));
   };
@@ -716,6 +847,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     blockGained: number;
     multiHitJabs?: { enemyId: string; damage: number }[];
   } => {
+    if (dotSequenceInProgressRef.current) return { played: false, blockGained: 0 };
     if (gameState.phase !== 'player_turn') return { played: false, blockGained: 0 };
     if (activePendingHandUpgradeCount > 0) return { played: false, blockGained: 0 };
     const card = gameState.hand.find((item) => item.id === cardId);
@@ -741,6 +873,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     });
 
     const enemiesBefore = gameState.enemies.map((enemy) => ({ id: enemy.id, hp: enemy.currentHp, templateId: enemy.templateId }));
+    const enemyDebuffTotalsBefore = gameState.enemies.map((e) => ({
+      id: e.id,
+      burn: sumEnemyBurnTurns(e),
+      poison: sumEnemyPoisonTurns(e),
+    }));
 
     const buffedCard =
       attackItemBuff && attackItemBuff.charges > 0 && multipliedCard.type === 'attack'
@@ -1096,6 +1233,17 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (result.lighterBurnApplied) {
       pushPopup('🔥 火傷2付与！', result.targetEnemyId ?? 'player', 'buff');
     }
+    {
+      let enemyBurnIncreased = false;
+      let enemyPoisonIncreased = false;
+      for (const e of result.enemies) {
+        const prev = enemyDebuffTotalsBefore.find((x) => x.id === e.id);
+        if (sumEnemyBurnTurns(e) > (prev?.burn ?? 0)) enemyBurnIncreased = true;
+        if (sumEnemyPoisonTurns(e) > (prev?.poison ?? 0)) enemyPoisonIncreased = true;
+      }
+      if (enemyBurnIncreased) playSe('burn');
+      if (enemyPoisonIncreased) playSe('poison');
+    }
     if (result.scaffoldGained > 0) {
       pushPopup(`+${result.scaffoldGained}足場`, 'player', 'buff');
     }
@@ -1121,10 +1269,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       const before = enemiesBefore.find((item) => item.id === e.id);
       return before !== undefined && e.currentHp > before.hp;
     });
-    /** 勝利のお守り等の on_kill 回復だけでは回復SEを鳴らさない（カード回復・敵回復は従来どおり） */
+    /** 勝利のお守り等の on_kill 回復だけでは回復SEを鳴らさない（カード回復・敵回復は従来どおり）。満腹5回復も含める */
     const shouldPlayHealSe =
       anyEnemyHpIncreasedForHealSe || (playerHpIncreasedOverall && playerHpIncreasedFromCardResolve);
-    if (shouldPlayHealSe) {
+    if (shouldPlayHealSe || result.fullnessAutoHealTriggered) {
       playSe('heal');
     }
     if (result.isDandoriActive) {
@@ -1214,6 +1362,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   };
 
   const useBattleItem = (itemId: string): boolean => {
+    if (dotSequenceInProgressRef.current) return false;
     if (activePendingHandUpgradeCount > 0) return false;
     const item = battleItems.find((entry) => entry.id === itemId);
     if (!item || gameState.phase !== 'player_turn') return false;
@@ -1269,6 +1418,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   };
 
   const reserveCardById = (cardId: string): boolean => {
+    if (dotSequenceInProgressRef.current) return false;
     /** phase / 手札強化待ち / 温存可否はすべて prev と ref で判定（stale closure・遅延呼び出しでも nextCardDoubleEffect を誤って落とさない） */
     let didReserve = false;
     setGameState((prev) => {
@@ -1329,6 +1479,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   const sellCardById = (cardId: string): boolean => {
     if (!CARPENTER_CAN_SELL_IN_BATTLE) return false;
+    if (dotSequenceInProgressRef.current) return false;
     if (gameState.phase !== 'player_turn') return false;
     if (activePendingHandUpgradeCount > 0) return false;
     const targetCard = gameState.hand.find((card) => card.id === cardId);
@@ -1354,7 +1505,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     return true;
   };
 
-  const moveToNextTurn = (state: GameState): GameState => {
+  const moveToNextTurn = (
+    state: GameState,
+    dotOverride?: { currentHp: number; statusEffects: StatusEffect[] },
+  ): GameState => {
     const cliffEdgeAwakened =
       state.player.cliffEdgeActive &&
       state.player.jobId === 'unemployed' &&
@@ -1380,7 +1534,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const nextBlockPersistTurns = keepBlock ? Math.max(0, blockPersistTurns - 1) : 0;
     const shouldDisableBlockThisTurn = state.player.nextTurnNoBlock;
 
-    const dot = processPlayerTurnStartStatuses(state.player);
+    const dot = dotOverride ?? processPlayerTurnStartStatuses(state.player);
 
     const playerAfterReset = applyToolEffects(state.toolSlots, {
       ...state.player,
@@ -1683,7 +1837,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     await wait(380);
 
     let lastAttackerName = '';
-    for (let ei = 0; ei < workingState.enemies.length; ei += 1) {
+    enemyActions: for (let ei = 0; ei < workingState.enemies.length; ei += 1) {
+      if (workingState.player.currentHp <= 0) break;
       const enemy = workingState.enemies[ei];
       if (enemy.currentHp <= 0) continue;
       const blockBeforeEnemy = workingState.player.block;
@@ -1696,7 +1851,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         ...workingState,
         player: revivalOutcome.player,
         maxTime: getMaxTime(revivalOutcome.player.mental, revivalOutcome.player.timeBonusPerTurn),
-        enemies: workingState.enemies.map((item) => (item.id === enemy.id ? result.enemy : item)),
+        enemies: workingState.enemies.map((item) =>
+          item.id === enemy.id ? result.enemyBeforeDot : item,
+        ),
       };
       if (revivalOutcome.revived) {
         pushPopup('🔄 七転び八起き！', 'player', 'buff');
@@ -1753,15 +1910,103 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           pushPopup('🌑 呪いカード追加！', 'player', 'damage');
         }
       }
-      if (result.enemy.currentHp > enemy.currentHp) {
+      if (result.enemyBeforeDot.currentHp > enemy.currentHp) {
         playSe('heal');
-        pushPopup(`💚+${result.enemy.currentHp - enemy.currentHp}HP`, enemy.id, 'buff');
+        pushPopup(`💚+${result.enemyBeforeDot.currentHp - enemy.currentHp}HP`, enemy.id, 'buff');
       }
       setBattleMessage(result.log);
       setGameState({ ...workingState });
-      await wait(540);
+      const moreLivingEnemiesAfter = workingState.enemies.some(
+        (e, idx) => idx > ei && e.currentHp > 0,
+      );
+      await wait(
+        moreLivingEnemiesAfter ? MS_AFTER_ENEMY_ACTION_DISPLAY : MS_AFTER_LAST_ENEMY_ACTION_DISPLAY,
+      );
       setIsPlayerHit(false);
       setIsMentalHit(false);
+
+      if (workingState.player.currentHp <= 0) {
+        workingState = {
+          ...workingState,
+          enemies: workingState.enemies.map((item) =>
+            item.id === enemy.id ? result.enemy : item,
+          ),
+        };
+        setGameState({ ...workingState });
+        dotSequenceInProgressRef.current = false;
+        break enemyActions;
+      }
+
+      const enemyDotQueue = buildEnemyDotStepQueue(result.enemyBeforeDot);
+      if (enemyDotQueue.length > 0) {
+        await wait(
+          moreLivingEnemiesAfter ? MS_AFTER_ENEMY_ACTION_TO_FIRST_DOT : MS_AFTER_LAST_ENEMY_TO_SELF_DOT,
+        );
+        let eEnemy = result.enemyBeforeDot;
+        for (let di = 0; di < enemyDotQueue.length; di += 1) {
+          if (workingState.player.currentHp <= 0) {
+            eEnemy = finalizeEnemyAfterDotTicks(eEnemy);
+            workingState = {
+              ...workingState,
+              enemies: workingState.enemies.map((item) => (item.id === enemy.id ? eEnemy : item)),
+            };
+            setGameState({ ...workingState });
+            dotSequenceInProgressRef.current = false;
+            break enemyActions;
+          }
+          if (di > 0) {
+            const prev = enemyDotQueue[di - 1];
+            const cur = enemyDotQueue[di];
+            await wait(
+              prev.kind === 'burn' && cur.kind === 'poison'
+                ? MS_AFTER_BURN_PHASE_BEFORE_POISON
+                : MS_BETWEEN_SAME_KIND_DOT,
+            );
+          }
+          const tick = applyOneEnemyDotTick(eEnemy);
+          if (!tick) break;
+          eEnemy = tick.nextEnemy;
+          pushPopup(
+            tick.step.kind === 'burn' ? `🔥-${tick.step.damage}` : `☠️-${tick.step.damage}`,
+            enemy.id,
+            tick.step.kind === 'burn' ? 'burn' : 'poison',
+          );
+          setHitEnemyId(enemy.id);
+          window.setTimeout(() => setHitEnemyId(null), 400);
+          workingState = {
+            ...workingState,
+            enemies: workingState.enemies.map((item) => (item.id === enemy.id ? eEnemy : item)),
+          };
+          setGameState({ ...workingState });
+          if (eEnemy.currentHp <= 0) {
+            eEnemy = finalizeEnemyAfterDotTicks(eEnemy);
+            workingState = {
+              ...workingState,
+              enemies: workingState.enemies.map((item) => (item.id === enemy.id ? eEnemy : item)),
+            };
+            setGameState({ ...workingState });
+            break;
+          }
+        }
+        if (eEnemy.currentHp > 0) {
+          eEnemy = finalizeEnemyAfterDotTicks(eEnemy);
+          workingState = {
+            ...workingState,
+            enemies: workingState.enemies.map((item) => (item.id === enemy.id ? eEnemy : item)),
+          };
+          setGameState({ ...workingState });
+        }
+      } else {
+        const finalizedEnemy = finalizeEnemyAfterDotTicks(result.enemyBeforeDot);
+        workingState = {
+          ...workingState,
+          enemies: workingState.enemies.map((item) =>
+            item.id === enemy.id ? finalizedEnemy : item,
+          ),
+        };
+        setGameState({ ...workingState });
+      }
+
       if (workingState.player.currentHp <= 0) break;
     }
 
@@ -1791,50 +2036,129 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return;
     }
 
-    // ターン開始DoTのポップアップ（moveToNextTurn と同じ processPlayerTurnStartStatuses）
-    const dotPreview = processPlayerTurnStartStatuses(workingState.player);
-    if (dotPreview.burnDamage > 0) {
-      pushPopup(`🔥-${dotPreview.burnDamage}`, 'player', 'damage');
-      await wait(400);
-    }
-    if (dotPreview.poisonDamage > 0) {
-      pushPopup(`☠️-${dotPreview.poisonDamage}`, 'player', 'damage');
-      await wait(400);
-    }
+    await wait(MS_AFTER_ENEMY_TURN_END);
 
-    const next = moveToNextTurn(workingState);
-    const onTurnStartBlockBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'block');
-    if (onTurnStartBlockBonus > 0 && next.player.canBlock) {
-      pushPopup(`⛑️ +${onTurnStartBlockBonus}ブロック`, 'player', 'buff');
+    const playerDotQueue = buildPlayerDotStepQueue(workingState.player);
+    let dotLethal: 'burn' | 'poison' | undefined;
+    if (playerDotQueue.length > 0) {
+      dotSequenceInProgressRef.current = true;
     }
+    try {
+      if (playerDotQueue.length > 0) {
+        await wait(MS_AFTER_ENEMY_TURN_TO_PLAYER_FIRST_DOT);
+        let p = workingState.player;
+        let burnTicks = 0;
+        let poisonTicks = 0;
 
-    // 火傷・毒による敗北判定
-    if (next.player.currentHp <= 0) {
-      const defeatedByDot = dotPreview.dotLethal === 'poison' ? '毒' : '火傷';
-      if (options?.canOfferDefeatRevive) {
-        pendingDefeatRef.current = { snapshot: next, defeatedBy: defeatedByDot };
-        clearBattleState();
-        clearSavedProgress();
-        if (!getAdsRemoved()) setPendingDefeatInterstitial(true);
+        for (let di = 0; di < playerDotQueue.length; di += 1) {
+          if (p.currentHp <= 0) break;
+          if (di > 0) {
+            const prev = playerDotQueue[di - 1];
+            const cur = playerDotQueue[di];
+            await wait(
+              prev.kind === 'burn' && cur.kind === 'poison'
+                ? MS_AFTER_BURN_PHASE_BEFORE_POISON
+                : MS_BETWEEN_SAME_KIND_DOT,
+            );
+          }
+          const tick = applyOnePlayerDotTick(p);
+          if (!tick) break;
+          p = tick.nextPlayer;
+          if (tick.step.kind === 'burn') {
+            burnTicks += 1;
+            setDotBurnFlash(true);
+            window.setTimeout(() => setDotBurnFlash(false), 320);
+            pushPopup(`🔥-${tick.step.damage}`, 'player', 'burn');
+          } else {
+            poisonTicks += 1;
+            setDotPoisonFlash(true);
+            window.setTimeout(() => setDotPoisonFlash(false), 320);
+            pushPopup(`☠️-${tick.step.damage}`, 'player', 'poison');
+          }
+          workingState = { ...workingState, player: p };
+          setGameState({ ...workingState });
+          if (p.currentHp <= 0) {
+            dotLethal = tick.step.kind === 'burn' ? 'burn' : 'poison';
+            break;
+          }
+        }
+
+        if (p.currentHp > 0 && (burnTicks > 0 || poisonTicks > 0)) {
+          await wait(MS_AFTER_ALL_DOT_BEFORE_DRAW);
+        }
+
+        if (p.currentHp > 0) {
+          p = finalizePlayerTurnStartFromPostDotPlayer(p);
+          workingState = { ...workingState, player: p };
+          setGameState({ ...workingState });
+        }
+      }
+
+      if (workingState.player.currentHp <= 0 && playerDotQueue.length > 0) {
+        const defeatedByDot = dotLethal === 'poison' ? '毒' : '火傷';
+        if (options?.canOfferDefeatRevive) {
+          pendingDefeatRef.current = { snapshot: workingState, defeatedBy: defeatedByDot };
+          clearBattleState();
+          clearSavedProgress();
+          if (!getAdsRemoved()) setPendingDefeatInterstitial(true);
+          setGameState({
+            ...workingState,
+            phase: 'defeat_offer_revive',
+            player: clearBattleFlags(workingState.player),
+          });
+          setBattleMessage('敗北...');
+          return;
+        }
         setGameState({
-          ...next,
-          phase: 'defeat_offer_revive',
-          player: clearBattleFlags(next.player),
+          ...workingState,
+          phase: 'defeat',
+          player: clearBattleFlags(workingState.player),
         });
         setBattleMessage('敗北...');
+        options?.onBattleFinished?.();
+        options?.onBattleEnd?.(buildDefeatBattleResult(workingState, defeatedByDot));
         return;
       }
-      setGameState({ ...next, phase: 'defeat', player: clearBattleFlags(next.player) });
-      setBattleMessage('敗北...');
-      options?.onBattleFinished?.();
-      options?.onBattleEnd?.(buildDefeatBattleResult(next, defeatedByDot));
-      return;
-    }
 
-    setGameState(next);
-    setLastPlayedCard(null);
-    setBattleMessage('次のターン');
-    options?.onTurnStart?.(next);
+      const dotPre =
+        playerDotQueue.length > 0 && workingState.player.currentHp > 0
+          ? { currentHp: workingState.player.currentHp, statusEffects: workingState.player.statusEffects }
+          : undefined;
+      const next = moveToNextTurn(workingState, dotPre);
+      const onTurnStartBlockBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'block');
+      if (onTurnStartBlockBonus > 0 && next.player.canBlock) {
+        pushPopup(`⛑️ +${onTurnStartBlockBonus}ブロック`, 'player', 'buff');
+      }
+
+      if (next.player.currentHp <= 0) {
+        const defeatedByDot = dotLethal === 'poison' ? '毒' : '火傷';
+        if (options?.canOfferDefeatRevive) {
+          pendingDefeatRef.current = { snapshot: next, defeatedBy: defeatedByDot };
+          clearBattleState();
+          clearSavedProgress();
+          if (!getAdsRemoved()) setPendingDefeatInterstitial(true);
+          setGameState({
+            ...next,
+            phase: 'defeat_offer_revive',
+            player: clearBattleFlags(next.player),
+          });
+          setBattleMessage('敗北...');
+          return;
+        }
+        setGameState({ ...next, phase: 'defeat', player: clearBattleFlags(next.player) });
+        setBattleMessage('敗北...');
+        options?.onBattleFinished?.();
+        options?.onBattleEnd?.(buildDefeatBattleResult(next, defeatedByDot));
+        return;
+      }
+
+      setGameState(next);
+      setLastPlayedCard(null);
+      setBattleMessage('次のターン');
+      options?.onTurnStart?.(next);
+    } finally {
+      dotSequenceInProgressRef.current = false;
+    }
   }
 
   const upgradeHandCardById = (cardId: string): boolean => {
@@ -1878,6 +2202,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setShowStartBanner(true);
     setHitEnemyId(null);
     setIsPlayerHit(false);
+    setDotBurnFlash(false);
+    setDotPoisonFlash(false);
     setIsMentalHit(false);
     setShieldEffect(false);
     setLastPlayedCard(null);
@@ -1940,6 +2266,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     sellingCardId,
     returningCardId,
     isPlayerHit,
+    dotBurnFlash,
+    dotPoisonFlash,
     isMentalHit,
     hitEnemyId,
     shieldEffect,

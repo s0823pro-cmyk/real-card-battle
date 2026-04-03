@@ -216,6 +216,8 @@ const BattleScreen = ({
     sellingCardId,
     returningCardId,
     isPlayerHit,
+    dotBurnFlash,
+    dotPoisonFlash,
     isMentalHit,
     hitEnemyId,
     shieldEffect,
@@ -381,7 +383,11 @@ const BattleScreen = ({
     const newPopups = battlePopups.slice(prevPopupsLenRef.current);
     prevPopupsLenRef.current = battlePopups.length;
     for (const popup of newPopups) {
-      if (popup.target === 'player' && popup.kind === 'damage') {
+      if (popup.kind === 'burn') {
+        playSe('burn');
+      } else if (popup.kind === 'poison') {
+        playSe('poison');
+      } else if (popup.target === 'player' && popup.kind === 'damage') {
         playSe('damage');
       }
     }
@@ -1234,6 +1240,8 @@ const BattleScreen = ({
         hungryVisualState === 'awakened' ? 'battle-screen--awakened' : ''
       } ${hungryEffect === 'hungry' ? 'battle-screen--hungry-flash' : ''} ${
         hungryEffect === 'awakened' ? 'battle-screen--awakened-flash' : ''
+      } ${dotBurnFlash ? 'battle-screen--burn-flash' : ''} ${
+        dotPoisonFlash ? 'battle-screen--poison-flash' : ''
       }`}
       onPointerDown={(event) => {
         const target = event.target as HTMLElement;

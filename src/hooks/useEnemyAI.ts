@@ -2,7 +2,12 @@ import type { Enemy, EnemyIntent, EnemyIntentType, PlayerState, StatusEffect } f
 import { stripEnemyIntentParenthetical } from '../utils/enemyIntentDisplay';
 import { applyEnemyAttack } from '../utils/damage';
 
+/** 敵の火傷・毒 DoT を1スタック分ずつ直列再生するためのキュー要素 */
+export type EnemyDotStep = { kind: 'burn' | 'poison'; damage: number };
+
 export interface EnemyTurnResult {
+  /** インテント直後・DoT適用前の敵（直列DoT演出用） */
+  enemyBeforeDot: Enemy;
   enemy: Enemy;
   player: PlayerState;
   damageToPlayer: number;
@@ -14,6 +19,10 @@ export interface EnemyTurnResult {
   log: string;
   /** 今ターンに実行したインテント（SE 等に使用） */
   intentType: EnemyIntentType;
+  /** この敵の行動後に適用した火傷 DoT の合計 */
+  enemyDotBurnDamage: number;
+  /** この敵の行動後に適用した毒 DoT の合計 */
+  enemyDotPoisonDamage: number;
 }
 
 /** 敵がプレイヤーに付与するデバフの最低ターン数（duration / value のベース） */
@@ -39,27 +48,146 @@ const upsertStatus = (statuses: StatusEffect[], next: StatusEffect): StatusEffec
   );
 };
 
-export const useEnemyAI = () => {
-  const getAvailableIntents = (enemy: Enemy): EnemyIntent[] => {
-    // エリア1ボス：monster_customer — 技5種。序盤は穏やか、終盤は全パターン
-    if (enemy.templateId === 'monster_customer' && enemy.intentHistory.length >= 5) {
-      if (enemy.currentHp > 130) return enemy.intentHistory.slice(0, 2);
-      if (enemy.currentHp > 60) return enemy.intentHistory.slice(2, 5);
-      return enemy.intentHistory.slice(0, 5);
+const getAvailableIntentsForEnemy = (enemy: Enemy): EnemyIntent[] => {
+  if (enemy.templateId === 'monster_customer' && enemy.intentHistory.length >= 5) {
+    if (enemy.currentHp > 130) return enemy.intentHistory.slice(0, 2);
+    if (enemy.currentHp > 60) return enemy.intentHistory.slice(2, 5);
+    return enemy.intentHistory.slice(0, 5);
+  }
+  if (enemy.templateId === 'evil_ceo' && enemy.intentHistory.length >= 5) {
+    if (enemy.currentHp > 140) return enemy.intentHistory.slice(0, 3);
+    return enemy.intentHistory.slice(2, 5);
+  }
+  if (enemy.templateId === 'world_tree_warden' && enemy.intentHistory.length >= 5) {
+    if (enemy.currentHp > 220) return enemy.intentHistory.slice(0, 3);
+    if (enemy.currentHp > 100) return enemy.intentHistory.slice(2, 5);
+    return enemy.intentHistory.slice(0, 5);
+  }
+  return enemy.intentHistory;
+};
+
+/** 表示順・ダメージ量の事前計算（バッチ結果と一致） */
+export const buildEnemyDotStepQueue = (enemy: Enemy): EnemyDotStep[] => {
+  const steps: EnemyDotStep[] = [];
+  let hp = enemy.currentHp;
+  const burns = enemy.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
+  const poisons = enemy.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
+  for (const s of burns) {
+    steps.push({ kind: 'burn', damage: s.duration });
+    hp = Math.max(0, hp - s.duration);
+  }
+  if (hp > 0) {
+    for (const _ of poisons) {
+      const dmg = Math.ceil(hp * 0.05);
+      steps.push({ kind: 'poison', damage: dmg });
+      hp = Math.max(0, hp - dmg);
     }
-    // エリア2ボス：evil_ceo — 技5種
-    if (enemy.templateId === 'evil_ceo' && enemy.intentHistory.length >= 5) {
-      if (enemy.currentHp > 140) return enemy.intentHistory.slice(0, 3);
-      return enemy.intentHistory.slice(2, 5);
+  }
+  return steps;
+};
+
+export const applyOneEnemyDotTick = (enemy: Enemy): { nextEnemy: Enemy; step: EnemyDotStep } | null => {
+  const rest = enemy.statusEffects.filter((s) => s.type !== 'burn' && s.type !== 'poison');
+  const burns = enemy.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
+  if (burns.length > 0) {
+    const s = burns[0];
+    const dmg = s.duration;
+    const hp = Math.max(0, enemy.currentHp - dmg);
+    const nd = s.duration - 1;
+    const newFirst = nd > 0 ? [{ ...s, duration: nd, value: nd }] : [];
+    const otherBurns = burns.slice(1);
+    const poisons = enemy.statusEffects.filter((x) => x.type === 'poison' && x.duration > 0);
+    return {
+      nextEnemy: {
+        ...enemy,
+        currentHp: hp,
+        statusEffects: [...rest, ...newFirst, ...otherBurns, ...poisons],
+      },
+      step: { kind: 'burn', damage: dmg },
+    };
+  }
+  const poisons = enemy.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
+  if (enemy.currentHp > 0 && poisons.length > 0) {
+    const s = poisons[0];
+    const dmg = Math.ceil(enemy.currentHp * 0.05);
+    const hp = Math.max(0, enemy.currentHp - dmg);
+    const nd = s.duration - 1;
+    const newFirst = nd > 0 ? [{ ...s, duration: nd, value: nd }] : [];
+    const otherPoisons = poisons.slice(1);
+    const burnRemain = enemy.statusEffects.filter((x) => x.type === 'burn' && x.duration > 0);
+    return {
+      nextEnemy: {
+        ...enemy,
+        currentHp: hp,
+        statusEffects: [...rest, ...burnRemain, ...newFirst, ...otherPoisons],
+      },
+      step: { kind: 'poison', damage: dmg },
+    };
+  }
+  return null;
+};
+
+export const applyEnemyBurnPoisonBatch = (
+  enemy: Enemy,
+): { enemy: Enemy; burnTotal: number; poisonTotal: number } => {
+  let e = enemy;
+  let burnTotal = 0;
+  let poisonTotal = 0;
+  while (true) {
+    const r = applyOneEnemyDotTick(e);
+    if (!r) break;
+    if (r.step.kind === 'burn') burnTotal += r.step.damage;
+    else poisonTotal += r.step.damage;
+    e = r.nextEnemy;
+  }
+  return { enemy: e, burnTotal, poisonTotal };
+};
+
+/** 火傷・毒のターン処理後：脆弱等の経過とインデント更新 */
+export const finalizeEnemyAfterDotTicks = (enemy: Enemy): Enemy => {
+  const nextStatuses: StatusEffect[] = [];
+  for (const status of enemy.statusEffects) {
+    if (status.type === 'burn' || status.type === 'poison') {
+      nextStatuses.push(status);
+      continue;
     }
-    // エリア3ボス：world_tree_warden — 技5種
-    if (enemy.templateId === 'world_tree_warden' && enemy.intentHistory.length >= 5) {
-      if (enemy.currentHp > 220) return enemy.intentHistory.slice(0, 3);
-      if (enemy.currentHp > 100) return enemy.intentHistory.slice(2, 5);
-      return enemy.intentHistory.slice(0, 5);
+    if (status.type === 'vulnerable' || status.type === 'weak') {
+      const nextDuration = Math.max(0, status.duration - 1);
+      const nextValue = Math.max(0, status.value - 1);
+      if (nextDuration > 0 && nextValue > 0) {
+        nextStatuses.push({ ...status, duration: nextDuration, value: nextValue });
+      }
+      continue;
     }
-    return enemy.intentHistory;
+    if (status.type === 'attack_down') {
+      const nextDuration = Math.max(0, status.duration - 1);
+      if (nextDuration > 0 && status.value > 0) {
+        nextStatuses.push({ ...status, duration: nextDuration });
+      }
+      continue;
+    }
+    nextStatuses.push(status);
+  }
+  let updatedEnemy: Enemy = {
+    ...enemy,
+    statusEffects: nextStatuses,
   };
+  const nextAvailable = getAvailableIntentsForEnemy(updatedEnemy);
+  const nextRandomIndex =
+    updatedEnemy.templateId === 'lost_soul'
+      ? (updatedEnemy.currentIntentIndex + 1) % 3
+      : nextAvailable.length > 0
+        ? Math.floor(Math.random() * 1000000)
+        : 0;
+  updatedEnemy = {
+    ...updatedEnemy,
+    currentIntentIndex: nextRandomIndex,
+  };
+  return updatedEnemy;
+};
+
+export const useEnemyAI = () => {
+  const getAvailableIntents = getAvailableIntentsForEnemy;
 
   const getEnemyIntent = (enemy: Enemy): EnemyIntent => {
     if (enemy.templateId === 'lost_soul' && enemy.intentHistory.length >= 3) {
@@ -146,69 +274,17 @@ export const useEnemyAI = () => {
       });
     }
 
-    // 行動後：火傷（残りターン=ダメ）→毒（残りHPの5%切り上げ）→脆弱・弱体・攻撃デバフのターン経過
-    const rest = updatedEnemy.statusEffects.filter((s) => s.type !== 'burn' && s.type !== 'poison');
-    const burns = updatedEnemy.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
-    const poisons = updatedEnemy.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
-    let enemyHp = updatedEnemy.currentHp;
-    const newBurns: StatusEffect[] = [];
-    for (const s of burns) {
-      enemyHp = Math.max(0, enemyHp - s.duration);
-      const nd = s.duration - 1;
-      if (nd > 0) newBurns.push({ ...s, duration: nd, value: nd });
-    }
-    const newPoisons: StatusEffect[] = [];
-    if (enemyHp > 0) {
-      for (const s of poisons) {
-        const dmg = Math.ceil(enemyHp * 0.05);
-        enemyHp = Math.max(0, enemyHp - dmg);
-        const nd = s.duration - 1;
-        if (nd > 0) newPoisons.push({ ...s, duration: nd, value: nd });
-      }
-    }
-    updatedEnemy = { ...updatedEnemy, currentHp: enemyHp, statusEffects: [...rest, ...newBurns, ...newPoisons] };
-
-    const nextStatuses: StatusEffect[] = [];
-    for (const status of updatedEnemy.statusEffects) {
-      if (status.type === 'burn' || status.type === 'poison') {
-        nextStatuses.push(status);
-        continue;
-      }
-      if (status.type === 'vulnerable' || status.type === 'weak') {
-        const nextDuration = Math.max(0, status.duration - 1);
-        const nextValue = Math.max(0, status.value - 1);
-        if (nextDuration > 0 && nextValue > 0) {
-          nextStatuses.push({ ...status, duration: nextDuration, value: nextValue });
-        }
-        continue;
-      }
-      if (status.type === 'attack_down') {
-        const nextDuration = Math.max(0, status.duration - 1);
-        if (nextDuration > 0 && status.value > 0) {
-          nextStatuses.push({ ...status, duration: nextDuration });
-        }
-        continue;
-      }
-      nextStatuses.push(status);
-    }
-    updatedEnemy = {
+    const enemyBeforeDot: Enemy = {
       ...updatedEnemy,
-      statusEffects: nextStatuses,
+      statusEffects: [...updatedEnemy.statusEffects],
     };
-
-    const nextAvailable = getAvailableIntents(updatedEnemy);
-    const nextRandomIndex =
-      updatedEnemy.templateId === 'lost_soul'
-        ? (updatedEnemy.currentIntentIndex + 1) % 3
-        : nextAvailable.length > 0
-          ? Math.floor(Math.random() * 1000000)
-          : 0;
-    updatedEnemy = {
-      ...updatedEnemy,
-      currentIntentIndex: nextRandomIndex,
-    };
+    const batch = applyEnemyBurnPoisonBatch(enemyBeforeDot);
+    const enemyDotBurnDamage = batch.burnTotal;
+    const enemyDotPoisonDamage = batch.poisonTotal;
+    updatedEnemy = finalizeEnemyAfterDotTicks(batch.enemy);
 
     return {
+      enemyBeforeDot,
       enemy: updatedEnemy,
       player: updatedPlayer,
       damageToPlayer: damage,
@@ -217,6 +293,8 @@ export const useEnemyAI = () => {
       goldStolen,
       addCurse,
       intentType: intent.type,
+      enemyDotBurnDamage,
+      enemyDotPoisonDamage,
       log:
         intent.type === 'attack'
           ? `${enemy.name}：攻撃 ${damage}`

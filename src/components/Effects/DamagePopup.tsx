@@ -2,7 +2,7 @@ export interface PopupItem {
   id: number;
   text: string;
   target: 'player' | 'enemy' | string;
-  kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action' | 'mystery_pot';
+  kind: 'damage' | 'block' | 'buff' | 'dandori' | 'enemy_action' | 'mystery_pot' | 'burn' | 'poison';
 }
 
 interface Props {
@@ -18,7 +18,7 @@ const DamagePopup = ({ popups }: Props) => {
           className={`damage-popup target-${popup.target} ${
             popup.kind === 'mystery_pot'
               ? 'damage-popup--mystery-pot'
-              : popup.kind === 'damage'
+              : popup.kind === 'damage' || popup.kind === 'burn' || popup.kind === 'poison'
                 ? Number.parseInt(popup.text.replace(/[^0-9]/g, ''), 10) >= 10
                   ? 'damage-popup--critical'
                   : 'damage-popup--normal'

@@ -24,6 +24,8 @@
   --player-main-stats-nudge-left: -8px;
   /* 足場アイコン＋数値だけ右へ（relative+left：フレックス上の他要素の位置は変えない） */
   --scaffold-sub-visual-right: calc(-1 * var(--player-sub-row-shift-x));
+  /* 満腹ゲージのみさらに左へ（アイテム枠と重ならないように） */
+  --fullness-gauge-nudge-x: -14px;
   /* ブロック・棟上げ・宮大工・足場：HP 行との縦のリズムを揃えるためのわずかな下方向オフセット */
   --block-row-sub-nudge-y: 1px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -463,10 +465,10 @@
   color: #27ae60;
 }
 
-/* 下段の満腹ゲージ：調理ゲージと同じレイアウト */
+/* 下段の満腹ゲージ：調理より左寄せ（アイテム枠との干渉軽減） */
 .fullness-gauge--sub-row {
   position: relative;
-  left: var(--scaffold-sub-visual-right);
+  left: calc(var(--scaffold-sub-visual-right) + var(--fullness-gauge-nudge-x));
   top: var(--block-row-sub-nudge-y);
   flex-shrink: 0;
   display: inline-flex;

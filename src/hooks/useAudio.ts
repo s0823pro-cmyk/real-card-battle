@@ -69,7 +69,11 @@ type SeType =
   /** ゴールド減少（盗み・購入・ペナルティ等） */
   | 'gold_lost'
   /** マップで1マス進んだとき */
-  | 'map_move';
+  | 'map_move'
+  /** 火傷DoT */
+  | 'burn'
+  /** 毒DoT */
+  | 'poison';
 export type BgmType =
   | 'menu'
   | 'battle'
@@ -99,6 +103,8 @@ const SE_FILES: Record<SeType, string> = {
   enemy_debuff: publicSoundUrl('se-enemy-debuff.mp3'),
   gold_lost: publicSoundUrl('se-gold-lost.mp3'),
   map_move: publicSoundUrl('se-map-move.mp3'),
+  burn: publicSoundUrl('se-burn.mp3'),
+  poison: publicSoundUrl('se-poison.mp3'),
 };
 
 const BGM_FILES: Record<Exclude<BgmType, 'none'>, string> = {

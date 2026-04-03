@@ -149,6 +149,26 @@
   animation: screen-shake 0.4s ease-out;
 }
 
+.battle-screen--burn-flash::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 90, 35, 0.38);
+  pointer-events: none;
+  z-index: 9997;
+  animation: dot-burn-flash 0.32s ease-out forwards;
+}
+
+.battle-screen--poison-flash::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(110, 45, 150, 0.34), rgba(35, 130, 75, 0.28));
+  pointer-events: none;
+  z-index: 9997;
+  animation: dot-poison-flash 0.32s ease-out forwards;
+}
+
 .battle-screen--awakened .hand-card .card-frame {
   box-shadow: 0 0 12px rgba(240, 180, 41, 0.5) !important;
   border-color: rgba(240, 180, 41, 0.6) !important;
@@ -1226,6 +1246,24 @@
 }
 
 @keyframes awakened-flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes dot-burn-flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes dot-poison-flash {
   0% {
     opacity: 1;
   }
