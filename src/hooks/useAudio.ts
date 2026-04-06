@@ -175,7 +175,7 @@ function playBgmModule(type: BgmType, volume: number, muted: boolean): void {
   bgmElement.src = BGM_FILES[type];
   bgmElement.loop = LOOP_BGM.includes(type);
   bgmElement.volume = muted ? 0 : volume;
-  bgmElement.muted = muted;
+  bgmElement.muted = muted; // iOS WebView 対策
   const playPromise = bgmElement.play();
   if (playPromise !== undefined) {
     playPromise.catch(() => {
@@ -319,7 +319,7 @@ export const useAudio = () => {
     localStorage.setItem('bgmVolume', String(clamped));
     if (bgmElement) {
       bgmElement.volume = bgmMutedRef.current ? 0 : clamped;
-      bgmElement.muted = bgmMutedRef.current;
+      bgmElement.muted = bgmMutedRef.current; // iOS WebView 対策
     }
   }, []);
 
@@ -334,7 +334,7 @@ export const useAudio = () => {
     localStorage.setItem('bgmMuted', String(bgmMutedRef.current));
     if (bgmElement) {
       bgmElement.volume = bgmMutedRef.current ? 0 : bgmVolumeRef.current;
-      bgmElement.muted = bgmMutedRef.current;
+      bgmElement.muted = bgmMutedRef.current; // iOS WebView 対策
     }
     return bgmMutedRef.current;
   }, []);
@@ -370,6 +370,7 @@ export const useAudio = () => {
       for (const src of ALL_PRELOAD_SRC) {
         if (cancelled) break;
         await preloadAudio(src);
+        // 各ファイル間に間を空けて CPU 負荷を分散（発熱対策）
         await new Promise((r) => setTimeout(r, 100));
       }
     })();
