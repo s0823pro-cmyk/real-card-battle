@@ -175,6 +175,7 @@ function playBgmModule(type: BgmType, volume: number, muted: boolean): void {
   bgmElement.src = BGM_FILES[type];
   bgmElement.loop = LOOP_BGM.includes(type);
   bgmElement.volume = muted ? 0 : volume;
+  bgmElement.muted = muted;
   const playPromise = bgmElement.play();
   if (playPromise !== undefined) {
     playPromise.catch(() => {
@@ -191,13 +192,22 @@ function playBgmModule(type: BgmType, volume: number, muted: boolean): void {
 function suspendForBackgroundModule(): void {
   if (bgmSuspended) return;
   const cur = currentBgmType;
-  if (cur === 'none') return;
-  bgmSnapBeforeSuspend = cur;
-  bgmSuspended = true;
-  stopBgmPlaybackOnlyModule();
+  if (cur !== 'none') {
+    bgmSnapBeforeSuspend = cur;
+    bgmSuspended = true;
+    stopBgmPlaybackOnlyModule();
+  }
+  const ctx = getAudioContext();
+  if (ctx && ctx.state === 'running') {
+    void ctx.suspend();
+  }
 }
 
 function resumeAfterBackgroundModule(): void {
+  const ctx = getAudioContext();
+  if (ctx && ctx.state === 'suspended') {
+    void ctx.resume();
+  }
   if (!bgmSuspended) return;
   bgmSuspended = false;
   const snap = bgmSnapBeforeSuspend;
@@ -309,6 +319,7 @@ export const useAudio = () => {
     localStorage.setItem('bgmVolume', String(clamped));
     if (bgmElement) {
       bgmElement.volume = bgmMutedRef.current ? 0 : clamped;
+      bgmElement.muted = bgmMutedRef.current;
     }
   }, []);
 
@@ -323,6 +334,7 @@ export const useAudio = () => {
     localStorage.setItem('bgmMuted', String(bgmMutedRef.current));
     if (bgmElement) {
       bgmElement.volume = bgmMutedRef.current ? 0 : bgmVolumeRef.current;
+      bgmElement.muted = bgmMutedRef.current;
     }
     return bgmMutedRef.current;
   }, []);
@@ -353,7 +365,17 @@ export const useAudio = () => {
   }, []);
 
   useEffect(() => {
-    void Promise.all(ALL_PRELOAD_SRC.map((src) => preloadAudio(src)));
+    let cancelled = false;
+    void (async () => {
+      for (const src of ALL_PRELOAD_SRC) {
+        if (cancelled) break;
+        await preloadAudio(src);
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

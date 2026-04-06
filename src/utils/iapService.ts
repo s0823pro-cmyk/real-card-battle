@@ -52,7 +52,8 @@ export async function initIAP(): Promise<void> {
       });
     }
 
-    await NativePurchases.restorePurchases();
+    // restorePurchases() は Apple ID 認証を要求するため起動時には呼ばない
+    // ユーザーが「購入を復元」を押したときだけ restorePurchases() を実行する
     await syncEntitlementsFromStore();
   } catch (e) {
     console.error('IAP init error:', e);

@@ -28,7 +28,8 @@
   --color-dandori: #ffd700;
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-card: rgba(255, 255, 255, 0.1);
-  --font-display: 'Orbitron', sans-serif;
+  /* 数字・英字は Orbitron、日本語は Noto Sans JP（枚などが環境フォントで欠けるのを防ぐ） */
+  --font-display: 'Orbitron', 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
   /* UI 全体を表示用フォントに統一 */
   --font-ui: var(--font-display);
   /* 図鑑・実績・設定などフルスクリーン副画面の中身をわずかに上へ */
