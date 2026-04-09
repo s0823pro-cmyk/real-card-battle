@@ -8,7 +8,7 @@ import type { EffectiveCardValues } from '../../utils/cardPreview';
 import CardComponent from '../Hand/CardComponent';
 import { upgradeCardByJobId } from '../../utils/cardUpgrade';
 import { FLOW_BG_CARD_REWARD, FLOW_BG_REST } from '../../data/flowBackgrounds';
-import { mountCardRewardBanner } from '../../utils/adMobClient';
+import { mountCardRewardBanner, removeBannerAd } from '../../utils/adMobClient';
 
 function useVictoryRewardBgm() {
   const { playBgm } = useAudioContext();
@@ -270,7 +270,12 @@ export const CardRewardScreen = ({ cards, jobId, onPick, onSkip, adsRemoved }: C
     })();
     return () => {
       cancelled = true;
-      void remove?.();
+      if (remove) {
+        void remove();
+      } else {
+        // mountCardRewardBanner が完了前にアンマウントされた場合、直接バナーを消す
+        void removeBannerAd();
+      }
     };
   }, [adsRemoved]);
 

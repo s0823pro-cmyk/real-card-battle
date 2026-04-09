@@ -53,7 +53,7 @@ import {
   isAdRemoved,
   setPendingDefeatInterstitial,
 } from './utils/adsRemoved';
-import { ensureAdMobInitialized, showInterstitialIfAllowed } from './utils/adMobClient';
+import { ensureAdMobInitialized, removeBannerAd, showInterstitialIfAllowed } from './utils/adMobClient';
 import { initIAP } from './utils/iapService';
 
 type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
@@ -415,6 +415,8 @@ function App() {
   };
 
   const handlePickCardReward = (cardId: string | null) => {
+    // カード報酬画面のバナー広告を確実に消す
+    void removeBannerAd();
     const isAreaBoss = state.lastTileType === 'area_boss';
     const area = state.currentArea;
     if (!isAreaBoss) {
