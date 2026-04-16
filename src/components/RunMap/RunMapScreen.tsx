@@ -10,7 +10,7 @@ import { useAudioContext } from '../../contexts/AudioContext';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
-import { removeBannerAd } from '../../utils/adMobClient';
+import { removeBannerAd, setBannerSuppressed } from '../../utils/adMobClient';
 import './RunMapScreen.css';
 
 function getNodeImage(nodeType: TileType): string | null {
@@ -114,7 +114,19 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
 
   // マップ画面ではバナー広告を絶対に表示しない
   useEffect(() => {
+    setBannerSuppressed(true);
     void removeBannerAd();
+    const t1 = window.setTimeout(() => {
+      void removeBannerAd();
+    }, 1000);
+    const t2 = window.setTimeout(() => {
+      void removeBannerAd();
+    }, 3000);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      setBannerSuppressed(false);
+    };
   }, []);
 
   useEffect(() => {
