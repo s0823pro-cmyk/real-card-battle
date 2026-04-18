@@ -10,7 +10,12 @@ import {
   CARPENTER_RARE_POOL_ALL,
   CARPENTER_UNCOMMON_POOL_UNFILTERED,
 } from '../../data/jobs/carpenter';
-import { COOK_STARTER_DECK, COOK_COMMON_POOL, COOK_UNCOMMON_POOL, COOK_RARE_POOL } from '../../data/jobs/cook';
+import {
+  COOK_STARTER_DECK,
+  COOK_COMMON_POOL,
+  COOK_RARE_POOL_ALL,
+  COOK_UNCOMMON_POOL_UNFILTERED,
+} from '../../data/jobs/cook';
 import {
   UNEMPLOYED_STARTER_DECK,
   UNEMPLOYED_COMMON_POOL,
@@ -38,10 +43,11 @@ import type { EnemyZukanEntry } from '../../data/enemyZukanData';
 import { getEnemyDefeatCount, getEnemyStatus } from '../../utils/enemyRecord';
 import { formatZukanIntentDetail, getEnemyIntentsForZukan } from '../../utils/enemyIntentCatalog';
 import { upgradeCardByJobId } from '../../utils/cardUpgrade';
+import { getUpgradeForCard } from '../../data/upgrades';
 import './ZukanScreen.css';
 
 type MainTab = 'cards' | 'stories' | 'enemies';
-type JobTab = 'carpenter' | 'cook' | 'neutral';
+type JobTab = 'carpenter' | 'cook' | 'unemployed' | 'neutral';
 type RarityFilter = 'all' | CardRarity;
 type TypeFilter = 'all' | Extract<CardType, 'attack' | 'skill' | 'power' | 'tool'>;
 type EnemyTypeFilter = 'all' | 'normal' | 'elite' | 'boss';
@@ -68,13 +74,14 @@ const STORY_LIST: StoryEntry[] = [
 const JOB_TABS: { id: JobTab; label: string; icon: string }[] = [
   { id: 'carpenter', label: '大工', icon: '🔨' },
   { id: 'cook', label: '料理人', icon: '🔪' },
+  { id: 'unemployed', label: '無職', icon: '✊' },
   { id: 'neutral', label: '無色', icon: '⬜' },
 ];
 
 const withRarity = (cards: Card[], rarity: CardRarity): Card[] =>
   cards.map((card) => ({ ...card, rarity: card.rarity ?? rarity }));
 
-/** 図鑑の「全解放」用に全ジョブプールを保持（タブは大工・無色のみ） */
+/** 図鑑の「全解放」用に全ジョブプールを保持 */
 const ZUKAN_CARD_POOLS = {
   carpenter: [
     ...CARPENTER_STARTER_DECK,
@@ -85,8 +92,8 @@ const ZUKAN_CARD_POOLS = {
   cook: [
     ...COOK_STARTER_DECK,
     ...withRarity(COOK_COMMON_POOL, 'common'),
-    ...withRarity(COOK_UNCOMMON_POOL, 'uncommon'),
-    ...withRarity(COOK_RARE_POOL, 'rare'),
+    ...withRarity(COOK_UNCOMMON_POOL_UNFILTERED, 'uncommon'),
+    ...withRarity(COOK_RARE_POOL_ALL, 'rare'),
   ],
   unemployed: [
     ...UNEMPLOYED_STARTER_DECK,
@@ -100,7 +107,24 @@ const ZUKAN_CARD_POOLS = {
 const ALL_CARDS: Record<JobTab, Card[]> = {
   carpenter: ZUKAN_CARD_POOLS.carpenter,
   cook: ZUKAN_CARD_POOLS.cook,
+  unemployed: ZUKAN_CARD_POOLS.unemployed,
   neutral: ZUKAN_CARD_POOLS.neutral,
+};
+
+const JOB_TABS_WITH_UPGRADE_PREVIEW: JobTab[] = ['carpenter', 'cook', 'unemployed'];
+
+/** 図鑑タブのカードプールに、少なくとも1枚は強化定義があるか（no_upgrade は除外） */
+const jobTabPoolHasAnyUpgrade = (tab: JobTab): boolean => {
+  if (!JOB_TABS_WITH_UPGRADE_PREVIEW.includes(tab)) return false;
+  const pool = ALL_CARDS[tab];
+  const seenNames = new Set<string>();
+  for (const card of pool) {
+    if (seenNames.has(card.name)) continue;
+    seenNames.add(card.name);
+    if (card.tags?.includes('no_upgrade')) continue;
+    if (getUpgradeForCard({ ...card, upgraded: false }, tab)) return true;
+  }
+  return false;
 };
 
 const STATIC_EFFECTIVE_VALUES: EffectiveCardValues = {
@@ -160,7 +184,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   const [playingStory, setPlayingStory] = useState<StoryEntry | null>(null);
   const [selectedEnemy, setSelectedEnemy] = useState<EnemyZukanEntry | null>(null);
   const [enemySkillsOpen, setEnemySkillsOpen] = useState(false);
-  const [showCarpenterUpgrade, setShowCarpenterUpgrade] = useState(false);
+  const [showUpgradePreview, setShowUpgradePreview] = useState(false);
   const suppressOverlayCloseRef = useRef(false);
 
   const handleStoryComplete = useCallback(() => {
@@ -182,9 +206,15 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   }, [activeTab, rarityFilter, typeFilter]);
 
   const filteredCards = useMemo(() => {
-    if (activeTab !== 'carpenter' || !showCarpenterUpgrade) return filteredCardsBase;
-    return filteredCardsBase.map((card) => upgradeCardByJobId({ ...card, upgraded: false }, 'carpenter'));
-  }, [activeTab, showCarpenterUpgrade, filteredCardsBase]);
+    if (!showUpgradePreview || !JOB_TABS_WITH_UPGRADE_PREVIEW.includes(activeTab)) {
+      return filteredCardsBase;
+    }
+    return filteredCardsBase.map((card) =>
+      upgradeCardByJobId({ ...card, upgraded: false }, activeTab as JobId),
+    );
+  }, [activeTab, showUpgradePreview, filteredCardsBase]);
+
+  const showZukanUpgradeToggle = useMemo(() => jobTabPoolHasAnyUpgrade(activeTab), [activeTab]);
 
   const previewJobId: JobId = activeTab === 'neutral' ? 'carpenter' : activeTab;
   const activeSelectedIndex =
@@ -193,7 +223,9 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
       : null;
   const selectedCard = activeSelectedIndex !== null ? filteredCards[activeSelectedIndex] : null;
   const selectedUnlockName =
-    activeSelectedIndex !== null && activeTab === 'carpenter' && showCarpenterUpgrade
+    activeSelectedIndex !== null &&
+    showUpgradePreview &&
+    JOB_TABS_WITH_UPGRADE_PREVIEW.includes(activeTab)
       ? filteredCardsBase[activeSelectedIndex]?.name
       : selectedCard?.name;
 
@@ -397,7 +429,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     setRarityFilter('all');
                     setTypeFilter('all');
                     setSelectedIndex(null);
-                    if (tab.id !== 'carpenter') setShowCarpenterUpgrade(false);
+                    setShowUpgradePreview(false);
                   }}
                 >
                   {tab.icon} {tab.label}
@@ -444,12 +476,12 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
 
             <div className="zukan-count-row">
               <p className="zukan-count">{filteredCards.length}枚</p>
-              {activeTab === 'carpenter' && (
+              {showZukanUpgradeToggle && (
                 <button
                   type="button"
-                  className={`zukan-upgrade-toggle ${showCarpenterUpgrade ? 'zukan-upgrade-toggle--active' : ''}`}
+                  className={`zukan-upgrade-toggle ${showUpgradePreview ? 'zukan-upgrade-toggle--active' : ''}`}
                   onClick={() => {
-                    setShowCarpenterUpgrade((v) => !v);
+                    setShowUpgradePreview((v) => !v);
                     setSelectedIndex(null);
                   }}
                 >
@@ -461,7 +493,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
             <div className="zukan-card-grid">
               {filteredCards.map((card, index) => {
                 const unlockName =
-                  activeTab === 'carpenter' && showCarpenterUpgrade
+                  showUpgradePreview && JOB_TABS_WITH_UPGRADE_PREVIEW.includes(activeTab)
                     ? filteredCardsBase[index]?.name ?? card.name
                     : card.name;
                 const isUnlocked = unlockedCardNames.has(unlockName);
@@ -539,14 +571,14 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                 }}
               >
                 <div className="zukan-card-detail" onClick={(event) => event.stopPropagation()}>
-                  {activeTab === 'carpenter' && (
+                  {showZukanUpgradeToggle && (
                     <div className="zukan-detail-upgrade-bar">
                       <button
                         type="button"
-                        className={`zukan-upgrade-toggle ${showCarpenterUpgrade ? 'zukan-upgrade-toggle--active' : ''}`}
+                        className={`zukan-upgrade-toggle ${showUpgradePreview ? 'zukan-upgrade-toggle--active' : ''}`}
                         onClick={(event) => {
                           event.stopPropagation();
-                          setShowCarpenterUpgrade((v) => !v);
+                          setShowUpgradePreview((v) => !v);
                         }}
                       >
                         強化

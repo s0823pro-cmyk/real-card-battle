@@ -80,7 +80,7 @@ export interface PendingItemReplacement {
 }
 
 export interface OmamoriEffect {
-  type: 'start_of_battle' | 'passive' | 'on_kill' | 'on_turn_start';
+  type: 'start_of_battle' | 'passive' | 'on_kill' | 'on_turn_start' | 'on_turn_end';
   stat?: string;
   value?: number;
 }
@@ -92,6 +92,10 @@ export interface Omamori {
   imageUrl?: string;
   description: string;
   effect: OmamoriEffect;
+  /** 職業専用。未指定は全ジョブ共通 */
+  jobId?: JobId;
+  /** 同一グループは1つだけ所持可能（候補からも除外） */
+  group?: string;
 }
 
 export interface EventEffect {

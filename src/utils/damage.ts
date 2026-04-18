@@ -40,6 +40,24 @@ export const calculateCardDamage = (
   let damage = card.damage ?? 0;
   const hungryState = getHungryState(player);
 
+  if (card.id === 'kitchen_law' || card.id.startsWith('kitchen_law_')) {
+    const plays = player.cookingGaugePlaysThisTurn ?? 0;
+    return Math.max(0, plays * (card.upgraded ? 4 : 3));
+  }
+
+  if (card.id === 'death_flambe' || card.id.startsWith('death_flambe_')) {
+    if (card.upgraded) {
+      return Math.max(
+        1,
+        player.cookingGauge * (card.cookingMultiplier ?? 5),
+      );
+    }
+    return Math.max(
+      1,
+      (card.damage ?? 0) + player.cookingGauge * (card.cookingMultiplier ?? 3),
+    );
+  }
+
   if (player.jobId === 'carpenter' && card.tags?.includes('scaffold_bonus')) {
     const scaffoldMultiplier = card.scaffoldMultiplier ?? 2;
     damage += player.scaffold * scaffoldMultiplier;
@@ -104,6 +122,10 @@ export const calculateCardDamage = (
 
   if (card.type === 'attack' && (player.turnAttackDamageBonus ?? 0) > 0) {
     damage += player.turnAttackDamageBonus ?? 0;
+  }
+
+  if (card.type === 'attack' && (player.relicAttackDamageBonus ?? 0) > 0) {
+    damage += player.relicAttackDamageBonus ?? 0;
   }
 
   if (card.type === 'attack') {

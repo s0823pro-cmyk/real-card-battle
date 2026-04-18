@@ -85,12 +85,12 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   釘袋整理: {
     name: '釘袋整理+',
-    timeCost: 1.5,
-    description: 'カード3枚ドロー（所要時間1.5秒）',
-    effects: [{ type: 'draw', value: 3 }],
+    timeCost: 2,
+    description: '捨て札からカードを2枚選んで手札に加える',
+    effects: [{ type: 'pick_from_discard', value: 2 }],
   },
   木粉払い: { name: '木粉払い+', damage: 5, description: '全体5ダメージ' },
-  垂木の下: { name: '垂木の下+', block: 9, timeCost: 2, description: '9ブロック（所要時間2秒）' },
+  垂木の下: { name: '垂木の下+', block: 11, timeCost: 2, description: '11ブロック（所要時間2秒）' },
   墨付け直し: {
     name: '墨付け直し+',
     description: '次のアタックの所要時間-3秒（ターン終了で失効）（所要時間1.5秒）',

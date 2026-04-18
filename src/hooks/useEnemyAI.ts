@@ -67,18 +67,19 @@ const getAvailableIntentsForEnemy = (enemy: Enemy): EnemyIntent[] => {
 };
 
 /** 表示順・ダメージ量の事前計算（バッチ結果と一致） */
-export const buildEnemyDotStepQueue = (enemy: Enemy): EnemyDotStep[] => {
+export const buildEnemyDotStepQueue = (enemy: Enemy, extraDot = 0): EnemyDotStep[] => {
   const steps: EnemyDotStep[] = [];
   let hp = enemy.currentHp;
   const burns = enemy.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
   const poisons = enemy.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
   for (const s of burns) {
-    steps.push({ kind: 'burn', damage: s.duration });
-    hp = Math.max(0, hp - s.duration);
+    const d = s.duration + extraDot;
+    steps.push({ kind: 'burn', damage: d });
+    hp = Math.max(0, hp - d);
   }
   if (hp > 0) {
     for (const _ of poisons) {
-      const dmg = Math.ceil(hp * 0.05);
+      const dmg = Math.ceil(hp * 0.05) + extraDot;
       steps.push({ kind: 'poison', damage: dmg });
       hp = Math.max(0, hp - dmg);
     }
@@ -86,12 +87,15 @@ export const buildEnemyDotStepQueue = (enemy: Enemy): EnemyDotStep[] => {
   return steps;
 };
 
-export const applyOneEnemyDotTick = (enemy: Enemy): { nextEnemy: Enemy; step: EnemyDotStep } | null => {
+export const applyOneEnemyDotTick = (
+  enemy: Enemy,
+  extraDot = 0,
+): { nextEnemy: Enemy; step: EnemyDotStep } | null => {
   const rest = enemy.statusEffects.filter((s) => s.type !== 'burn' && s.type !== 'poison');
   const burns = enemy.statusEffects.filter((s) => s.type === 'burn' && s.duration > 0);
   if (burns.length > 0) {
     const s = burns[0];
-    const dmg = s.duration;
+    const dmg = s.duration + extraDot;
     const hp = Math.max(0, enemy.currentHp - dmg);
     const nd = s.duration - 1;
     const newFirst = nd > 0 ? [{ ...s, duration: nd, value: nd }] : [];
@@ -109,7 +113,7 @@ export const applyOneEnemyDotTick = (enemy: Enemy): { nextEnemy: Enemy; step: En
   const poisons = enemy.statusEffects.filter((s) => s.type === 'poison' && s.duration > 0);
   if (enemy.currentHp > 0 && poisons.length > 0) {
     const s = poisons[0];
-    const dmg = Math.ceil(enemy.currentHp * 0.05);
+    const dmg = Math.ceil(enemy.currentHp * 0.05) + extraDot;
     const hp = Math.max(0, enemy.currentHp - dmg);
     const nd = s.duration - 1;
     const newFirst = nd > 0 ? [{ ...s, duration: nd, value: nd }] : [];
@@ -129,12 +133,13 @@ export const applyOneEnemyDotTick = (enemy: Enemy): { nextEnemy: Enemy; step: En
 
 export const applyEnemyBurnPoisonBatch = (
   enemy: Enemy,
+  extraDot = 0,
 ): { enemy: Enemy; burnTotal: number; poisonTotal: number } => {
   let e = enemy;
   let burnTotal = 0;
   let poisonTotal = 0;
   while (true) {
-    const r = applyOneEnemyDotTick(e);
+    const r = applyOneEnemyDotTick(e, extraDot);
     if (!r) break;
     if (r.step.kind === 'burn') burnTotal += r.step.damage;
     else poisonTotal += r.step.damage;

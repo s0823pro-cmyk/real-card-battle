@@ -1,9 +1,0 @@
-# Copy to android/local.properties and fill in (local.properties is gitignored).
-# Use forward slashes or escaped backslashes for release.storeFile on Windows.
-#
-# sdk.dir=...  (Android Studio usually adds this automatically)
-
-release.storeFile=C:/dev/real-card-battle/keystore.jks
-release.storePassword=
-release.keyAlias=key0
-release.keyPassword=

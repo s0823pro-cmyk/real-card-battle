@@ -1,6 +1,32 @@
 import type { Card, PlayerState } from '../types/game';
 import { isReserveDoubleNextEffectActive, reserveBonusActiveForCard } from './cardBadgeRules';
 
+const CONCENTRATION_EFFECT_MULT = 1.5;
+
+/** 集中力カード（バフ付与側）。これ自体には集中倍率を掛けない */
+export function hasConcentrationNextEffect(card: Card): boolean {
+  return (card.effects ?? []).some((e) => e.type === 'concentration_next');
+}
+
+/** 集中バフ適用：次の攻撃・スキル1枚の数値を×1.5（床） */
+export function applyConcentrationMultiplierToCard(card: Card, player: PlayerState): Card {
+  if (!player.concentrationActive) return card;
+  if (card.type !== 'attack' && card.type !== 'skill') return card;
+  if (hasConcentrationNextEffect(card)) return card;
+  const scale = (n: number) => Math.floor(n * CONCENTRATION_EFFECT_MULT);
+  return {
+    ...card,
+    damage: card.damage !== undefined ? scale(card.damage) : card.damage,
+    block: card.block !== undefined ? scale(card.block) : card.block,
+    hitCount: card.hitCount !== undefined ? scale(card.hitCount) : card.hitCount,
+    effects: (card.effects ?? []).map((effect) => {
+      if (effect.type === 'concentration_next') return effect;
+      if (typeof effect.value !== 'number') return effect;
+      return { ...effect, value: scale(effect.value) };
+    }),
+  };
+}
+
 /** 温存ボーナス適用後のカード（playCardInstant と同じ） */
 export const getEnhancedCardForPlay = (card: Card): Card => {
   const reservedBonusActive = reserveBonusActiveForCard(card);

@@ -1,7 +1,7 @@
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Card, GameState, JobId } from './types/game';
 import type { BattleResult } from './types/run';
 import BattleScreen from './components/BattleScreen/BattleScreen';
@@ -46,6 +46,7 @@ import type { BattleSaveData } from './utils/battleSave';
 import './App.css';
 import './components/RunMap/RunMapScreen.css';
 import './components/RunFlow/RunFlow.css';
+import { getRouletteFaceRange } from './data/runData';
 import {
   clearPendingDefeatInterstitial,
   getAdsRemoved,
@@ -104,6 +105,7 @@ function App() {
     consumeDefeatRevive,
     battleFadeOverlay,
   } = useRunProgress();
+  const diceFaceRange = useMemo(() => getRouletteFaceRange(state.omamoris), [state.omamoris]);
   const [savedProgress, setSavedProgress] = useState(() => loadSavedProgress());
   const [battleSave, setBattleSave] = useState<BattleSaveData | null>(() => loadBattleState());
   const [showBattleRestorePrompt, setShowBattleRestorePrompt] = useState(() => loadBattleState() !== null);
@@ -678,7 +680,12 @@ function App() {
         <p>縦向きでプレイしてください</p>
       </div>
       {(state.currentScreen === 'dice_rolling' || state.dice.value !== null) && (
-        <RouletteOverlay rolling={state.dice.rolling} value={state.dice.value} />
+        <RouletteOverlay
+          rolling={state.dice.rolling}
+          value={state.dice.value}
+          faceMin={diceFaceRange.min}
+          faceMax={diceFaceRange.max}
+        />
       )}
       {screenTransition.phase !== 'idle' && (
         <div

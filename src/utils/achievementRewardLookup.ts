@@ -9,7 +9,7 @@ import {
 } from '../data/jobs/carpenter';
 import {
   COOK_COMMON_POOL,
-  COOK_RARE_POOL_UNFILTERED,
+  COOK_RARE_POOL_ALL,
   COOK_UNCOMMON_POOL_UNFILTERED,
 } from '../data/jobs/cook';
 import {
@@ -26,9 +26,15 @@ const CARPENTER_ALL: Card[] = [
   ...CARPENTER_RARE_POOL_ALL,
 ];
 
+const COOK_ALL: Card[] = [
+  ...COOK_COMMON_POOL,
+  ...COOK_UNCOMMON_POOL_UNFILTERED,
+  ...COOK_RARE_POOL_ALL,
+];
+
 const JOB_CARD_SOURCES: Record<JobId, Card[]> = {
   carpenter: CARPENTER_ALL,
-  cook: [...COOK_COMMON_POOL, ...COOK_UNCOMMON_POOL_UNFILTERED, ...COOK_RARE_POOL_UNFILTERED],
+  cook: COOK_ALL,
   unemployed: [...UNEMPLOYED_COMMON_POOL, ...UNEMPLOYED_UNCOMMON_POOL_UNFILTERED, ...UNEMPLOYED_RARE_POOL_UNFILTERED],
 };
 
@@ -48,6 +54,7 @@ const add = (cards: Card[]): void => {
 };
 add(NEUTRAL_CARD_POOL);
 add(CARPENTER_ALL);
+add(COOK_ALL);
 
 /** 実績報酬カード1枚をIDで取得 */
 export const getAchievementRewardCard = (rewardId: string): Card | null => LOOKUP.get(rewardId) ?? null;

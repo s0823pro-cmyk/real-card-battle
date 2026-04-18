@@ -233,6 +233,8 @@ const BattleScreen = ({
     hungryFlash,
     showRevivalEffect,
     pendingHandUpgradeCount,
+    pendingDiscardPicks,
+    discardPickIngredientOnly,
     upgradeableHandCards,
     doubleNextCharges,
     doubleNextReplayCharges,
@@ -244,6 +246,7 @@ const BattleScreen = ({
     sellCardById,
     useBattleItem,
     upgradeHandCardById,
+    confirmPickFromDiscard,
     skipHandUpgradeSelection,
     endTurn,
     concedeBattle,
@@ -1536,6 +1539,79 @@ const BattleScreen = ({
         </div>
       )}
       {gameState.phase === 'defeat' && <BattleDefeatOverlay onRetry={retryBattle} />}
+      {pendingDiscardPicks > 0 && (
+        <div
+          className="battle-deck-overlay battle-deck-overlay--fullscreen"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal
+          aria-label="捨て札からカードを選ぶ"
+        >
+          <div className="battle-deck-modal battle-deck-modal--fullscreen" onClick={(event) => event.stopPropagation()}>
+            <div className="battle-deck-modal-header">
+              <h2 className="battle-deck-modal-title">
+                {discardPickIngredientOnly ? '捨て札から食材を選ぶ' : '捨て札から選ぶ'}（残り
+                {pendingDiscardPicks}枚）
+              </h2>
+            </div>
+            <p className="battle-pick-discard-hint">
+              {discardPickIngredientOnly ? '食材カードをタップして手札に加えます' : 'カードをタップして手札に加えます'}
+            </p>
+            <div className="battle-deck-card-grid battle-deck-card-grid--pile card-display-grid">
+              {(
+                discardPickIngredientOnly
+                  ? [...gameState.discardPile]
+                      .reverse()
+                      .map((card, idx) => ({ card, idx }))
+                      .filter(({ card }) => isIngredientCard(card))
+                  : [...gameState.discardPile].reverse().map((card, idx) => ({ card, idx }))
+              ).map(({ card, idx }) => (
+                <button
+                  key={`pick_${card.id}_${idx}`}
+                  type="button"
+                  className="battle-upgrade-card-button battle-pick-discard-card"
+                  onClick={() => confirmPickFromDiscard(idx)}
+                  style={
+                    {
+                      '--hand-card-width': '90px',
+                      '--hand-card-height': '144px',
+                    } as CSSProperties
+                  }
+                >
+                  <CardComponent
+                    card={card}
+                    jobId={gameState.player.jobId}
+                    selected={false}
+                    disabled={false}
+                    locked={false}
+                    isSelling={false}
+                    isReturning={false}
+                    isGhost={false}
+                    isDragging={false}
+                    isDragUnavailable={false}
+                    effectiveValues={getBaseEffectiveValues(card)}
+                    onSelect={() => confirmPickFromDiscard(idx)}
+                    onPointerDown={noop}
+                    onPointerMove={noop}
+                    onPointerUp={noop}
+                    onPointerCancel={noop}
+                    onMouseEnter={noop}
+                    onMouseLeave={noop}
+                  />
+                </button>
+              ))}
+              {gameState.discardPile.length === 0 && (
+                <p className="battle-pile-empty">捨て札がありません</p>
+              )}
+              {discardPickIngredientOnly &&
+                gameState.discardPile.length > 0 &&
+                !gameState.discardPile.some((c) => isIngredientCard(c)) && (
+                  <p className="battle-pile-empty">捨て札に食材がありません</p>
+                )}
+            </div>
+          </div>
+        </div>
+      )}
       {showPile && (
         <div className="battle-deck-overlay battle-deck-overlay--fullscreen" onClick={() => setShowPile(null)}>
           <div className="battle-deck-modal battle-deck-modal--fullscreen" onClick={(event) => event.stopPropagation()}>

@@ -59,7 +59,21 @@ export type EffectType =
   | 'lighter_chance'
   | 'next_attack_boost'
   | 'next_card_block_multiplier'
-  | 'reserve_double_next';
+  | 'reserve_double_next'
+  /** 集中力：プレイ後に次の攻撃・スキル1枚へ数値1.5倍 */
+  | 'concentration_next'
+  /** 釘袋整理：捨て札から指定枚数を手札へ（選択UI） */
+  | 'pick_from_discard'
+  /** 捨て札から食材カードのみ指定枚数を手札へ */
+  | 'pick_from_discard_ingredient'
+  /** 敵に毒（ターン数は value） */
+  | 'enemy_poison'
+  /** プレイヤーの毒を解除（毒があるときのみ） */
+  | 'clear_player_poison'
+  /** プレイヤーの火傷を解除（火傷があるときのみ） */
+  | 'clear_player_burn'
+  /** 手札の食材カードをこの戦闘中＋に強化（value 枚） */
+  | 'upgrade_ingredient_hand';
 
 export type CardRarity = 'common' | 'uncommon' | 'rare';
 
@@ -211,6 +225,8 @@ export interface PlayerState {
   /** ボス報酬「最大メンタル+1」などで上乗せしたメンタル上限（getJobConfig.maxMental に加算） */
   mentalMaxBonus?: number;
   nextCardDoubleEffect: boolean;
+  /** 集中力：次の攻撃・スキル1枚の数値効果を1.5倍にする（使用後に消費） */
+  concentrationActive: boolean;
   /** 逆境の才能など：パワーで付与された全アタックダメージ加算 */
   attackDamageBonusAllAttacks: number;
   /** 本気モードなど：このターン中の全アタックに加算（ターン終了でリセット） */
@@ -221,6 +237,28 @@ export interface PlayerState {
   totalCookingGaugeGained?: number;
   /** バトル中の満腹ボーナス（HP回復）発動回数（cook_fullness_3 実績用） */
   fullnessBonusCount?: number;
+  /** 伝説のレシピ：このターン食材カードの時間コスト0 */
+  ingredientCostFreeThisTurn?: boolean;
+  /** 食の神髄：このターン手札の全カードのコストを減算（秒） */
+  handTimeCostDiscountThisTurn?: number;
+  /** このターンに「調理+」系（cooking_gauge 効果）を持つカードをプレイした回数（厨房の掟用） */
+  cookingGaugePlaysThisTurn?: number;
+  /** バトル中のみ：お守りによるアタックダメージ加算（固定値） */
+  relicAttackDamageBonus?: number;
+  /** バトル中のみ：ブロック数値を持つカードのブロック加算 */
+  relicBlockCardFlatBonus?: number;
+  /** バトル中のみ：スキルカードの時間コスト減算（秒） */
+  relicSkillTimeDiscount?: number;
+  /** バトル中のみ：敵への火傷・毒1ティックあたりの追加ダメージ */
+  relicEnemyDotTickBonus?: number;
+  /** バトル中のみ：ターン開始ドロー枚数への加算（手札上限相当） */
+  relicHandDrawBonus?: number;
+  /** バトル中のみ：鉄の胃袋（満腹ボーナス時の追加HP） */
+  relicIronStomach?: boolean;
+  /** バトル中のみ：食材カード使用時の調理ゲージ追加 */
+  relicIngredientCookingBonus?: number;
+  /** バトル中のみ：【準備】カード使用時の追加ドロー */
+  relicSetupCardDraw?: number;
 }
 
 export interface ToolSlot {

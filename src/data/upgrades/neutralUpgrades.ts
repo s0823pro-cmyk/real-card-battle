@@ -27,8 +27,10 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
   },
   集中力: {
     name: '集中力+',
-    timeCost: 1,
-    description: '通常使用で次のカード効果+20%（捨て札）。温存するとその時点で次のカード効果が2倍となり、次ターン開始時に温存枠から手札に戻さず除外。（所要時間1秒）',
+    timeCost: 2,
+    description: '次のカードの効果+50%。（除外なし）',
+    badges: [],
+    effects: [{ type: 'concentration_next', value: 1 }],
   },
   根性見せろ: {
     name: '根性見せろ+',

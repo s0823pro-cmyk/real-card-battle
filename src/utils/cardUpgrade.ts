@@ -7,6 +7,7 @@ export type UpgradeType = 'damage' | 'block' | 'time';
 /** カード名ベースの定義データで強化する（ジョブID指定） */
 export function upgradeCardByJobId(card: Card, jobId: string): Card {
   if (card.upgraded) return card;
+  if (card.tags?.includes('no_upgrade')) return card;
   const upgrade = getUpgradeForCard(card, jobId);
   if (!upgrade) return card;
   return applyUpgrade(card, upgrade);

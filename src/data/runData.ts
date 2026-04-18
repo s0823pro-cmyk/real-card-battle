@@ -38,6 +38,39 @@ import brandWalletImage from '../assets/omamori/brand_wallet.png';
 import hardHatImage from '../assets/omamori/hard_hat.png';
 import victoryCharmImage from '../assets/omamori/victory_charm.png';
 import fortuneCatImage from '../assets/omamori/fortune_cat.png';
+import foremanHammerImage from '../assets/omamori/foreman_hammer.png';
+import blueprintRelicImage from '../assets/omamori/blueprint_relic.png';
+import safetyBeltImage from '../assets/omamori/safety_belt.png';
+import inkPotImage from '../assets/omamori/ink_pot.png';
+import foremanHappiImage from '../assets/omamori/foreman_happi.png';
+import circularSawImage from '../assets/omamori/circular_saw.png';
+import woodCharmImage from '../assets/omamori/wood_charm.png';
+import siteBentoImage from '../assets/omamori/site_bento.png';
+import nailPouchImage from '../assets/omamori/nail_pouch.png';
+import craftsmanChiselImage from '../assets/omamori/craftsman_chisel.png';
+import cookLicenseImage from '../assets/omamori/cook_license.png';
+import ironStomachImage from '../assets/omamori/iron_stomach.png';
+import oldRecipeImage from '../assets/omamori/old_recipe.png';
+import cookMindsetImage from '../assets/omamori/cook_mindset.png';
+import wornPotImage from '../assets/omamori/worn_pot.png';
+import cookKnifeImage from '../assets/omamori/cook_knife.png';
+import secretSauceBottleImage from '../assets/omamori/secret_sauce_bottle.png';
+import cuttingBoardRelicImage from '../assets/omamori/cutting_board_relic.png';
+import headChefHatImage from '../assets/omamori/head_chef_hat.png';
+import foodLoverImage from '../assets/omamori/food_lover.png';
+import whetstoneImage from '../assets/omamori/whetstone.png';
+import talismanRelicImage from '../assets/omamori/talisman.png';
+import travelMapImage from '../assets/omamori/travel_map.png';
+import merchantCharmImage from '../assets/omamori/merchant_charm.png';
+import gutsHeadbandImage from '../assets/omamori/guts_headband.png';
+import blackCatCharmImage from '../assets/omamori/black_cat_charm.png';
+import goldenBowlImage from '../assets/omamori/golden_bowl.png';
+import shichifukujinImage from '../assets/omamori/shichifukujin.png';
+import midnightOvertimeImage from '../assets/omamori/midnight_overtime.png';
+import fightingSpiritBandImage from '../assets/omamori/fighting_spirit_band.png';
+import bigDiceImage from '../assets/omamori/big_dice.png';
+import stableDiceImage from '../assets/omamori/stable_dice.png';
+import growthProofImage from '../assets/omamori/growth_proof.png';
 
 export const TILE_LABELS: Record<TileType, { icon: string; iconImg: string; name: string }> = {
   start: { icon: '🏁', iconImg: ICONS.mapStart, name: 'スタート' },
@@ -158,6 +191,292 @@ export const RELICS: Omamori[] = [
     imageUrl: fortuneCatImage,
     description: '敵を倒すたび+4G',
     effect: { type: 'on_kill', stat: 'gold', value: 4 },
+  },
+  {
+    id: 'foreman_hammer',
+    name: '親方の金槌',
+    icon: '🔨',
+    imageUrl: foremanHammerImage,
+    description: '攻撃カードのダメージ+2',
+    jobId: 'carpenter',
+    effect: { type: 'passive', stat: 'attack_damage', value: 2 },
+  },
+  {
+    id: 'blueprint_relic',
+    name: '設計図',
+    icon: '📐',
+    imageUrl: blueprintRelicImage,
+    description: '戦闘開始時足場+1',
+    jobId: 'carpenter',
+    effect: { type: 'start_of_battle', stat: 'scaffold', value: 1 },
+  },
+  {
+    id: 'safety_belt',
+    name: '安全帯',
+    icon: '🪢',
+    imageUrl: safetyBeltImage,
+    description: 'HP20以下でブロック+3',
+    jobId: 'carpenter',
+    effect: { type: 'passive', stat: 'low_hp_block', value: 3 },
+  },
+  {
+    id: 'ink_pot',
+    name: '大工の墨壺',
+    icon: '🖋️',
+    imageUrl: inkPotImage,
+    description: 'スキルカードのコスト-0.5',
+    jobId: 'carpenter',
+    effect: { type: 'passive', stat: 'skill_time_discount', value: 0.5 },
+  },
+  {
+    id: 'foreman_happi',
+    name: '棟梁の法被',
+    icon: '👘',
+    imageUrl: foremanHappiImage,
+    description: '戦闘開始時メンタル+2',
+    jobId: 'carpenter',
+    effect: { type: 'start_of_battle', stat: 'mental', value: 2 },
+  },
+  {
+    id: 'circular_saw',
+    name: '丸鋸',
+    icon: '🪚',
+    imageUrl: circularSawImage,
+    description: '毎ターン開始時攻撃+1',
+    jobId: 'carpenter',
+    effect: { type: 'on_turn_start', stat: 'turn_attack_damage', value: 1 },
+  },
+  {
+    id: 'wood_charm',
+    name: '木材の守り',
+    icon: '🪵',
+    imageUrl: woodCharmImage,
+    description: 'ブロック系カードのブロック+2',
+    jobId: 'carpenter',
+    effect: { type: 'passive', stat: 'block_card_block', value: 2 },
+  },
+  {
+    id: 'site_bento',
+    name: '現場の弁当',
+    icon: '🍱',
+    imageUrl: siteBentoImage,
+    description: '休憩マスでHP+1',
+    jobId: 'carpenter',
+    effect: { type: 'passive', stat: 'rest_bonus_hp', value: 1 },
+  },
+  {
+    id: 'nail_pouch',
+    name: '釘袋',
+    icon: '🧰',
+    imageUrl: nailPouchImage,
+    description: '手札上限+1',
+    jobId: 'carpenter',
+    effect: { type: 'passive', stat: 'hand_draw_bonus', value: 1 },
+  },
+  {
+    id: 'craftsman_chisel',
+    name: '職人の鑿',
+    icon: '⚒️',
+    imageUrl: craftsmanChiselImage,
+    description: '段取りカード使用時ドロー+1',
+    jobId: 'carpenter',
+    effect: { type: 'passive', stat: 'setup_card_draw', value: 1 },
+  },
+  {
+    id: 'cook_license',
+    name: '調理師免許',
+    icon: '📜',
+    imageUrl: cookLicenseImage,
+    description: '戦闘開始時調理ゲージ+2',
+    jobId: 'cook',
+    effect: { type: 'start_of_battle', stat: 'cooking_gauge', value: 2 },
+  },
+  {
+    id: 'iron_stomach',
+    name: '鉄の胃袋',
+    icon: '🫃',
+    imageUrl: ironStomachImage,
+    description: '満腹ボーナス発動時HP+1',
+    jobId: 'cook',
+    effect: { type: 'passive', stat: 'fullness_bonus_extra_hp', value: 1 },
+  },
+  {
+    id: 'old_recipe',
+    name: '古びたレシピ',
+    icon: '📖',
+    imageUrl: oldRecipeImage,
+    description: 'ショップに食材カードが1枚追加',
+    jobId: 'cook',
+    effect: { type: 'passive', stat: 'shop_extra_ingredient', value: 1 },
+  },
+  {
+    id: 'cook_mindset',
+    name: '職人の心得',
+    icon: '💭',
+    imageUrl: cookMindsetImage,
+    description: '毎ターン終了時調理ゲージ+1',
+    jobId: 'cook',
+    effect: { type: 'on_turn_end', stat: 'cooking_gauge', value: 1 },
+  },
+  {
+    id: 'worn_pot',
+    name: '使い込んだ鍋',
+    icon: '🍲',
+    imageUrl: wornPotImage,
+    description: '火傷・毒の継続ダメージ+1',
+    jobId: 'cook',
+    effect: { type: 'passive', stat: 'enemy_dot_bonus', value: 1 },
+  },
+  {
+    id: 'cook_knife',
+    name: '料理人の包丁',
+    icon: '🔪',
+    imageUrl: cookKnifeImage,
+    description: '攻撃カードのダメージ+2',
+    jobId: 'cook',
+    effect: { type: 'passive', stat: 'attack_damage', value: 2 },
+  },
+  {
+    id: 'secret_sauce_bottle',
+    name: '秘伝のタレ瓶',
+    icon: '🍶',
+    imageUrl: secretSauceBottleImage,
+    description: '食材カード使用時調理ゲージ+1',
+    jobId: 'cook',
+    effect: { type: 'passive', stat: 'ingredient_cooking_bonus', value: 1 },
+  },
+  {
+    id: 'cutting_board_relic',
+    name: 'まな板',
+    icon: '🪵',
+    imageUrl: cuttingBoardRelicImage,
+    description: 'ブロック系カードのブロック+2',
+    jobId: 'cook',
+    effect: { type: 'passive', stat: 'block_card_block', value: 2 },
+  },
+  {
+    id: 'head_chef_hat',
+    name: '料理長の帽子',
+    icon: '👨‍🍳',
+    imageUrl: headChefHatImage,
+    description: '戦闘開始時メンタル+2',
+    jobId: 'cook',
+    effect: { type: 'start_of_battle', stat: 'mental', value: 2 },
+  },
+  {
+    id: 'food_lover',
+    name: '食道楽',
+    icon: '😋',
+    imageUrl: foodLoverImage,
+    description: '毎ターン開始時10%の確率で満腹ゲージ+1',
+    jobId: 'cook',
+    effect: { type: 'on_turn_start', stat: 'fullness_chance', value: 0.1 },
+  },
+  {
+    id: 'whetstone',
+    name: '研ぎ石',
+    icon: '✨',
+    imageUrl: whetstoneImage,
+    description: '攻撃カードのダメージ+1',
+    effect: { type: 'passive', stat: 'attack_damage', value: 1 },
+  },
+  {
+    id: 'talisman',
+    name: '護符',
+    icon: '🧿',
+    imageUrl: talismanRelicImage,
+    description: '毎ターン開始時ブロック+2',
+    effect: { type: 'on_turn_start', stat: 'block', value: 2 },
+  },
+  {
+    id: 'travel_map',
+    name: '旅の地図',
+    icon: '🗺️',
+    imageUrl: travelMapImage,
+    description: 'マップの分岐プレビューが1マス先まで延びる',
+    effect: { type: 'passive', stat: 'map_preview_depth', value: 1 },
+  },
+  {
+    id: 'merchant_charm',
+    name: '商売上手',
+    icon: '💹',
+    imageUrl: merchantCharmImage,
+    description: '敵を倒すたびゴールド+2',
+    effect: { type: 'on_kill', stat: 'gold', value: 2 },
+  },
+  {
+    id: 'guts_headband',
+    name: '根性の鉢巻き',
+    icon: '🎗️',
+    imageUrl: gutsHeadbandImage,
+    description: 'HP20以下でタイムバー+1',
+    effect: { type: 'passive', stat: 'low_hp_time', value: 1 },
+  },
+  {
+    id: 'black_cat_charm',
+    name: '黒猫のお守り',
+    icon: '🐈‍⬛',
+    imageUrl: blackCatCharmImage,
+    description: '敵を倒すたびドロー+1',
+    effect: { type: 'on_kill', stat: 'draw', value: 1 },
+  },
+  {
+    id: 'golden_bowl',
+    name: '金の茶碗',
+    icon: '🥣',
+    imageUrl: goldenBowlImage,
+    description: '休憩マスでゴールド+30',
+    effect: { type: 'passive', stat: 'rest_bonus_gold', value: 30 },
+  },
+  {
+    id: 'shichifukujin',
+    name: '七福神の像',
+    icon: '🗿',
+    imageUrl: shichifukujinImage,
+    description: '神社のお守り候補が2倍',
+    effect: { type: 'passive', stat: 'shrine_choices_double', value: 1 },
+  },
+  {
+    id: 'midnight_overtime',
+    name: '深夜の残業',
+    icon: '🌙',
+    imageUrl: midnightOvertimeImage,
+    description: '毎ターン開始時タイムバー+0.5',
+    effect: { type: 'on_turn_start', stat: 'time_bar', value: 0.5 },
+  },
+  {
+    id: 'fighting_spirit_band',
+    name: '闘志の鉢巻き',
+    icon: '💪',
+    imageUrl: fightingSpiritBandImage,
+    description: '戦闘開始時メンタル+2',
+    effect: { type: 'start_of_battle', stat: 'mental', value: 2 },
+  },
+  {
+    id: 'big_dice',
+    name: '大振りのサイコロ',
+    icon: '🎲',
+    imageUrl: bigDiceImage,
+    description: 'ルーレットが1〜5になる',
+    group: 'dice_relic',
+    effect: { type: 'passive', stat: 'roulette_range', value: 5 },
+  },
+  {
+    id: 'stable_dice',
+    name: '安定のサイコロ',
+    icon: '🎲',
+    imageUrl: stableDiceImage,
+    description: 'ルーレットが2〜3になる',
+    group: 'dice_relic',
+    effect: { type: 'passive', stat: 'roulette_range', value: 3 },
+  },
+  {
+    id: 'growth_proof',
+    name: '成長の証',
+    icon: '🌱',
+    imageUrl: growthProofImage,
+    description: 'バトル終了時に最大HP+1',
+    effect: { type: 'passive', stat: 'max_hp_on_battle_win', value: 1 },
   },
 ];
 
@@ -695,23 +1014,77 @@ export const generateRareCardRewardChoices = (jobId: JobId = 'carpenter', count 
 export const generateOmamoriChoices = (
   count = 3,
   currentOmamoris: Omamori[] = [],
+  jobId: JobId = 'carpenter',
 ): Omamori[] => {
   const ownedIds = new Set(currentOmamoris.map((o) => o.id));
-  const available = RELICS.filter((relic) => !ownedIds.has(relic.id));
+  const ownedGroups = new Set(
+    currentOmamoris.map((o) => o.group).filter((g): g is string => Boolean(g)),
+  );
+  const available = RELICS.filter((relic) => {
+    if (ownedIds.has(relic.id)) return false;
+    if (relic.group && ownedGroups.has(relic.group)) return false;
+    if (relic.jobId && relic.jobId !== jobId) return false;
+    return true;
+  });
   const shuffled = available.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, shuffled.length));
 };
 
-export const generateShopCards = (count: number, jobId: JobId = 'carpenter'): Card[] =>
-  Array.from({ length: count }).map(() => {
+const pickRandomIngredientCardForCookShop = (): Card | null => {
+  const pools = getCardPoolsByJob('cook');
+  const all = [...pools.common, ...pools.uncommon, ...pools.rare];
+  const ing = all.filter((c) => c.tags?.includes('ingredient') || c.badges?.includes('ingredient'));
+  if (ing.length === 0) return null;
+  return ing[Math.floor(Math.random() * ing.length)];
+};
+
+export const generateShopCards = (
+  count: number,
+  jobId: JobId = 'carpenter',
+  options?: { extraIngredient?: boolean },
+): Card[] => {
+  const extra = options?.extraIngredient && jobId === 'cook' ? pickRandomIngredientCardForCookShop() : null;
+  const total = count + (extra ? 1 : 0);
+  const cards: Card[] = [];
+  if (extra) {
+    cards.push(cloneRewardCard(extra));
+  }
+  while (cards.length < total) {
     const roll = Math.random();
     const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.03 ? 'rare' : roll < 0.23 ? 'uncommon' : 'common';
     const useNeutral = Math.random() < 0.3;
-    if (useNeutral) return pickRandomNeutralByRarity(rarity, jobId);
-    if (rarity === 'rare') return pickRandomRareCard(jobId);
-    if (rarity === 'uncommon') return pickRandomUncommonCard(jobId);
-    return pickRandomCommonCard(jobId);
-  });
+    const c = useNeutral
+      ? pickRandomNeutralByRarity(rarity, jobId)
+      : rarity === 'rare'
+        ? pickRandomRareCard(jobId)
+        : rarity === 'uncommon'
+          ? pickRandomUncommonCard(jobId)
+          : pickRandomCommonCard(jobId);
+    cards.push(c);
+  }
+  return cards;
+};
+
+/** マップルーレットの出目範囲（UI のストリップ幅にも使用） */
+export const getRouletteFaceRange = (omamoris: { id: string }[]): { min: number; max: number } => {
+  const ids = new Set(omamoris.map((o) => o.id));
+  if (ids.has('big_dice')) return { min: 1, max: 5 };
+  if (ids.has('stable_dice')) return { min: 2, max: 3 };
+  return { min: 1, max: 3 };
+};
+
+/** デフォルト（1〜3）は従来どおりの重み付き。お守りで範囲が変わるときは一様乱数。 */
+export const rollRouletteValue = (omamoris: { id: string }[]): number => {
+  const { min, max } = getRouletteFaceRange(omamoris);
+  if (min === 1 && max === 3) {
+    const roll = Math.random();
+    return roll < 0.3 ? 1 : roll < 0.65 ? 2 : 3;
+  }
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
+export const getMapPreviewDepth = (omamoris: Omamori[], base = 3): number =>
+  base + (omamoris.some((o) => o.id === 'travel_map') ? 1 : 0);
 
 const ALL_RARE_NAMES = new Set([
   ...getCardPoolsByJob('carpenter').rare,

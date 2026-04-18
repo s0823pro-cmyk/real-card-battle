@@ -8,7 +8,11 @@ import {
   reserveBonusActiveForCard,
 } from './cardBadgeRules';
 import { getHungryDamageBonus, getHungryState } from './hungrySystem';
-import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from './playCardMultipliers';
+import {
+  applyMultiplierAndBoostToCard,
+  getEnhancedCardForPlay,
+  hasConcentrationNextEffect,
+} from './playCardMultipliers';
 import { getEffectiveTimeCost } from './timeline';
 import { isCardIdVariantOf } from './cardIds';
 
@@ -85,6 +89,10 @@ function computeEffectiveCardValuesInner(
   const isReserveDoubleNextCard = isReserveDoubleNextEffectActive(card);
   const shouldApplyNextCardEffectBoost =
     nextCardEffectBoost > 0 && reserveOrDoubleMultiplierPreview <= 1 && !isReserveDoubleNextCard;
+  const concentrationApplies =
+    (player.concentrationActive ?? false) &&
+    (card.type === 'attack' || card.type === 'skill') &&
+    !hasConcentrationNextEffect(card);
   const isDandoriActive = dandoriMultiplier > 1;
   const baseDamage = card.damage ?? 0;
   const baseBlock = card.block ?? 0;
@@ -190,6 +198,9 @@ function computeEffectiveCardValuesInner(
       const add = Math.max(1, Math.ceil(damage * nextCardEffectBoost));
       damage += add;
     }
+    if (concentrationApplies && damage > 0) {
+      damage = Math.floor(damage * 1.5);
+    }
     // 金槌の響き等 next_attack_boost（実ダメージは resolveCard と同様に加算）
     if (card.type === 'attack' && player.nextAttackBoostCount > 0 && damage !== null) {
       damage += player.nextAttackBoostValue;
@@ -217,6 +228,9 @@ function computeEffectiveCardValuesInner(
       const add = Math.max(1, Math.ceil(block * nextCardEffectBoost));
       block += add;
     }
+    if (concentrationApplies && block > 0) {
+      block = Math.floor(block * 1.5);
+    }
   }
 
   if (heal !== null) {
@@ -231,6 +245,9 @@ function computeEffectiveCardValuesInner(
     if (shouldApplyNextCardEffectBoost && heal !== null && heal > 0) {
       const add = Math.max(1, Math.ceil(heal * nextCardEffectBoost));
       heal += add;
+    }
+    if (concentrationApplies && heal !== null && heal > 0) {
+      heal = Math.floor(heal * 1.5);
     }
   }
 

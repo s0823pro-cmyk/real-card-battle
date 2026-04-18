@@ -193,30 +193,30 @@ export const ACHIEVEMENTS: Achievement[] = [
 
   // ===== 料理人実績 =====
   // easy (8件)
-  { id: 'cook_first_win', name: '初めての一皿', description: '料理人ではじめてバトルに勝利する', icon: '🍳', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_defeat_3', name: '厨房の失敗', description: '料理人で累計3回バトルに敗北する', icon: '😰', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_elite_first', name: '裏社会の味', description: '料理人ではじめてエリート戦に勝利する', icon: '🔪', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_win_10', name: '腕が上がる', description: '料理人で累計10回バトルに勝利する', icon: '📈', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_cooking_10', name: '仕込み上手', description: '1バトルで調理ゲージを累計10以上貯める', icon: '🍳', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_fullness_3', name: '満腹三昧', description: '1バトルで満腹ボーナスを3回発動する', icon: '🍖', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_shrine_5', name: '料理人の祈り', description: '料理人で神社マスを累計5回訪れる', icon: '⛩️', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_gold_500', name: '食材の元手', description: '料理人で累計ゴールドを500以上獲得する', icon: '💰', tier: 'easy', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_first_win', name: '初めての一皿', description: '料理人ではじめてバトルに勝利する', icon: '🍳', tier: 'easy', jobId: 'cook', rewardCardIds: ['onion_bulb', 'tomato'] as const },
+  { id: 'cook_defeat_3', name: '厨房の失敗', description: '料理人で累計3回バトルに敗北する', icon: '😰', tier: 'easy', jobId: 'cook', rewardCardIds: ['potato', 'mushroom'] as const },
+  { id: 'cook_elite_first', name: '裏社会の味', description: '料理人ではじめてエリート戦に勝利する', icon: '🔪', tier: 'easy', jobId: 'cook', rewardCardIds: ['fish', 'egg_throw'] as const },
+  { id: 'cook_win_10', name: '腕が上がる', description: '料理人で累計10回バトルに勝利する', icon: '📈', tier: 'easy', jobId: 'cook', rewardCardIds: ['prep_work_cook', 'stir_fry'] as const },
+  { id: 'cook_cooking_10', name: '仕込み上手', description: '1バトルで調理ゲージを累計10以上貯める', icon: '🍳', tier: 'easy', jobId: 'cook', rewardCardIds: ['taste', 'plating'] as const },
+  { id: 'cook_fullness_3', name: '満腹三昧', description: '1バトルで満腹ボーナスを3回発動する', icon: '🍖', tier: 'easy', jobId: 'cook', rewardCardIds: ['restock', 'mise_en_place'] as const },
+  { id: 'cook_shrine_5', name: '料理人の祈り', description: '料理人で神社マスを累計5回訪れる', icon: '⛩️', tier: 'easy', jobId: 'cook', rewardCardIds: ['apron_block', 'pot_lid'] as const },
+  { id: 'cook_gold_500', name: '食材の元手', description: '料理人で累計ゴールドを500以上獲得する', icon: '💰', tier: 'easy', jobId: 'cook', rewardCardIds: ['knife_throw', 'pan_swing'] as const },
 
   // medium (6件)
-  { id: 'cook_area1_clear', name: '市場の浄化', description: '料理人でエリア1のエリアボスに勝利する', icon: '🏪', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_cooking_20', name: '調理の達人', description: '1バトルで調理ゲージを累計20以上貯める', icon: '🔥', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_low_hp_kill', name: '火加減ギリギリ', description: '料理人でHPが10以下の状態で敵にとどめを刺す', icon: '💀', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_events_10', name: '食の探求者', description: '料理人でイベントを累計10回完了する', icon: '🗺️', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_hotel_5', name: '旅の宿', description: '料理人でホテルマスを累計5回訪れる', icon: '🏨', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_elite_wins_5', name: '裏社会の料理人', description: '料理人でエリート戦に累計5回勝利する', icon: '⚔️', tier: 'medium', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_area1_clear', name: '市場の浄化', description: '料理人でエリア1のエリアボスに勝利する', icon: '🏪', tier: 'medium', jobId: 'cook', rewardCardIds: ['premium_meat', 'hot_sauce'] as const },
+  { id: 'cook_cooking_20', name: '調理の達人', description: '1バトルで調理ゲージを累計20以上貯める', icon: '🔥', tier: 'medium', jobId: 'cook', rewardCardIds: ['secret_ingredient', 'finishing'] as const },
+  { id: 'cook_low_hp_kill', name: '火加減ギリギリ', description: '料理人でHPが10以下の状態で敵にとどめを刺す', icon: '💀', tier: 'medium', jobId: 'cook', rewardCardIds: ['gas_bomb', 'fork_single'] as const },
+  { id: 'cook_events_10', name: '食の探求者', description: '料理人でイベントを累計10回完了する', icon: '🗺️', tier: 'medium', jobId: 'cook', rewardCardIds: ['detox_soup', 'mushroom_pot'] as const },
+  { id: 'cook_hotel_5', name: '旅の宿', description: '料理人でホテルマスを累計5回訪れる', icon: '🏨', tier: 'medium', jobId: 'cook', rewardCardIds: ['flame_apron', 'stockpot'] as const },
+  { id: 'cook_elite_wins_5', name: '裏社会の料理人', description: '料理人でエリート戦に累計5回勝利する', icon: '⚔️', tier: 'medium', jobId: 'cook', rewardCardIds: ['tempering', 'fork_stab'] as const },
 
   // hard (6件)
-  { id: 'cook_area2_clear', name: '毒を制す者', description: '料理人でエリア2のエリアボスに勝利する', icon: '☠️', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_area3_clear', name: '飢えを満たす者', description: '料理人でエリア3のエリアボスに勝利する（ゲームクリア）', icon: '🌳', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_zero_mental', name: '折れない心', description: '料理人でメンタルが0以下の状態でバトルに勝利する', icon: '💪', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_win_25', name: '歴戦の料理人', description: '料理人で累計25回バトルに勝利する', icon: '👨‍🍳', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_gold_2000', name: '食の帝国', description: '料理人で累計ゴールドを2000以上獲得する', icon: '👑', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
-  { id: 'cook_dice_80', name: '果てまで歩く料理人', description: '料理人でサイコロを累計80回振る', icon: '🎲', tier: 'hard', jobId: 'cook', rewardCardIds: ['', ''] as const },
+  { id: 'cook_area2_clear', name: '毒を制す者', description: '料理人でエリア2のエリアボスに勝利する', icon: '☠️', tier: 'hard', jobId: 'cook', rewardCardIds: ['secret_soup', 'mystery_pot'] as const },
+  { id: 'cook_area3_clear', name: '飢えを満たす者', description: '料理人でエリア3のエリアボスに勝利する（ゲームクリア）', icon: '🌳', tier: 'hard', jobId: 'cook', rewardCardIds: ['legendary_recipe', 'food_god'] as const },
+  { id: 'cook_zero_mental', name: '折れない心', description: '料理人でメンタルが0以下の状態でバトルに勝利する', icon: '💪', tier: 'hard', jobId: 'cook', rewardCardIds: ['death_flambe', 'kitchen_heat'] as const },
+  { id: 'cook_win_25', name: '歴戦の料理人', description: '料理人で累計25回バトルに勝利する', icon: '👨‍🍳', tier: 'hard', jobId: 'cook', rewardCardIds: ['full_course', 'ultimate_course'] as const },
+  { id: 'cook_gold_2000', name: '食の帝国', description: '料理人で累計ゴールドを2000以上獲得する', icon: '👑', tier: 'hard', jobId: 'cook', rewardCardIds: ['three_star', 'food_essence'] as const },
+  { id: 'cook_dice_80', name: '果てまで歩く料理人', description: '料理人でサイコロを累計80回振る', icon: '🎲', tier: 'hard', jobId: 'cook', rewardCardIds: ['god_flambe', 'flame_flambe'] as const },
 ];
 
 export const ACHIEVEMENT_LOCKED_CARD_IDS = new Set(

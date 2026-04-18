@@ -20,15 +20,29 @@ export const getEffectiveTimeCost = (
   if (activeJobId === 'unemployed' && player && getHungryState(player) === 'awakened') {
     cost -= 1;
   }
+  if (
+    player?.jobId === 'cook' &&
+    player.ingredientCostFreeThisTurn &&
+    isIngredientCard(card)
+  ) {
+    return 0;
+  }
   if (player?.threeStarActive && isIngredientCard(card) && !player.firstIngredientUsedThisTurn) {
     if (player.threeStarFirstIngredientFree) {
       return 0;
     }
     return Math.max(1, Math.ceil(cost * 0.5));
   }
+  const handDisc = player?.handTimeCostDiscountThisTurn ?? 0;
+  if (handDisc > 0) {
+    cost = Math.max(0, cost - handDisc);
+  }
   if ((card.id === 'full_sprint' || card.id.startsWith('full_sprint_')) && player?.fullSprintUsedCount) {
     const reduction = Math.min(card.timeCost, player.fullSprintUsedCount * 0.5);
     cost = Math.max(0, cost - reduction);
+  }
+  if (player && card.type === 'skill' && (player.relicSkillTimeDiscount ?? 0) > 0) {
+    cost = Math.max(0, cost - (player.relicSkillTimeDiscount ?? 0));
   }
   return Math.max(0, cost);
 };

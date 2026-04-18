@@ -57,22 +57,33 @@ export function applyPendingDebuffPreviewToEnemy(enemy: Enemy, card: Card): Enem
   let statusEffects = enemy.statusEffects.map((s) => ({ ...s }));
   for (const effect of card.effects ?? []) {
     if (
+      (effect.type === 'burn' || effect.type === 'enemy_poison') &&
+      card.tags?.includes('aoe_debuff')
+    ) {
+      const st: 'burn' | 'poison' = effect.type === 'burn' ? 'burn' : 'poison';
+      statusEffects = upsertStatusClone(statusEffects, st, effect.value, effect.value);
+      continue;
+    }
+    if (
       effect.type === 'vulnerable' ||
       effect.type === 'debuff_enemy' ||
       effect.type === 'debuff_enemy_atk' ||
       effect.type === 'weak' ||
-      effect.type === 'burn'
+      effect.type === 'burn' ||
+      effect.type === 'enemy_poison'
     ) {
       const statusType =
         effect.type === 'vulnerable'
           ? 'vulnerable'
           : effect.type === 'burn'
             ? 'burn'
-            : effect.type === 'debuff_enemy_atk'
-              ? 'attack_down'
-              : 'weak';
+            : effect.type === 'enemy_poison'
+              ? 'poison'
+              : effect.type === 'debuff_enemy_atk'
+                ? 'attack_down'
+                : 'weak';
       const statusDuration =
-        effect.type === 'burn'
+        effect.type === 'burn' || effect.type === 'enemy_poison'
           ? effect.value
           : effect.type === 'vulnerable' || effect.type === 'weak'
             ? effect.duration ?? effect.value
@@ -86,7 +97,9 @@ export function applyPendingDebuffPreviewToEnemy(enemy: Enemy, card: Card): Enem
 export function cardHasEnemyDebuffPreviewEffects(card: Card): boolean {
   return Boolean(
     card.effects?.some((e) =>
-      ['vulnerable', 'debuff_enemy', 'debuff_enemy_atk', 'weak', 'burn'].includes(e.type),
+      ['vulnerable', 'debuff_enemy', 'debuff_enemy_atk', 'weak', 'burn', 'enemy_poison'].includes(
+        e.type,
+      ),
     ),
   );
 }

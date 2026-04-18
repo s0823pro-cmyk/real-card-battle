@@ -18,12 +18,18 @@ import deliveryBikeImage from '../../assets/cards/cook/delivery_bike.png';
 import simmeringPotImage from '../../assets/cards/cook/simmering_pot.png';
 import fullCourseImage from '../../assets/cards/cook/full_course.png';
 import secretSoupImage from '../../assets/cards/cook/secret_soup.png';
-import threeStarImage from '../../assets/cards/cook/three_star_1.png';
 import mysteryPotImage from '../../assets/cards/cook/mystery_pot.png';
-import flameFlambe2Image from '../../assets/cards/cook/flame_flambe2.png';
 import knifeSharpeningImage from '../../assets/cards/cook/knife_sharpening.png';
 import ingredientSourcingImage from '../../assets/cards/cook/ingredient_sourcing.png';
 import kitchenDemonImage from '../../assets/cards/cook/kitchen_demon.png';
+import {
+  COOK_ACHIEVEMENT_RARE_CARDS,
+  COOK_EXPANSION_COMMON,
+  COOK_EXPANSION_RARE,
+  COOK_EXPANSION_UNCOMMON,
+  COOK_RARE_CARD_FLAME_FLAMBE,
+  COOK_RARE_CARD_THREE_STAR,
+} from './cookExpansion';
 
 export const COOK_STARTER_DECK: Card[] = [
   { id: 'knife_1', name: '包丁さばき', type: 'attack', timeCost: 2, description: '3ダメージ', damage: 3, icon: '🔪', sellValue: 5, imageUrl: knifeSkillImage },
@@ -127,6 +133,7 @@ export const COOK_COMMON_POOL: Card[] = [
     ],
     imageUrl: knifeSharpeningImage,
   },
+  ...COOK_EXPANSION_COMMON,
 ];
 
 export const COOK_UNCOMMON_POOL_UNFILTERED: Card[] = [
@@ -215,6 +222,7 @@ export const COOK_UNCOMMON_POOL_UNFILTERED: Card[] = [
     sellValue: 12,
     imageUrl: kitchenDemonImage,
   },
+  ...COOK_EXPANSION_UNCOMMON,
 ];
 
 export const COOK_UNCOMMON_POOL: Card[] = COOK_UNCOMMON_POOL_UNFILTERED.filter(
@@ -256,17 +264,7 @@ export const COOK_RARE_POOL_UNFILTERED: Card[] = [
     badges: ['exhaust'],
     imageUrl: secretSoupImage,
   },
-  {
-    id: 'three_star',
-    name: '三ツ星の極意',
-    type: 'power',
-    timeCost: 6,
-    description: '毎ターン最初に使用する食材カードのコスト-50%（最低1）',
-    icon: '⭐',
-    rarity: 'rare',
-    sellValue: 25,
-    imageUrl: threeStarImage,
-  },
+  COOK_RARE_CARD_THREE_STAR,
   {
     id: 'mystery_pot',
     name: '闇鍋',
@@ -282,21 +280,12 @@ export const COOK_RARE_POOL_UNFILTERED: Card[] = [
     badges: ['exhaust'],
     imageUrl: mysteryPotImage,
   },
-  {
-    id: 'flame_flambe',
-    name: '炎のフランベ',
-    type: 'attack',
-    timeCost: 4,
-    description: '全体4ダメージ+調理×3。使用後調理ゲージ0',
-    damage: 4,
-    icon: '🔥',
-    tags: ['aoe', 'cooking_consume'],
-    cookingMultiplier: 3,
-    rarity: 'rare',
-    sellValue: 25,
-    imageUrl: flameFlambe2Image,
-  },
+  COOK_RARE_CARD_FLAME_FLAMBE,
+  ...COOK_EXPANSION_RARE,
 ];
+
+/** 店・報酬プール用レア＋実績報酬レア（図鑑の全件表示用） */
+export const COOK_RARE_POOL_ALL: Card[] = [...COOK_RARE_POOL_UNFILTERED, ...COOK_ACHIEVEMENT_RARE_CARDS];
 
 export const COOK_RARE_POOL: Card[] = COOK_RARE_POOL_UNFILTERED.filter(
   (c) => !ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id),

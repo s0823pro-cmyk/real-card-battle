@@ -8,26 +8,21 @@ export const DANDORI_BASE_MULTIPLIER = 1.2;
 export const prevCardGrantsDandori = (prevCard: Card | null | undefined): boolean =>
   Boolean(prevCard?.badges?.includes('setup'));
 
-/** 温存系カードのドロー回数を数える対象か（集中力・【温存】ボーナス付き） */
+/** 温存系カードのドロー回数を数える対象か（【温存】ボーナス付き） */
 export const shouldTrackReserveDrawCount = (card: Card): boolean => {
-  const hasDoubleNext = (card.effects ?? []).some((e) => e.type === 'reserve_double_next');
   const hasReserveBonus = Boolean(card.badges?.includes('reserve') && card.reserveBonus);
-  return hasDoubleNext || hasReserveBonus;
+  return hasReserveBonus;
 };
 
-/** 集中力（reserve_double_next）の倍率・テン連ブースト除外の対象としてまだ有効か */
-export const isReserveDoubleNextEffectActive = (card: Card): boolean =>
-  (card.effects ?? []).some((e) => e.type === 'reserve_double_next') &&
-  (card.reserveDrawCount ?? 0) < 2;
+/** 旧 reserve_double_next 用（互換のため残す。現状は未使用） */
+export const isReserveDoubleNextEffectActive = (_card: Card): boolean => false;
 
 /**
  * プレイ後に除外されるか（消耗バッジまたは旧タグ）。
- * 「集中力」など reserve_double_next は手札から通常プレイ時は捨て札、温存後に手札へ戻ってからプレイしたときのみ除外。
  */
-export const cardExhaustsWhenPlayed = (card: Card, playedAfterReserve = false): boolean => {
+export const cardExhaustsWhenPlayed = (card: Card, _playedAfterReserve = false): boolean => {
   const tagOrBadge = Boolean(card.badges?.includes('exhaust') || card.tags?.includes('exhaust'));
   if (!tagOrBadge) return false;
-  if (isReserveDoubleNextEffectActive(card)) return playedAfterReserve;
   return true;
 };
 

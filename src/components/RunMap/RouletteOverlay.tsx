@@ -3,12 +3,17 @@ import { useEffect, useMemo, useState } from 'react';
 interface Props {
   rolling: boolean;
   value: number | null;
+  /** 出目の最小値（既定1） */
+  faceMin?: number;
+  /** 出目の最大値（既定3） */
+  faceMax?: number;
 }
 
 const ITEM_HEIGHT = 80;
 
-const RouletteOverlay = ({ rolling, value }: Props) => {
-  const result = value ?? 1;
+const RouletteOverlay = ({ rolling, value, faceMin = 1, faceMax = 3 }: Props) => {
+  const range = Math.max(1, faceMax - faceMin + 1);
+  const result = value !== null ? Math.min(faceMax, Math.max(faceMin, value)) : faceMin;
   const [offsetY, setOffsetY] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [isSettled, setIsSettled] = useState(false);
@@ -16,14 +21,14 @@ const RouletteOverlay = ({ rolling, value }: Props) => {
   const numbers = useMemo(() => {
     const loops = 5;
     const sequence: number[] = [];
-    for (let i = 0; i < loops * 3; i += 1) {
-      sequence.push((i % 3) + 1);
+    for (let i = 0; i < loops * range; i += 1) {
+      sequence.push((i % range) + faceMin);
     }
     while (sequence[sequence.length - 1] !== result) {
-      sequence.push((sequence.length % 3) + 1);
+      sequence.push((sequence.length % range) + faceMin);
     }
     return sequence;
-  }, [result]);
+  }, [result, range, faceMin]);
 
   useEffect(() => {
     if (rolling && value !== null) {

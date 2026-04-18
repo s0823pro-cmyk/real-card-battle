@@ -178,6 +178,11 @@ const PlayerStatus = ({
                 <span className={unemployedClass}>{unemployedLabel}</span>
               </Tooltip>
             )}
+            {player.concentrationActive && (
+              <Tooltip label="🎯 集中" description="次の攻撃・スキル1枚の数値効果が1.5倍（1回限り）">
+                <span className="status-concentration">🎯</span>
+              </Tooltip>
+            )}
             {player.deathWishActive && (
               <Tooltip label="💀 デスウィッシュ" description="HP回復無効。全アタック+4ダメージ">
                 <span className="status-death-wish">💀</span>

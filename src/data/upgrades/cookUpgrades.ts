@@ -1,4 +1,5 @@
 import type { CardUpgrade } from './carpenterUpgrades';
+import { COOK_EXPANSION_UPGRADES } from './cookExpansionUpgrades';
 
 export const COOK_UPGRADES: Record<string, CardUpgrade> = {
   // 初期デッキ
@@ -178,4 +179,6 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
     cookingMultiplier: 4,
     description: '全体6ダメージ+調理×4。使用後調理ゲージ0',
   },
+
+  ...COOK_EXPANSION_UPGRADES,
 };

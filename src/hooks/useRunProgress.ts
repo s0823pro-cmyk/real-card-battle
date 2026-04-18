@@ -33,7 +33,9 @@ import {
   generateRareCardRewardChoices,
   generateOmamoriChoices,
   generateShopCards,
+  getMapPreviewDepth,
   generateShopItems,
+  rollRouletteValue,
   getCardPrice,
   getSellPrice,
   pickArea1Elite,
@@ -288,11 +290,6 @@ const saveUnlockedCardNames = (names: Set<string>) => {
   }
 };
 
-const rollRoulette = (): number => {
-  const roll = Math.random();
-  return roll < 0.30 ? 1 : roll < 0.65 ? 2 : 3;
-};
-
 type Action =
   | { type: 'set_screen'; screen: GameScreen }
   | { type: 'set_screen_with_achievements'; screen: GameScreen; achievements: Achievement[] }
@@ -411,6 +408,7 @@ const initialPlayer: PlayerState = {
   timeBonusPerTurn: 0,
   nextCardDoubleEffect: false,
   nextCardEffectBoost: 0,
+  concentrationActive: false,
   attackDamageBonusAllAttacks: 0,
   turnAttackDamageBonus: 0,
   mentalMaxBonus: 0,
@@ -792,7 +790,7 @@ const applySingleEffect = (
     case 'omamori':
       {
         if (effect.value <= 0) break;
-        const choices = generateOmamoriChoices(1, state.omamoris);
+        const choices = generateOmamoriChoices(1, state.omamoris, state.jobId);
         if (choices.length === 0) break;
         const randomOmamori = choices[0];
         return {
@@ -859,11 +857,12 @@ export const useRunProgress = () => {
 
   const branchPreviews = useMemo(() => {
     if (state.selectableTileIds.length === 0) return [];
+    const depth = getMapPreviewDepth(state.omamoris, 3);
     return state.selectableTileIds.map((nextTileId) => ({
       nextTileId,
-      previewTiles: getRoutePreviewTiles(state.board, nextTileId, 3),
+      previewTiles: getRoutePreviewTiles(state.board, nextTileId, depth),
     }));
-  }, [state.board, state.selectableTileIds]);
+  }, [state.board, state.selectableTileIds, state.omamoris]);
 
   useEffect(() => {
     return () => {
@@ -1000,14 +999,20 @@ export const useRunProgress = () => {
     }
     if (tile.type === 'shrine') {
       recordShrineVisitForAchievements(stateRef.current.jobId);
-      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'shrine' });
+      const shrineChoices = stateRef.current.omamoris.some((o) => o.id === 'shichifukujin') ? 6 : 3;
+      dispatch({
+        type: 'set_omamori_reward',
+        omamoris: generateOmamoriChoices(shrineChoices, stateRef.current.omamoris, stateRef.current.jobId),
+        source: 'shrine',
+      });
       dispatch({ type: 'set_screen', screen: 'shrine' });
       return;
     }
     if (tile.type === 'pawnshop') {
       const discount =
         stateRef.current.omamoris.find((omamori) => omamori.effect.stat === 'shop_discount')?.effect.value ?? 0;
-      const cards = generateShopCards(6, stateRef.current.jobId).map((card, idx) => {
+      const extraIngredient = stateRef.current.omamoris.some((o) => o.id === 'old_recipe');
+      const cards = generateShopCards(6, stateRef.current.jobId, { extraIngredient }).map((card, idx) => {
         const base = getCardPrice(card);
         const discounted = Math.floor(base * (1 - discount));
         return {
@@ -1026,7 +1031,7 @@ export const useRunProgress = () => {
       const omamori: ShopItem = {
         id: `shop_omamori_${Date.now()}`,
         type: 'omamori',
-        item: generateOmamoriChoices(1, stateRef.current.omamoris)[0],
+        item: generateOmamoriChoices(1, stateRef.current.omamoris, stateRef.current.jobId)[0],
         price: Math.max(1, Math.floor(150 * (1 - discount))),
       };
       dispatch({
@@ -1051,7 +1056,7 @@ export const useRunProgress = () => {
     const currentTile = getTileById(current.board, current.currentTileId);
     if (!currentTile || currentTile.type === 'area_boss') return;
 
-    const value = rollRoulette();
+    const value = rollRouletteValue(stateRef.current.omamoris);
     dispatch({ type: 'set_screen', screen: 'dice_rolling' });
     dispatch({ type: 'set_dice', value: null, rolling: true });
     await wait(150);
@@ -1214,7 +1219,7 @@ export const useRunProgress = () => {
         // ランダム1種: お守り / ランアイテム / カード1枚（-10Gは上で既に適用）
         const roll = Math.floor(Math.random() * 3);
         if (roll === 0) {
-          const omChoices = generateOmamoriChoices(1, nextState.omamoris);
+          const omChoices = generateOmamoriChoices(1, nextState.omamoris, nextState.jobId);
           if (omChoices.length > 0) {
             nextState = { ...nextState, omamoris: [...nextState.omamoris, omChoices[0]] };
           } else {
@@ -1302,11 +1307,19 @@ export const useRunProgress = () => {
     const restPct =
       stateRef.current.omamoris.find((item) => item.effect.stat === 'rest_heal_percent')?.effect.value ?? 0;
     const healAmount = Math.floor(stateRef.current.player.maxHp * 0.3 * (1 + restPct / 100));
+    const siteBentoHp =
+      stateRef.current.omamoris.find((o) => o.id === 'site_bento')?.effect.value ?? 0;
+    const goldenBowlGold =
+      stateRef.current.omamoris.find((o) => o.id === 'golden_bowl')?.effect.value ?? 0;
     dispatch({
       type: 'set_player',
       player: {
         ...stateRef.current.player,
-        currentHp: Math.min(stateRef.current.player.maxHp, stateRef.current.player.currentHp + healAmount),
+        currentHp: Math.min(
+          stateRef.current.player.maxHp,
+          stateRef.current.player.currentHp + healAmount + siteBentoHp,
+        ),
+        gold: stateRef.current.player.gold + goldenBowlGold,
       },
     });
     dispatch({ type: 'set_screen', screen: 'map' });
@@ -1504,6 +1517,14 @@ export const useRunProgress = () => {
 
   const sanitizePlayerAfterBattle = (player: PlayerState): PlayerState => ({
     ...player,
+    relicAttackDamageBonus: undefined,
+    relicBlockCardFlatBonus: undefined,
+    relicSkillTimeDiscount: undefined,
+    relicEnemyDotTickBonus: undefined,
+    relicHandDrawBonus: undefined,
+    relicIronStomach: undefined,
+    relicIngredientCookingBonus: undefined,
+    relicSetupCardDraw: undefined,
     block: 0,
     scaffold: 0,
     cookingGauge: 0,
@@ -1541,6 +1562,7 @@ export const useRunProgress = () => {
     nextCardBlockMultiplier: 1,
     nextCardDoubleEffect: false,
     nextCardEffectBoost: 0,
+    concentrationActive: false,
     attackDamageBonusAllAttacks: 0,
     turnAttackDamageBonus: 0,
     fullSprintUsedCount: 0,
@@ -1585,7 +1607,14 @@ export const useRunProgress = () => {
       return;
     }
 
-    const sanitizedPlayer = sanitizePlayerAfterBattle(result.player);
+    let sanitizedPlayer = sanitizePlayerAfterBattle(result.player);
+    if (stateRef.current.omamoris.some((o) => o.id === 'growth_proof')) {
+      sanitizedPlayer = {
+        ...sanitizedPlayer,
+        maxHp: sanitizedPlayer.maxHp + 1,
+        currentHp: sanitizedPlayer.currentHp + 1,
+      };
+    }
     const runStatsBase = {
       totalTurns: stateRef.current.totalTurns + (result.battleTurns ?? 0),
       lastDefeatedBy: result.defeatedBy ?? stateRef.current.lastDefeatedBy,
@@ -1623,7 +1652,10 @@ export const useRunProgress = () => {
     }
     const omamoriReward =
       result.kind === 'elite' || result.kind === 'boss'
-        ? { omamoris: generateOmamoriChoices(3, stateRef.current.omamoris), source: 'battle' as const }
+        ? {
+            omamoris: generateOmamoriChoices(3, stateRef.current.omamoris, stateRef.current.jobId),
+            source: 'battle' as const,
+          }
         : { omamoris: null, source: null };
 
     lastBattleVictoryCardChoicesRef.current =
@@ -1810,6 +1842,7 @@ export const useRunProgress = () => {
       timeBonusPerTurn: 0,
       nextCardDoubleEffect: false,
       nextCardEffectBoost: 0,
+      concentrationActive: false,
     };
     dispatch({ type: 'set_job', jobId: resetJobId });
     dispatch({ type: 'set_board', board: nextBoard });
@@ -1980,6 +2013,7 @@ export const useRunProgress = () => {
       timeBonusPerTurn: 0,
       nextCardDoubleEffect: false,
       nextCardEffectBoost: 0,
+      concentrationActive: false,
       attackDamageBonusAllAttacks: 0,
       turnAttackDamageBonus: 0,
     };
@@ -2106,7 +2140,9 @@ export const useRunProgress = () => {
     }
 
     if (destination === 'shop') {
-      const cards = generateShopCards(6, jobId).map((card, idx) => ({
+      const cards = generateShopCards(6, jobId, {
+        extraIngredient: jobId === 'cook' && stateRef.current.omamoris.some((o) => o.id === 'old_recipe'),
+      }).map((card, idx) => ({
         id: `shop_card_dev_${idx}_${card.id}`,
         type: 'card' as const,
         item: card,
@@ -2118,7 +2154,7 @@ export const useRunProgress = () => {
         item,
         price: item.price,
       }));
-      const omamori = generateOmamoriChoices(1).map((entry, idx) => ({
+      const omamori = generateOmamoriChoices(1, stateRef.current.omamoris, jobId).map((entry, idx) => ({
         id: `shop_omamori_dev_${idx}`,
         type: 'omamori' as const,
         item: entry,
@@ -2132,7 +2168,11 @@ export const useRunProgress = () => {
       return;
     }
     if (destination === 'shrine') {
-      dispatch({ type: 'set_omamori_reward', omamoris: generateOmamoriChoices(3, []), source: 'shrine' });
+      dispatch({
+        type: 'set_omamori_reward',
+        omamoris: generateOmamoriChoices(3, [], jobId),
+        source: 'shrine',
+      });
       dispatch({ type: 'set_screen', screen: 'shrine' });
       return;
     }
@@ -2198,6 +2238,7 @@ export const useRunProgress = () => {
       timeBonusPerTurn: 0,
       nextCardDoubleEffect: false,
       nextCardEffectBoost: 0,
+      concentrationActive: false,
     };
     dispatch({ type: 'set_job', jobId });
     dispatch({ type: 'set_player', player: nextPlayer });

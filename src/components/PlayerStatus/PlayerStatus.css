@@ -528,7 +528,8 @@
 }
 
 .status-death-wish,
-.status-cliff-edge {
+.status-cliff-edge,
+.status-concentration {
   font-size: 14px;
 }
 

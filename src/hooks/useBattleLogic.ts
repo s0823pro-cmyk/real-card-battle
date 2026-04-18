@@ -139,7 +139,7 @@ export const useBattleLogic = () => {
     preferredTargetEnemyId: string | null = null,
     toolSlots: ToolSlot[] = [],
   ): CardResolveResult => {
-    const nextPlayer: PlayerState = {
+    let nextPlayer: PlayerState = {
       ...player,
       fullnessGauge: player.fullnessGauge ?? 0,
       fullnessGainedThisTurn: player.fullnessGainedThisTurn ?? false,
@@ -239,7 +239,8 @@ export const useBattleLogic = () => {
       let fullnessAutoHealTriggered = false;
       if ((np.fullnessGauge ?? 0) >= 5) {
         if (!np.deathWishActive) {
-          np.currentHp = Math.min(np.maxHp, np.currentHp + 5);
+          const ironExtra = np.relicIronStomach ? 1 : 0;
+          np.currentHp = Math.min(np.maxHp, np.currentHp + 5 + ironExtra);
         }
         np.fullnessGauge = 0;
         fullnessAutoHealTriggered = true;
@@ -302,6 +303,13 @@ export const useBattleLogic = () => {
           if (enemy.currentHp <= 0) continue;
           damage += applyDamageToEnemy(enemy, boostedDamage);
         }
+        if ((card.id === 'death_flambe' || card.id.startsWith('death_flambe_')) && card.upgraded) {
+          for (const enemy of nextEnemies) {
+            if (enemy.currentHp > 0) {
+              upsertEnemyStatus(enemy, 'burn', 3, 3);
+            }
+          }
+        }
       } else {
         const preferredIndex = preferredTargetEnemyId
           ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
@@ -322,6 +330,9 @@ export const useBattleLogic = () => {
 
     if (card.block && nextPlayer.canBlock) {
       let blockFromCard = card.block;
+      if ((nextPlayer.relicBlockCardFlatBonus ?? 0) > 0) {
+        blockFromCard += nextPlayer.relicBlockCardFlatBonus ?? 0;
+      }
       if ((nextPlayer.nextCardBlockMultiplier ?? 1) > 1) {
         blockFromCard = Math.floor(blockFromCard * (nextPlayer.nextCardBlockMultiplier ?? 1));
         nextPlayer.nextCardBlockMultiplier = 1;
@@ -356,6 +367,22 @@ export const useBattleLogic = () => {
       }
       if (effect.type === 'self_damage') {
         nextPlayer.currentHp = Math.max(0, nextPlayer.currentHp - effect.value);
+      }
+      if (effect.type === 'clear_player_poison') {
+        if (nextPlayer.statusEffects.some((s) => s.type === 'poison')) {
+          nextPlayer = {
+            ...nextPlayer,
+            statusEffects: nextPlayer.statusEffects.filter((s) => s.type !== 'poison'),
+          };
+        }
+      }
+      if (effect.type === 'clear_player_burn') {
+        if (nextPlayer.statusEffects.some((s) => s.type === 'burn')) {
+          nextPlayer = {
+            ...nextPlayer,
+            statusEffects: nextPlayer.statusEffects.filter((s) => s.type !== 'burn'),
+          };
+        }
       }
       if (effect.type === 'next_attack_time_reduce') {
         nextPlayer.nextAttackTimeReduce += effect.value;
@@ -400,12 +427,28 @@ export const useBattleLogic = () => {
       if (effect.type === 'next_card_block_multiplier') {
         nextPlayer.nextCardBlockMultiplier = Math.max(1, effect.value);
       }
+      if (effect.type === 'concentration_next') {
+        nextPlayer.concentrationActive = true;
+      }
+      if (
+        (effect.type === 'burn' || effect.type === 'enemy_poison') &&
+        card.tags?.includes('aoe_debuff')
+      ) {
+        const st: 'burn' | 'poison' = effect.type === 'burn' ? 'burn' : 'poison';
+        for (const enemy of nextEnemies) {
+          if (enemy.currentHp > 0) {
+            upsertEnemyStatus(enemy, st, effect.value, effect.value);
+          }
+        }
+        continue;
+      }
       if (
         effect.type === 'vulnerable' ||
         effect.type === 'debuff_enemy' ||
         effect.type === 'debuff_enemy_atk' ||
         effect.type === 'weak' ||
-        effect.type === 'burn'
+        effect.type === 'burn' ||
+        effect.type === 'enemy_poison'
       ) {
         const targetIndex = preferredTargetEnemyId
           ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
@@ -416,11 +459,13 @@ export const useBattleLogic = () => {
               ? 'vulnerable'
               : effect.type === 'burn'
                 ? 'burn'
-                : effect.type === 'debuff_enemy_atk'
-                  ? 'attack_down'
-                  : 'weak';
+                : effect.type === 'enemy_poison'
+                  ? 'poison'
+                  : effect.type === 'debuff_enemy_atk'
+                    ? 'attack_down'
+                    : 'weak';
           const statusDuration =
-            effect.type === 'burn'
+            effect.type === 'burn' || effect.type === 'enemy_poison'
               ? effect.value
               : effect.type === 'vulnerable' || effect.type === 'weak'
                 ? effect.duration ?? effect.value
@@ -451,14 +496,36 @@ export const useBattleLogic = () => {
     let fullnessAutoHealTriggered = false;
     if (nextPlayer.fullnessGauge >= 5) {
       if (!nextPlayer.deathWishActive) {
-        nextPlayer.currentHp = Math.min(nextPlayer.maxHp, nextPlayer.currentHp + 5);
+        const ironExtra = nextPlayer.relicIronStomach ? 1 : 0;
+        nextPlayer.currentHp = Math.min(nextPlayer.maxHp, nextPlayer.currentHp + 5 + ironExtra);
       }
       nextPlayer.fullnessGauge = 0;
       fullnessAutoHealTriggered = true;
       nextPlayer.fullnessBonusCount = (nextPlayer.fullnessBonusCount ?? 0) + 1;
     }
 
-    if (card.tags?.includes('cooking_consume')) {
+    if (card.id === 'kitchen_heat' || card.id.startsWith('kitchen_heat_')) {
+      const enemyBurn = card.upgraded ? 6 : 3;
+      for (const enemy of nextEnemies) {
+        if (enemy.currentHp > 0) {
+          upsertEnemyStatus(enemy, 'burn', enemyBurn, enemyBurn);
+        }
+      }
+      const pb = [...nextPlayer.statusEffects];
+      const bi = pb.findIndex((s) => s.type === 'burn');
+      if (bi < 0) {
+        pb.push({ type: 'burn', duration: 2, value: 2 });
+      } else {
+        const cur = pb[bi];
+        const nd = cur.duration + 2;
+        pb[bi] = { type: 'burn', duration: nd, value: nd };
+      }
+      nextPlayer = { ...nextPlayer, statusEffects: pb };
+    }
+
+    if (card.tags?.includes('cooking_half_consume')) {
+      nextPlayer.cookingGauge = Math.floor(nextPlayer.cookingGauge / 2);
+    } else if (card.tags?.includes('cooking_consume')) {
       nextPlayer.cookingGauge = 0;
     }
 
@@ -466,6 +533,12 @@ export const useBattleLogic = () => {
       if (nextPlayer.recipeStudyActive) {
         nextPlayer.cookingGauge += 1;
         cookingGaugeGained += 1;
+      }
+      if ((nextPlayer.relicIngredientCookingBonus ?? 0) > 0) {
+        const add = nextPlayer.relicIngredientCookingBonus ?? 0;
+        nextPlayer.cookingGauge += add;
+        cookingGaugeGained += add;
+        nextPlayer.totalCookingGaugeGained = (nextPlayer.totalCookingGaugeGained ?? 0) + add;
       }
       if (nextPlayer.nextIngredientBonus > 0) {
         nextPlayer.nextIngredientBonus = 0;

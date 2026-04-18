@@ -1,5 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const config: CapacitorConfig = {
   appId: 'com.s0823pro.realcardbattle',
   appName: 'Real Card Battle',
@@ -13,6 +15,7 @@ const config: CapacitorConfig = {
   },
   server: {
     androidScheme: 'https',
+    ...(isDev && { url: 'http://192.168.2.159:5173', cleartext: true }),
   },
   plugins: {
     SplashScreen: {
