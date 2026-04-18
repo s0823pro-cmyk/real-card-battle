@@ -703,6 +703,11 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                     </span>
                   </div>
                 )}
+                {cookLocked && (
+                  <div className="job-hand-card-cook-lock-hint" role="status">
+                    エリア2ボス撃破で解放
+                  </div>
+                )}
               </div>
             </div>
           );

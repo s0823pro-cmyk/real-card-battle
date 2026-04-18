@@ -4,6 +4,7 @@ import type { JobId } from '../types/game';
 import type { BattleResult } from '../types/run';
 import type { AchievementCounters } from './achievementCounters';
 import { clearAchievementCounters, loadAchievementCounters, saveAchievementCounters } from './achievementCounters';
+import { isJobUnlocked, unlockJob } from './jobUnlockSystem';
 
 export type { Achievement, AchievementTier } from './achievementTypes';
 export { ACHIEVEMENTS, ACHIEVEMENT_LOCKED_CARD_IDS } from '../data/achievementDefinitions';
@@ -105,6 +106,15 @@ export const recordBattleEndForAchievements = (result: BattleResult): void => {
 
 const pushIf = (ids: string[], cond: boolean, id: string): void => {
   if (cond) ids.push(id);
+};
+
+/** 料理人ジョブ：エリア2ボス撃破実績、または累計敗北20回（隠し）で解放。既に解放済みなら何もしない */
+const maybeUnlockCookJobFromConditions = (): void => {
+  if (isJobUnlocked('cook')) return;
+  const ids = getUnlockedAchievementIds();
+  if (ids.has('cook_area2_clear') || getDefeatCount() >= 20) {
+    unlockJob('cook');
+  }
 };
 
 /**
@@ -316,6 +326,7 @@ export const evaluateAchievementsAfterBattle = (
     filterAchievementIdsByJob([...new Set(achievementIds)], currentJobId),
   );
   const fromProgress = evaluateAchievementProgress(currentJobId);
+  maybeUnlockCookJobFromConditions();
   const seen = new Set(fromBattle.map((a) => a.id));
   return [...fromBattle, ...fromProgress.filter((a) => !seen.has(a.id))];
 };
@@ -323,4 +334,5 @@ export const evaluateAchievementsAfterBattle = (
 /** 開発用: 全実績を達成済みにする（localStorage に保存） */
 export const unlockAllAchievements = (): void => {
   unlockAchievements(ACHIEVEMENTS.map((a) => a.id));
+  maybeUnlockCookJobFromConditions();
 };
