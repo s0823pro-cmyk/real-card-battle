@@ -261,10 +261,6 @@ export interface UseGameStateResult {
   hungryFlash: 'hungry' | 'awakened' | null;
   showRevivalEffect: boolean;
   pendingHandUpgradeCount: number;
-  /** 捨て札から選ぶ残り枚数（食材選択のみ UI 使用） */
-  pendingDiscardPicks: number;
-  /** true のとき捨て札選択は食材カードのみ */
-  discardPickIngredientOnly: boolean;
   upgradeableHandCards: Card[];
   doubleNextCharges: number;
   doubleNextReplayCharges: number;
@@ -282,8 +278,6 @@ export interface UseGameStateResult {
   sellCardById: (cardId: string) => boolean;
   useBattleItem: (itemId: string) => boolean;
   upgradeHandCardById: (cardId: string) => boolean;
-  /** 捨て札一覧の表示順（上が新しい）のインデックスで選択 */
-  confirmPickFromDiscard: (displayIndex: number) => void;
   skipHandUpgradeSelection: () => void;
   endTurn: () => Promise<void>;
   concedeBattle: () => void;
@@ -639,8 +633,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const [showRevivalEffect, setShowRevivalEffect] = useState(false);
   const [pendingHandUpgradeCount, setPendingHandUpgradeCount] = useState(0);
   const pendingHandUpgradeCountRef = useRef(0);
-  const [pendingDiscardPicks, setPendingDiscardPicks] = useState(0);
-  const [discardPickIngredientOnly, setDiscardPickIngredientOnly] = useState(false);
   const [curseImmunityUsed, setCurseImmunityUsed] = useState(false);
   /** ランキング: 敵の攻撃で受けたHPダメージ累計 */
   const rankingEnemyAttackHpDamageRef = useRef(0);
@@ -872,7 +864,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const remainingTime = gameState.maxTime - gameState.usedTime;
   const canPlayCard = (card: Card): boolean => {
     if (dotSequenceInProgressRef.current) return false;
-    if (pendingDiscardPicks > 0) return false;
     if (gameState.phase !== 'player_turn') return false;
     if (card.type === 'status' || card.type === 'curse') return false;
     if (card.tags?.includes('require_below_half_hp')) {
@@ -908,7 +899,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   const selectCard = (cardId: string): void => {
     if (dotSequenceInProgressRef.current) return;
-    if (pendingDiscardPicks > 0) return;
     if (gameState.phase !== 'player_turn') return;
     setSelectedCardId((prev) => (prev === cardId ? null : cardId));
   };
@@ -1242,9 +1232,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       .reduce((s, e) => s + e.value, 0);
     if (pickFromDiscardSum > 0) {
       const picks = Math.min(pickFromDiscardSum, discardPile.length);
-      if (picks === 0) {
-        pushPopup('捨て札がありません', 'player', 'buff');
-      } else {
+      if (picks > 0) {
         const pool = [...discardPile];
         const picked: Card[] = [];
         for (let n = 0; n < picks; n++) {
@@ -1253,6 +1241,30 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         }
         handFinal = [...handFinal, ...picked];
         discardPile = pool;
+        playSe('card');
+      }
+    }
+
+    const pickFromDiscardIngredientSum = (concentratedCard.effects ?? [])
+      .filter((e) => e.type === 'pick_from_discard_ingredient')
+      .reduce((s, e) => s + e.value, 0);
+    if (pickFromDiscardIngredientSum > 0) {
+      const ingredientIndices = discardPile
+        .map((c, i) => (isIngredientCard(c) ? i : -1))
+        .filter((i): i is number => i >= 0);
+      const picks = Math.min(pickFromDiscardIngredientSum, ingredientIndices.length);
+      if (picks > 0) {
+        const shuffled = [...ingredientIndices];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const tmp = shuffled[i]!;
+          shuffled[i] = shuffled[j]!;
+          shuffled[j] = tmp;
+        }
+        const chosenIdx = new Set(shuffled.slice(0, picks));
+        const pickedCards = [...chosenIdx].map((i) => discardPile[i]!);
+        discardPile = discardPile.filter((_, i) => !chosenIdx.has(i));
+        handFinal = [...handFinal, ...pickedCards];
         playSe('card');
       }
     }
@@ -1359,20 +1371,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       ) {
         rankingCooking10AwardedRef.current = true;
         rankPts(20);
-      }
-    }
-
-    const pickFromDiscardIngredientSum = (concentratedCard.effects ?? [])
-      .filter((e) => e.type === 'pick_from_discard_ingredient')
-      .reduce((s, e) => s + e.value, 0);
-    if (pickFromDiscardIngredientSum > 0) {
-      const ingredientCount = discardPile.filter((c) => isIngredientCard(c)).length;
-      const picks = Math.min(pickFromDiscardIngredientSum, ingredientCount);
-      setDiscardPickIngredientOnly(true);
-      if (picks === 0) {
-        pushPopup('捨て札に食材がありません', 'player', 'buff');
-      } else {
-        setPendingDiscardPicks(picks);
       }
     }
 
@@ -1574,7 +1572,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   const useBattleItem = (itemId: string): boolean => {
     if (dotSequenceInProgressRef.current) return false;
-    if (pendingDiscardPicks > 0) return false;
     if (activePendingHandUpgradeCount > 0) return false;
     const item = battleItems.find((entry) => entry.id === itemId);
     if (!item || gameState.phase !== 'player_turn') return false;
@@ -1630,7 +1627,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   };
 
   const reserveCardById = (cardId: string): boolean => {
-    if (pendingDiscardPicks > 0) return false;
     if (dotSequenceInProgressRef.current) return false;
     /** phase / 手札強化待ち / 温存可否はすべて prev と ref で判定（stale closure・遅延呼び出しでも nextCardDoubleEffect を誤って落とさない） */
     let didReserve = false;
@@ -1690,7 +1686,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   const sellCardById = (cardId: string): boolean => {
     if (!CARPENTER_CAN_SELL_IN_BATTLE) return false;
-    if (pendingDiscardPicks > 0) return false;
     if (dotSequenceInProgressRef.current) return false;
     if (gameState.phase !== 'player_turn') return false;
     if (activePendingHandUpgradeCount > 0) return false;
@@ -2029,7 +2024,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   async function endTurn(): Promise<void> {
     if (gameState.phase !== 'player_turn') return;
     if (activePendingHandUpgradeCount > 0) return;
-    if (pendingDiscardPicks > 0) return;
     if (cardsPlayedThisTurnRef.current >= 3) {
       options?.onRankingScore?.(10);
     }
@@ -2605,38 +2599,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setPendingHandUpgradeCount(0);
   };
 
-  const confirmPickFromDiscard = (displayIndex: number): void => {
-    if (pendingDiscardPicks <= 0) return;
-    if (dotSequenceInProgressRef.current) return;
-    let picked = false;
-    setGameState((prev) => {
-      if (prev.phase !== 'player_turn') return prev;
-      const pile = prev.discardPile;
-      if (pile.length === 0) return prev;
-      const realIdx = pile.length - 1 - displayIndex;
-      if (realIdx < 0 || realIdx >= pile.length) return prev;
-      const card = pile[realIdx];
-      if (discardPickIngredientOnly && !isIngredientCard(card)) {
-        pushPopup('食材カードを選んでください', 'player', 'buff');
-        return prev;
-      }
-      picked = true;
-      return {
-        ...prev,
-        hand: [...prev.hand, card],
-        discardPile: pile.filter((_, i) => i !== realIdx),
-      };
-    });
-    if (picked) {
-      setPendingDiscardPicks((p) => {
-        const next = Math.max(0, p - 1);
-        if (next === 0) setDiscardPickIngredientOnly(false);
-        return next;
-      });
-      playSe('card');
-    }
-  };
-
   useEffect(() => {
     endTurnRef.current = endTurn;
     pushPopupRef.current = pushPopup;
@@ -2668,8 +2630,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     setHungryFlash(null);
     setShowRevivalEffect(false);
     setPendingHandUpgradeCount(0);
-    setPendingDiscardPicks(0);
-    setDiscardPickIngredientOnly(false);
     setCurseImmunityUsed(false);
     prevHungryStateRef.current = 'normal';
   };
@@ -2739,8 +2699,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     hungryFlash,
     showRevivalEffect,
     pendingHandUpgradeCount: activePendingHandUpgradeCount,
-    pendingDiscardPicks,
-    discardPickIngredientOnly,
     upgradeableHandCards,
     doubleNextCharges,
     doubleNextReplayCharges,
@@ -2751,7 +2709,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     sellCardById,
     useBattleItem,
     upgradeHandCardById,
-    confirmPickFromDiscard,
     skipHandUpgradeSelection,
     endTurn,
     concedeBattle,

@@ -284,7 +284,7 @@ export const COOK_EXPANSION_COMMON: Card[] = [
     name: '食材補充',
     type: 'skill',
     timeCost: 1,
-    description: '捨て札から食材カード1枚を手札に',
+    description: '捨て札から食材をランダムで1枚手札に',
     icon: '📦',
     sellValue: 5,
     effects: [{ type: 'pick_from_discard_ingredient', value: 1 }],

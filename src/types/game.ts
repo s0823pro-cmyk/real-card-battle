@@ -64,7 +64,7 @@ export type EffectType =
   | 'concentration_next'
   /** 釘袋整理：捨て札からランダムで指定枚数を手札へ（自動） */
   | 'pick_from_discard'
-  /** 捨て札から食材カードのみ指定枚数を手札へ */
+  /** 食材補充：捨て札の食材からランダムで指定枚数を手札へ（自動） */
   | 'pick_from_discard_ingredient'
   /** 敵に毒（ターン数は value） */
   | 'enemy_poison'

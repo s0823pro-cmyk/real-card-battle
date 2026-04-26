@@ -115,7 +115,7 @@ export const COOK_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   食材補充: {
     name: '食材補充+',
-    description: '捨て札から食材カード2枚を手札に',
+    description: '捨て札から食材をランダムで2枚手札に',
     effects: [{ type: 'pick_from_discard_ingredient', value: 2 }],
   },
   腐り食材投げ: {
