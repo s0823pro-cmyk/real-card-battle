@@ -829,105 +829,6 @@ const HomeScreen = ({
       <div className="settings-accordion">
         <button
           type="button"
-          className={`settings-accordion-header ${openSettingsSection === 'game' ? 'is-open' : ''}`}
-          onClick={() => toggleSettingsSection('game')}
-        >
-          <span>{t('home.settings.dataSection')}</span>
-          <span className="settings-accordion-arrow">
-            {openSettingsSection === 'game' ? '▲' : '▼'}
-          </span>
-        </button>
-        {openSettingsSection === 'game' && (
-          <div className="settings-accordion-body">
-            <button type="button" className="settings-btn-block" onClick={() => setShowHomeGlossary(true)}>
-              <span className="settings-btn-block-title">{t('home.settings.glossaryTitle')}</span>
-              <span className="settings-btn-block-desc">{t('home.settings.glossaryDesc')}</span>
-            </button>
-            <div className="settings-item settings-item--audio settings-language-block">
-              <span className="settings-language-label">{t('common.language')}</span>
-              {isLocaleLoading && <p className="settings-locale-loading">{t('common.localeLoading')}</p>}
-              <div className="settings-language-row" role="group" aria-label={t('common.language')}>
-                {(
-                  [
-                    { code: 'ja' as const, labelKey: 'lang.ja' as const },
-                    { code: 'en' as const, labelKey: 'lang.en' as const },
-                    { code: 'ko' as const, labelKey: 'lang.ko' as const },
-                  ] as const
-                ).map(({ code, labelKey }) => (
-                  <button
-                    key={code}
-                    type="button"
-                    disabled={isLocaleLoading}
-                    className={`settings-lang-btn ${locale === code ? 'settings-lang-btn--active' : ''}`}
-                    onClick={() => void switchLocale(code)}
-                  >
-                    {t(labelKey)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="settings-item settings-item--row">
-              <div className="settings-item-info">
-                <p className="settings-item-title">{t('home.settings.tutorialResetTitle')}</p>
-                <p className="settings-item-desc">{t('home.settings.tutorialResetDesc')}</p>
-              </div>
-              <button
-                type="button"
-                className="settings-btn-secondary"
-                onClick={() => {
-                  resetTutorial();
-                  setShowTutorialResetModal(true);
-                }}
-              >
-                {t('home.settings.tutorialResetBtn')}
-              </button>
-            </div>
-            <div className="settings-item settings-item--row">
-              <div className="settings-item-info">
-                <p className="settings-item-title">{t('home.settings.dataResetTitle')}</p>
-                <p className="settings-item-desc">{t('home.settings.dataResetDesc')}</p>
-              </div>
-              <button
-                type="button"
-                className="settings-btn-danger"
-                onClick={() => {
-                  const firstOk = window.confirm(t('home.settings.dataResetConfirm1'));
-                  if (!firstOk) return;
-                  const secondOk = window.confirm(t('home.settings.dataResetConfirm2'));
-                  if (!secondOk) return;
-                  /** 課金・広告削除（real-card-battle:ads-removed）は意図的に除外 */
-                  const keysToDelete = [
-                    PENDING_DEFEAT_INTERSTITIAL_KEY,
-                    DEBUG_ENEMY_HP1_KEY,
-                    'real-card-battle:save-data',
-                    'jobless_battle_save',
-                    'jobless_enemy_records',
-                    'jobless_enemy_defeat_counts',
-                    'real-card-battle:unlocked-card-names',
-                    'real-card-battle:unlocked-jobs',
-                    'real-card-battle:job-unlock-seen-cook',
-                    'real-card-battle:tutorial-seen',
-                    'story_seen_carpenter',
-                    'story_seen_carpenter_e1',
-                    'story_seen_carpenter_e2',
-                    'story_seen_carpenter_e3',
-                  ];
-                  keysToDelete.forEach((key) => localStorage.removeItem(key));
-                  clearAchievements();
-                  window.alert(t('home.settings.dataResetDone'));
-                  window.location.reload();
-                }}
-              >
-                {t('home.settings.dataResetBtn')}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="settings-accordion">
-        <button
-          type="button"
           className={`settings-accordion-header ${openSettingsSection === 'mystats' ? 'is-open' : ''}`}
           onClick={() => toggleSettingsSection('mystats')}
         >
@@ -1033,6 +934,105 @@ const HomeScreen = ({
                 )}
               </div>
             ) : null}
+          </div>
+        )}
+      </div>
+
+      <div className="settings-accordion">
+        <button
+          type="button"
+          className={`settings-accordion-header ${openSettingsSection === 'game' ? 'is-open' : ''}`}
+          onClick={() => toggleSettingsSection('game')}
+        >
+          <span>{t('home.settings.dataSection')}</span>
+          <span className="settings-accordion-arrow">
+            {openSettingsSection === 'game' ? '▲' : '▼'}
+          </span>
+        </button>
+        {openSettingsSection === 'game' && (
+          <div className="settings-accordion-body">
+            <button type="button" className="settings-btn-block" onClick={() => setShowHomeGlossary(true)}>
+              <span className="settings-btn-block-title">{t('home.settings.glossaryTitle')}</span>
+              <span className="settings-btn-block-desc">{t('home.settings.glossaryDesc')}</span>
+            </button>
+            <div className="settings-item settings-item--audio settings-language-block">
+              <span className="settings-language-label">{t('common.language')}</span>
+              {isLocaleLoading && <p className="settings-locale-loading">{t('common.localeLoading')}</p>}
+              <div className="settings-language-row" role="group" aria-label={t('common.language')}>
+                {(
+                  [
+                    { code: 'ja' as const, labelKey: 'lang.ja' as const },
+                    { code: 'en' as const, labelKey: 'lang.en' as const },
+                    { code: 'ko' as const, labelKey: 'lang.ko' as const },
+                  ] as const
+                ).map(({ code, labelKey }) => (
+                  <button
+                    key={code}
+                    type="button"
+                    disabled={isLocaleLoading}
+                    className={`settings-lang-btn ${locale === code ? 'settings-lang-btn--active' : ''}`}
+                    onClick={() => void switchLocale(code)}
+                  >
+                    {t(labelKey)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">{t('home.settings.tutorialResetTitle')}</p>
+                <p className="settings-item-desc">{t('home.settings.tutorialResetDesc')}</p>
+              </div>
+              <button
+                type="button"
+                className="settings-btn-secondary"
+                onClick={() => {
+                  resetTutorial();
+                  setShowTutorialResetModal(true);
+                }}
+              >
+                {t('home.settings.tutorialResetBtn')}
+              </button>
+            </div>
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">{t('home.settings.dataResetTitle')}</p>
+                <p className="settings-item-desc">{t('home.settings.dataResetDesc')}</p>
+              </div>
+              <button
+                type="button"
+                className="settings-btn-danger"
+                onClick={() => {
+                  const firstOk = window.confirm(t('home.settings.dataResetConfirm1'));
+                  if (!firstOk) return;
+                  const secondOk = window.confirm(t('home.settings.dataResetConfirm2'));
+                  if (!secondOk) return;
+                  /** 課金・広告削除（real-card-battle:ads-removed）は意図的に除外 */
+                  const keysToDelete = [
+                    PENDING_DEFEAT_INTERSTITIAL_KEY,
+                    DEBUG_ENEMY_HP1_KEY,
+                    'real-card-battle:save-data',
+                    'jobless_battle_save',
+                    'jobless_enemy_records',
+                    'jobless_enemy_defeat_counts',
+                    'real-card-battle:unlocked-card-names',
+                    'real-card-battle:unlocked-jobs',
+                    'real-card-battle:job-unlock-seen-cook',
+                    'real-card-battle:tutorial-seen',
+                    'story_seen_carpenter',
+                    'story_seen_carpenter_e1',
+                    'story_seen_carpenter_e2',
+                    'story_seen_carpenter_e3',
+                  ];
+                  keysToDelete.forEach((key) => localStorage.removeItem(key));
+                  clearAchievements();
+                  window.alert(t('home.settings.dataResetDone'));
+                  window.location.reload();
+                }}
+              >
+                {t('home.settings.dataResetBtn')}
+              </button>
+            </div>
           </div>
         )}
       </div>
