@@ -128,6 +128,9 @@ export default {
 			if (path === "/admin/summary" && method === "GET") {
 				return await handleGetAdminSummary(request, env);
 			}
+			if (path === "/my-stats" && method === "GET") {
+				return await handleGetMyStats(request, env);
+			}
 			if (path.startsWith("/ranking/") && method === "GET") {
 				const jobId = decodeURIComponent(path.slice("/ranking/".length));
 				return await handleGetRanking(env, jobId);
@@ -556,5 +559,85 @@ async function handleGetAdminSummary(request: Request, env: Env): Promise<Respon
 			combo_key: r.combo_key,
 			use_count: r.use_count,
 		})),
+	});
+}
+
+async function handleGetMyStats(request: Request, env: Env): Promise<Response> {
+	const url = new URL(request.url);
+	const deviceId = url.searchParams.get("device_id")?.trim() ?? "";
+	if (!isNonEmptyDeviceId(deviceId)) {
+		return json({ error: "invalid_device_id" }, 400);
+	}
+
+	const aggRow = await env.DB.prepare(
+		`SELECT
+       COALESCE(SUM(play_count), 0) AS total_plays,
+       COALESCE(SUM(win_count), 0) AS total_wins,
+       COALESCE(SUM(defeat_count), 0) AS total_defeats,
+       COALESCE(SUM(total_gold), 0) AS total_gold,
+       COALESCE(SUM(total_play_time), 0) AS sum_play_time
+     FROM player_stats
+     WHERE device_id = ?`,
+	)
+		.bind(deviceId)
+		.first<{
+			total_plays: number;
+			total_wins: number;
+			total_defeats: number;
+			total_gold: number;
+			sum_play_time: number;
+		}>();
+
+	const totalPlays = aggRow?.total_plays ?? 0;
+	const avgPlayTimeSeconds =
+		totalPlays > 0 ? Math.floor((aggRow?.sum_play_time ?? 0) / totalPlays) : 0;
+
+	const { results: jobRows } = await env.DB.prepare(
+		`SELECT job_id, play_count, win_count
+     FROM player_stats
+     WHERE device_id = ? AND job_id IN ('carpenter', 'cook')`,
+	)
+		.bind(deviceId)
+		.all<{ job_id: string; play_count: number; win_count: number }>();
+
+	const jobMap = new Map((jobRows ?? []).map((r) => [r.job_id, r]));
+	const job_stats = (["carpenter", "cook"] as const).map((job_id) => {
+		const r = jobMap.get(job_id);
+		return {
+			job_id,
+			play_count: r?.play_count ?? 0,
+			win_count: r?.win_count ?? 0,
+		};
+	});
+
+	const { results: cardRows } = await env.DB.prepare(
+		`SELECT card_id, use_count
+     FROM card_usage
+     WHERE device_id = ?
+     ORDER BY use_count DESC
+     LIMIT 3`,
+	)
+		.bind(deviceId)
+		.all<{ card_id: string; use_count: number }>();
+
+	const { results: enemyRows } = await env.DB.prepare(
+		`SELECT enemy_id, kill_count
+     FROM enemy_kills
+     WHERE device_id = ?
+     ORDER BY kill_count DESC
+     LIMIT 3`,
+	)
+		.bind(deviceId)
+		.all<{ enemy_id: string; kill_count: number }>();
+
+	return json({
+		total_plays: totalPlays,
+		total_wins: aggRow?.total_wins ?? 0,
+		total_defeats: aggRow?.total_defeats ?? 0,
+		total_gold: aggRow?.total_gold ?? 0,
+		avg_play_time_seconds: avgPlayTimeSeconds,
+		job_stats,
+		top_cards: (cardRows ?? []).map((r) => ({ card_id: r.card_id, use_count: r.use_count })),
+		top_enemies: (enemyRows ?? []).map((r) => ({ enemy_id: r.enemy_id, kill_count: r.kill_count })),
 	});
 }

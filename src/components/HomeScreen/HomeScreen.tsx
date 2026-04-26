@@ -43,7 +43,8 @@ import { DEBUG_ENEMY_HP1_KEY, getDebugEnemyHp1, setDebugEnemyHp1 } from '../../u
 import { unlockJob } from '../../utils/jobUnlockSystem';
 import { resetTutorial } from '../../utils/tutorialState';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
-import { getAdminSummary, verifyCode } from '../../utils/statsApi';
+import { getAdminSummary, getMyStats, verifyCode } from '../../utils/statsApi';
+import type { MyStatsResponse } from '../../utils/statsApi';
 import type { JobId } from '../../types/game';
 import {
   getStoredRankingNickname,
@@ -499,6 +500,9 @@ const HomeScreen = ({
   const [adminSummary, setAdminSummary] = useState<AdminSummaryPayload | null>(null);
   const [giftToast, setGiftToast] = useState<string | null>(null);
   const giftToastTimerRef = useRef<number | null>(null);
+  const [myStatsLoading, setMyStatsLoading] = useState(false);
+  const [myStatsData, setMyStatsData] = useState<MyStatsResponse | null>(null);
+  const [myStatsError, setMyStatsError] = useState(false);
 
   const toggleSettingsSection = (section: string) => {
     setOpenSettingsSection((prev) => (prev === section ? null : section));
@@ -515,6 +519,26 @@ const HomeScreen = ({
       if (giftToastTimerRef.current != null) window.clearTimeout(giftToastTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (openSettingsSection !== 'mystats') return;
+    let cancelled = false;
+    setMyStatsLoading(true);
+    setMyStatsError(false);
+    void getMyStats().then((data) => {
+      if (cancelled) return;
+      setMyStatsLoading(false);
+      if (data === null) {
+        setMyStatsError(true);
+        setMyStatsData(null);
+      } else {
+        setMyStatsData(data);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [openSettingsSection]);
 
   useEffect(() => {
     playBgm('menu');
@@ -897,6 +921,118 @@ const HomeScreen = ({
                 {t('home.settings.dataResetBtn')}
               </button>
             </div>
+          </div>
+        )}
+      </div>
+
+      <div className="settings-accordion">
+        <button
+          type="button"
+          className={`settings-accordion-header ${openSettingsSection === 'mystats' ? 'is-open' : ''}`}
+          onClick={() => toggleSettingsSection('mystats')}
+        >
+          <span>{t('home.settings.myStatsSection')}</span>
+          <span className="settings-accordion-arrow">
+            {openSettingsSection === 'mystats' ? '▲' : '▼'}
+          </span>
+        </button>
+        {openSettingsSection === 'mystats' && (
+          <div className="settings-accordion-body">
+            {myStatsLoading ? (
+              <div className="settings-mystats-spinner-wrap" role="status" aria-live="polite">
+                <span className="settings-mystats-spinner" aria-hidden />
+                <span className="settings-mystats-spinner-label">{t('home.settings.myStatsLoading')}</span>
+              </div>
+            ) : myStatsError ? (
+              <p className="settings-mystats-msg settings-mystats-msg--error">{t('home.settings.myStatsLoadError')}</p>
+            ) : myStatsData && myStatsData.total_plays === 0 ? (
+              <p className="settings-mystats-msg">{t('home.settings.myStatsEmpty')}</p>
+            ) : myStatsData ? (
+              <div className="settings-mystats-body">
+                <dl className="settings-admin-dl settings-mystats-dl">
+                  <div>
+                    <dt>{t('home.settings.myStatsTotalPlays')}</dt>
+                    <dd>{myStatsData.total_plays}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.settings.myStatsTotalWins')}</dt>
+                    <dd>{myStatsData.total_wins}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.settings.myStatsTotalDefeats')}</dt>
+                    <dd>{myStatsData.total_defeats}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.settings.myStatsWinRate')}</dt>
+                    <dd>
+                      {myStatsData.total_plays > 0
+                        ? t('home.settings.myStatsWinRateValue', {
+                            pct: Math.round((100 * myStatsData.total_wins) / myStatsData.total_plays),
+                          })
+                        : t('home.settings.myStatsNoValue')}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.settings.myStatsTotalGold')}</dt>
+                    <dd>{myStatsData.total_gold}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.settings.myStatsAvgPlayTime')}</dt>
+                    <dd>
+                      {t('home.settings.adminAvgPlayTimeFmt', {
+                        m: Math.floor(myStatsData.avg_play_time_seconds / 60),
+                        sec: myStatsData.avg_play_time_seconds % 60,
+                      })}
+                    </dd>
+                  </div>
+                </dl>
+                <h4 className="settings-admin-subheading">{t('home.settings.myStatsJobPlays')}</h4>
+                <ul className="settings-admin-list">
+                  {myStatsData.job_stats.map((row) => (
+                    <li key={row.job_id}>
+                      <span className="settings-admin-list-label">{jobLabel(row.job_id)}</span>
+                      <span className="settings-admin-list-value">
+                        {t('home.settings.jobShortPlays')} {row.play_count} · {t('home.settings.jobShortWins')}{' '}
+                        {row.win_count}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <h4 className="settings-admin-subheading">{t('home.settings.myStatsTopCards')}</h4>
+                {myStatsData.top_cards.length === 0 ? (
+                  <p className="settings-mystats-subempty">{t('home.settings.myStatsNoValue')}</p>
+                ) : (
+                  <ol className="settings-admin-ol">
+                    {myStatsData.top_cards.map((row, idx) => (
+                      <li key={`${row.card_id}-${idx}`}>
+                        <span className="settings-admin-list-label">
+                          {t(cardNameKey(row.card_id), {}, row.card_id)}
+                        </span>
+                        <span className="settings-admin-list-num">{row.use_count}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                <h4 className="settings-admin-subheading">{t('home.settings.myStatsTopEnemies')}</h4>
+                {myStatsData.top_enemies.length === 0 ? (
+                  <p className="settings-mystats-subempty">{t('home.settings.myStatsNoValue')}</p>
+                ) : (
+                  <ol className="settings-admin-ol">
+                    {myStatsData.top_enemies.map((row, idx) => {
+                      const tid = enemyRowTemplateId(row.enemy_id);
+                      return (
+                        <li key={`${row.enemy_id}-${idx}`}>
+                          <span className="settings-admin-list-label">
+                            {t(enemyNameKey(tid), {}, tid)}
+                          </span>
+                          <span className="settings-admin-list-num">{row.kill_count}</span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </div>
+            ) : null}
           </div>
         )}
       </div>

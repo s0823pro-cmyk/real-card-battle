@@ -261,6 +261,79 @@ describe("ranking worker", () => {
 		}
 	});
 
+	it("GET /my-stats aggregates by device_id", async () => {
+		const device = "my-stats-device-1";
+		const postNick = new IncomingRequest("http://example.com/nickname", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ device_id: device, nickname: "マイ統計" }),
+		});
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(postNick, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+
+		const postStats = new IncomingRequest("http://example.com/stats", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				device_id: device,
+				job_id: "carpenter",
+				outcome: "victory",
+				kills: 2,
+				gold: 50,
+				cards_used: { hammer_strike: 3, dodge: 1 },
+				enemies_killed: { wildCat: 1 },
+				win_streak: 1,
+				play_time_seconds: 60,
+				area_reached: 1,
+				area_cleared: false,
+				top_cards: ["hammer_strike", "dodge"],
+			}),
+		});
+		res = await worker.fetch(postStats, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+
+		const getMy = new IncomingRequest(
+			`http://example.com/my-stats?device_id=${encodeURIComponent(device)}`,
+		);
+		res = await worker.fetch(getMy, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		const body = (await res.json()) as {
+			total_plays: number;
+			total_wins: number;
+			total_defeats: number;
+			total_gold: number;
+			avg_play_time_seconds: number;
+			job_stats: { job_id: string; play_count: number; win_count: number }[];
+			top_cards: { card_id: string; use_count: number }[];
+			top_enemies: { enemy_id: string; kill_count: number }[];
+		};
+		expect(body.total_plays).toBe(1);
+		expect(body.total_wins).toBe(1);
+		expect(body.total_defeats).toBe(0);
+		expect(body.total_gold).toBe(50);
+		expect(body.avg_play_time_seconds).toBe(60);
+		expect(body.job_stats).toHaveLength(2);
+		const carpenter = body.job_stats.find((j) => j.job_id === "carpenter");
+		expect(carpenter?.play_count).toBe(1);
+		expect(carpenter?.win_count).toBe(1);
+		expect(body.top_cards[0]?.card_id).toBe("hammer_strike");
+		expect(body.top_cards[0]?.use_count).toBe(3);
+		expect(body.top_enemies[0]?.enemy_id).toBe("wildCat");
+		expect(body.top_enemies[0]?.kill_count).toBe(1);
+	});
+
+	it("GET /my-stats returns 400 for empty device_id", async () => {
+		const req = new IncomingRequest("http://example.com/my-stats?device_id=");
+		const ctx = createExecutionContext();
+		const res = await worker.fetch(req, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(400);
+	});
+
 	it("POST /code and GET /admin/summary with admin code", async () => {
 		const postCode = new IncomingRequest("http://example.com/code", {
 			method: "POST",

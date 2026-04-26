@@ -1674,3 +1674,58 @@
   font-weight: bold;
   color: #f0b429;
 }
+
+.settings-mystats-spinner-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 8px;
+}
+
+.settings-mystats-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(232, 213, 163, 0.25);
+  border-top-color: #f0b429;
+  border-radius: 50%;
+  animation: settings-mystats-spin 0.7s linear infinite;
+}
+
+.settings-mystats-spinner-label {
+  font-size: 13px;
+  color: rgba(232, 213, 163, 0.85);
+}
+
+@keyframes settings-mystats-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.settings-mystats-msg {
+  margin: 0;
+  padding: 12px 8px;
+  font-size: 13px;
+  color: rgba(232, 213, 163, 0.9);
+  text-align: center;
+}
+
+.settings-mystats-msg--error {
+  color: #f5a097;
+}
+
+.settings-mystats-body {
+  padding-bottom: 4px;
+}
+
+.settings-mystats-dl {
+  margin-bottom: 4px;
+}
+
+.settings-mystats-subempty {
+  margin: 0 0 8px;
+  padding-left: 4px;
+  font-size: 12px;
+  color: rgba(232, 213, 163, 0.55);
+}
