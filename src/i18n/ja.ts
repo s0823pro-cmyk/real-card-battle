@@ -125,7 +125,7 @@ export const ja = {
   'job.detail.time': '⏱ タイム',
   'job.detail.mental': '🧠 メンタル',
   'job.detail.uniqueSkill': '固有スキル',
-  'job.cookLockHint': 'エリア2ボス撃破で解放',
+  'job.cookLockHint': 'エリア1のボスを倒すと解放',
   'job.cookUnlockCelebration': '🔪 料理人が解放されました！',
   'job.unknownName': '？？？',
 
