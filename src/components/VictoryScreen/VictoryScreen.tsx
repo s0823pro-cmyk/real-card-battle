@@ -1,17 +1,12 @@
 import { Capacitor } from '@capacitor/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { MessageKey } from '../../i18n';
 import { achievementDescKey, achievementNameKey } from '../../i18n/entityKeys';
 import { mountCardRewardBanner, removeBannerAd } from '../../utils/adMobClient';
 import type { JobId } from '../../types/game';
-import {
-  getCumulativeAchievementProgressSuffix,
-  getDefeatCount,
-  type Achievement,
-} from '../../utils/achievementSystem';
-import { loadAchievementCounters } from '../../utils/achievementCounters';
+import { getCumulativeAchievementProgressSuffix, type Achievement } from '../../utils/achievementSystem';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import '../HomeScreen/HomeScreen.css';
 import './VictoryScreen.css';
@@ -43,14 +38,6 @@ export const VictoryScreen = ({
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
   const { playBgm } = useAudioContext();
-
-  const cumulativeDisplayState = useMemo(
-    () => ({
-      counters: loadAchievementCounters(),
-      defeatCount: getDefeatCount(),
-    }),
-    [showStats, newAchievements],
-  );
 
   useEffect(() => {
     playBgm('victory');
@@ -198,11 +185,7 @@ export const VictoryScreen = ({
                     <p className="achievement-name">{t(achievementNameKey(a.id), undefined, a.name)}</p>
                     <p className="achievement-desc">
                       {t(achievementDescKey(a.id), undefined, a.description)}
-                      {getCumulativeAchievementProgressSuffix(
-                        a.id,
-                        cumulativeDisplayState.counters,
-                        cumulativeDisplayState.defeatCount,
-                      ) ?? ''}
+                      {getCumulativeAchievementProgressSuffix(a.id) ?? ''}
                     </p>
                     <p className="achievement-tier">{t(`achievement.tier.${a.tier}` as MessageKey)}</p>
                     <p className="achievement-reward">{t('victory.rewardLine')}</p>

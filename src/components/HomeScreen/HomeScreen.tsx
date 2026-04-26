@@ -33,11 +33,9 @@ import {
   ACHIEVEMENTS,
   clearAchievements,
   getCumulativeAchievementProgressSuffix,
-  getDefeatCount,
   getUnlockedAchievementIds,
   unlockAllAchievements,
 } from '../../utils/achievementSystem';
-import { loadAchievementCounters } from '../../utils/achievementCounters';
 import { getAdsRemoved, PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
 import { DEBUG_ENEMY_HP1_KEY, getDebugEnemyHp1, setDebugEnemyHp1 } from '../../utils/debugEnemyHp1';
 import { unlockJob } from '../../utils/jobUnlockSystem';
@@ -389,12 +387,6 @@ const HomeScreen = ({
     if (achievementJobTab === 'all') return ACHIEVEMENTS;
     return ACHIEVEMENTS.filter((a) => a.jobId === achievementJobTab);
   }, [achievementJobTab]);
-  const cumulativeDisplayState = useMemo(() => {
-    return {
-      counters: loadAchievementCounters(),
-      defeatCount: getDefeatCount(),
-    };
-  }, [achievementRefreshKey, showRecords]);
   type HowtoStoryEpisode = {
     id: StoryEpisodeId;
     chapterKey: MessageKey;
@@ -1491,11 +1483,7 @@ const HomeScreen = ({
                       <p className="achievement-name">{t(achievementNameKey(a.id), undefined, a.name)}</p>
                       <p className="achievement-desc">
                         {t(achievementDescKey(a.id), undefined, a.description)}
-                        {getCumulativeAchievementProgressSuffix(
-                          a.id,
-                          cumulativeDisplayState.counters,
-                          cumulativeDisplayState.defeatCount,
-                        ) ?? ''}
+                        {getCumulativeAchievementProgressSuffix(a.id) ?? ''}
                       </p>
                       <p className="achievement-tier">{t(`achievement.tier.${a.tier}` as MessageKey)}</p>
                       <p className="achievement-reward">

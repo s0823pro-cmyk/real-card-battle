@@ -2,15 +2,27 @@ import { ACHIEVEMENTS, ACHIEVEMENT_LOCKED_CARD_IDS } from '../data/achievementDe
 import type { Achievement } from './achievementTypes';
 import type { JobId } from '../types/game';
 import type { BattleResult } from '../types/run';
-import type { AchievementCounters } from './achievementCounters';
-import { clearAchievementCounters, loadAchievementCounters, saveAchievementCounters } from './achievementCounters';
+import type { JobAchievementCounters } from './achievementCounters';
+import {
+  clearAchievementCounters,
+  getDefeatCountForJob,
+  getTotalDefeatCountAcrossJobs,
+  incrementDefeatCountForJob,
+  incrementDiceRollsForJob,
+  incrementEventsResolvedForJob,
+  incrementHotelVisitsForJob,
+  incrementShrineVisitsForJob,
+  incrementShopCardBuysForJob,
+  loadAchievementCountersForJob,
+  recordBattleVictoryForJob,
+} from './achievementCounters';
 import { isJobUnlocked, unlockJob } from './jobUnlockSystem';
 
 export type { Achievement, AchievementTier } from './achievementTypes';
 export { ACHIEVEMENT_LOCKED_CARD_IDS, ACHIEVEMENTS } from '../data/achievementDefinitions';
+export { getDefeatCountForJob, loadAchievementCountersForJob } from './achievementCounters';
 
 const ACHIEVEMENT_KEY = 'real-card-battle:achievements';
-const DEFEAT_COUNT_KEY = 'real-card-battle:defeat-count';
 
 /** 達成済みIDセットを取得 */
 export const getUnlockedAchievementIds = (): Set<string> => {
@@ -42,24 +54,10 @@ export const unlockAchievements = (ids: string[]): Achievement[] => {
   return newlyUnlocked;
 };
 
-/** 敗北回数 */
-export const getDefeatCount = (): number => {
-  try {
-    return parseInt(localStorage.getItem(DEFEAT_COUNT_KEY) ?? '0', 10);
-  } catch {
-    return 0;
-  }
-};
-
-export const incrementDefeatCount = (): number => {
-  const next = getDefeatCount() + 1;
-  try {
-    localStorage.setItem(DEFEAT_COUNT_KEY, String(next));
-  } catch {
-    /* localStorage 不可 */
-  }
-  return next;
-};
+/**
+ * @deprecated 職業横断の合計敗北（料理人ジョブ解放の隠し条件など従来互換用）
+ */
+export const getDefeatCount = (): number => getTotalDefeatCountAcrossJobs();
 
 /** 解放済みカードID（実績報酬の合計） */
 export const getUnlockedCardIds = (): Set<string> => {
@@ -96,7 +94,6 @@ export const getUnlockedOmamoriIds = (): Set<string> => new Set();
 export const clearAchievements = (): void => {
   try {
     localStorage.removeItem(ACHIEVEMENT_KEY);
-    localStorage.removeItem(DEFEAT_COUNT_KEY);
   } catch {
     /* ignore */
   }
@@ -105,13 +102,9 @@ export const clearAchievements = (): void => {
 
 /** バトル終了後にカウンタを更新（評価の前に呼ぶ） */
 export const recordBattleEndForAchievements = (result: BattleResult): void => {
-  const c = loadAchievementCounters();
-  if (result.outcome === 'victory') {
-    c.battleWins += 1;
-    c.lifetimeGoldEarned += Math.max(0, result.rewardGold);
-    if (result.kind === 'elite') c.eliteWins += 1;
-  }
-  saveAchievementCounters(c);
+  const jobId = result.player.jobId;
+  if (result.outcome !== 'victory') return;
+  recordBattleVictoryForJob(jobId, Math.max(0, result.rewardGold), result.kind);
 };
 
 const pushIf = (ids: string[], cond: boolean, id: string): void => {
@@ -122,7 +115,7 @@ const pushIf = (ids: string[], cond: boolean, id: string): void => {
 const maybeUnlockCookJobFromConditions = (): void => {
   if (isJobUnlocked('cook')) return;
   const ids = getUnlockedAchievementIds();
-  if (ids.has('area1_clear') || getDefeatCount() >= 20) {
+  if (ids.has('area1_clear') || getTotalDefeatCountAcrossJobs() >= 20) {
     unlockJob('cook');
   }
 };
@@ -145,13 +138,16 @@ const filterAchievementIdsByJob = (ids: string[], currentJobId: JobId): string[]
     return a ? isAchievementEligibleForJob(a.jobId, currentJobId) : false;
   });
 
+const achievementJobKey = (a: Achievement | undefined): 'carpenter' | 'cook' =>
+  a?.jobId === 'cook' ? 'cook' : 'carpenter';
+
 /**
  * 実績一覧で「累積条件」の現在値を表示する対象。
- * 閾値・カウンタ対応は evaluateAchievementProgress / evaluateAchievementsAfterBattle と一致させる（職業フィルタ含む）。
+ * 閾値・カウンタ対応は evaluateAchievementProgress / evaluateAchievementsAfterBattle と一致させる（職業別カウンタ）。
  */
 const CUMULATIVE_ACHIEVEMENT_DISPLAY: Record<
   string,
-  | { kind: 'counter'; key: keyof AchievementCounters; unit: 'times' | 'gold' }
+  | { kind: 'counter'; key: keyof JobAchievementCounters; unit: 'times' | 'gold' }
   | { kind: 'defeat' }
 > = {
   dice_25: { kind: 'counter', key: 'diceRolls', unit: 'times' },
@@ -167,7 +163,6 @@ const CUMULATIVE_ACHIEVEMENT_DISPLAY: Record<
   elite_wins_5: { kind: 'counter', key: 'eliteWins', unit: 'times' },
   defeat_3: { kind: 'defeat' },
   // コック用累積系
-  cook_dice_80: { kind: 'counter', key: 'diceRolls', unit: 'times' },
   cook_shrine_5: { kind: 'counter', key: 'shrineVisits', unit: 'times' },
   cook_gold_500: { kind: 'counter', key: 'lifetimeGoldEarned', unit: 'gold' },
   cook_gold_2000: { kind: 'counter', key: 'lifetimeGoldEarned', unit: 'gold' },
@@ -180,15 +175,19 @@ const CUMULATIVE_ACHIEVEMENT_DISPLAY: Record<
 };
 
 /** 累積型実績の説明文に付ける接尾辞（例: （現在3回））。対象外は null */
-export const getCumulativeAchievementProgressSuffix = (
-  achievementId: string,
-  counters: AchievementCounters,
-  defeatCount: number,
-): string | null => {
+export const getCumulativeAchievementProgressSuffix = (achievementId: string): string | null => {
+  if (achievementId === 'cook_dice_80') {
+    const cook = loadAchievementCountersForJob('cook');
+    const area3 = getUnlockedAchievementIds().has('cook_area3_clear');
+    return `（勝利${cook.battleWins}/50・エリア3:${area3 ? '済' : '未'}）`;
+  }
   const spec = CUMULATIVE_ACHIEVEMENT_DISPLAY[achievementId];
   if (!spec) return null;
+  const ach = ACHIEVEMENTS.find((a) => a.id === achievementId);
+  const job = achievementJobKey(ach);
+  const counters = loadAchievementCountersForJob(job);
   if (spec.kind === 'defeat') {
-    return `（現在${defeatCount}回）`;
+    return `（現在${getDefeatCountForJob(job)}回）`;
   }
   const n = counters[spec.key] as number;
   if (spec.unit === 'gold') {
@@ -197,73 +196,66 @@ export const getCumulativeAchievementProgressSuffix = (
   return `（現在${n}回）`;
 };
 
-/** 累計カウンタのみで判定する実績（サイコロ・神社・ゴールド等）。`currentJobId` と実績の jobId が一致するものだけ解放 */
+/** 累計カウンタのみで判定する実績。現在プレイ中の職業のカウンタのみ参照 */
 export const evaluateAchievementProgress = (currentJobId: JobId): Achievement[] => {
+  if (currentJobId !== 'carpenter' && currentJobId !== 'cook') {
+    return [];
+  }
   const achievementIds: string[] = [];
   const already = getUnlockedAchievementIds();
-  const c = loadAchievementCounters();
-  // 大工
-  pushIf(achievementIds, c.diceRolls >= 25 && !already.has('dice_25'), 'dice_25');
-  pushIf(achievementIds, c.diceRolls >= 80 && !already.has('dice_80'), 'dice_80');
-  pushIf(achievementIds, c.shrineVisits >= 5 && !already.has('shrine_5'), 'shrine_5');
-  pushIf(achievementIds, c.shopCardBuys >= 8 && !already.has('shop_cards_8'), 'shop_cards_8');
-  pushIf(achievementIds, c.lifetimeGoldEarned >= 500 && !already.has('gold_lifetime_500'), 'gold_lifetime_500');
-  pushIf(achievementIds, c.lifetimeGoldEarned >= 2000 && !already.has('gold_lifetime_2000'), 'gold_lifetime_2000');
-  pushIf(achievementIds, c.eventsResolved >= 10 && !already.has('events_10'), 'events_10');
-  pushIf(achievementIds, c.hotelVisits >= 5 && !already.has('hotel_5'), 'hotel_5');
-  pushIf(achievementIds, c.battleWins >= 10 && !already.has('win_10'), 'win_10');
-  pushIf(achievementIds, c.battleWins >= 25 && !already.has('win_25'), 'win_25');
-  pushIf(achievementIds, c.eliteWins >= 5 && !already.has('elite_wins_5'), 'elite_wins_5');
-  // コック
-  pushIf(achievementIds, c.diceRolls >= 80 && !already.has('cook_dice_80'), 'cook_dice_80');
-  pushIf(achievementIds, c.shrineVisits >= 5 && !already.has('cook_shrine_5'), 'cook_shrine_5');
-  pushIf(achievementIds, c.lifetimeGoldEarned >= 500 && !already.has('cook_gold_500'), 'cook_gold_500');
-  pushIf(achievementIds, c.lifetimeGoldEarned >= 2000 && !already.has('cook_gold_2000'), 'cook_gold_2000');
-  pushIf(achievementIds, c.eventsResolved >= 10 && !already.has('cook_events_10'), 'cook_events_10');
-  pushIf(achievementIds, c.hotelVisits >= 5 && !already.has('cook_hotel_5'), 'cook_hotel_5');
-  pushIf(achievementIds, c.battleWins >= 10 && !already.has('cook_win_10'), 'cook_win_10');
-  pushIf(achievementIds, c.battleWins >= 25 && !already.has('cook_win_25'), 'cook_win_25');
-  pushIf(achievementIds, c.eliteWins >= 5 && !already.has('cook_elite_wins_5'), 'cook_elite_wins_5');
+  const c = loadAchievementCountersForJob(currentJobId);
+  if (currentJobId === 'carpenter') {
+    pushIf(achievementIds, c.diceRolls >= 25 && !already.has('dice_25'), 'dice_25');
+    pushIf(achievementIds, c.diceRolls >= 80 && !already.has('dice_80'), 'dice_80');
+    pushIf(achievementIds, c.shrineVisits >= 5 && !already.has('shrine_5'), 'shrine_5');
+    pushIf(achievementIds, c.shopCardBuys >= 8 && !already.has('shop_cards_8'), 'shop_cards_8');
+    pushIf(achievementIds, c.lifetimeGoldEarned >= 500 && !already.has('gold_lifetime_500'), 'gold_lifetime_500');
+    pushIf(achievementIds, c.lifetimeGoldEarned >= 2000 && !already.has('gold_lifetime_2000'), 'gold_lifetime_2000');
+    pushIf(achievementIds, c.eventsResolved >= 10 && !already.has('events_10'), 'events_10');
+    pushIf(achievementIds, c.hotelVisits >= 5 && !already.has('hotel_5'), 'hotel_5');
+    pushIf(achievementIds, c.battleWins >= 10 && !already.has('win_10'), 'win_10');
+    pushIf(achievementIds, c.battleWins >= 25 && !already.has('win_25'), 'win_25');
+    pushIf(achievementIds, c.eliteWins >= 5 && !already.has('elite_wins_5'), 'elite_wins_5');
+  } else {
+    pushIf(achievementIds, c.shrineVisits >= 5 && !already.has('cook_shrine_5'), 'cook_shrine_5');
+    pushIf(achievementIds, c.lifetimeGoldEarned >= 500 && !already.has('cook_gold_500'), 'cook_gold_500');
+    pushIf(achievementIds, c.lifetimeGoldEarned >= 2000 && !already.has('cook_gold_2000'), 'cook_gold_2000');
+    pushIf(achievementIds, c.eventsResolved >= 10 && !already.has('cook_events_10'), 'cook_events_10');
+    pushIf(achievementIds, c.hotelVisits >= 5 && !already.has('cook_hotel_5'), 'cook_hotel_5');
+    pushIf(achievementIds, c.battleWins >= 10 && !already.has('cook_win_10'), 'cook_win_10');
+    pushIf(achievementIds, c.battleWins >= 25 && !already.has('cook_win_25'), 'cook_win_25');
+    pushIf(achievementIds, c.eliteWins >= 5 && !already.has('cook_elite_wins_5'), 'cook_elite_wins_5');
+  }
   return unlockAchievements(filterAchievementIdsByJob([...new Set(achievementIds)], currentJobId));
 };
 
 /** サイコロ1回分（出目に関わらず1回） */
 export const recordDiceRollForAchievements = (currentJobId: JobId): Achievement[] => {
-  const c = loadAchievementCounters();
-  c.diceRolls += 1;
-  saveAchievementCounters(c);
+  incrementDiceRollsForJob(currentJobId);
   return evaluateAchievementProgress(currentJobId);
 };
 
 /** 神社訪問1回 */
 export const recordShrineVisitForAchievements = (currentJobId: JobId): Achievement[] => {
-  const c = loadAchievementCounters();
-  c.shrineVisits += 1;
-  saveAchievementCounters(c);
+  incrementShrineVisitsForJob(currentJobId);
   return evaluateAchievementProgress(currentJobId);
 };
 
 /** ホテル訪問1回 */
 export const recordHotelVisitForAchievements = (currentJobId: JobId): Achievement[] => {
-  const c = loadAchievementCounters();
-  c.hotelVisits += 1;
-  saveAchievementCounters(c);
+  incrementHotelVisitsForJob(currentJobId);
   return evaluateAchievementProgress(currentJobId);
 };
 
 /** 質屋でカード購入1回 */
 export const recordShopCardBuyForAchievements = (currentJobId: JobId): Achievement[] => {
-  const c = loadAchievementCounters();
-  c.shopCardBuys += 1;
-  saveAchievementCounters(c);
+  incrementShopCardBuysForJob(currentJobId);
   return evaluateAchievementProgress(currentJobId);
 };
 
 /** イベント完了1回 */
 export const recordEventResolvedForAchievements = (currentJobId: JobId): Achievement[] => {
-  const c = loadAchievementCounters();
-  c.eventsResolved += 1;
-  saveAchievementCounters(c);
+  incrementEventsResolvedForJob(currentJobId);
   return evaluateAchievementProgress(currentJobId);
 };
 
@@ -277,11 +269,11 @@ export const evaluateAchievementsAfterBattle = (
   const currentJobId = result.player.jobId;
   const achievementIds: string[] = [];
   const already = getUnlockedAchievementIds();
-  const c = loadAchievementCounters();
+  const c =
+    currentJobId === 'cook' ? loadAchievementCountersForJob('cook') : loadAchievementCountersForJob('carpenter');
 
   if (result.outcome === 'victory') {
     if (currentJobId === 'cook') {
-      // コック用勝利系
       pushIf(achievementIds, !already.has('cook_first_win'), 'cook_first_win');
       if (result.kind === 'elite') {
         pushIf(achievementIds, !already.has('cook_elite_first'), 'cook_elite_first');
@@ -301,8 +293,12 @@ export const evaluateAchievementsAfterBattle = (
       if (cookingTotal >= 20) achievementIds.push('cook_cooking_20');
       const fullnessCount = result.player.fullnessBonusCount ?? 0;
       if (fullnessCount >= 3) achievementIds.push('cook_fullness_3');
-    } else {
-      // 大工用勝利系
+      // 果てまで歩く料理人: 料理人でエリア3ボス撃破、または料理人累計50勝（recordBattleEnd 後の battleWins）
+      pushIf(achievementIds, c.battleWins >= 50 && !already.has('cook_dice_80'), 'cook_dice_80');
+      if (result.kind === 'boss' && currentArea === 3) {
+        pushIf(achievementIds, !already.has('cook_dice_80'), 'cook_dice_80');
+      }
+    } else if (currentJobId === 'carpenter') {
       pushIf(achievementIds, !already.has('first_win'), 'first_win');
       if (result.kind === 'elite') {
         pushIf(achievementIds, !already.has('elite_first'), 'elite_first');
@@ -322,12 +318,14 @@ export const evaluateAchievementsAfterBattle = (
   }
 
   if (result.outcome === 'defeat') {
-    const count = incrementDefeatCount();
-    if (count >= 3) {
-      if (currentJobId === 'cook') {
-        achievementIds.push('cook_defeat_3');
-      } else {
-        achievementIds.push('defeat_3');
+    if (currentJobId === 'cook' || currentJobId === 'carpenter') {
+      const count = incrementDefeatCountForJob(currentJobId);
+      if (count >= 3) {
+        if (currentJobId === 'cook') {
+          achievementIds.push('cook_defeat_3');
+        } else {
+          achievementIds.push('defeat_3');
+        }
       }
     }
   }

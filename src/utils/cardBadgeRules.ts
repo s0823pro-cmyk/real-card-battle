@@ -21,6 +21,7 @@ export const isReserveDoubleNextEffectActive = (_card: Card): boolean => false;
  * プレイ後に除外されるか（消耗バッジまたは旧タグ）。
  */
 export const cardExhaustsWhenPlayed = (card: Card, _playedAfterReserve = false): boolean => {
+  if (isCardIdVariantOf(card.id, 'god_flambe')) return true;
   const tagOrBadge = Boolean(card.badges?.includes('exhaust') || card.tags?.includes('exhaust'));
   if (!tagOrBadge) return false;
   return true;

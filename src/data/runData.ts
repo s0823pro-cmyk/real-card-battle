@@ -1,5 +1,6 @@
 import { ICONS } from '../assets/icons';
 import { cloneRewardCard, getCardPoolsByJob } from './jobs';
+import { isCardIdVariantOf } from '../utils/cardIds';
 import { NEUTRAL_CARD_POOL, NEUTRAL_COMMON_POOL } from './cards/neutralCards';
 import { ACHIEVEMENT_LOCKED_CARD_IDS } from './achievementDefinitions';
 import { getUnlockedCardIds } from '../utils/achievementSystem';
@@ -1099,6 +1100,7 @@ const ALL_UNCOMMON_NAMES = new Set([
 ].map((entry) => entry.name));
 
 export const getCardPrice = (card: Card): number => {
+  if (isCardIdVariantOf(card.id, 'god_flambe')) return 200;
   if (ALL_RARE_NAMES.has(card.name)) return 150;
   if (ALL_UNCOMMON_NAMES.has(card.name)) return 80;
   return 50;
@@ -1106,6 +1108,7 @@ export const getCardPrice = (card: Card): number => {
 
 export const getSellPrice = (card: Card): number => {
   const buyPrice = getCardPrice(card);
+  if (buyPrice >= 200) return 65;
   if (buyPrice >= 150) return 50;
   if (buyPrice >= 80) return 25;
   return 15;

@@ -216,7 +216,15 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'cook_zero_mental', name: '折れない心', description: '料理人でメンタルが0以下の状態でバトルに勝利する', icon: '💪', tier: 'hard', jobId: 'cook', rewardCardIds: ['death_flambe', 'kitchen_heat'] as const },
   { id: 'cook_win_25', name: '歴戦の料理人', description: '料理人で累計25回バトルに勝利する', icon: '👨‍🍳', tier: 'hard', jobId: 'cook', rewardCardIds: ['full_course', 'ultimate_course'] as const },
   { id: 'cook_gold_2000', name: '食の帝国', description: '料理人で累計ゴールドを2000以上獲得する', icon: '👑', tier: 'hard', jobId: 'cook', rewardCardIds: ['three_star', 'food_essence'] as const },
-  { id: 'cook_dice_80', name: '果てまで歩く料理人', description: '料理人でサイコロを累計80回振る', icon: '🎲', tier: 'hard', jobId: 'cook', rewardCardIds: ['god_flambe', 'flame_flambe'] as const },
+  {
+    id: 'cook_dice_80',
+    name: '果てまで歩く料理人',
+    description: '料理人でエリア3のエリアボスに勝利する、または料理人で累計50回バトルに勝利する',
+    icon: '🎲',
+    tier: 'hard',
+    jobId: 'cook',
+    rewardCardIds: ['god_flambe', 'flame_flambe'] as const,
+  },
 ];
 
 export const ACHIEVEMENT_LOCKED_CARD_IDS = new Set(

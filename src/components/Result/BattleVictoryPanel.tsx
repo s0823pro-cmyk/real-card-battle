@@ -1,11 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { JobId } from '../../types/game';
-import {
-  getCumulativeAchievementProgressSuffix,
-  getDefeatCount,
-  type Achievement,
-} from '../../utils/achievementSystem';
-import { loadAchievementCounters } from '../../utils/achievementCounters';
+import { getCumulativeAchievementProgressSuffix, type Achievement } from '../../utils/achievementSystem';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { MessageKey } from '../../i18n';
 import { achievementDescKey, achievementNameKey } from '../../i18n/entityKeys';
@@ -48,14 +43,6 @@ export const BattleVictoryPanel = ({
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   /** タッチ直後に続く click を二重に進めない（touchend で進んだ場合） */
   const skipNextClickRef = useRef(false);
-
-  const cumulativeDisplayState = useMemo(
-    () => ({
-      counters: loadAchievementCounters(),
-      defeatCount: getDefeatCount(),
-    }),
-    [tapArmKey, rewardGold, mentalRecovery],
-  );
 
   useEffect(() => {
     const start = performance.now();
@@ -142,11 +129,7 @@ export const BattleVictoryPanel = ({
                     <p className="achievement-name">{t(achievementNameKey(a.id), undefined, a.name)}</p>
                     <p className="achievement-desc">
                       {t(achievementDescKey(a.id), undefined, a.description)}
-                      {getCumulativeAchievementProgressSuffix(
-                        a.id,
-                        cumulativeDisplayState.counters,
-                        cumulativeDisplayState.defeatCount,
-                      ) ?? ''}
+                      {getCumulativeAchievementProgressSuffix(a.id) ?? ''}
                     </p>
                     <p className="achievement-tier">{t(`achievement.tier.${a.tier}` as MessageKey)}</p>
                     <p className="achievement-reward">{t('battleVictory.rewardTap')}</p>
