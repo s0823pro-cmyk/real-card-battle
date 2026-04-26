@@ -94,7 +94,8 @@ import {
   recordShopCardBuyForAchievements,
 } from '../utils/achievementSystem';
 import { maybePromptAppStoreReviewOnRunDefeat } from '../utils/appStoreReviewPrompt';
-import { finalizeRankingRunEnd, reportRankingScore, resetCurrentRunRankingScore } from '../utils/rankingClient';
+import { ensureRankingDeviceId, finalizeRankingRunEnd, reportRankingScore, resetCurrentRunRankingScore } from '../utils/rankingClient';
+import { postBattleStats } from '../utils/statsApi';
 import { playSeByType } from './useAudio';
 
 /** 開発用: 拡張プールの全カード（各1枚分の定義） */
@@ -1605,6 +1606,34 @@ export const useRunProgress = () => {
     lastBattleResultKindRef.current = result.kind;
     pendingArea3RunVictoryStoryRef.current = false;
     clearBattleState();
+
+    {
+      const jobId = stateRef.current.jobId;
+      const deckFiltered = result.deck.filter((c) => c.type !== 'status' && c.type !== 'curse');
+      const cardsUsed: Record<string, number> = {};
+      for (const c of deckFiltered) {
+        cardsUsed[c.id] = (cardsUsed[c.id] ?? 0) + 1;
+      }
+      const enemiesKilled: Record<string, number> = {};
+      for (const e of result.defeatedEnemies) {
+        if (e.currentHp <= 0) {
+          enemiesKilled[e.id] = (enemiesKilled[e.id] ?? 0) + 1;
+        }
+      }
+      const winStreakForStats =
+        result.outcome === 'defeat' ? 0 : rankingBattleWinStreakRef.current + 1;
+      void postBattleStats({
+        deviceId: ensureRankingDeviceId(),
+        jobId,
+        outcome: result.outcome,
+        kills: result.defeatedEnemies.length,
+        gold: Math.max(0, Math.floor(result.rewardGold ?? 0)),
+        cardsUsed,
+        enemiesKilled,
+        winStreak: winStreakForStats,
+      });
+    }
+
     // 敗北確定時点でランセーブを消す（game_over では save がスキップされ、直前の battle 等が残ると再起動後に「続きから」になる）
     if (result.outcome === 'defeat') {
       clearSavedProgress();

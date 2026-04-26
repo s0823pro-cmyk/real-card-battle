@@ -26,6 +26,48 @@ async function ensureSchema(): Promise<void> {
       PRIMARY KEY (device_id, job_id)
     )`,
 	).run();
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS player_stats (
+      device_id TEXT NOT NULL,
+      job_id TEXT NOT NULL,
+      play_count INTEGER NOT NULL DEFAULT 0,
+      win_count INTEGER NOT NULL DEFAULT 0,
+      defeat_count INTEGER NOT NULL DEFAULT 0,
+      total_kills INTEGER NOT NULL DEFAULT 0,
+      total_gold INTEGER NOT NULL DEFAULT 0,
+      max_win_streak INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (device_id, job_id)
+    )`,
+	).run();
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS card_usage (
+      device_id TEXT NOT NULL,
+      card_id TEXT NOT NULL,
+      use_count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (device_id, card_id)
+    )`,
+	).run();
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS enemy_kills (
+      device_id TEXT NOT NULL,
+      enemy_id TEXT NOT NULL,
+      kill_count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (device_id, enemy_id)
+    )`,
+	).run();
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS codes (
+      code TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      payload TEXT,
+      created_at INTEGER NOT NULL
+    )`,
+	).run();
+	await env.DB.prepare(
+		`INSERT OR IGNORE INTO codes (code, type, payload, created_at)
+     VALUES ('JOBLESS_ADMIN_2024', 'admin', NULL, 0)`,
+	).run();
 }
 
 describe("ranking worker", () => {
@@ -123,5 +165,83 @@ describe("ranking worker", () => {
 		expect(response.status).toBe(200);
 		const body = (await response.json()) as { ranking: unknown[] };
 		expect(Array.isArray(body.ranking)).toBe(true);
+	});
+
+	it("POST /stats upserts player_stats and card_usage", async () => {
+		const device = "stats-device-1";
+		const postNick = new IncomingRequest("http://example.com/nickname", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ device_id: device, nickname: "統計" }),
+		});
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(postNick, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+
+		const postStats = new IncomingRequest("http://example.com/stats", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				device_id: device,
+				job_id: "carpenter",
+				outcome: "victory",
+				kills: 2,
+				gold: 50,
+				cards_used: { hammer_strike: 3 },
+				enemies_killed: { wildCat: 1 },
+				win_streak: 2,
+			}),
+		});
+		res = await worker.fetch(postStats, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ ok: true });
+
+		const row = await env.DB.prepare(
+			`SELECT play_count, win_count, defeat_count, total_kills, total_gold, max_win_streak FROM player_stats WHERE device_id = ? AND job_id = ?`,
+		)
+			.bind(device, "carpenter")
+			.first<{ play_count: number; win_count: number; defeat_count: number; total_kills: number; total_gold: number; max_win_streak: number }>();
+		expect(row).toMatchObject({
+			play_count: 1,
+			win_count: 1,
+			defeat_count: 0,
+			total_kills: 2,
+			total_gold: 50,
+			max_win_streak: 2,
+		});
+	});
+
+	it("POST /code and GET /admin/summary with admin code", async () => {
+		const postCode = new IncomingRequest("http://example.com/code", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ code: "JOBLESS_ADMIN_2024" }),
+		});
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(postCode, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		const codeBody = (await res.json()) as { ok: boolean; type: string; payload: unknown };
+		expect(codeBody.ok).toBe(true);
+		expect(codeBody.type).toBe("admin");
+
+		const summaryReq = new IncomingRequest(
+			"http://example.com/admin/summary?code=" + encodeURIComponent("JOBLESS_ADMIN_2024"),
+		);
+		res = await worker.fetch(summaryReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		const sum = (await res.json()) as {
+			total_players: number;
+			total_plays: number;
+			job_stats: unknown[];
+			top_cards: unknown[];
+			top_enemies: unknown[];
+			avg_gold_per_play: number;
+		};
+		expect(typeof sum.total_players).toBe("number");
+		expect(Array.isArray(sum.job_stats)).toBe(true);
 	});
 });
