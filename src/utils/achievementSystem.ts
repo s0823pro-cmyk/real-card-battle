@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS } from '../data/achievementDefinitions';
+import { ACHIEVEMENTS, ACHIEVEMENT_LOCKED_CARD_IDS } from '../data/achievementDefinitions';
 import type { Achievement } from './achievementTypes';
 import type { JobId } from '../types/game';
 import type { BattleResult } from '../types/run';
@@ -7,7 +7,7 @@ import { clearAchievementCounters, loadAchievementCounters, saveAchievementCount
 import { isJobUnlocked, unlockJob } from './jobUnlockSystem';
 
 export type { Achievement, AchievementTier } from './achievementTypes';
-export { ACHIEVEMENTS, ACHIEVEMENT_LOCKED_CARD_IDS } from '../data/achievementDefinitions';
+export { ACHIEVEMENT_LOCKED_CARD_IDS, ACHIEVEMENTS } from '../data/achievementDefinitions';
 
 const ACHIEVEMENT_KEY = 'real-card-battle:achievements';
 const DEFEAT_COUNT_KEY = 'real-card-battle:defeat-count';
@@ -72,6 +72,16 @@ export const getUnlockedCardIds = (): Set<string> => {
     }
   }
   return ids;
+};
+
+/**
+ * 図鑑など「全カード定義を列挙する」UI用。
+ * いずれかの実績の rewardCardIds に含まれる ID は、当該実績が解除され
+ * `getUnlockedCardIds()` に載るまで一覧に出さない（ショップ／抽選は `getCardPoolsByJob` 側で従来どおり除外）。
+ */
+export const isAchievementRewardCardVisibleInCatalog = (cardId: string): boolean => {
+  if (!ACHIEVEMENT_LOCKED_CARD_IDS.has(cardId)) return true;
+  return getUnlockedCardIds().has(cardId);
 };
 
 /** 実績経由のお守り解放は廃止（常に空） */

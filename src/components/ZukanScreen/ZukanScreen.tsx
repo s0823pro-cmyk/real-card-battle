@@ -47,6 +47,7 @@ import { getEnemyDefeatCount, getEnemyStatus } from '../../utils/enemyRecord';
 import { formatZukanIntentDetail, getEnemyIntentsForZukan } from '../../utils/enemyIntentCatalog';
 import { upgradeCardByJobId } from '../../utils/cardUpgrade';
 import { getUpgradeForCard } from '../../data/upgrades';
+import { isAchievementRewardCardVisibleInCatalog } from '../../utils/achievementSystem';
 import './ZukanScreen.css';
 
 type MainTab = 'cards' | 'stories' | 'enemies';
@@ -116,9 +117,8 @@ const ALL_CARDS: Record<JobTab, Card[]> = {
 const JOB_TABS_WITH_UPGRADE_PREVIEW: JobTab[] = ['carpenter', 'cook'];
 
 /** 図鑑タブのカードプールに、少なくとも1枚は強化定義があるか（no_upgrade は除外） */
-const jobTabPoolHasAnyUpgrade = (tab: JobTab): boolean => {
+const jobTabPoolHasAnyUpgrade = (tab: JobTab, pool: Card[]): boolean => {
   if (!JOB_TABS_WITH_UPGRADE_PREVIEW.includes(tab)) return false;
-  const pool = ALL_CARDS[tab];
   const seenNames = new Set<string>();
   for (const card of pool) {
     if (seenNames.has(card.name)) continue;
@@ -200,7 +200,9 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   }, [selectedEnemy]);
 
   const filteredCardsBase = useMemo(() => {
-    const cards = deduplicateCards(ALL_CARDS[activeTab]);
+    const cards = deduplicateCards(ALL_CARDS[activeTab]).filter((c) =>
+      isAchievementRewardCardVisibleInCatalog(c.id),
+    );
     return cards.filter((card) => {
       if (rarityFilter !== 'all' && getCardRarity(card) !== rarityFilter) return false;
       if (typeFilter !== 'all' && card.type !== typeFilter) return false;
@@ -217,7 +219,12 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
     );
   }, [activeTab, showUpgradePreview, filteredCardsBase]);
 
-  const showZukanUpgradeToggle = useMemo(() => jobTabPoolHasAnyUpgrade(activeTab), [activeTab]);
+  const showZukanUpgradeToggle = useMemo(() => {
+    const pool = deduplicateCards(ALL_CARDS[activeTab]).filter((c) =>
+      isAchievementRewardCardVisibleInCatalog(c.id),
+    );
+    return jobTabPoolHasAnyUpgrade(activeTab, pool);
+  }, [activeTab]);
 
   const previewJobId: JobId = activeTab === 'neutral' ? 'carpenter' : activeTab;
   const activeSelectedIndex =
@@ -265,7 +272,9 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
         ...ZUKAN_CARD_POOLS.cook,
         ...ZUKAN_CARD_POOLS.unemployed,
         ...ZUKAN_CARD_POOLS.neutral,
-      ].map((card) => card.name),
+      ]
+        .filter((card) => isAchievementRewardCardVisibleInCatalog(card.id))
+        .map((card) => card.name),
     );
     onUnlockAll(allNames);
   };
