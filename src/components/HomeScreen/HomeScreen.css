@@ -1816,3 +1816,74 @@
   color: rgba(232, 213, 163, 0.75);
   text-align: center;
 }
+
+.settings-mystats-top-enemies-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.settings-mystats-top-enemy-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 88px;
+  min-width: 80px;
+  max-width: 120px;
+}
+
+.settings-mystats-enemy-preview-wrap {
+  width: var(--mystats-enemy-preview-size, 72px);
+  height: var(--mystats-enemy-preview-size, 72px);
+  border-radius: 10px;
+  border: 2px solid rgba(232, 213, 163, 0.35);
+  background: linear-gradient(165deg, rgba(20, 24, 32, 0.92), rgba(12, 14, 20, 0.88));
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.settings-mystats-enemy-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.settings-mystats-enemy-preview-fallback {
+  font-size: clamp(28px, 8vw, 40px);
+  line-height: 1;
+}
+
+.settings-mystats-top-enemy-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  text-align: center;
+}
+
+.settings-mystats-top-enemy-name {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(232, 213, 163, 0.95);
+  line-height: 1.35;
+}
+
+.settings-mystats-top-enemy-count {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 214, 120, 0.9);
+}

@@ -64,6 +64,7 @@ import {
 } from '../../i18n/entityKeys';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { getDisplayJobIdForCard, resolveCardFromStoredInstanceId } from '../../utils/achievementRewardLookup';
+import { getEnemyZukanVisualForTemplateId } from '../../utils/enemyZukanVisual';
 import CardComponent from '../Hand/CardComponent';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
@@ -379,6 +380,7 @@ const HomeScreen = ({
   const { t, locale, switchLocale, isLocaleLoading } = useLanguage();
   const [modal, setModal] = useState<ModalType>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [showTutorialResetModal, setShowTutorialResetModal] = useState(false);
   const [showHomeGlossary, setShowHomeGlossary] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
@@ -563,7 +565,7 @@ const HomeScreen = ({
   }, []);
 
   useEffect(() => {
-    if (openSettingsSection !== 'mystats') return;
+    if (!showStats) return;
     let cancelled = false;
     setMyStatsLoading(true);
     setMyStatsError(false);
@@ -580,7 +582,7 @@ const HomeScreen = ({
     return () => {
       cancelled = true;
     };
-  }, [openSettingsSection]);
+  }, [showStats]);
 
   useEffect(() => {
     playBgm('menu');
@@ -789,7 +791,15 @@ const HomeScreen = ({
         { id: 'zukan', label: t('home.zukan'), className: 'btn-home-zukan', onClick: onOpenZukan },
         { id: 'records', label: t('home.records'), className: 'btn-home-records', onClick: () => setShowRecords(true) },
         { id: 'ranking', label: `🏆 ${t('home.ranking')}`, className: 'btn-home-ranking', onClick: handleOpenRanking },
-        { id: 'settings', label: t('home.settings'), className: 'btn-home-settings', onClick: () => setShowSettings(true) },
+        {
+          id: 'settings',
+          label: t('home.settings'),
+          className: 'btn-home-settings',
+          onClick: () => {
+            setShowStats(false);
+            setShowSettings(true);
+          },
+        },
         { id: 'credits', label: t('home.credits'), className: 'btn-home-credits', onClick: () => setModal('credits') },
       ] as const,
     [t, onStart, onOpenZukan, handleOpenRanking],
@@ -818,6 +828,191 @@ const HomeScreen = ({
     savedProgress.currentScreen !== 'job_select' &&
     savedProgress.currentScreen !== 'victory' &&
     savedProgress.currentScreen !== 'game_over';
+
+  const renderMyStatsPanel = () => {
+    if (myStatsLoading) {
+      return (
+        <div className="settings-mystats-spinner-wrap" role="status" aria-live="polite">
+          <span className="settings-mystats-spinner" aria-hidden />
+          <span className="settings-mystats-spinner-label">{t('home.settings.myStatsLoading')}</span>
+        </div>
+      );
+    }
+    if (myStatsError) {
+      return (
+        <p className="settings-mystats-msg settings-mystats-msg--error">{t('home.settings.myStatsLoadError')}</p>
+      );
+    }
+    if (myStatsData && myStatsData.total_plays === 0) {
+      return <p className="settings-mystats-msg">{t('home.settings.myStatsEmpty')}</p>;
+    }
+    if (!myStatsData) return null;
+    return (
+      <div className="settings-mystats-body">
+        <dl className="settings-admin-dl settings-mystats-dl">
+          <div>
+            <dt>{t('home.settings.myStatsTotalPlays')}</dt>
+            <dd>{myStatsData.total_plays}</dd>
+          </div>
+          <div>
+            <dt>{t('home.settings.myStatsTotalWins')}</dt>
+            <dd>{myStatsData.total_wins}</dd>
+          </div>
+          <div>
+            <dt>{t('home.settings.myStatsTotalDefeats')}</dt>
+            <dd>{myStatsData.total_defeats}</dd>
+          </div>
+          <div>
+            <dt>{t('home.settings.myStatsWinRate')}</dt>
+            <dd>
+              {myStatsData.total_plays > 0
+                ? t('home.settings.myStatsWinRateValue', {
+                    pct: Math.round((100 * myStatsData.total_wins) / myStatsData.total_plays),
+                  })
+                : t('home.settings.myStatsNoValue')}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('home.settings.myStatsTotalGold')}</dt>
+            <dd>{myStatsData.total_gold}</dd>
+          </div>
+          <div>
+            <dt>{t('home.settings.myStatsAvgPlayTime')}</dt>
+            <dd>
+              {t('home.settings.adminAvgPlayTimeFmt', {
+                m: Math.floor(myStatsData.avg_play_time_seconds / 60),
+                sec: myStatsData.avg_play_time_seconds % 60,
+              })}
+            </dd>
+          </div>
+        </dl>
+        <h4 className="settings-admin-subheading">{t('home.settings.myStatsJobPlays')}</h4>
+        <ul className="settings-admin-list">
+          {myStatsData.job_stats.map((row) => (
+            <li key={row.job_id}>
+              <span className="settings-admin-list-label">{jobLabel(row.job_id)}</span>
+              <span className="settings-admin-list-value">
+                {t('home.settings.jobShortPlays')} {row.play_count} · {t('home.settings.jobShortWins')}{' '}
+                {row.win_count}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <h4 className="settings-admin-subheading">{t('home.settings.myStatsTopCards')}</h4>
+        {myStatsData.top_cards.length === 0 ? (
+          <p className="settings-mystats-subempty">{t('home.settings.myStatsNoValue')}</p>
+        ) : (
+          <div className="settings-mystats-top-cards-row" role="list" aria-label={t('home.settings.myStatsTopCards')}>
+            {myStatsData.top_cards.slice(0, 3).map((row, idx) => {
+              const card = resolveCardFromStoredInstanceId(row.card_id);
+              const previewH = Math.floor(MY_STATS_CARD_PREVIEW_WIDTH * 1.6);
+              return (
+                <div
+                  key={`${row.card_id}-${idx}`}
+                  className="settings-mystats-top-card-slot"
+                  role="listitem"
+                >
+                  {card ? (
+                    <>
+                      <div
+                        className="settings-mystats-top-card-wrap"
+                        style={
+                          {
+                            '--hand-card-width': `${MY_STATS_CARD_PREVIEW_WIDTH}px`,
+                            '--hand-card-height': `${previewH}px`,
+                          } as CSSProperties
+                        }
+                      >
+                        <CardComponent
+                          card={card}
+                          jobId={getDisplayJobIdForCard(card)}
+                          selected={false}
+                          disabled={false}
+                          locked={false}
+                          isSelling={false}
+                          isReturning={false}
+                          isGhost={false}
+                          isDragging={false}
+                          isDragUnavailable={false}
+                          zukanMode="list"
+                          effectiveValues={getMyStatsCardBaseEffectiveValues(card)}
+                          onSelect={myStatsCardPreviewNoop}
+                          onPointerDown={myStatsCardPreviewNoop}
+                          onPointerMove={myStatsCardPreviewNoop}
+                          onPointerUp={myStatsCardPreviewNoop}
+                          onPointerCancel={myStatsCardPreviewNoop}
+                          onMouseEnter={myStatsCardPreviewNoop}
+                          onMouseLeave={myStatsCardPreviewNoop}
+                        />
+                      </div>
+                      <div className="settings-mystats-top-card-meta">
+                        <span className="settings-mystats-top-card-name">{translatedCardName(card, t)}</span>
+                        <span className="settings-mystats-top-card-count">{row.use_count}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="settings-mystats-top-card-fallback">
+                      <span className="settings-mystats-top-card-fallback-id">{row.card_id}</span>
+                      <span className="settings-mystats-top-card-count">{row.use_count}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <h4 className="settings-admin-subheading">{t('home.settings.myStatsTopEnemies')}</h4>
+        {myStatsData.top_enemies.length === 0 ? (
+          <p className="settings-mystats-subempty">{t('home.settings.myStatsNoValue')}</p>
+        ) : (
+          <div
+            className="settings-mystats-top-enemies-row"
+            role="list"
+            aria-label={t('home.settings.myStatsTopEnemies')}
+          >
+            {myStatsData.top_enemies.slice(0, 3).map((row, idx) => {
+              const tid = enemyRowTemplateId(row.enemy_id);
+              const visual = getEnemyZukanVisualForTemplateId(tid);
+              return (
+                <div
+                  key={`${row.enemy_id}-${idx}`}
+                  className="settings-mystats-top-enemy-slot"
+                  role="listitem"
+                >
+                  <div
+                    className="settings-mystats-enemy-preview-wrap"
+                    style={
+                      {
+                        '--mystats-enemy-preview-size': '72px',
+                      } as CSSProperties
+                    }
+                  >
+                    {visual?.imageUrl ? (
+                      <img
+                        src={visual.imageUrl}
+                        alt=""
+                        className="settings-mystats-enemy-preview-img"
+                      />
+                    ) : (
+                      <span className="settings-mystats-enemy-preview-fallback" aria-hidden>
+                        {visual?.icon ?? '👾'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="settings-mystats-top-enemy-meta">
+                    <span className="settings-mystats-top-enemy-name">
+                      {t(enemyNameKey(tid), {}, tid)}
+                    </span>
+                    <span className="settings-mystats-top-enemy-count">{row.kill_count}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderSettingsContent = () => (
     <div className="settings-page-stack">
@@ -868,165 +1063,9 @@ const HomeScreen = ({
         )}
       </div>
 
-      <div className="settings-accordion">
-        <button
-          type="button"
-          className={`settings-accordion-header ${openSettingsSection === 'mystats' ? 'is-open' : ''}`}
-          onClick={() => toggleSettingsSection('mystats')}
-        >
-          <span>{t('home.settings.myStatsSection')}</span>
-          <span className="settings-accordion-arrow">
-            {openSettingsSection === 'mystats' ? '▲' : '▼'}
-          </span>
-        </button>
-        {openSettingsSection === 'mystats' && (
-          <div className="settings-accordion-body">
-            {myStatsLoading ? (
-              <div className="settings-mystats-spinner-wrap" role="status" aria-live="polite">
-                <span className="settings-mystats-spinner" aria-hidden />
-                <span className="settings-mystats-spinner-label">{t('home.settings.myStatsLoading')}</span>
-              </div>
-            ) : myStatsError ? (
-              <p className="settings-mystats-msg settings-mystats-msg--error">{t('home.settings.myStatsLoadError')}</p>
-            ) : myStatsData && myStatsData.total_plays === 0 ? (
-              <p className="settings-mystats-msg">{t('home.settings.myStatsEmpty')}</p>
-            ) : myStatsData ? (
-              <div className="settings-mystats-body">
-                <dl className="settings-admin-dl settings-mystats-dl">
-                  <div>
-                    <dt>{t('home.settings.myStatsTotalPlays')}</dt>
-                    <dd>{myStatsData.total_plays}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('home.settings.myStatsTotalWins')}</dt>
-                    <dd>{myStatsData.total_wins}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('home.settings.myStatsTotalDefeats')}</dt>
-                    <dd>{myStatsData.total_defeats}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('home.settings.myStatsWinRate')}</dt>
-                    <dd>
-                      {myStatsData.total_plays > 0
-                        ? t('home.settings.myStatsWinRateValue', {
-                            pct: Math.round((100 * myStatsData.total_wins) / myStatsData.total_plays),
-                          })
-                        : t('home.settings.myStatsNoValue')}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>{t('home.settings.myStatsTotalGold')}</dt>
-                    <dd>{myStatsData.total_gold}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('home.settings.myStatsAvgPlayTime')}</dt>
-                    <dd>
-                      {t('home.settings.adminAvgPlayTimeFmt', {
-                        m: Math.floor(myStatsData.avg_play_time_seconds / 60),
-                        sec: myStatsData.avg_play_time_seconds % 60,
-                      })}
-                    </dd>
-                  </div>
-                </dl>
-                <h4 className="settings-admin-subheading">{t('home.settings.myStatsJobPlays')}</h4>
-                <ul className="settings-admin-list">
-                  {myStatsData.job_stats.map((row) => (
-                    <li key={row.job_id}>
-                      <span className="settings-admin-list-label">{jobLabel(row.job_id)}</span>
-                      <span className="settings-admin-list-value">
-                        {t('home.settings.jobShortPlays')} {row.play_count} · {t('home.settings.jobShortWins')}{' '}
-                        {row.win_count}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <h4 className="settings-admin-subheading">{t('home.settings.myStatsTopCards')}</h4>
-                {myStatsData.top_cards.length === 0 ? (
-                  <p className="settings-mystats-subempty">{t('home.settings.myStatsNoValue')}</p>
-                ) : (
-                  <div className="settings-mystats-top-cards-row" role="list" aria-label={t('home.settings.myStatsTopCards')}>
-                    {myStatsData.top_cards.slice(0, 3).map((row, idx) => {
-                      const card = resolveCardFromStoredInstanceId(row.card_id);
-                      const previewH = Math.floor(MY_STATS_CARD_PREVIEW_WIDTH * 1.6);
-                      return (
-                        <div
-                          key={`${row.card_id}-${idx}`}
-                          className="settings-mystats-top-card-slot"
-                          role="listitem"
-                        >
-                          {card ? (
-                            <>
-                              <div
-                                className="settings-mystats-top-card-wrap"
-                                style={
-                                  {
-                                    '--hand-card-width': `${MY_STATS_CARD_PREVIEW_WIDTH}px`,
-                                    '--hand-card-height': `${previewH}px`,
-                                  } as CSSProperties
-                                }
-                              >
-                                <CardComponent
-                                  card={card}
-                                  jobId={getDisplayJobIdForCard(card)}
-                                  selected={false}
-                                  disabled={false}
-                                  locked={false}
-                                  isSelling={false}
-                                  isReturning={false}
-                                  isGhost={false}
-                                  isDragging={false}
-                                  isDragUnavailable={false}
-                                  zukanMode="list"
-                                  effectiveValues={getMyStatsCardBaseEffectiveValues(card)}
-                                  onSelect={myStatsCardPreviewNoop}
-                                  onPointerDown={myStatsCardPreviewNoop}
-                                  onPointerMove={myStatsCardPreviewNoop}
-                                  onPointerUp={myStatsCardPreviewNoop}
-                                  onPointerCancel={myStatsCardPreviewNoop}
-                                  onMouseEnter={myStatsCardPreviewNoop}
-                                  onMouseLeave={myStatsCardPreviewNoop}
-                                />
-                              </div>
-                              <div className="settings-mystats-top-card-meta">
-                                <span className="settings-mystats-top-card-name">{translatedCardName(card, t)}</span>
-                                <span className="settings-mystats-top-card-count">{row.use_count}</span>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="settings-mystats-top-card-fallback">
-                              <span className="settings-mystats-top-card-fallback-id">{row.card_id}</span>
-                              <span className="settings-mystats-top-card-count">{row.use_count}</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <h4 className="settings-admin-subheading">{t('home.settings.myStatsTopEnemies')}</h4>
-                {myStatsData.top_enemies.length === 0 ? (
-                  <p className="settings-mystats-subempty">{t('home.settings.myStatsNoValue')}</p>
-                ) : (
-                  <ol className="settings-admin-ol">
-                    {myStatsData.top_enemies.map((row, idx) => {
-                      const tid = enemyRowTemplateId(row.enemy_id);
-                      return (
-                        <li key={`${row.enemy_id}-${idx}`}>
-                          <span className="settings-admin-list-label">
-                            {t(enemyNameKey(tid), {}, tid)}
-                          </span>
-                          <span className="settings-admin-list-num">{row.kill_count}</span>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                )}
-              </div>
-            ) : null}
-          </div>
-        )}
-      </div>
+      <button type="button" className="settings-btn-block" onClick={() => setShowStats(true)}>
+        <span className="settings-btn-block-title">{t('home.settings.myStatsSection')}</span>
+      </button>
 
       <div className="settings-accordion">
         <button
@@ -1362,15 +1401,24 @@ const HomeScreen = ({
                 type="button"
                 className="records-back-btn"
                 onClick={() => {
+                  if (showStats) {
+                    setShowStats(false);
+                    return;
+                  }
                   setShowHomeGlossary(false);
+                  setShowStats(false);
                   setShowSettings(false);
                 }}
               >
-                {t('common.back')}
+                {showStats ? t('home.settings.statsBackToSettings') : t('common.back')}
               </button>
-              <h2 className="records-page-title">{t('common.settings')}</h2>
+              <h2 className="records-page-title">
+                {showStats ? t('home.settings.myStatsSection') : t('common.settings')}
+              </h2>
             </div>
-            <div className="records-page-content">{renderSettingsContent()}</div>
+            <div className="records-page-content">
+              {showStats ? renderMyStatsPanel() : renderSettingsContent()}
+            </div>
           </div>
         </main>
         {showHomeGlossary && <GlossaryModal onClose={() => setShowHomeGlossary(false)} />}
