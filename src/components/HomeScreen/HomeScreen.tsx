@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
 import type { CSSProperties } from 'react';
 import { StoryScreen } from '../StoryScreen/StoryScreen';
@@ -43,26 +43,22 @@ import { DEBUG_ENEMY_HP1_KEY, getDebugEnemyHp1, setDebugEnemyHp1 } from '../../u
 import { unlockJob } from '../../utils/jobUnlockSystem';
 import { resetTutorial } from '../../utils/tutorialState';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
-import type { AchievementTier } from '../../utils/achievementTypes';
 import type { JobId } from '../../types/game';
-
-const TIER_LABEL: Record<AchievementTier, string> = {
-  easy: '（アンコモン×2）',
-  medium: '（アンコモン+レア）',
-  hard: '（レア×2）',
-};
+import {
+  getStoredRankingNickname,
+  nicknameCharLength,
+  postRankingNickname,
+} from '../../utils/rankingClient';
+import { useLanguage } from '../../contexts/LanguageContext';
+import type { MessageKey } from '../../i18n';
+import { achievementDescKey, achievementNameKey } from '../../i18n/entityKeys';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
-
-const JOB_NAMES: Record<string, string> = {
-  carpenter: '大工',
-  cook: '料理人',
-  unemployed: '無職',
-};
 
 interface HomeScreenProps {
   onStart: () => void;
   onOpenZukan: () => void;
+  onOpenRanking: () => void;
   onContinue?: (saved: GameProgress) => void;
   savedProgress?: GameProgress | null;
   onDevNavigate?: (destination: DevDestination) => void;
@@ -289,16 +285,22 @@ const Fireflies = () => {
 const HomeScreen = ({
   onStart,
   onOpenZukan,
+  onOpenRanking,
   onContinue,
   savedProgress,
   onDevNavigate,
   onDevAddExpansionCards,
 }: HomeScreenProps) => {
+  const { t, locale, switchLocale, isLocaleLoading } = useLanguage();
   const [modal, setModal] = useState<ModalType>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorialResetModal, setShowTutorialResetModal] = useState(false);
   const [showHomeGlossary, setShowHomeGlossary] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
+  const [rankingNicknameModalOpen, setRankingNicknameModalOpen] = useState(false);
+  const [rankingNicknameDraft, setRankingNicknameDraft] = useState('');
+  const [rankingNicknameBusy, setRankingNicknameBusy] = useState(false);
+  const [rankingNicknameErr, setRankingNicknameErr] = useState<string | null>(null);
   const [achievementRefreshKey, setAchievementRefreshKey] = useState(0);
   const [achievementJobTab, setAchievementJobTab] = useState<AchievementJobTab>('all');
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
@@ -324,10 +326,14 @@ const HomeScreen = ({
     backgroundAttachment: 'fixed',
   };
 
-  const modalTitles: Record<Exclude<ModalType, null>, string> = {
-    howto: '遊び方',
-    credits: 'クレジット',
-  };
+  const modalTitles = useMemo(
+    () =>
+      ({
+        howto: t('home.modal.howto'),
+        credits: t('home.modal.credits'),
+      }) as Record<Exclude<ModalType, null>, string>,
+    [t],
+  );
 
   const unlockedIds = useMemo(() => getUnlockedAchievementIds(), [achievementRefreshKey]);
   const filteredAchievements = useMemo(() => {
@@ -340,46 +346,53 @@ const HomeScreen = ({
       defeatCount: getDefeatCount(),
     };
   }, [achievementRefreshKey, showRecords]);
-  const storyJobs: {
-    jobKey: StoryJobKey;
-    jobName: string;
-    icon: string;
-    episodes: {
-      id: StoryEpisodeId;
-      chapterName: string;
-      scenes: StoryScene[];
-      planned?: boolean;
-    }[];
-  }[] = [
-    {
-      jobKey: 'carpenter',
-      jobName: '大工',
-      icon: '🔨',
-      episodes: [
-        { id: 'carpenter_opening', chapterName: '序章', scenes: CARPENTER_STORY },
-        { id: 'carpenter_e1', chapterName: '第1章', scenes: CARPENTER_E1_STORY },
-        { id: 'carpenter_e2', chapterName: '第2章', scenes: CARPENTER_E2_STORY },
-        { id: 'carpenter_e3', chapterName: 'エンディング', scenes: CARPENTER_E3_STORY },
+  type HowtoStoryEpisode = {
+    id: StoryEpisodeId;
+    chapterKey: MessageKey;
+    scenes: StoryScene[];
+    planned?: boolean;
+  };
+  const storyJobs = useMemo(
+    () =>
+      [
+        {
+          jobKey: 'carpenter' as const,
+          jobNameKey: 'job.carpenter.name' as const,
+          icon: '🔨',
+          episodes: [
+            { id: 'carpenter_opening', chapterKey: 'home.story.prologue', scenes: CARPENTER_STORY, planned: false },
+            { id: 'carpenter_e1', chapterKey: 'home.story.chapter1', scenes: CARPENTER_E1_STORY, planned: false },
+            { id: 'carpenter_e2', chapterKey: 'home.story.chapter2', scenes: CARPENTER_E2_STORY, planned: false },
+            { id: 'carpenter_e3', chapterKey: 'home.story.ending', scenes: CARPENTER_E3_STORY, planned: false },
+          ] satisfies HowtoStoryEpisode[],
+        },
+        {
+          jobKey: 'cook' as const,
+          jobNameKey: 'job.cook.name' as const,
+          icon: '🔪',
+          episodes: [
+            { id: 'cook_opening', chapterKey: 'home.story.prologue', scenes: COOK_STORY, planned: false },
+            { id: 'cook_e1', chapterKey: 'home.story.chapter1', scenes: COOK_E1_STORY, planned: false },
+            { id: 'cook_e2', chapterKey: 'home.story.chapter2', scenes: COOK_E2_STORY, planned: false },
+            { id: 'cook_e3', chapterKey: 'home.story.ending', scenes: COOK_E3_STORY, planned: false },
+          ] satisfies HowtoStoryEpisode[],
+        },
+        {
+          jobKey: 'unemployed' as const,
+          jobNameKey: 'job.unemployed.name' as const,
+          icon: '✊',
+          episodes: [
+            {
+              id: 'unemployed_planned',
+              chapterKey: 'home.story.planned',
+              scenes: [],
+              planned: true,
+            },
+          ] satisfies HowtoStoryEpisode[],
+        },
       ],
-    },
-    {
-      jobKey: 'cook',
-      jobName: '料理人',
-      icon: '🔪',
-      episodes: [
-        { id: 'cook_opening', chapterName: '序章', scenes: COOK_STORY },
-        { id: 'cook_e1', chapterName: '第1章', scenes: COOK_E1_STORY },
-        { id: 'cook_e2', chapterName: '第2章', scenes: COOK_E2_STORY },
-        { id: 'cook_e3', chapterName: 'エンディング', scenes: COOK_E3_STORY },
-      ],
-    },
-    {
-      jobKey: 'unemployed',
-      jobName: '無職',
-      icon: '✊',
-      episodes: [{ id: 'unemployed_planned', chapterName: '実装予定', scenes: [], planned: true }],
-    },
-  ];
+    [],
+  );
   const glossaryEntries = [
     {
       id: 'basics',
@@ -397,7 +410,7 @@ const HomeScreen = ({
     for (const job of storyJobs) {
       const foundEpisode = job.episodes.find((episode) => episode.id === episodeId);
       if (foundEpisode) {
-        return foundEpisode.scenes;
+        return [...foundEpisode.scenes];
       }
     }
     return [];
@@ -449,7 +462,7 @@ const HomeScreen = ({
 
   const handleIapPurchase = async (productId: string) => {
     if (!Capacitor.isNativePlatform()) {
-      window.alert('アプリ内課金はストアからインストールしたアプリでご利用ください。');
+      window.alert(t('home.settings.iapNativeOnly'));
       return;
     }
     setIapBusy(true);
@@ -457,7 +470,7 @@ const HomeScreen = ({
       await purchaseProduct(productId);
       setIsAdFree(getAdsRemoved());
     } catch {
-      window.alert('購入を完了できませんでした。');
+      window.alert(t('home.settings.iapPurchaseFail'));
     } finally {
       setIapBusy(false);
     }
@@ -465,7 +478,7 @@ const HomeScreen = ({
 
   const handleIapRestore = async () => {
     if (!Capacitor.isNativePlatform()) {
-      window.alert('購入の復元はストアからインストールしたアプリでご利用ください。');
+      window.alert(t('home.settings.iapRestoreNativeOnly'));
       return;
     }
     setIapBusy(true);
@@ -473,7 +486,7 @@ const HomeScreen = ({
       await restorePurchases();
       setIsAdFree(getAdsRemoved());
     } catch {
-      window.alert('復元に失敗しました。');
+      window.alert(t('home.settings.iapRestoreFail'));
     } finally {
       setIapBusy(false);
     }
@@ -566,13 +579,50 @@ const HomeScreen = ({
     playBgm('menu');
   };
 
-  const homeButtons = [
-    { label: 'ゲームスタート', className: 'btn-home-start', onClick: onStart },
-    { label: '図鑑', className: 'btn-home-zukan', onClick: onOpenZukan },
-    { label: '実績', className: 'btn-home-records', onClick: () => setShowRecords(true) },
-    { label: '設定', className: 'btn-home-settings', onClick: () => setShowSettings(true) },
-    { label: 'クレジット', className: 'btn-home-credits', onClick: () => setModal('credits') },
-  ] as const;
+  const handleOpenRanking = useCallback(() => {
+    if (getStoredRankingNickname()) {
+      onOpenRanking();
+      return;
+    }
+    setRankingNicknameDraft('');
+    setRankingNicknameErr(null);
+    setRankingNicknameModalOpen(true);
+  }, [onOpenRanking]);
+
+  const handleRankingNicknameSubmit = useCallback(async () => {
+    const len = nicknameCharLength(rankingNicknameDraft);
+    if (len < 2 || len > 12) {
+      setRankingNicknameErr(t('home.ranking.errLength'));
+      return;
+    }
+    setRankingNicknameBusy(true);
+    setRankingNicknameErr(null);
+    const res = await postRankingNickname(rankingNicknameDraft);
+    setRankingNicknameBusy(false);
+    if (!res.ok) {
+      const err = res.error;
+      if (err === 'network') setRankingNicknameErr(t('home.ranking.errNetwork'));
+      else if (err === 'nickname_not_allowed') setRankingNicknameErr(t('home.ranking.errNickname'));
+      else if (err === 'nickname_length') setRankingNicknameErr(t('home.ranking.errLength'));
+      else setRankingNicknameErr(t('home.ranking.errRegister'));
+      return;
+    }
+    setRankingNicknameModalOpen(false);
+    onOpenRanking();
+  }, [onOpenRanking, rankingNicknameDraft, t]);
+
+  const homeButtons = useMemo(
+    () =>
+      [
+        { id: 'start', label: t('home.gameStart'), className: 'btn-home-start', onClick: onStart },
+        { id: 'zukan', label: t('home.zukan'), className: 'btn-home-zukan', onClick: onOpenZukan },
+        { id: 'records', label: t('home.records'), className: 'btn-home-records', onClick: () => setShowRecords(true) },
+        { id: 'ranking', label: `🏆 ${t('home.ranking')}`, className: 'btn-home-ranking', onClick: handleOpenRanking },
+        { id: 'settings', label: t('home.settings'), className: 'btn-home-settings', onClick: () => setShowSettings(true) },
+        { id: 'credits', label: t('home.credits'), className: 'btn-home-credits', onClick: () => setModal('credits') },
+      ] as const,
+    [t, onStart, onOpenZukan, handleOpenRanking],
+  );
   const titleLetters = [
     { src: letterJImage, alt: 'J' },
     { src: letterOImage, alt: 'O' },
@@ -593,6 +643,7 @@ const HomeScreen = ({
     savedProgress.currentScreen !== 'home' &&
     savedProgress.currentScreen !== 'title' &&
     savedProgress.currentScreen !== 'zukan' &&
+    savedProgress.currentScreen !== 'ranking' &&
     savedProgress.currentScreen !== 'job_select' &&
     savedProgress.currentScreen !== 'victory' &&
     savedProgress.currentScreen !== 'game_over';
@@ -605,7 +656,7 @@ const HomeScreen = ({
           className={`settings-accordion-header ${openSettingsSection === 'sound' ? 'is-open' : ''}`}
           onClick={() => toggleSettingsSection('sound')}
         >
-          <span>🔊 音量設定</span>
+          <span>{t('common.volumeSettings')}</span>
           <span className="settings-accordion-arrow">
             {openSettingsSection === 'sound' ? '▲' : '▼'}
           </span>
@@ -614,7 +665,7 @@ const HomeScreen = ({
           <div className="settings-accordion-body">
             <div className="settings-item settings-item--audio">
               <div className="settings-item-header">
-                <span className="settings-item-label">BGM</span>
+                <span className="settings-item-label">{t('common.bgm')}</span>
                 <button
                   type="button"
                   className={`btn-mute ${bgmMuted ? 'btn-mute--off' : 'btn-mute--on'}`}
@@ -623,13 +674,13 @@ const HomeScreen = ({
                     setBgmMuted(next);
                   }}
                 >
-                  {bgmMuted ? '🔇 OFF' : '🔊 ON'}
+                  {bgmMuted ? t('common.audioOff') : t('common.audioOn')}
                 </button>
               </div>
             </div>
             <div className="settings-item settings-item--audio">
               <div className="settings-item-header">
-                <span className="settings-item-label">SE</span>
+                <span className="settings-item-label">{t('common.se')}</span>
                 <button
                   type="button"
                   className={`btn-mute ${seMuted ? 'btn-mute--off' : 'btn-mute--on'}`}
@@ -638,7 +689,7 @@ const HomeScreen = ({
                     setSeMuted(next);
                   }}
                 >
-                  {seMuted ? '🔇 OFF' : '🔊 ON'}
+                  {seMuted ? t('common.audioOff') : t('common.audioOn')}
                 </button>
               </div>
             </div>
@@ -652,7 +703,7 @@ const HomeScreen = ({
           className={`settings-accordion-header ${openSettingsSection === 'game' ? 'is-open' : ''}`}
           onClick={() => toggleSettingsSection('game')}
         >
-          <span>⚙️ データ</span>
+          <span>{t('home.settings.dataSection')}</span>
           <span className="settings-accordion-arrow">
             {openSettingsSection === 'game' ? '▲' : '▼'}
           </span>
@@ -660,17 +711,36 @@ const HomeScreen = ({
         {openSettingsSection === 'game' && (
           <div className="settings-accordion-body">
             <button type="button" className="settings-btn-block" onClick={() => setShowHomeGlossary(true)}>
-              <span className="settings-btn-block-title">用語集</span>
-              <span className="settings-btn-block-desc">
-                用語・カードバッジ・ステータス表示などの説明を表示します。
-              </span>
+              <span className="settings-btn-block-title">{t('home.settings.glossaryTitle')}</span>
+              <span className="settings-btn-block-desc">{t('home.settings.glossaryDesc')}</span>
             </button>
+            <div className="settings-item settings-item--audio settings-language-block">
+              <span className="settings-language-label">{t('common.language')}</span>
+              {isLocaleLoading && <p className="settings-locale-loading">{t('common.localeLoading')}</p>}
+              <div className="settings-language-row" role="group" aria-label={t('common.language')}>
+                {(
+                  [
+                    { code: 'ja' as const, labelKey: 'lang.ja' as const },
+                    { code: 'en' as const, labelKey: 'lang.en' as const },
+                    { code: 'ko' as const, labelKey: 'lang.ko' as const },
+                  ] as const
+                ).map(({ code, labelKey }) => (
+                  <button
+                    key={code}
+                    type="button"
+                    disabled={isLocaleLoading}
+                    className={`settings-lang-btn ${locale === code ? 'settings-lang-btn--active' : ''}`}
+                    onClick={() => void switchLocale(code)}
+                  >
+                    {t(labelKey)}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
-                <p className="settings-item-title">チュートリアルリセット</p>
-                <p className="settings-item-desc">
-                  チュートリアルをリセットして次回起動時に再表示します。
-                </p>
+                <p className="settings-item-title">{t('home.settings.tutorialResetTitle')}</p>
+                <p className="settings-item-desc">{t('home.settings.tutorialResetDesc')}</p>
               </div>
               <button
                 type="button"
@@ -680,27 +750,21 @@ const HomeScreen = ({
                   setShowTutorialResetModal(true);
                 }}
               >
-                リセット
+                {t('home.settings.tutorialResetBtn')}
               </button>
             </div>
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
-                <p className="settings-item-title">データ初期化</p>
-                <p className="settings-item-desc">
-                  ゲームの進行・図鑑・チュートリアルをすべてリセットします。この操作は元に戻せません。
-                </p>
+                <p className="settings-item-title">{t('home.settings.dataResetTitle')}</p>
+                <p className="settings-item-desc">{t('home.settings.dataResetDesc')}</p>
               </div>
               <button
                 type="button"
                 className="settings-btn-danger"
                 onClick={() => {
-                  const firstOk = window.confirm(
-                    'すべてのデータを初期化しますか？\nこの操作は元に戻せません。',
-                  );
+                  const firstOk = window.confirm(t('home.settings.dataResetConfirm1'));
                   if (!firstOk) return;
-                  const secondOk = window.confirm(
-                    '再度確認します。\n進行・図鑑・チュートリアルなどがすべて削除されます。本当に初期化しますか？',
-                  );
+                  const secondOk = window.confirm(t('home.settings.dataResetConfirm2'));
                   if (!secondOk) return;
                   /** 課金・広告削除（real-card-battle:ads-removed）は意図的に除外 */
                   const keysToDelete = [
@@ -721,11 +785,11 @@ const HomeScreen = ({
                   ];
                   keysToDelete.forEach((key) => localStorage.removeItem(key));
                   clearAchievements();
-                  window.alert('データを初期化しました。');
+                  window.alert(t('home.settings.dataResetDone'));
                   window.location.reload();
                 }}
               >
-                初期化
+                {t('home.settings.dataResetBtn')}
               </button>
             </div>
           </div>
@@ -738,7 +802,7 @@ const HomeScreen = ({
           className={`settings-accordion-header ${openSettingsSection === 'purchase' ? 'is-open' : ''}`}
           onClick={() => toggleSettingsSection('purchase')}
         >
-          <span>💳 購入・課金</span>
+          <span>{t('home.settings.purchaseSection')}</span>
           <span className="settings-accordion-arrow">
             {openSettingsSection === 'purchase' ? '▲' : '▼'}
           </span>
@@ -748,8 +812,8 @@ const HomeScreen = ({
             {!isAdFree && (
               <div className="settings-item settings-item--row">
                 <div className="settings-item-info">
-                  <p className="settings-item-title">広告を削除</p>
-                  <p className="settings-item-desc">広告表示をオフにします（買い切り）。</p>
+                  <p className="settings-item-title">{t('home.settings.removeAdsTitle')}</p>
+                  <p className="settings-item-desc">{t('home.settings.removeAdsDesc')}</p>
                 </div>
                 <button
                   type="button"
@@ -763,8 +827,8 @@ const HomeScreen = ({
             )}
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
-                <p className="settings-item-title">開発者応援パック</p>
-                <p className="settings-item-desc">開発支援のためのオプション購入です。</p>
+                <p className="settings-item-title">{t('home.settings.supporterTitle')}</p>
+                <p className="settings-item-desc">{t('home.settings.supporterDesc')}</p>
               </div>
               <button
                 type="button"
@@ -778,8 +842,8 @@ const HomeScreen = ({
             {!isAdFree && (
               <div className="settings-item settings-item--row">
                 <div className="settings-item-info">
-                  <p className="settings-item-title">お得セット</p>
-                  <p className="settings-item-desc">広告削除を含むセットです。</p>
+                  <p className="settings-item-title">{t('home.settings.bundleTitle')}</p>
+                  <p className="settings-item-desc">{t('home.settings.bundleDesc')}</p>
                 </div>
                 <button
                   type="button"
@@ -793,8 +857,8 @@ const HomeScreen = ({
             )}
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
-                <p className="settings-item-title">購入の復元</p>
-                <p className="settings-item-desc">以前に購入した内容を復元します。</p>
+                <p className="settings-item-title">{t('home.settings.restoreTitle')}</p>
+                <p className="settings-item-desc">{t('home.settings.restoreDesc')}</p>
               </div>
               <button
                 type="button"
@@ -802,7 +866,7 @@ const HomeScreen = ({
                 disabled={iapBusy}
                 onClick={() => void handleIapRestore()}
               >
-                復元
+                {t('home.settings.restoreBtn')}
               </button>
             </div>
           </div>
@@ -817,14 +881,14 @@ const HomeScreen = ({
           className="settings-btn-block"
           onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/terms.html', '_self')}
         >
-          <span className="settings-btn-block-title">利用規約</span>
+          <span className="settings-btn-block-title">{t('home.settings.terms')}</span>
         </button>
         <button
           type="button"
           className="settings-btn-block"
           onClick={() => window.open('https://s0823pro-cmyk.github.io/real-card-battle/privacy.html', '_self')}
         >
-          <span className="settings-btn-block-title">プライバシーポリシー</span>
+          <span className="settings-btn-block-title">{t('home.settings.privacy')}</span>
         </button>
         <button
           type="button"
@@ -836,67 +900,65 @@ const HomeScreen = ({
             )
           }
         >
-          <span className="settings-btn-block-title">🐛 バグ報告・ご意見</span>
+          <span className="settings-btn-block-title">{t('home.settings.feedback')}</span>
         </button>
       </div>
 
       <div className="settings-legal">
-        <p className="settings-legal-text">
-          広告削除（¥300）は買い切りです。購入後は同一Apple ID / Google アカウントで無制限にご利用いただけます。
-        </p>
+        <p className="settings-legal-text">{t('home.settings.adRemoveLegal')}</p>
       </div>
 
       {import.meta.env.DEV && (
         <div className="dev-tools">
-          <p className="dev-tools-title">🛠️ 開発用ツール</p>
+          <p className="dev-tools-title">{t('settings.devTools')}</p>
           <div className="dev-tools-grid">
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_normal')}>
-              通常戦闘
+              {t('settings.dev.normalBattle')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_elite')}>
-              エリート戦闘
+              {t('settings.dev.eliteBattle')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_1')}>
-              ボス1
+              {t('settings.dev.boss1')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_2')}>
-              ボス2
+              {t('settings.dev.boss2')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_3')}>
-              ボス3
+              {t('settings.dev.boss3')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shop')}>
-              質屋
+              {t('settings.dev.pawnshop')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shrine')}>
-              神社
+              {t('settings.dev.shrine')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('hotel')}>
-              ホテル
+              {t('settings.dev.hotel')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('event')}>
-              イベント
+              {t('settings.dev.event')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('card_reward')}>
-              カード報酬
+              {t('settings.dev.cardReward')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('boss_reward')}>
-              ボス報酬
+              {t('settings.dev.bossReward')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('story')}>
-              ストーリー
+              {t('settings.dev.story')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_all_cards')}>
-              全カード戦闘
+              {t('settings.dev.allCardsBattle')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_cook_all_x2')}>
-              料理人全カード×2戦闘
+              {t('settings.dev.cookAllX2')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_expansion_x2')}>
-              初期＋拡張バトル開始
+              {t('settings.dev.expansionBattle')}
             </button>
             <button type="button" className="btn-dev" onClick={() => onDevAddExpansionCards?.()}>
-              拡張カード全追加（×2）
+              {t('home.settings.devExpansionAdd')}
             </button>
             <button
               type="button"
@@ -907,10 +969,10 @@ const HomeScreen = ({
                 setDebugEnemyHp1Local(next);
               }}
             >
-              敵HP1 {debugEnemyHp1 ? 'ON' : 'OFF'}
+              {t('settings.dev.enemyHp1')} {debugEnemyHp1 ? 'ON' : 'OFF'}
             </button>
             <button type="button" className="btn-dev" onClick={() => unlockJob('cook')}>
-              (料理人解放)
+              {t('settings.dev.unlockCook')}
             </button>
           </div>
         </div>
@@ -921,7 +983,8 @@ const HomeScreen = ({
   if (showSettings) {
     return (
       <>
-        <main className="home-screen" style={backgroundStyle}>
+        <main className="home-screen">
+          <div className="home-screen-fullbleed-bg" style={backgroundStyle} aria-hidden />
           <Fireflies />
           <div className="records-page">
             <div className="records-page-header">
@@ -933,9 +996,9 @@ const HomeScreen = ({
                   setShowSettings(false);
                 }}
               >
-                ← 戻る
+                {t('common.back')}
               </button>
-              <h2 className="records-page-title">設定</h2>
+              <h2 className="records-page-title">{t('common.settings')}</h2>
             </div>
             <div className="records-page-content">{renderSettingsContent()}</div>
           </div>
@@ -950,14 +1013,14 @@ const HomeScreen = ({
             onClick={() => setShowTutorialResetModal(false)}
           >
             <div className="home-modal-box" onClick={(e) => e.stopPropagation()}>
-              <h2 id="tutorial-reset-done-title">チュートリアルリセット</h2>
-              <p className="home-modal-tutorial-reset-msg">チュートリアルをリセットしました。</p>
+              <h2 id="tutorial-reset-done-title">{t('home.tutorialReset.title')}</h2>
+              <p className="home-modal-tutorial-reset-msg">{t('home.tutorialReset.msg')}</p>
               <button
                 type="button"
                 className="home-modal-close"
                 onClick={() => setShowTutorialResetModal(false)}
               >
-                OK
+                {t('common.ok')}
               </button>
             </div>
           </div>
@@ -968,14 +1031,15 @@ const HomeScreen = ({
 
   if (showRecords) {
     return (
-      <main className="home-screen" style={backgroundStyle}>
+      <main className="home-screen">
+        <div className="home-screen-fullbleed-bg" style={backgroundStyle} aria-hidden />
         <Fireflies />
         <div className="records-page">
           <div className="records-page-header">
             <button type="button" className="records-back-btn" onClick={() => setShowRecords(false)}>
-              ← 戻る
+              {t('common.back')}
             </button>
-            <h2 className="records-page-title">実績</h2>
+            <h2 className="records-page-title">{t('home.records.title')}</h2>
           </div>
           <div className="records-page-content">
             {import.meta.env.DEV && (
@@ -988,17 +1052,17 @@ const HomeScreen = ({
                     setAchievementRefreshKey((k) => k + 1);
                   }}
                 >
-                  【開発】全実績解放
+                  {t('home.records.devUnlockAll')}
                 </button>
               </div>
             )}
             <div className="zukan-job-tabs records-page-achievement-job-tabs">
               {(
                 [
-                  { id: 'all' as const, label: '全て' },
-                  { id: 'carpenter' as const, label: '大工🔨' },
-                  { id: 'cook' as const, label: '料理人🔪' },
-                  { id: 'common' as const, label: '共通⭐' },
+                  { id: 'all' as const, label: t('home.records.tabAll') },
+                  { id: 'carpenter' as const, label: t('home.records.tabCarpenter') },
+                  { id: 'cook' as const, label: t('home.records.tabCook') },
+                  { id: 'common' as const, label: t('home.records.tabCommon') },
                 ] satisfies { id: AchievementJobTab; label: string }[]
               ).map((tab) => (
                 <button
@@ -1027,20 +1091,20 @@ const HomeScreen = ({
                   >
                     <span className="achievement-icon">{isUnlocked ? a.icon : '🔒'}</span>
                     <div className="achievement-info">
-                      <p className="achievement-name">{a.name}</p>
+                      <p className="achievement-name">{t(achievementNameKey(a.id), undefined, a.name)}</p>
                       <p className="achievement-desc">
-                        {a.description}
+                        {t(achievementDescKey(a.id), undefined, a.description)}
                         {getCumulativeAchievementProgressSuffix(
                           a.id,
                           cumulativeDisplayState.counters,
                           cumulativeDisplayState.defeatCount,
                         ) ?? ''}
                       </p>
-                      <p className="achievement-tier">{TIER_LABEL[a.tier]}</p>
+                      <p className="achievement-tier">{t(`achievement.tier.${a.tier}` as MessageKey)}</p>
                       <p className="achievement-reward">
                         {isUnlocked
-                          ? '報酬: カード2枚（タップで表示）'
-                          : '報酬: ？？？（未達成のため内容は不明）'}
+                          ? t('home.records.rewardKnown')
+                          : t('home.records.rewardUnknown')}
                       </p>
                     </div>
                   </button>
@@ -1059,7 +1123,8 @@ const HomeScreen = ({
   }
 
   return (
-    <main className="home-screen" style={backgroundStyle}>
+    <main className="home-screen">
+      <div className="home-screen-fullbleed-bg" style={backgroundStyle} aria-hidden />
       <Fireflies />
       <div className="home-content">
         <div className="home-title-area">
@@ -1080,15 +1145,15 @@ const HomeScreen = ({
                 if (savedProgress) onContinue?.(savedProgress);
               }}
             >
-              <span className="btn-home-continue-label">続きから始める</span>
+              <span className="btn-home-continue-label">{t('home.continue')}</span>
               <span className="btn-home-continue-sub">
-                {JOB_NAMES[savedProgress.jobId] ?? savedProgress.jobId} / エリア{savedProgress.currentArea}
+                {t(`job.${savedProgress.jobId}.name` as MessageKey)} / {t('home.areaLine', { n: savedProgress.currentArea })}
               </span>
             </button>
           )}
           {homeButtons.map((button, index) => (
             <button
-              key={button.label}
+              key={button.id}
               ref={(element) => {
                 btnRefs.current[index] = element;
               }}
@@ -1133,7 +1198,7 @@ const HomeScreen = ({
                       setOpenedHowtoEntry(null);
                     }}
                   >
-                    用語集
+                    {t('home.howto.glossaryTab')}
                   </button>
                   <button
                     type="button"
@@ -1143,7 +1208,7 @@ const HomeScreen = ({
                       setOpenedHowtoEntry(null);
                     }}
                   >
-                    ストーリー
+                    {t('home.howto.storyTab')}
                   </button>
                 </div>
                 {activeHowtoTab === 'glossary' ? (
@@ -1192,12 +1257,14 @@ const HomeScreen = ({
                                 className="howto-story-arrow-btn"
                                 onClick={() => moveStorySelection(job.jobKey, -1, job.episodes.length)}
                                 disabled={!canGoPrev}
-                                aria-label={`${job.jobName}の前チャプター`}
+                                aria-label={t('home.story.ariaPrev', { job: t(job.jobNameKey) })}
                               >
                                 ←
                               </button>
                               <div className="howto-story-nav-center">
-                                <p className="howto-story-swipe-hint">{job.jobName}チャプター</p>
+                                <p className="howto-story-swipe-hint">
+                                  {t('home.story.chapterHint', { job: t(job.jobNameKey) })}
+                                </p>
                                 <p className="howto-story-chapter-indicator">
                                   {selectedIndex + 1} / {job.episodes.length}
                                 </p>
@@ -1207,7 +1274,7 @@ const HomeScreen = ({
                                 className="howto-story-arrow-btn"
                                 onClick={() => moveStorySelection(job.jobKey, 1, job.episodes.length)}
                                 disabled={!canGoNext}
-                                aria-label={`${job.jobName}の次チャプター`}
+                                aria-label={t('home.story.ariaNext', { job: t(job.jobNameKey) })}
                               >
                                 →
                               </button>
@@ -1225,10 +1292,14 @@ const HomeScreen = ({
                             >
                               <span className="story-list-icon">{job.icon}</span>
                               <div className="story-list-info">
-                                <p className="story-list-name">{job.jobName}</p>
+                                <p className="story-list-name">{t(job.jobNameKey as MessageKey)}</p>
                                 <p className="story-list-sub">
-                                  {selectedEpisode.chapterName}
-                                  {canPlay ? ' / タップで再生' : isPlanned ? ' / 実装予定' : ' / 未解放'}
+                                  {t(selectedEpisode.chapterKey as MessageKey)}
+                                  {canPlay
+                                    ? ` / ${t('home.story.tapToPlay')}`
+                                    : isPlanned
+                                      ? ` / ${t('home.story.planned')}`
+                                      : ` / ${t('home.story.locked')}`}
                                 </p>
                               </div>
                               {canPlay ? (
@@ -1292,8 +1363,53 @@ const HomeScreen = ({
               </div>
             )}
             <button type="button" className="home-modal-close" onClick={() => setModal(null)}>
-              閉じる
+              {t('common.close')}
             </button>
+          </div>
+        </div>
+      )}
+      {rankingNicknameModalOpen && (
+        <div
+          className="home-modal-overlay"
+          onClick={() => {
+            if (!rankingNicknameBusy) setRankingNicknameModalOpen(false);
+          }}
+        >
+          <div className="home-modal-box" onClick={(e) => e.stopPropagation()}>
+            <h2>{t('home.ranking.modalTitle')}</h2>
+            <p className="ranking-nickname-modal-desc">{t('home.ranking.modalDesc')}</p>
+            <input
+              type="text"
+              className="ranking-nickname-modal-input"
+              value={rankingNicknameDraft}
+              onChange={(e) => setRankingNicknameDraft(e.target.value)}
+              maxLength={24}
+              autoComplete="username"
+              placeholder={t('home.ranking.placeholder')}
+              disabled={rankingNicknameBusy}
+            />
+            {rankingNicknameErr ? <p className="ranking-nickname-modal-error">{rankingNicknameErr}</p> : null}
+            <p className="ranking-nickname-modal-notice" role="note">
+              {t('home.ranking.notice')}
+            </p>
+            <div className="ranking-nickname-modal-actions">
+              <button
+                type="button"
+                className="home-modal-close"
+                disabled={rankingNicknameBusy}
+                onClick={() => setRankingNicknameModalOpen(false)}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                className="ranking-nickname-modal-submit"
+                disabled={rankingNicknameBusy}
+                onClick={() => void handleRankingNicknameSubmit()}
+              >
+                {rankingNicknameBusy ? t('home.ranking.submitting') : t('home.ranking.submit')}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1302,6 +1418,7 @@ const HomeScreen = ({
           scenes={getStoryScenes(playingStory)}
           onComplete={handleHowtoStoryComplete}
           showStartButton={false}
+          storyBundleId={playingStory}
           jobId={playingStory.startsWith('cook') ? 'cook' : 'carpenter'}
           storyBgmArea={
             playingStory === 'carpenter_e1' || playingStory === 'cook_e1'

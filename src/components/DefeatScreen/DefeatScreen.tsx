@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import type { MessageKey } from '../../i18n';
+import { achievementNameKey } from '../../i18n/entityKeys';
 import type { JobId } from '../../types/game';
 import type { Achievement } from '../../utils/achievementSystem';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
@@ -16,14 +19,14 @@ interface DefeatScreenProps {
   onRetry: () => void;
 }
 
-const DEFEAT_MESSAGES = [
-  'まだまだこれからだ。',
-  '次は絶対に勝てる。',
-  '負けから学べることがある。',
-  '諦めなければ、負けじゃない。',
-  'また挑戦しろ。',
-  'ここで終わりじゃない。',
-];
+const DEFEAT_FLAVOR_KEYS = [
+  'defeat.flavor0',
+  'defeat.flavor1',
+  'defeat.flavor2',
+  'defeat.flavor3',
+  'defeat.flavor4',
+  'defeat.flavor5',
+] as const satisfies readonly MessageKey[];
 
 export const DefeatScreen = ({
   jobId,
@@ -35,18 +38,21 @@ export const DefeatScreen = ({
   onHome,
   onRetry,
 }: DefeatScreenProps) => {
+  const { t } = useLanguage();
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const { playBgm } = useAudioContext();
+
+  const flavorKey = useMemo(
+    () => DEFEAT_FLAVOR_KEYS[Math.floor(Math.random() * DEFEAT_FLAVOR_KEYS.length)]!,
+    [],
+  );
 
   useEffect(() => {
     playBgm('defeat');
   }, [playBgm]);
 
-  const message = useMemo(
-    () => DEFEAT_MESSAGES[Math.floor(Math.random() * DEFEAT_MESSAGES.length)],
-    [],
-  );
-  const jobName = { carpenter: '大工', cook: '料理人', unemployed: '無職' }[jobId] ?? jobId;
+  const message = t(flavorKey);
+  const jobName = t(`job.${jobId}.name` as MessageKey);
   const safeTotal = Math.max(1, totalFloors);
   const safeFloor = Math.min(Math.max(1, floor), safeTotal);
   const progressPercent = Math.floor((safeFloor / safeTotal) * 100);
@@ -57,18 +63,18 @@ export const DefeatScreen = ({
       <div className="defeat-content">
         <div className="defeat-title-area">
           <p className="defeat-job">{jobName}</p>
-          <h1 className="defeat-title">力尽きた…</h1>
+          <h1 className="defeat-title">{t('defeat.title')}</h1>
           <p className="defeat-enemy">
-            <span className="defeat-enemy-label">倒された相手</span>
-            <span className="defeat-enemy-name">{defeatedBy || '敵'}</span>
+            <span className="defeat-enemy-label">{t('defeat.defeatedByLabel')}</span>
+            <span className="defeat-enemy-name">{defeatedBy || t('defeat.enemyFallback')}</span>
           </p>
         </div>
 
         <div className="defeat-progress">
           <div className="defeat-progress-header">
-            <span className="defeat-progress-label">進捗</span>
+            <span className="defeat-progress-label">{t('defeat.progressLabel')}</span>
             <span className="defeat-progress-value">
-              エリア{area} - {safeFloor}/{safeTotal}マス
+              {t('defeat.progressValue', { area, floor: safeFloor, total: safeTotal })}
             </span>
           </div>
           <div className="defeat-progress-bar">
@@ -84,7 +90,9 @@ export const DefeatScreen = ({
         {newAchievements.length > 0 && (
           <div className="victory-achievements defeat-achievements">
             <h3 className="victory-achievements-title">
-              🎖️ 実績解除！{newAchievements.length > 1 ? `（${newAchievements.length}件）` : ''}
+              {newAchievements.length > 1
+                ? t('defeat.achievementTitleMulti', { n: newAchievements.length })
+                : t('defeat.achievementTitle')}
             </h3>
             <div className="victory-achievements-scroll">
               {newAchievements.map((a) => (
@@ -96,8 +104,8 @@ export const DefeatScreen = ({
                 >
                   <span className="victory-achievement-icon">{a.icon}</span>
                   <div className="victory-achievement-info">
-                    <p className="victory-achievement-name">{a.name}</p>
-                    <p className="victory-achievement-reward">🃏 カード2枚 解放！</p>
+                    <p className="victory-achievement-name">{t(achievementNameKey(a.id), undefined, a.name)}</p>
+                    <p className="victory-achievement-reward">{t('defeat.cardUnlockReward')}</p>
                   </div>
                 </button>
               ))}
@@ -107,10 +115,10 @@ export const DefeatScreen = ({
 
         <div className="defeat-buttons">
           <button type="button" className="btn-defeat-retry" onClick={onRetry}>
-            もう一度挑戦
+            {t('defeat.retry')}
           </button>
           <button type="button" className="btn-defeat-home" onClick={onHome}>
-            ホームに戻る
+            {t('defeat.home')}
           </button>
         </div>
       </div>

@@ -1,6 +1,8 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { Card, JobId } from '../../types/game';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { achievementNameKey } from '../../i18n/entityKeys';
 import CardComponent from '../Hand/CardComponent';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import type { Achievement } from '../../utils/achievementTypes';
@@ -47,9 +49,11 @@ const cardToValues = (card: Card): EffectiveCardValues => ({
 });
 
 export const AchievementRewardModal = ({ selected, onClose, jobId }: AchievementRewardModalProps) => {
+  const { t } = useLanguage();
+  const [cardA, cardB] = selected
+    ? getAchievementRewardCards(selected.rewardCardIds[0], selected.rewardCardIds[1])
+    : [null, null];
   if (!selected) return null;
-
-  const [cardA, cardB] = getAchievementRewardCards(selected.rewardCardIds[0], selected.rewardCardIds[1]);
 
   return createPortal(
     <div
@@ -68,9 +72,9 @@ export const AchievementRewardModal = ({ selected, onClose, jobId }: Achievement
         onTouchEnd={(e) => e.stopPropagation()}
       >
         <h3 className="achievement-reward-modal-title">
-          {selected.icon} {selected.name}
+          {selected.icon} {t(achievementNameKey(selected.id), undefined, selected.name)}
         </h3>
-        <p className="achievement-reward-modal-sub">解放された報酬（カード2枚）</p>
+        <p className="achievement-reward-modal-sub">{t('achievement.rewardCardsSubtitle')}</p>
         <div className="achievement-reward-cards-row">
           {[cardA, cardB].map((card, idx) =>
             card ? (

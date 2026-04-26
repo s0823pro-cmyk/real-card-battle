@@ -1,7 +1,9 @@
 import type { Card, CardBadge, JobId } from '../../types/game';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { translatedCardDescription, translatedCardName } from '../../i18n/entityKeys';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import {
   bumpFirstCookingGaugeInTextForRecipeStudy,
@@ -56,9 +58,13 @@ const CardComponent = ({
   onMouseEnter,
   onMouseLeave,
 }: Props) => {
+  const { t } = useLanguage();
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const nameRef = useRef<HTMLSpanElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
+
+  const displayCardName = useMemo(() => translatedCardName(card, t), [card, t]);
+  const translatedBaseDescription = useMemo(() => translatedCardDescription(card, t), [card, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -89,7 +95,7 @@ const CardComponent = ({
         nameEl.style.fontSize = `${size}px`;
       }
     });
-  }, [card.name]);
+  }, [displayCardName]);
 
   const JOB_COLORS = {
     carpenter: '#c0392b',
@@ -201,8 +207,8 @@ const CardComponent = ({
   };
   const displayDescription =
     recipeStudyDisplay && isIngredientCard(card)
-      ? bumpFirstCookingGaugeInTextForRecipeStudy(card.description)
-      : card.description;
+      ? bumpFirstCookingGaugeInTextForRecipeStudy(translatedBaseDescription)
+      : translatedBaseDescription;
   const displayReserveBonusDescription =
     recipeStudyDisplay && isIngredientCard(card) && card.reserveBonus
       ? bumpFirstCookingGaugeInTextForRecipeStudy(card.reserveBonus.description)
@@ -280,7 +286,7 @@ const CardComponent = ({
             <img
               className="card-bg-img"
               src={card.imageUrl}
-              alt={card.name}
+              alt={displayCardName}
               draggable={false}
               onError={() => setImageLoadFailed(true)}
             />
@@ -320,7 +326,7 @@ const CardComponent = ({
               </div>
               <div className="card-name-cluster__center">
                 <span ref={nameRef} className="card-name">
-                  {card.name}
+                  {displayCardName}
                 </span>
               </div>
               <div className="card-name-cluster__side card-name-cluster__side--right" aria-hidden />

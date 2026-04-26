@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JobId } from '../../types/game';
-import type { AchievementTier } from '../../utils/achievementTypes';
 import {
   getCumulativeAchievementProgressSuffix,
   getDefeatCount,
   type Achievement,
 } from '../../utils/achievementSystem';
 import { loadAchievementCounters } from '../../utils/achievementCounters';
+import { useLanguage } from '../../contexts/LanguageContext';
+import type { MessageKey } from '../../i18n';
+import { achievementDescKey, achievementNameKey } from '../../i18n/entityKeys';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import '../HomeScreen/HomeScreen.css';
 import './Result.css';
-
-const TIER_LABEL: Record<AchievementTier, string> = {
-  easy: '（アンコモン×2）',
-  medium: '（アンコモン+レア）',
-  hard: '（レア×2）',
-};
 
 const VICTORY_TAP_DELAY_MS = 900;
 
@@ -46,6 +42,7 @@ export const BattleVictoryPanel = ({
   newAchievements = [],
   jobId = 'carpenter',
 }: BattleVictoryPanelProps) => {
+  const { t } = useLanguage();
   const [displayGold, setDisplayGold] = useState(0);
   const [tapToContinueEnabled, setTapToContinueEnabled] = useState(false);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
@@ -111,24 +108,26 @@ export const BattleVictoryPanel = ({
     >
       <div className="battle-victory-panel-inner">
         <h2>VICTORY</h2>
-        <p>現場を守り切った！</p>
+        <p>{t('battleVictory.sub')}</p>
         <div className="victory-reward">
-          <p>獲得ゴールド</p>
+          <p>{t('battleVictory.goldLabel')}</p>
           <strong>💰 +{displayGold}G</strong>
         </div>
-        <p>メンタル回復: 🧠 +{mentalRecovery}</p>
-        <p>合計所持金: {totalGold}G</p>
+        <p>{t('battleVictory.mentalLine', { n: mentalRecovery })}</p>
+        <p>{t('battleVictory.totalLine', { n: totalGold })}</p>
 
         {newAchievements.length > 0 && (
           <div
             className="battle-victory-achievements"
             role="region"
-            aria-label="実績解除"
+            aria-label={t('battleVictory.achievementAria')}
             onTouchEnd={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="battle-victory-achievements-title">
-              🎖️ 実績解除！{newAchievements.length > 1 ? `（${newAchievements.length}件）` : ''}
+              {newAchievements.length > 1
+                ? t('battleVictory.achievementTitleMulti', { n: newAchievements.length })
+                : t('battleVictory.achievementTitle')}
             </h3>
             <div className="achievement-list">
               {newAchievements.map((a) => (
@@ -140,17 +139,17 @@ export const BattleVictoryPanel = ({
                 >
                   <span className="achievement-icon">{a.icon}</span>
                   <div className="achievement-info">
-                    <p className="achievement-name">{a.name}</p>
+                    <p className="achievement-name">{t(achievementNameKey(a.id), undefined, a.name)}</p>
                     <p className="achievement-desc">
-                      {a.description}
+                      {t(achievementDescKey(a.id), undefined, a.description)}
                       {getCumulativeAchievementProgressSuffix(
                         a.id,
                         cumulativeDisplayState.counters,
                         cumulativeDisplayState.defeatCount,
                       ) ?? ''}
                     </p>
-                    <p className="achievement-tier">{TIER_LABEL[a.tier]}</p>
-                    <p className="achievement-reward">報酬: カード2枚（タップで表示）</p>
+                    <p className="achievement-tier">{t(`achievement.tier.${a.tier}` as MessageKey)}</p>
+                    <p className="achievement-reward">{t('battleVictory.rewardTap')}</p>
                   </div>
                 </button>
               ))}
@@ -162,7 +161,7 @@ export const BattleVictoryPanel = ({
           className={`victory-tap-hint ${tapToContinueEnabled ? 'victory-tap-hint--ready' : ''}`}
           aria-hidden={!tapToContinueEnabled}
         >
-          タップして進む
+          {t('battleVictory.tapHint')}
         </p>
       </div>
 

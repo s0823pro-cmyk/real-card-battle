@@ -1,7 +1,7 @@
 {
   "name": "real-card-battle",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "postinstall": "patch-package",
@@ -12,11 +12,15 @@
     "cap:build": "npm run build && npx cap sync",
     "cap:ios": "npm run cap:build && npx cap open ios",
     "cap:android": "npm run cap:build && npx cap open android",
+    "android:aab": "bash scripts/build-android-aab.sh",
     "android:clean-gradle": "powershell -ExecutionPolicy Bypass -File ./scripts/clean-android-gradle.ps1",
-    "compress:images": "node scripts/compress-images.cjs"
+    "compress:images": "node scripts/compress-images.cjs",
+    "generate:locales": "tsx scripts/generate-locale-json.ts",
+    "translate:locales": "tsx scripts/translate-locales.ts"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
+    "@capacitor-community/in-app-review": "^8.0.0",
     "@capacitor/android": "^8.2.0",
     "@capacitor/app": "^8.0.1",
     "@capacitor/browser": "^8.0.2",
@@ -41,6 +45,7 @@
     "globals": "^17.4.0",
     "patch-package": "^8.0.1",
     "sharp": "^0.34.5",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.0"

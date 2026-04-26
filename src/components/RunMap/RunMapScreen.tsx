@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { BranchPreview, GameProgress, TileType } from '../../types/run';
 import type { Card } from '../../types/game';
@@ -7,6 +7,8 @@ import { getEffectiveMaxMental } from '../../utils/mentalLimits';
 import { getMapBackgroundForJob } from '../../data/mapBackgrounds';
 import { TILE_LABELS } from '../../data/runData';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { omamoriDescKey, omamoriNameKey } from '../../i18n/entityKeys';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
@@ -38,34 +40,6 @@ interface TilePreview {
   desc: string;
 }
 
-const getTilePreview = (type: GameProgress['board'][number]['type']): TilePreview => {
-  switch (type) {
-    case 'enemy':
-      return {
-        title: '⚔️ 戦闘',
-        desc: '敵が現れる',
-      };
-    case 'unique_boss':
-      return {
-        title: '💀 強敵',
-        desc: '強力な敵が待ち構えている',
-      };
-    case 'event':
-      return { title: '❓ ？？？', desc: '何かが起こる…' };
-    case 'shrine':
-      return { title: '⛩️ 神社', desc: 'お守りが手に入る' };
-    case 'pawnshop':
-      return { title: '🏪 質屋', desc: 'カードやアイテムの売買' };
-    case 'hotel':
-      return { title: '🏨 ホテル', desc: '回復・強化・瞑想・アイテム' };
-    case 'area_boss':
-      return { title: '👑 エリアボス', desc: '強大な敵が待つ' };
-    case 'start':
-    default:
-      return { title: '🏁 スタート', desc: 'ここから探索開始' };
-  }
-};
-
 const getNodeSize = (type: TileType): number => {
   if (type === 'area_boss') return 70;
   if (type === 'unique_boss') return 65;
@@ -76,6 +50,31 @@ const NODE_SPACING_SCALE_X = 1.08;
 const NODE_SPACING_SCALE_Y = 1.08;
 
 const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGiveUp }: Props) => {
+  const { t, locale, switchLocale, isLocaleLoading } = useLanguage();
+  const getTilePreview = useCallback(
+    (type: GameProgress['board'][number]['type']): TilePreview => {
+      switch (type) {
+        case 'enemy':
+          return { title: t('map.tile.enemy.title'), desc: t('map.tile.enemy.desc') };
+        case 'unique_boss':
+          return { title: t('map.tile.elite.title'), desc: t('map.tile.elite.desc') };
+        case 'event':
+          return { title: t('map.tile.event.title'), desc: t('map.tile.event.desc') };
+        case 'shrine':
+          return { title: t('map.tile.shrine.title'), desc: t('map.tile.shrine.desc') };
+        case 'pawnshop':
+          return { title: t('map.tile.pawnshop.title'), desc: t('map.tile.pawnshop.desc') };
+        case 'hotel':
+          return { title: t('map.tile.hotel.title'), desc: t('map.tile.hotel.desc') };
+        case 'area_boss':
+          return { title: t('map.tile.boss.title'), desc: t('map.tile.boss.desc') };
+        case 'start':
+        default:
+          return { title: t('map.tile.start.title'), desc: t('map.tile.start.desc') };
+      }
+    },
+    [t],
+  );
   const {
     toggleBgmMute,
     toggleSeMute,
@@ -261,24 +260,29 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
 
   return (
     <main
-      className={`run-map-screen ${bgUrl && isAreaFading ? 'run-map-screen--bg-fadein' : ''}`}
-      style={
-        bgUrl
-          ? {
+      className="run-map-screen"
+      style={bgUrl ? { background: 'transparent' } : { background: '#0d1117' }}
+    >
+      {bgUrl && (
+        <>
+          <div
+            className={`run-map-fullbleed-bg ${isAreaFading ? 'run-map-fullbleed-bg--fadein' : ''}`}
+            style={{
               backgroundImage: `url(${bgUrl})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
-            }
-          : {
-              background: '#0d1117',
-            }
-      }
-    >
-      {bgUrl && <div className="map-bg-overlay" />}
+            }}
+            aria-hidden
+          />
+          <div className="map-bg-overlay" />
+        </>
+      )}
+      {/* overflow: hidden の main 外に出せないため、ノッチ〜ステータス帯の黒みは fixed で被せる */}
+      <div className="map-header-status-gradient" aria-hidden />
       <header className="map-header">
         <div className="map-header-row">
-          <span className="map-area-name">エリア{progress.currentArea}</span>
+          <span className="map-area-name">{t('map.area', { n: progress.currentArea })}</span>
           <div className="map-player-stats">
             <span className={`map-stat map-stat--hp ${getHpClass()}`}>
               ❤️ {progress.player.maxHp}/{progress.player.currentHp}
@@ -296,7 +300,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
               type="button"
               className="btn-map-settings"
               onClick={() => setShowMapSettings(true)}
-              aria-label="マップ設定"
+              aria-label={t('map.settingsAria')}
             >
               ⚙️
             </button>
@@ -309,21 +313,23 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
               className="map-relics-toggle"
               onClick={() => setRelicsOpen((prev) => !prev)}
             >
-              お守り {relicsOpen ? '▲' : '▼'}
+              {t('map.relicsToggle', {
+                state: relicsOpen ? t('map.relicsOpen') : t('map.relicsClosed'),
+              })}
             </button>
             {relicsOpen && (
               <div className="map-relics">
                 {progress.omamoris.map((relic, idx) => (
                   <Tooltip
                     key={`${relic.id}_${idx}`}
-                    label={relic.name}
-                    description={relic.description}
+                    label={t(omamoriNameKey(relic.id), undefined, relic.name)}
+                    description={t(omamoriDescKey(relic.id), undefined, relic.description)}
                   >
                     <span className="map-relic-icon">
                       {relic.imageUrl ? (
                         <img
                           src={relic.imageUrl}
-                          alt={relic.name}
+                          alt={t(omamoriNameKey(relic.id), undefined, relic.name)}
                           className="map-relic-image"
                           draggable={false}
                           onContextMenu={(e) => e.preventDefault()}
@@ -514,7 +520,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
       <footer className="map-controls">
         {isSelecting ? (
           <div className="map-branch-inline">
-            <p className="map-branch-inline-label">光っているノードをタップしてルートを選んでください</p>
+            <p className="map-branch-inline-label">{t('map.branchHint')}</p>
           </div>
         ) : (
           <button
@@ -526,21 +532,21 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
             }
             onClick={onRollDice}
           >
-            🎰 ルーレットを回す
+            {t('map.roulette')}
           </button>
         )}
       </footer>
       {showMapSettings && (
         <div className="map-settings-overlay" onClick={() => setShowMapSettings(false)}>
           <div className="map-settings-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="map-settings-title">設定</h3>
+            <h3 className="map-settings-title">{t('common.settings')}</h3>
             <button
               type="button"
               className={`map-settings-volume-toggle ${mapVolumeOpen ? 'map-settings-volume-toggle--open' : ''}`}
               onClick={() => setMapVolumeOpen((v) => !v)}
               aria-expanded={mapVolumeOpen}
             >
-              <span>🔊 音量</span>
+              <span>{t('common.volume')}</span>
               <span className="map-settings-volume-toggle-arrow" aria-hidden>
                 {mapVolumeOpen ? '▲' : '▼'}
               </span>
@@ -549,7 +555,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
               <div className="map-settings-audio">
                 <div className="map-settings-audio-item">
                   <div className="map-settings-audio-head">
-                    <span className="map-settings-audio-title">BGM</span>
+                    <span className="map-settings-audio-title">{t('common.bgm')}</span>
                     <button
                       type="button"
                       className={`map-settings-mute ${bgmMuted ? 'map-settings-mute--off' : 'map-settings-mute--on'}`}
@@ -558,13 +564,13 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                         setBgmMuted(next);
                       }}
                     >
-                      {bgmMuted ? '🔇 OFF' : '🔊 ON'}
+                      {bgmMuted ? t('common.audioOff') : t('common.audioOn')}
                     </button>
                   </div>
                 </div>
                 <div className="map-settings-audio-item">
                   <div className="map-settings-audio-head">
-                    <span className="map-settings-audio-title">SE</span>
+                    <span className="map-settings-audio-title">{t('common.se')}</span>
                     <button
                       type="button"
                       className={`map-settings-mute ${seMuted ? 'map-settings-mute--off' : 'map-settings-mute--on'}`}
@@ -573,8 +579,31 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                         setSeMuted(next);
                       }}
                     >
-                      {seMuted ? '🔇 OFF' : '🔊 ON'}
+                      {seMuted ? t('common.audioOff') : t('common.audioOn')}
                     </button>
+                  </div>
+                </div>
+                <div className="map-settings-language">
+                  <span className="map-settings-language-label">{t('common.language')}</span>
+                  {isLocaleLoading && <p className="map-settings-locale-loading">{t('common.localeLoading')}</p>}
+                  <div className="map-settings-language-row" role="group" aria-label={t('common.language')}>
+                    {(
+                      [
+                        { code: 'ja' as const, labelKey: 'lang.ja' as const },
+                        { code: 'en' as const, labelKey: 'lang.en' as const },
+                        { code: 'ko' as const, labelKey: 'lang.ko' as const },
+                      ] as const
+                    ).map(({ code, labelKey }) => (
+                      <button
+                        key={code}
+                        type="button"
+                        disabled={isLocaleLoading}
+                        className={`map-settings-lang-btn ${locale === code ? 'map-settings-lang-btn--active' : ''}`}
+                        onClick={() => void switchLocale(code)}
+                      >
+                        {t(labelKey)}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -588,21 +617,21 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                 setShowMapGlossary(true);
               }}
             >
-              📖 用語集
+              {t('battle.glossary')}
             </button>
             <button
               type="button"
               className="btn-give-up"
               onClick={() => setShowGiveUpConfirm(true)}
             >
-              このランを諦める
+              {t('map.giveUpRun')}
             </button>
             <button
               type="button"
               className="btn-map-settings-close"
               onClick={() => setShowMapSettings(false)}
             >
-              閉じる
+              {t('common.close')}
             </button>
           </div>
         </div>
@@ -613,15 +642,15 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
       {showGiveUpConfirm && (
         <div className="map-settings-overlay" onClick={() => setShowGiveUpConfirm(false)}>
           <div className="map-settings-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="map-settings-title">本当に諦めますか？</h3>
-            <p className="give-up-desc">進行状況は失われます。</p>
+            <h3 className="map-settings-title">{t('map.giveUpTitle')}</h3>
+            <p className="give-up-desc">{t('map.giveUpDesc')}</p>
             <div className="give-up-buttons">
               <button
                 type="button"
                 className="btn-give-up-cancel"
                 onClick={() => setShowGiveUpConfirm(false)}
               >
-                やめておく
+                {t('map.giveUpCancel')}
               </button>
               <button
                 type="button"
@@ -632,7 +661,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
                   onGiveUp();
                 }}
               >
-                諦める
+                {t('map.giveUpConfirm')}
               </button>
             </div>
           </div>
@@ -642,7 +671,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
         <div className="deck-overlay" onClick={() => setShowDeck(false)}>
           <div className="deck-modal" onClick={(event) => event.stopPropagation()}>
             <div className="deck-modal-header">
-              <h2 className="deck-modal-title">デッキ ({progress.deck.length}枚)</h2>
+              <h2 className="deck-modal-title">{t('map.deckTitle', { n: progress.deck.length })}</h2>
               <button type="button" className="btn-close" onClick={() => setShowDeck(false)}>
                 ✕
               </button>

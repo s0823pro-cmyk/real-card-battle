@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import type { MessageKey } from '../../i18n';
+import { enemyNameKey, translatedCardName } from '../../i18n/entityKeys';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import CardComponent from '../Hand/CardComponent';
 import type { Card, CardRarity, CardType, JobId } from '../../types/game';
@@ -55,27 +58,26 @@ type FrameRarity = CardRarity | 'starter';
 
 interface StoryEntry {
   storyId: string;
-  name: string;
   icon: string;
   scenes: StoryScene[];
 }
 
 const STORY_LIST: StoryEntry[] = [
-  { storyId: 'carpenter_opening', name: '大工 - 序章',         icon: '🔨', scenes: CARPENTER_STORY },
-  { storyId: 'carpenter_e1',      name: '大工 - 第1章',        icon: '🔨', scenes: CARPENTER_E1_STORY },
-  { storyId: 'carpenter_e2',      name: '大工 - 第2章',        icon: '🔨', scenes: CARPENTER_E2_STORY },
-  { storyId: 'carpenter_e3',      name: '大工 - エンディング', icon: '🔨', scenes: CARPENTER_E3_STORY },
-  { storyId: 'cook_opening',      name: '料理人 - 序章',       icon: '🔪', scenes: COOK_STORY },
-  { storyId: 'cook_e1',           name: '料理人 - 第1章',      icon: '🔪', scenes: COOK_E1_STORY },
-  { storyId: 'cook_e2',           name: '料理人 - 第2章',      icon: '🔪', scenes: COOK_E2_STORY },
-  { storyId: 'cook_e3',           name: '料理人 - エンディング', icon: '🔪', scenes: COOK_E3_STORY },
+  { storyId: 'carpenter_opening', icon: '🔨', scenes: CARPENTER_STORY },
+  { storyId: 'carpenter_e1', icon: '🔨', scenes: CARPENTER_E1_STORY },
+  { storyId: 'carpenter_e2', icon: '🔨', scenes: CARPENTER_E2_STORY },
+  { storyId: 'carpenter_e3', icon: '🔨', scenes: CARPENTER_E3_STORY },
+  { storyId: 'cook_opening', icon: '🔪', scenes: COOK_STORY },
+  { storyId: 'cook_e1', icon: '🔪', scenes: COOK_E1_STORY },
+  { storyId: 'cook_e2', icon: '🔪', scenes: COOK_E2_STORY },
+  { storyId: 'cook_e3', icon: '🔪', scenes: COOK_E3_STORY },
 ];
 
-const JOB_TABS: { id: JobTab; label: string; icon: string }[] = [
-  { id: 'carpenter', label: '大工', icon: '🔨' },
-  { id: 'cook', label: '料理人', icon: '🔪' },
-  { id: 'unemployed', label: '無職', icon: '✊' },
-  { id: 'neutral', label: '無色', icon: '⬜' },
+const JOB_TABS: { id: JobTab; labelKey: MessageKey; icon: string }[] = [
+  { id: 'carpenter', labelKey: 'job.carpenter.name', icon: '🔨' },
+  { id: 'cook', labelKey: 'job.cook.name', icon: '🔪' },
+  /* 無職はプレイで選択できないため図鑑タブからは除外（カードプールは dev 全解放用に保持） */
+  { id: 'neutral', labelKey: 'zukan.job.neutral', icon: '⬜' },
 ];
 
 const withRarity = (cards: Card[], rarity: CardRarity): Card[] =>
@@ -111,7 +113,7 @@ const ALL_CARDS: Record<JobTab, Card[]> = {
   neutral: ZUKAN_CARD_POOLS.neutral,
 };
 
-const JOB_TABS_WITH_UPGRADE_PREVIEW: JobTab[] = ['carpenter', 'cook', 'unemployed'];
+const JOB_TABS_WITH_UPGRADE_PREVIEW: JobTab[] = ['carpenter', 'cook'];
 
 /** 図鑑タブのカードプールに、少なくとも1枚は強化定義があるか（no_upgrade は除外） */
 const jobTabPoolHasAnyUpgrade = (tab: JobTab): boolean => {
@@ -174,6 +176,7 @@ interface ZukanScreenProps {
 }
 
 export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanScreenProps) => {
+  const { t } = useLanguage();
   const { playBgm } = useAudioContext();
   const [mainTab, setMainTab] = useState<MainTab>('cards');
   const [activeTab, setActiveTab] = useState<JobTab>('carpenter');
@@ -280,6 +283,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
         scenes={playingStory.scenes}
         onComplete={handleStoryComplete}
         showStartButton={false}
+        storyBundleId={playingStory.storyId}
         jobId={isCook ? 'cook' : 'carpenter'}
         storyBgmArea={storyBgmArea}
       />
@@ -291,14 +295,14 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
       <div className="zukan-modal" onClick={(event) => event.stopPropagation()}>
         <div className="zukan-header">
           <button type="button" className="zukan-back-btn" onClick={onClose}>
-            ← 戻る
+            {t('common.back')}
           </button>
-          <h2 className="zukan-title">図鑑</h2>
+          <h2 className="zukan-title">{t('zukan.title')}</h2>
           <div className="zukan-header-actions">
             {mainTab === 'cards' && (
               import.meta.env.DEV ? (
                 <button type="button" className="btn-unlock-all" onClick={unlockAllCards}>
-                  🛠️ 全解放
+                  {t('zukan.devUnlockAll')}
                 </button>
               ) : null
             )}
@@ -311,21 +315,21 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
             className={`zukan-main-tab ${mainTab === 'cards' ? 'zukan-main-tab--active' : ''}`}
             onClick={() => setMainTab('cards')}
           >
-            カード
+            {t('zukan.tab.cards')}
           </button>
           <button
             type="button"
             className={`zukan-main-tab ${mainTab === 'enemies' ? 'zukan-main-tab--active' : ''}`}
             onClick={() => setMainTab('enemies')}
           >
-            敵
+            {t('zukan.tab.enemies')}
           </button>
           <button
             type="button"
             className={`zukan-main-tab ${mainTab === 'stories' ? 'zukan-main-tab--active' : ''}`}
             onClick={() => setMainTab('stories')}
           >
-            ストーリー
+            {t('zukan.tab.stories')}
           </button>
         </div>
 
@@ -344,7 +348,9 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                   disabled={!unlocked}
                 >
                   <span className="zukan-story-icon">{entry.icon}</span>
-                  <span className="zukan-story-name">{entry.name}</span>
+                  <span className="zukan-story-name">
+                    {t(`zukan.story.${entry.storyId}` as MessageKey)}
+                  </span>
                   {!unlocked && <span className="zukan-story-lock">🔒</span>}
                 </button>
               );
@@ -362,13 +368,19 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                   className={`zukan-filter-btn ${enemyTypeFilter === type ? 'zukan-filter-btn--active' : ''}`}
                   onClick={() => setEnemyTypeFilter(type)}
                 >
-                  {type === 'all' ? '全て' : type === 'normal' ? '通常' : type === 'elite' ? 'ELITE' : 'BOSS'}
+                  {type === 'all'
+                    ? t('zukan.filter.all')
+                    : type === 'normal'
+                      ? t('zukan.filter.normal')
+                      : type === 'elite'
+                        ? t('zukan.filter.elite')
+                        : t('zukan.filter.boss')}
                 </button>
               ))}
             </div>
             {[1, 2, 3].map((area) => (
               <div key={area} className="zukan-enemy-area">
-                <h3 className="zukan-enemy-area-title">エリア{area}</h3>
+                <h3 className="zukan-enemy-area-title">{t('zukan.areaTitle', { n: area })}</h3>
                 <div className="zukan-enemy-grid">
                   {ENEMY_ZUKAN_DATA
                     .filter((enemy) => enemy.area === area && (enemyTypeFilter === 'all' || enemy.type === enemyTypeFilter))
@@ -392,11 +404,13 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                           <img
                             className="zukan-enemy-img"
                             src={enemy.imageUrl}
-                            alt={enemy.name}
+                            alt={t(enemyNameKey(enemy.id), undefined, enemy.name)}
                           />
                         )}
                         <p className="zukan-enemy-name">
-                          {status === 'none' || status === 'encountered' ? '？？？' : enemy.name}
+                          {status === 'none' || status === 'encountered'
+                            ? '？？？'
+                            : t(enemyNameKey(enemy.id), undefined, enemy.name)}
                         </p>
                         {status === 'defeated' && defeatCount > 0 && (
                           <span className="zukan-enemy-defeat-count">討伐 {defeatCount}</span>
@@ -432,7 +446,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     setShowUpgradePreview(false);
                   }}
                 >
-                  {tab.icon} {tab.label}
+                  {tab.icon} {t(tab.labelKey)}
                 </button>
               ))}
             </div>
@@ -448,7 +462,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     } ${rarityFilter === rarity ? 'zukan-filter-btn--active' : ''}`}
                     onClick={() => setRarityFilter(rarity)}
                   >
-                    {rarity === 'all' ? '全て' : rarity === 'common' ? 'C' : rarity === 'uncommon' ? 'U' : 'R'}
+                    {rarity === 'all' ? t('zukan.filter.all') : rarity === 'common' ? 'C' : rarity === 'uncommon' ? 'U' : 'R'}
                   </button>
                 ))}
               </div>
@@ -461,7 +475,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     onClick={() => setTypeFilter(type)}
                   >
                     {type === 'all'
-                      ? '全て'
+                      ? t('zukan.filter.all')
                       : type === 'attack'
                         ? 'ATK'
                         : type === 'skill'
@@ -475,7 +489,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
             </div>
 
             <div className="zukan-count-row">
-              <p className="zukan-count">{filteredCards.length}枚</p>
+              <p className="zukan-count">{t('zukan.cardCount', { n: filteredCards.length })}</p>
               {showZukanUpgradeToggle && (
                 <button
                   type="button"
@@ -485,7 +499,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     setSelectedIndex(null);
                   }}
                 >
-                  強化
+                  {t('zukan.upgradeBtn')}
                 </button>
               )}
             </div>
@@ -506,7 +520,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     className={`zukan-card-item ${zukanRarityClass} ${isUnlocked ? '' : 'zukan-card-item--locked'}`}
                     role="button"
                     tabIndex={0}
-                    aria-label={`${card.name} の詳細を開く`}
+                    aria-label={t('zukan.cardDetailAria', { name: translatedCardName(card, t) })}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
@@ -517,7 +531,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     <button
                       type="button"
                       className="zukan-card-hitbox"
-                      aria-label={`${card.name} の詳細を開く`}
+                      aria-label={t('zukan.cardDetailAria', { name: translatedCardName(card, t) })}
                       disabled={!isUnlocked}
                       onClick={(event) => {
                         if (!isUnlocked) return;
@@ -559,7 +573,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                   </div>
                 );
               })}
-              {filteredCards.length === 0 && <p className="zukan-empty">該当するカードがありません</p>}
+              {filteredCards.length === 0 && <p className="zukan-empty">{t('zukan.emptyFilter')}</p>}
             </div>
 
             {selectedCard && (
@@ -634,7 +648,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                       event.stopPropagation();
                       goNext();
                     }}
-                    aria-label="次のカード"
+                    aria-label={t('zukan.cardNavNext')}
                   >
                     ›
                   </button>
@@ -650,11 +664,13 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
               <img
                 className="zukan-enemy-modal-img"
                 src={selectedEnemy.imageUrl}
-                alt={selectedEnemy.name}
+                alt={t(enemyNameKey(selectedEnemy.id), undefined, selectedEnemy.name)}
               />
               <div className="zukan-enemy-modal-info">
                 <div className="zukan-enemy-modal-name-row">
-                  <h3 className="zukan-enemy-modal-name">{selectedEnemy.name}</h3>
+                  <h3 className="zukan-enemy-modal-name">
+                    {t(enemyNameKey(selectedEnemy.id), undefined, selectedEnemy.name)}
+                  </h3>
                   {getEnemyIntentsForZukan(selectedEnemy.id).length > 0 && (
                     <button
                       type="button"
@@ -664,21 +680,21 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                         setEnemySkillsOpen(true);
                       }}
                     >
-                      技
+                      {t('zukan.enemy.skills')}
                     </button>
                   )}
                 </div>
                 <div className="zukan-enemy-modal-stats">
                   <span>HP: {selectedEnemy.hp}</span>
-                  <span>エリア{selectedEnemy.area}</span>
-                  <span>討伐: {getEnemyDefeatCount(selectedEnemy.id)}回</span>
+                  <span>{t('zukan.areaTitle', { n: selectedEnemy.area })}</span>
+                  <span>{t('zukan.enemy.defeatCount', { n: getEnemyDefeatCount(selectedEnemy.id) })}</span>
                 </div>
                 {getEnemyStatus(selectedEnemy.id) === 'defeated' && (
                   <p className="zukan-enemy-modal-desc">{selectedEnemy.description}</p>
                 )}
                 {getEnemyStatus(selectedEnemy.id) === 'encountered' && (
                   <p className="zukan-enemy-modal-desc zukan-enemy-modal-desc--unknown">
-                    撃破すると詳細が解放されます
+                    {t('zukan.enemy.unlockHint')}
                   </p>
                 )}
               </div>
@@ -703,8 +719,10 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
           >
             <div className="zukan-enemy-skills-modal" onClick={(event) => event.stopPropagation()}>
               <div className="zukan-enemy-skills-modal-header">
-                <h3 className="zukan-enemy-skills-modal-title">使用する技</h3>
-                <p className="zukan-enemy-skills-modal-sub">{selectedEnemy.name}</p>
+                <h3 className="zukan-enemy-skills-modal-title">{t('zukan.enemySkillsTitle')}</h3>
+                <p className="zukan-enemy-skills-modal-sub">
+                  {t(enemyNameKey(selectedEnemy.id), undefined, selectedEnemy.name)}
+                </p>
               </div>
               <div className="zukan-enemy-skills-modal-body">
                 {getEnemyStatus(selectedEnemy.id) === 'defeated' ? (

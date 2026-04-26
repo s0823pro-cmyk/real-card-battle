@@ -16,13 +16,24 @@
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
-  background-color: #0d1117;
+  background-color: transparent;
   /* RunMap 等と同様、--sat より詰めてヘッダー行をステータスバー直下に寄せる */
   --battle-header-top: max(0px, calc(var(--sat) - 56px - var(--root-safe-top, 0px)));
 }
 
+/* transform を main に付けないためシェイクはこの層のみ。fixed の BG が viewport 基準のまま維持される */
+.battle-screen-shake-layer {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ビューポート全面（ステータスバー／ノッチ下まで）に戦闘 BG を敷く */
 .battle-screen-bg-root {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
@@ -500,6 +511,27 @@
 
 .battle-settings-mute--off {
   background: #666;
+}
+
+.battle-settings-language.settings-language-block {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 14px;
+}
+.battle-settings-language .settings-language-label {
+  color: #e6edf3;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-ui);
+}
+.battle-settings-language .settings-language-row {
+  margin-top: 8px;
+}
+.battle-settings-language .settings-lang-btn {
+  font-family: var(--font-ui);
+  font-size: 12px;
 }
 
 .battle-settings-range {

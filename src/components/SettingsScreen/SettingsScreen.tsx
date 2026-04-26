@@ -7,7 +7,9 @@ import { getDebugEnemyHp1, setDebugEnemyHp1 } from '../../utils/debugEnemyHp1';
 import { unlockJob } from '../../utils/jobUnlockSystem';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import type { DevDestination } from '../../hooks/useRunProgress';
+import type { Locale } from '../../i18n';
 
 const TERMS_URL = 'https://s0823pro-cmyk.github.io/real-card-battle/terms.html';
 const PRIVACY_URL = 'https://s0823pro-cmyk.github.io/real-card-battle/privacy.html';
@@ -23,10 +25,13 @@ const openUrl = async (url: string) => {
 export interface SettingsScreenProps {
   onBack: () => void;
   onResetData: () => void;
+  /** 用語集を開く（未指定のときはデータセクションに用語集ボタンを出さない） */
+  onOpenGlossary?: () => void;
   onDevNavigate?: (destination: DevDestination) => void;
 }
 
-const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenProps) => {
+const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: SettingsScreenProps) => {
+  const { t, locale, switchLocale, isLocaleLoading } = useLanguage();
   const { toggleBgmMute, toggleSeMute, isBgmMuted, isSeMuted } = useAudioContext();
 
   const [bgmMuted, setBgmMuted] = useState(() => isBgmMuted());
@@ -48,7 +53,7 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
 
   const handleIapPurchase = async (productId: string) => {
     if (!Capacitor.isNativePlatform()) {
-      window.alert('アプリ内課金はストアからインストールしたアプリでご利用ください。');
+      window.alert(t('home.settings.iapNativeOnly'));
       return;
     }
     setIapBusy(true);
@@ -56,7 +61,7 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
       await purchaseProduct(productId);
       setIsAdFree(getAdsRemoved());
     } catch {
-      window.alert('購入を完了できませんでした。');
+      window.alert(t('home.settings.iapPurchaseFail'));
     } finally {
       setIapBusy(false);
     }
@@ -64,7 +69,7 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
 
   const handleIapRestore = async () => {
     if (!Capacitor.isNativePlatform()) {
-      window.alert('購入の復元はストアからインストールしたアプリでご利用ください。');
+      window.alert(t('home.settings.iapRestoreNativeOnly'));
       return;
     }
     setIapBusy(true);
@@ -72,19 +77,25 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
       await restorePurchases();
       setIsAdFree(getAdsRemoved());
     } catch {
-      window.alert('復元に失敗しました。');
+      window.alert(t('home.settings.iapRestoreFail'));
     } finally {
       setIapBusy(false);
     }
   };
 
+  const langOptions: { code: Locale; labelKey: 'lang.ja' | 'lang.en' | 'lang.ko' }[] = [
+    { code: 'ja', labelKey: 'lang.ja' },
+    { code: 'en', labelKey: 'lang.en' },
+    { code: 'ko', labelKey: 'lang.ko' },
+  ];
+
   return (
     <div className="settings-screen">
       <div className="settings-header">
         <button type="button" className="btn-settings-back" onClick={onBack}>
-          ← 戻る
+          {t('common.back')}
         </button>
-        <h2 className="settings-title">設定</h2>
+        <h2 className="settings-title">{t('common.settings')}</h2>
       </div>
 
       <div className="settings-content">
@@ -94,14 +105,14 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
             className={`settings-accordion-header ${openSection === 'sound' ? 'is-open' : ''}`}
             onClick={() => toggleSection('sound')}
           >
-            <span>🔊 音量設定</span>
+            <span>{t('common.volumeSettings')}</span>
             <span className="settings-accordion-arrow">{openSection === 'sound' ? '▲' : '▼'}</span>
           </button>
           {openSection === 'sound' && (
             <div className="settings-accordion-body">
               <div className="settings-item settings-item--audio">
                 <div className="settings-item-header">
-                  <span className="settings-item-label">BGM</span>
+                  <span className="settings-item-label">{t('common.bgm')}</span>
                   <button
                     type="button"
                     className={`btn-mute ${bgmMuted ? 'btn-mute--off' : 'btn-mute--on'}`}
@@ -110,14 +121,14 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
                       setBgmMuted(next);
                     }}
                   >
-                    {bgmMuted ? '🔇 OFF' : '🔊 ON'}
+                    {bgmMuted ? t('common.audioOff') : t('common.audioOn')}
                   </button>
                 </div>
               </div>
 
               <div className="settings-item settings-item--audio">
                 <div className="settings-item-header">
-                  <span className="settings-item-label">SE</span>
+                  <span className="settings-item-label">{t('common.se')}</span>
                   <button
                     type="button"
                     className={`btn-mute ${seMuted ? 'btn-mute--off' : 'btn-mute--on'}`}
@@ -126,7 +137,7 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
                       setSeMuted(next);
                     }}
                   >
-                    {seMuted ? '🔇 OFF' : '🔊 ON'}
+                    {seMuted ? t('common.audioOff') : t('common.audioOn')}
                   </button>
                 </div>
               </div>
@@ -140,20 +151,41 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
             className={`settings-accordion-header ${openSection === 'game' ? 'is-open' : ''}`}
             onClick={() => toggleSection('game')}
           >
-            <span>⚙️ ゲーム設定</span>
+            <span>{t('home.settings.dataSection')}</span>
             <span className="settings-accordion-arrow">{openSection === 'game' ? '▲' : '▼'}</span>
           </button>
           {openSection === 'game' && (
             <div className="settings-accordion-body">
+              {onOpenGlossary ? (
+                <button type="button" className="settings-btn-block" onClick={() => onOpenGlossary()}>
+                  <span className="settings-btn-block-title">{t('home.settings.glossaryTitle')}</span>
+                  <span className="settings-btn-block-desc">{t('home.settings.glossaryDesc')}</span>
+                </button>
+              ) : null}
+              <div className="settings-item settings-item--audio settings-language-block">
+                <span className="settings-language-label">{t('common.language')}</span>
+                {isLocaleLoading && <p className="settings-locale-loading">{t('common.localeLoading')}</p>}
+                <div className="settings-language-row" role="group" aria-label={t('common.language')}>
+                  {langOptions.map(({ code, labelKey }) => (
+                    <button
+                      key={code}
+                      type="button"
+                      disabled={isLocaleLoading}
+                      className={`settings-lang-btn ${locale === code ? 'settings-lang-btn--active' : ''}`}
+                      onClick={() => void switchLocale(code)}
+                    >
+                      {t(labelKey)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="settings-item settings-item--row">
                 <div className="settings-item-info">
-                  <p className="settings-item-title">データ初期化</p>
-                  <p className="settings-item-desc">
-                    ゲームの進行・図鑑・チュートリアルをすべてリセットします。この操作は元に戻せません。
-                  </p>
+                  <p className="settings-item-title">{t('home.settings.dataResetTitle')}</p>
+                  <p className="settings-item-desc">{t('home.settings.dataResetDesc')}</p>
                 </div>
                 <button type="button" className="settings-btn-danger" onClick={onResetData}>
-                  初期化
+                  {t('home.settings.dataResetBtn')}
                 </button>
               </div>
             </div>
@@ -166,7 +198,7 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
             className={`settings-accordion-header ${openSection === 'purchase' ? 'is-open' : ''}`}
             onClick={() => toggleSection('purchase')}
           >
-            <span>💳 購入・課金</span>
+            <span>{t('home.settings.purchaseSection')}</span>
             <span className="settings-accordion-arrow">
               {openSection === 'purchase' ? '▲' : '▼'}
             </span>
@@ -176,8 +208,8 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
               {!isAdFree && (
                 <div className="settings-item settings-item--row">
                   <div className="settings-item-info">
-                    <p className="settings-item-title">広告を削除</p>
-                    <p className="settings-item-desc">広告表示をオフにします（買い切り）。</p>
+                    <p className="settings-item-title">{t('home.settings.removeAdsTitle')}</p>
+                    <p className="settings-item-desc">{t('home.settings.removeAdsDesc')}</p>
                   </div>
                   <button
                     type="button"
@@ -191,8 +223,8 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
               )}
               <div className="settings-item settings-item--row">
                 <div className="settings-item-info">
-                  <p className="settings-item-title">開発者応援パック</p>
-                  <p className="settings-item-desc">開発支援のためのオプション購入です。</p>
+                  <p className="settings-item-title">{t('home.settings.supporterTitle')}</p>
+                  <p className="settings-item-desc">{t('home.settings.supporterDesc')}</p>
                 </div>
                 <button
                   type="button"
@@ -206,8 +238,8 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
               {!isAdFree && (
                 <div className="settings-item settings-item--row">
                   <div className="settings-item-info">
-                    <p className="settings-item-title">お得セット</p>
-                    <p className="settings-item-desc">広告削除を含むセットです。</p>
+                    <p className="settings-item-title">{t('home.settings.bundleTitle')}</p>
+                    <p className="settings-item-desc">{t('home.settings.bundleDesc')}</p>
                   </div>
                   <button
                     type="button"
@@ -221,8 +253,8 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
               )}
               <div className="settings-item settings-item--row">
                 <div className="settings-item-info">
-                  <p className="settings-item-title">購入の復元</p>
-                  <p className="settings-item-desc">以前に購入した内容を復元します。</p>
+                  <p className="settings-item-title">{t('home.settings.restoreTitle')}</p>
+                  <p className="settings-item-desc">{t('home.settings.restoreDesc')}</p>
                 </div>
                 <button
                   type="button"
@@ -230,7 +262,7 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
                   disabled={iapBusy}
                   onClick={() => void handleIapRestore()}
                 >
-                  復元
+                  {t('home.settings.restoreBtn')}
                 </button>
               </div>
             </div>
@@ -239,70 +271,68 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
 
         <div className="settings-item settings-item--legal-link">
           <button type="button" className="btn-settings-link" onClick={() => void openUrl(TERMS_URL)}>
-            利用規約
+            {t('home.settings.terms')}
           </button>
         </div>
 
         <div className="settings-item settings-item--legal-link">
           <button type="button" className="btn-settings-link" onClick={() => void openUrl(PRIVACY_URL)}>
-            プライバシーポリシー
+            {t('home.settings.privacy')}
           </button>
         </div>
 
         <div className="settings-legal">
-          <p className="settings-legal-text">
-            広告削除（¥300）は買い切りです。購入後は同一Apple ID / Google アカウントで無制限にご利用いただけます。
-          </p>
+          <p className="settings-legal-text">{t('home.settings.adRemoveLegal')}</p>
         </div>
 
         {import.meta.env.DEV && onDevNavigate && (
           <div className="dev-tools">
-            <p className="dev-tools-title">🛠️ 開発用ツール</p>
+            <p className="dev-tools-title">{t('settings.devTools')}</p>
             <div className="dev-tools-grid">
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_normal')}>
-                通常戦闘
+                {t('settings.dev.normalBattle')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_elite')}>
-                エリート戦闘
+                {t('settings.dev.eliteBattle')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_boss_1')}>
-                ボス1
+                {t('settings.dev.boss1')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_boss_2')}>
-                ボス2
+                {t('settings.dev.boss2')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_boss_3')}>
-                ボス3
+                {t('settings.dev.boss3')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('shop')}>
-                質屋
+                {t('settings.dev.pawnshop')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('shrine')}>
-                神社
+                {t('settings.dev.shrine')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('hotel')}>
-                ホテル
+                {t('settings.dev.hotel')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('event')}>
-                イベント
+                {t('settings.dev.event')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('card_reward')}>
-                カード報酬
+                {t('settings.dev.cardReward')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('boss_reward')}>
-                ボス報酬
+                {t('settings.dev.bossReward')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('story')}>
-                ストーリー
+                {t('settings.dev.story')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_all_cards')}>
-                全カード戦闘
+                {t('settings.dev.allCardsBattle')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_cook_all_x2')}>
-                料理人全カード×2戦闘
+                {t('settings.dev.cookAllX2')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_expansion_x2')}>
-                初期＋拡張バトル開始
+                {t('settings.dev.expansionBattle')}
               </button>
               <button
                 type="button"
@@ -313,10 +343,10 @@ const SettingsScreen = ({ onBack, onResetData, onDevNavigate }: SettingsScreenPr
                   setDebugEnemyHp1Local(next);
                 }}
               >
-                敵HP1 {debugEnemyHp1 ? 'ON' : 'OFF'}
+                {t('settings.dev.enemyHp1')} {debugEnemyHp1 ? 'ON' : 'OFF'}
               </button>
               <button type="button" className="btn-dev" onClick={() => unlockJob('cook')}>
-                (料理人解放)
+                {t('settings.dev.unlockCook')}
               </button>
             </div>
           </div>

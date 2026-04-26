@@ -1,6 +1,8 @@
 import type { Card, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import type { CSSProperties, RefObject } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { translatedCardDescription, translatedCardName } from '../../i18n/entityKeys';
 import CardComponent from '../Hand/CardComponent';
 import Tooltip from '../Tooltip/Tooltip';
 import './ActionBar.css';
@@ -25,6 +27,7 @@ const ActionBar = ({
   reserveFull,
   reserveDropRef,
 }: Props) => {
+  const { t } = useLanguage();
   const reservePenaltySeconds = reserved.length * 1.5;
   const reservePenaltyLabel =
     reserved.length > 0
@@ -87,8 +90,8 @@ const ActionBar = ({
                   return (
                     <Tooltip
                       key={`reserve-empty-${index}`}
-                      label="温存枠"
-                      description="カードをここにドロップすると温存できます。温存したカードは次ターン開始時に手札に戻ります。温存1枚につき次ターンの時間が1.5秒減少します。"
+                      label={t('actionBar.reserveEmptyLabel')}
+                      description={t('actionBar.reserveEmptyDesc')}
                     >
                       <div className="reserved-card-mini empty" />
                     </Tooltip>
@@ -98,7 +101,11 @@ const ActionBar = ({
                 const key =
                   slot.kind === 'pending' ? `reserve-pending-${card.id}` : `reserved-${card.id}-${index}`;
                 return (
-                  <Tooltip key={key} label={card.name} description={card.description ?? ''}>
+                  <Tooltip
+                    key={key}
+                    label={translatedCardName(card, t)}
+                    description={translatedCardDescription(card, t)}
+                  >
                     <div
                       className={`reserve-slot-item${slot.kind === 'pending' ? ' reserve-slot--pending' : ''}`}
                     >

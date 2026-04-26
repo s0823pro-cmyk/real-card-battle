@@ -12,10 +12,22 @@
   padding: 0;
   padding-top: 0;
   color: var(--text-primary);
-  overflow: hidden;
+  /* overflow:hidden は下端で子を切る。横スクロールは board-wrapper 側で抑える */
+  overflow: visible;
 }
 
-.run-map-screen--bg-fadein {
+/* マップ背景は main ではなく fixed でビューポート全面（ステータス下まで）に */
+.run-map-fullbleed-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.run-map-fullbleed-bg--fadein {
   animation: map-bg-fadein 0.8s ease forwards;
 }
 
@@ -27,16 +39,50 @@
   pointer-events: none;
 }
 
+/* ステータスバー〜時刻の下まで黒み（イマーシブ時 #root 下の余白より上に届く） */
+.map-header-status-gradient {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--sat) + 56px);
+  z-index: 2;
+  pointer-events: none;
+  /*
+   * 下端 ~50% は「ステータス下端（≈sat）」付近。ここで .map-header 背景先頭と色がずれると境界線に見える。
+   * sat/(sat+56) がだいたい 45–55% になるため、その帯で .map-header と同系・同程度の不透明度に揃える。
+   */
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 1, 4, 0.98) 0%,
+    rgba(1, 3, 8, 0.94) 12%,
+    rgba(2, 4, 10, 0.82) 26%,
+    rgba(2, 4, 9, 0.76) 40%,
+    rgba(2, 4, 8, 0.74) 48%,
+    rgba(2, 4, 8, 0.74) 54%,
+    rgba(2, 4, 8, 0.45) 66%,
+    rgba(2, 4, 8, 0.12) 82%,
+    rgba(2, 4, 8, 0) 100%
+  );
+}
+
 .map-header {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: rgba(13, 17, 23, 0.95);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  /* マップ側では早めに透明にし、マスがヘッダーに飲み込まれる感じを抑える */
+  /* 先頭は status-gradient のシーム帯と同じトーンに固定（重ね描きで段差を出さない） */
+  background: linear-gradient(
+    to bottom,
+    rgba(2, 4, 8, 0.74) 0%,
+    rgba(2, 4, 8, 0.42) 34%,
+    rgba(2, 4, 8, 0.14) 64%,
+    rgba(2, 4, 8, 0) 92%
+  );
+  border-bottom: none;
   padding-left: 16px;
   padding-right: 16px;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
   /* マップ上部ヘッダーをステータスバーに近づける（--sat よりさらに詰める） */
   padding-top: max(0px, calc(var(--sat) - 56px - var(--root-safe-top, 0px)));
   flex-shrink: 0;
@@ -52,10 +98,11 @@
 .map-area-name {
   font-family: var(--font-ui);
   font-size: 12px;
-  color: #8b949e;
+  color: #c9d1d9;
   letter-spacing: 0.05em;
   white-space: nowrap;
   flex-shrink: 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
 }
 
 .map-player-stats {
@@ -77,18 +124,20 @@
   font-size: 13px;
   font-weight: 700;
   color: #e6edf3;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
 }
 
 .btn-deck-icon {
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 4px;
-  color: #8b949e;
+  color: #e6edf3;
   font-family: var(--font-ui);
   font-size: 12px;
   padding: 2px 8px;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .btn-deck-icon:hover {
@@ -179,6 +228,12 @@
 }
 
 .board-wrapper {
+  /* 下部 fixed ルーレット帯（＋ホームインジケータ）＋ノードぶん／上部はヘッダー黒みと被せない余白 */
+  --map-footer-clearance: calc(124px + max(12px, env(safe-area-inset-bottom, 0px)));
+  --map-top-clearance: 44px;
+  /* スクロールビュー上下でノード・線が透明に溶ける距離（ヘッダー帯／ルーレット帯と同系の見え方） */
+  --map-top-fade-height: min(160px, 26vh);
+  --map-bottom-fade-height: min(180px, 28vh);
   position: relative;
   z-index: 2;
   flex: 1;
@@ -189,7 +244,36 @@
   border-radius: 0;
   background: transparent;
   padding: 16px;
+  padding-top: calc(16px + var(--map-top-clearance));
+  padding-bottom: calc(16px + var(--map-footer-clearance));
+  scroll-padding-top: var(--map-top-clearance);
+  scroll-padding-bottom: var(--map-footer-clearance);
   -webkit-overflow-scrolling: touch;
+  /* 画面上端・下端に向かってマスクでフェード（ヘッダー／ルーレット上で切れずに溶ける） */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 var(--map-top-fade-height),
+    #000 max(
+      var(--map-top-fade-height),
+      calc(100% - var(--map-bottom-fade-height))
+    ),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 var(--map-top-fade-height),
+    #000 max(
+      var(--map-top-fade-height),
+      calc(100% - var(--map-bottom-fade-height))
+    ),
+    transparent 100%
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 /* スクロールバー非表示（操作は維持） */
@@ -428,29 +512,59 @@
   animation: piece-land 0.4s ease-out;
 }
 
+/* flex から外れ main の overflow に引っ張られないよう、ビューポート下に固定（中身は透明のまま） */
 .map-controls {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  background: rgba(13, 17, 23, 0.95);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  width: min(100%, 430px);
+  max-width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  box-shadow: none;
   padding: 12px 16px;
-  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+
+.map-controls > * {
+  pointer-events: auto;
 }
 
 .btn-roulette {
-  border: none;
-  border-radius: 4px;
-  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  max-width: min(100%, 340px);
+  min-width: min(100%, 200px);
   min-height: 52px;
+  padding: 14px 56px;
+  box-sizing: border-box;
   background: #c0392b;
+  background-clip: padding-box;
   color: #fff;
   font-family: var(--font-ui);
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.1em;
+  box-shadow: none;
   transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.btn-roulette:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
 }
 
 .btn-roulette:hover {
@@ -463,6 +577,7 @@
 
 .btn-roulette:disabled {
   background: #3d444d;
+  border-color: rgba(0, 0, 0, 0.35);
   color: #8b949e;
   cursor: not-allowed;
   transform: none;
@@ -472,14 +587,17 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  align-items: center;
 }
 
 .map-branch-inline-label {
   margin: 0;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.72);
   text-align: center;
   font-family: var(--font-ui);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
 .map-branch-inline-btns {
@@ -875,12 +993,22 @@
   flex-wrap: wrap;
   gap: 12px;
   padding: 16px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+/* 図鑑と同様：カード内子要素の pointer-events が auto のままだとタッチが .hand-card にバブルし
+   CardComponent の touchstart preventDefault で縦スクロールが止まる */
+.deck-card-item .hand-card,
+.deck-card-item .hand-card * {
+  pointer-events: none !important;
 }
 
 .deck-card-item .hand-card {
-  pointer-events: none;
+  touch-action: pan-y;
 }
 
 .modal-card {
@@ -1006,4 +1134,38 @@
   100% {
     opacity: 1;
   }
+}
+
+.map-settings-language {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.map-settings-language-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e6edf3;
+  margin-bottom: 8px;
+}
+.map-settings-language-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.map-settings-lang-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  color: #e6edf3;
+  font-size: 12px;
+  cursor: pointer;
+}
+.map-settings-lang-btn--active {
+  border-color: #f0b429;
+  background: rgba(240, 180, 41, 0.15);
+  box-shadow: 0 0 0 1px rgba(240, 180, 41, 0.35);
 }

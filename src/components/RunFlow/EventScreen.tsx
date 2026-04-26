@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react';
 import type { GameEvent } from '../../types/run';
 import { getEventBackgroundUrl } from '../../data/eventScreenBackgrounds';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { eventChoiceTextKey, eventDescKey, eventNameKey } from '../../i18n/entityKeys';
 
 interface Props {
   event: GameEvent;
@@ -8,6 +10,7 @@ interface Props {
 }
 
 const EventScreen = ({ event, onChoose }: Props) => {
+  const { t } = useLanguage();
   const bgUrl = getEventBackgroundUrl(event.id);
   const mainStyle = (
     bgUrl
@@ -24,12 +27,12 @@ const EventScreen = ({ event, onChoose }: Props) => {
       style={mainStyle}
     >
       <section className="flow-card event-screen-card">
-        <h2>❓ {event.name}</h2>
-        <p>{event.description}</p>
+        <h2>❓ {t(eventNameKey(event.id), undefined, event.name)}</h2>
+        <p>{t(eventDescKey(event.id), undefined, event.description)}</p>
         <div className="flow-list">
           {event.choices.map((choice, idx) => (
             <button key={`${event.id}_${idx}`} type="button" className="flow-btn" onClick={() => onChoose(idx)}>
-              {choice.text}
+              {t(eventChoiceTextKey(event.id, idx), undefined, choice.text)}
             </button>
           ))}
         </div>

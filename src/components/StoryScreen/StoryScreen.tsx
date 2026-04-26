@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { StoryScene } from '../../data/stories/carpenterStory';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { storySceneTextKey } from '../../i18n/entityKeys';
 import type { JobId } from '../../types/game';
 import './StoryScreen.css';
 
@@ -17,6 +19,8 @@ interface StoryScreenProps {
   storyBgmArea?: number;
   /** コック用ストーリーBGMに切り替えるために使用 */
   jobId?: JobId;
+  /** 翻訳キー `story.{bundleId}.{sceneId}.text` 用（例: carpenter_e1） */
+  storyBundleId?: string;
 }
 
 export const StoryScreen = ({
@@ -26,7 +30,9 @@ export const StoryScreen = ({
   currentArea = 1,
   storyBgmArea,
   jobId,
+  storyBundleId,
 }: StoryScreenProps) => {
+  const { t } = useLanguage();
   const { stopBgm, playBgm } = useAudioContext();
   const [sceneIndex, setSceneIndex] = useState(0);
   const [lineIndex, setLineIndex] = useState(0);
@@ -37,7 +43,22 @@ export const StoryScreen = ({
   const [isBgFading, setIsBgFading] = useState(false);
 
   const currentScene = scenes[sceneIndex];
-  const currentLine = currentScene.lines[lineIndex] ?? '';
+  const linesForCurrentScene = useMemo(() => {
+    if (!storyBundleId) return currentScene.lines;
+    const blob = t(
+      storySceneTextKey(storyBundleId, currentScene.id),
+      undefined,
+      currentScene.lines.join('\n'),
+    );
+    const next = blob.split('\n');
+    return next.length > 0 ? next : currentScene.lines;
+  }, [storyBundleId, currentScene.id, currentScene.lines, t]);
+
+  const currentLine = linesForCurrentScene[lineIndex] ?? '';
+
+  useEffect(() => {
+    setLineIndex((prev) => Math.min(prev, Math.max(0, linesForCurrentScene.length - 1)));
+  }, [linesForCurrentScene]);
 
   useEffect(() => {
     const bgmArea = storyBgmArea ?? (showStartButton ? currentArea : undefined);
@@ -120,7 +141,7 @@ export const StoryScreen = ({
       return;
     }
 
-    const isLastLine = lineIndex >= currentScene.lines.length - 1;
+    const isLastLine = lineIndex >= linesForCurrentScene.length - 1;
     const isLastScene = sceneIndex >= scenes.length - 1;
 
     if (!isLastLine) {
@@ -138,7 +159,7 @@ export const StoryScreen = ({
     finishStory();
   }, [
     currentLine,
-    currentScene.lines.length,
+    linesForCurrentScene,
     finishStory,
     isTyping,
     lineIndex,
@@ -148,7 +169,7 @@ export const StoryScreen = ({
   ]);
 
   const isLastScene = sceneIndex >= scenes.length - 1;
-  const isLastLine = lineIndex >= currentScene.lines.length - 1;
+  const isLastLine = lineIndex >= linesForCurrentScene.length - 1;
   const isEnd = isLastScene && isLastLine && !isTyping;
   const finalStartOnly = isEnd && showStartButton;
   /** 開幕以外のストーリー：最終コマはタップで終了させず「進む」ボタンのみ */
@@ -195,7 +216,7 @@ export const StoryScreen = ({
               finishStory();
             }}
           >
-            冒険を始める
+            {t('story.btnStart')}
           </button>
         )}
         {isEnd && !showStartButton && (
@@ -207,7 +228,7 @@ export const StoryScreen = ({
               finishStory();
             }}
           >
-            進む
+            {t('story.btnNext')}
           </button>
         )}
       </div>
@@ -221,7 +242,7 @@ export const StoryScreen = ({
             finishStory();
           }}
         >
-          スキップ
+          {t('story.skip')}
         </button>
       )}
     </div>

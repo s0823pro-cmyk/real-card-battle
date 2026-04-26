@@ -1,7 +1,7 @@
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Card, GameState, JobId } from './types/game';
 import type { BattleResult } from './types/run';
 import BattleScreen from './components/BattleScreen/BattleScreen';
@@ -12,6 +12,7 @@ import { StoryScreen } from './components/StoryScreen/StoryScreen';
 import { VictoryScreen } from './components/VictoryScreen/VictoryScreen';
 import { BossRewardScreen } from './components/BossRewardScreen/BossRewardScreen';
 import { ZukanScreen } from './components/ZukanScreen/ZukanScreen';
+import { RankingScreen } from './components/RankingScreen/RankingScreen';
 import RouletteOverlay from './components/RunMap/RouletteOverlay';
 import RunMapScreen from './components/RunMap/RunMapScreen';
 import EventScreen from './components/RunFlow/EventScreen';
@@ -26,7 +27,7 @@ import {
   OmamoriRewardScreen,
 } from './components/RunFlow/RewardScreens';
 import { BattleVictoryScreen } from './components/RunFlow/BattleVictoryScreen';
-import { useAudio, type BgmType, unlockAudioContext } from './hooks/useAudio';
+import { useAudio, type BgmType, unlockAudioContext, applyAppStateToAudio } from './hooks/useAudio';
 import { AudioCtx } from './contexts/AudioContext';
 import { useRunProgress, loadSavedProgress, clearSavedProgress } from './hooks/useRunProgress';
 import type { DevDestination } from './hooks/useRunProgress';
@@ -56,10 +57,14 @@ import {
 } from './utils/adsRemoved';
 import { ensureAdMobInitialized, removeBannerAd, showInterstitialIfAllowed } from './utils/adMobClient';
 import { initIAP } from './utils/iapService';
+import { finalizeRankingRunEnd, reportRankingScore, resetCurrentRunRankingScore } from './utils/rankingClient';
+import { useLanguage } from './contexts/LanguageContext';
+import { applyStatusBarForAppState } from './utils/nativeStatusBar';
 
 type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 
 function App() {
+  const { t } = useLanguage();
   const audio = useAudio();
   const { playBgm, stopBgm } = audio;
   const {
@@ -95,8 +100,10 @@ function App() {
     continueFromSave,
     startRunFromHome,
     openZukanFromHome,
+    openRankingFromHome,
     backToHomeFromJobSelect,
     backToHomeFromZukan,
+    backToHomeFromRanking,
     unlockAllCardsForDebug,
     addExpansionCardsTwiceToDeckDev,
     startDevNavigation,
@@ -124,7 +131,7 @@ function App() {
   const transitionTimeoutRef = useRef<number | null>(null);
   const transitionCleanupRef = useRef<number | null>(null);
 
-  /** iOS WKWebView: ユーザー操作前の audio.play() 失敗対策（共有 AudioContext + サイレントバッファ） */
+  /** iOS WKWebView: ユーザー操作前の Web Audio ロック解除（共有 AudioContext + サイレントバッファ） */
   useEffect(() => {
     const unlock = () => {
       void unlockAudioContext();
@@ -215,15 +222,36 @@ function App() {
     void ScreenOrientation.lock({ orientation: 'portrait' }).catch(() => {});
   }, []);
 
+  const statusBarSnapRef = useRef({
+    currentScreen: state.currentScreen,
+    showStory,
+    showBossReward,
+  });
+  statusBarSnapRef.current = {
+    currentScreen: state.currentScreen,
+    showStory,
+    showBossReward,
+  };
+
+  useLayoutEffect(() => {
+    applyStatusBarForAppState({
+      currentScreen: state.currentScreen,
+      showStory,
+      showBossReward,
+    });
+  }, [state.currentScreen, showStory, showBossReward]);
+
   /** フォアグラウンド復帰時に Safe Area の env() を再評価させる（WebView の初期描画ずれ対策） */
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const listener = CapApp.addListener('appStateChange', ({ isActive }) => {
+      applyAppStateToAudio(isActive);
       if (isActive) {
         document.documentElement.style.setProperty(
           '--safe-area-top',
           `env(safe-area-inset-top, 0px)`,
         );
+        applyStatusBarForAppState(statusBarSnapRef.current);
       }
     });
     return () => {
@@ -262,6 +290,11 @@ function App() {
   const goHomeWithInterstitial = () => {
     void (async () => {
       await showInterstitialIfAllowed(getAdsRemoved(), resumeMenuBgmAfterAd);
+      if (state.currentScreen === 'victory') {
+        finalizeRankingRunEnd(state.jobId);
+      } else if (state.currentScreen !== 'game_over') {
+        resetCurrentRunRankingScore();
+      }
       clearAllSaveData();
       runScreenTransition(resetRun, 350, 350);
     })();
@@ -377,6 +410,13 @@ function App() {
     setCurrentStoryId(null);
     setCurrentStoryScenes(null);
     if (storyId) markStorySeen(storyId);
+    if (storyId === 'carpenter_e3') {
+      reportRankingScore('carpenter', 500);
+      finalizeRankingRunEnd('carpenter');
+    } else if (storyId === 'cook_e3') {
+      reportRankingScore('cook', 500);
+      finalizeRankingRunEnd('cook');
+    }
     const transition = pendingAreaTransitionRef.current;
     pendingAreaTransitionRef.current = null;
     transition?.();
@@ -479,6 +519,7 @@ function App() {
           <HomeScreen
             onStart={handleStartFromHomeWithPendingAd}
             onOpenZukan={() => runScreenTransition(openZukanFromHome, 1000, 1000)}
+            onOpenRanking={() => runScreenTransition(openRankingFromHome, 1000, 1000)}
             onContinue={(saved) => {
               clearAllSaveData();
               runScreenTransition(() => continueFromSave(saved), 1000, 1000);
@@ -497,6 +538,8 @@ function App() {
             onUnlockAll={unlockAllCardsForDebug}
           />
         );
+      case 'ranking':
+        return <RankingScreen onClose={() => runScreenTransition(backToHomeFromRanking, 350, 350)} />;
       case 'job_select':
         return (
           <JobSelectScreen
@@ -710,6 +753,7 @@ function App() {
           onComplete={handleStoryComplete}
           currentArea={state.currentArea}
           jobId={pendingJobId ?? state.jobId}
+          storyBundleId={pendingJobId === 'cook' ? 'cook_opening' : 'carpenter_opening'}
         />
       )}
       {showStory && currentStoryId && currentStoryScenes && (
@@ -717,6 +761,7 @@ function App() {
           scenes={currentStoryScenes}
           onComplete={handleAreaStoryComplete}
           showStartButton={false}
+          storyBundleId={currentStoryId}
           storyBgmArea={
             currentStoryId === 'carpenter_e1' || currentStoryId === 'cook_e1'
               ? 2
@@ -734,8 +779,8 @@ function App() {
         <div className="restore-overlay">
           <div className="restore-modal">
             <span className="restore-icon">⚔️</span>
-            <h3 className="restore-title">バトルが中断されています</h3>
-            <p className="restore-desc">前回のバトルの途中から再開しますか？</p>
+            <h3 className="restore-title">{t('app.battleRestore.title')}</h3>
+            <p className="restore-desc">{t('app.battleRestore.desc')}</p>
             <div className="restore-buttons">
               <button
                 type="button"
@@ -748,7 +793,7 @@ function App() {
                   continueFromSave(save.runProgress);
                 }}
               >
-                バトルに戻る
+                {t('app.battleRestore.continue')}
               </button>
               <button
                 type="button"
@@ -760,7 +805,7 @@ function App() {
                   setShowBattleRestorePrompt(false);
                 }}
               >
-                諦めてホームへ
+                {t('app.battleRestore.abandon')}
               </button>
             </div>
           </div>
@@ -769,9 +814,9 @@ function App() {
       {pendingItemReplacement && (
         <div className="item-replace-overlay">
           <div className="item-replace-modal">
-            <h3 className="item-replace-title">入れ替えるアイテムを選択</h3>
+            <h3 className="item-replace-title">{t('app.itemReplace.title')}</h3>
             <p className="item-replace-desc">
-              「{pendingItemReplacement.incomingItem.name}」を入手します。捨てるアイテムを選んでください。
+              {t('app.itemReplace.desc', { name: pendingItemReplacement.incomingItem.name })}
             </p>
             <div className="item-replace-list">
               {state.items.map((item, idx) => (
@@ -784,7 +829,7 @@ function App() {
                   <span className="item-replace-name">
                     {item.icon ?? '🎒'} {item.name}
                   </span>
-                  <span className="item-replace-action">これを捨てる</span>
+                  <span className="item-replace-action">{t('app.itemReplace.dropThis')}</span>
                 </button>
               ))}
             </div>
@@ -793,7 +838,7 @@ function App() {
               className="item-replace-cancel"
               onClick={() => resolvePendingItemReplacement(null)}
             >
-              キャンセル
+              {t('common.cancel')}
             </button>
           </div>
         </div>

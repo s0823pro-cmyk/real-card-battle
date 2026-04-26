@@ -6,6 +6,8 @@ import { getSellPrice } from '../../data/runData';
 import type { Card, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { omamoriDescKey, omamoriNameKey, translatedCardDescription, translatedCardName } from '../../i18n/entityKeys';
 import CardComponent from '../Hand/CardComponent';
 
 interface Props {
@@ -20,12 +22,6 @@ interface Props {
   hasUsedSellThisVisit: boolean;
   onClose: () => void;
 }
-
-const renderName = (shopItem: ShopItem): string => {
-  if (shopItem.type === 'sell_card') return 'カード売却';
-  if (!shopItem.item) return '不明';
-  return (shopItem.item as Card).name ?? '不明';
-};
 
 const renderIcon = (shopItem: ShopItem): string => {
   if (shopItem.type === 'sell_card') return '💸';
@@ -45,7 +41,21 @@ const ShopScreen = ({
   hasUsedSellThisVisit,
   onClose,
 }: Props) => {
+  const { t } = useLanguage();
   const { playSe } = useAudioContext();
+
+  const renderName = (shopItem: ShopItem): string => {
+    if (shopItem.type === 'sell_card') return t('shop.sellCardType');
+    if (!shopItem.item) return t('shop.unknownType');
+    if (shopItem.type === 'omamori') {
+      const om = shopItem.item as Omamori;
+      return t(omamoriNameKey(om.id), undefined, om.name);
+    }
+    if (shopItem.type === 'item') {
+      return (shopItem.item as RunItem).name;
+    }
+    return translatedCardName(shopItem.item as Card, t);
+  };
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [showCardRemove, setShowCardRemove] = useState(false);
   const [showCardSell, setShowCardSell] = useState(false);
@@ -95,11 +105,11 @@ const ShopScreen = ({
       <section className="flow-card shop-flow-card">
         <div className="shop-header">
           <div className="shop-header-left">
-            <h2 className="shop-title">🏪 質屋</h2>
+            <h2 className="shop-title">{t('shop.title')}</h2>
             <span className="shop-gold">💰 {gold}G</span>
           </div>
           <button type="button" className="btn-shop-exit" onClick={onClose}>
-            退出
+            {t('shop.leave')}
           </button>
         </div>
         <div className="shop-tabs">
@@ -108,19 +118,19 @@ const ShopScreen = ({
             className={`flow-btn ghost ${tab === 'buy' ? 'shop-tab-active' : ''}`}
             onClick={() => setTab('buy')}
           >
-            購入
+            {t('shop.buy')}
           </button>
           <button
             type="button"
             className={`flow-btn ghost ${tab === 'sell' ? 'shop-tab-active' : ''}`}
             onClick={() => setTab('sell')}
           >
-            売却
+            {t('shop.sell')}
           </button>
         </div>
         {tab === 'buy' ? (
           <div className="flow-list shop-tab-content">
-            <p>カード</p>
+            <p>{t('shop.tabCards')}</p>
             <div className="shop-cards-grid">
               {cards.map((item) => {
                 const disabled = item.purchased || item.price > gold;
@@ -166,13 +176,14 @@ const ShopScreen = ({
                       style={shopCardStyle}
                     />
                     <small className="shop-card-price">
-                      {item.price}G {item.purchased ? ' / 購入済み' : ''}
+                      {item.price}G
+                      {item.purchased ? t('shop.purchasedSuffix') : ''}
                     </small>
                   </div>
                 );
               })}
             </div>
-            <p>お守り</p>
+            <p>{t('shop.tabOmamori')}</p>
             <div className="shop-grid">
               {omamoris.map((item) => {
                 const disabled = item.purchased || item.price > gold;
@@ -192,7 +203,7 @@ const ShopScreen = ({
                 );
               })}
             </div>
-            <p>アイテム</p>
+            <p>{t('shop.tabItems')}</p>
             <div className="shop-grid">
               {runItems.map((item) => {
                 const disabled = item.purchased || item.price > gold;
@@ -217,36 +228,36 @@ const ShopScreen = ({
           <div className="flow-list shop-tab-content">
             <div className="shop-remove-section">
               <div className="shop-remove-header">
-                <span>カード売却</span>
+                <span>{t('shop.cardSell')}</span>
               </div>
               {hasUsedSellThisVisit ? (
-                <p className="shop-sold-text">今回の訪問では売却済みです</p>
+                <p className="shop-sold-text">{t('shop.sellUsedUp')}</p>
               ) : (
                 <>
-                  <p className="shop-remove-desc">カード1枚を売却する（売却額はカードによる）</p>
+                  <p className="shop-remove-desc">{t('shop.sellOneDesc')}</p>
                   <button
                     type="button"
                     className="flow-btn ghost"
                     onClick={() => setShowCardSell(true)}
                   >
-                    カードを選ぶ
+                    {t('shop.pickCard')}
                   </button>
                 </>
               )}
             </div>
             <div className="shop-remove-section">
               <div className="shop-remove-header">
-                <span>カード削除</span>
+                <span>{t('shop.removeRow')}</span>
                 <span>{removeCost}G</span>
               </div>
-              <p className="shop-remove-desc">デッキから1枚永久に取り除く</p>
+              <p className="shop-remove-desc">{t('shop.removeOneDesc')}</p>
               <button
                 type="button"
                 className="flow-btn ghost"
                 disabled={gold < removeCost}
                 onClick={() => setShowCardRemove(true)}
               >
-                カードを選ぶ
+                {t('shop.pickCard')}
               </button>
             </div>
           </div>
@@ -256,7 +267,7 @@ const ShopScreen = ({
         <div className="shop-remove-overlay" onClick={() => setShowCardSell(false)}>
           <div className="shop-remove-modal" onClick={(event) => event.stopPropagation()}>
             <div className="shop-remove-modal-header">
-              <h2 className="shop-remove-modal-title">売却するカードを選ぶ</h2>
+              <h2 className="shop-remove-modal-title">{t('shop.modalPickSell')}</h2>
               <button type="button" className="shop-remove-close" onClick={() => setShowCardSell(false)}>
                 ✕
               </button>
@@ -307,7 +318,7 @@ const ShopScreen = ({
         <div className="shop-remove-overlay" onClick={() => setShowCardRemove(false)}>
           <div className="shop-remove-modal" onClick={(event) => event.stopPropagation()}>
             <div className="shop-remove-modal-header">
-              <h2 className="shop-remove-modal-title">削除するカードを選ぶ（{removeCost}G）</h2>
+              <h2 className="shop-remove-modal-title">{t('shop.modalPickRemove', { cost: removeCost })}</h2>
               <button type="button" className="shop-remove-close" onClick={() => setShowCardRemove(false)}>
                 ✕
               </button>
@@ -362,11 +373,14 @@ const ShopScreen = ({
         <div className="reserve-confirm-overlay" onClick={() => setSellConfirmCard(null)}>
           <div className="reserve-confirm-dialog" onClick={(event) => event.stopPropagation()}>
             <p className="reserve-confirm-title" style={{ marginBottom: 16 }}>
-              【{sellConfirmCard.name}】を売却しますか？（+{getSellPrice(sellConfirmCard)}G）
+              {t('shop.sellConfirm', {
+                name: translatedCardName(sellConfirmCard, t),
+                gold: getSellPrice(sellConfirmCard),
+              })}
             </p>
             <div className="reserve-confirm-buttons">
               <button type="button" className="btn-reserve-cancel" onClick={() => setSellConfirmCard(null)}>
-                キャンセル
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -378,7 +392,7 @@ const ShopScreen = ({
                   setShowCardSell(false);
                 }}
               >
-                売却する
+                {t('shop.sellDo')}
               </button>
             </div>
           </div>
@@ -388,7 +402,7 @@ const ShopScreen = ({
         <div className="shop-remove-overlay" onClick={() => setConfirmItem(null)}>
           <div className="shop-remove-modal" onClick={(event) => event.stopPropagation()}>
             <div className="shop-remove-modal-header">
-              <h2 className="shop-remove-modal-title">購入確認</h2>
+              <h2 className="shop-remove-modal-title">{t('shop.purchaseTitle')}</h2>
               <button type="button" className="shop-remove-close" onClick={() => setConfirmItem(null)}>
                 ✕
               </button>
@@ -419,7 +433,9 @@ const ShopScreen = ({
                       style={shopCardStyle}
                     />
                   </div>
-                  <p className="shop-confirm-effect-desc">{(confirmItem.item as Card).description}</p>
+                  <p className="shop-confirm-effect-desc">
+                    {translatedCardDescription(confirmItem.item as Card, t)}
+                  </p>
                 </>
               ) : (
                 <>
@@ -427,7 +443,13 @@ const ShopScreen = ({
                     {renderIcon(confirmItem)} {renderName(confirmItem)}
                   </p>
                   {confirmItem.type === 'omamori' && confirmItem.item && (
-                    <p className="shop-confirm-effect-desc">{(confirmItem.item as Omamori).description}</p>
+                    <p className="shop-confirm-effect-desc">
+                      {t(
+                        omamoriDescKey((confirmItem.item as Omamori).id),
+                        undefined,
+                        (confirmItem.item as Omamori).description,
+                      )}
+                    </p>
                   )}
                   {confirmItem.type === 'item' && confirmItem.item && (
                     <p className="shop-confirm-effect-desc">{(confirmItem.item as RunItem).description}</p>
@@ -444,7 +466,7 @@ const ShopScreen = ({
                   style={{ flex: 1 }}
                   onClick={() => setConfirmItem(null)}
                 >
-                  キャンセル
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -456,7 +478,7 @@ const ShopScreen = ({
                     setConfirmItem(null);
                   }}
                 >
-                  購入する（{confirmItem.price}G）
+                  {t('shop.purchaseDo', { price: confirmItem.price })}
                 </button>
               </div>
             </div>

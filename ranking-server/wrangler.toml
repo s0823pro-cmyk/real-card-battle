@@ -1,0 +1,9 @@
+name = "jobless-ranking"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jobless-ranking-db"
+database_id = "fd82a888-f31a-46dc-b176-b0b245f1f830"
+migrations_dir = "migrations"

@@ -2,6 +2,8 @@ import { Capacitor } from '@capacitor/core';
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { omamoriDescKey, omamoriNameKey } from '../../i18n/entityKeys';
 import type { Card, JobId } from '../../types/game';
 import type { Omamori } from '../../types/run';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
@@ -74,6 +76,7 @@ export const EventGainModalScreen = ({
   jobId,
   onContinue,
 }: EventGainModalProps) => {
+  const { t } = useLanguage();
   const { playBgm } = useAudioContext();
   useEffect(() => {
     const area = Math.min(3, Math.max(1, currentArea));
@@ -93,7 +96,7 @@ export const EventGainModalScreen = ({
     '--flow-bg-overlay': 'rgba(14, 16, 22, 0.52)',
   } as CSSProperties;
 
-  const label = kind === 'omamori' ? 'お守り' : 'アイテム';
+  const label = kind === 'omamori' ? t('reward.omamori') : t('reward.item');
 
   return (
     <main
@@ -101,15 +104,16 @@ export const EventGainModalScreen = ({
       style={mainStyle}
     >
       <section className="card-reward-panel event-gain-modal-panel">
-        <h2 className="reward-heading reward-heading--event-preview">入手</h2>
+        <h2 className="reward-heading reward-heading--event-preview">{t('reward.eventGainTitle')}</h2>
         <p className="event-gain-modal-msg">
           <span className="event-gain-modal-icon" aria-hidden>
             {icon}
           </span>{' '}
-          <strong>{name}</strong>（{label}）を獲得しました！
+          <strong>{name}</strong>
+          {t('reward.eventGainSuffix', { label })}
         </p>
         <button type="button" className="flow-btn flow-btn--event-preview-ok event-card-gain-preview-ok" onClick={onContinue}>
-          OK
+          {t('common.ok')}
         </button>
       </section>
     </main>
@@ -123,6 +127,7 @@ export const EventCardGainPreviewScreen = ({
   currentArea,
   onContinue,
 }: EventCardGainPreviewProps) => {
+  const { t } = useLanguage();
   const { playBgm } = useAudioContext();
   useEffect(() => {
     const area = Math.min(3, Math.max(1, currentArea));
@@ -184,7 +189,7 @@ export const EventCardGainPreviewScreen = ({
       style={cardRewardMainStyle}
     >
       <section className="card-reward-panel">
-        <h2 className="reward-heading reward-heading--event-preview">カードを入手</h2>
+        <h2 className="reward-heading reward-heading--event-preview">{t('reward.cardGainTitle')}</h2>
         <div className="reward-card-list" ref={rewardListRef}>
           {cards.map((card, idx) => (
             <div
@@ -222,7 +227,7 @@ export const EventCardGainPreviewScreen = ({
           ))}
         </div>
         <button type="button" className="flow-btn flow-btn--event-preview-ok event-card-gain-preview-ok" onClick={onContinue}>
-          OK
+          {t('common.ok')}
         </button>
       </section>
     </main>
@@ -230,6 +235,7 @@ export const EventCardGainPreviewScreen = ({
 };
 
 export const CardRewardScreen = ({ cards, jobId, onPick, onSkip, adsRemoved }: CardRewardProps) => {
+  const { t } = useLanguage();
   useVictoryRewardBgm();
   const noop = () => {};
   const rewardListRef = useRef<HTMLDivElement | null>(null);
@@ -293,7 +299,7 @@ export const CardRewardScreen = ({ cards, jobId, onPick, onSkip, adsRemoved }: C
       style={cardRewardMainStyle}
     >
       <section className="card-reward-panel">
-        <h2 className="reward-heading">カードを1枚選んでください</h2>
+        <h2 className="reward-heading">{t('reward.cardPickTitle')}</h2>
         <div className="reward-card-list" ref={rewardListRef}>
           {cards.map((card, idx) => (
             <div
@@ -340,7 +346,7 @@ export const CardRewardScreen = ({ cards, jobId, onPick, onSkip, adsRemoved }: C
           ))}
         </div>
         <button type="button" className="btn-skip" onClick={onSkip}>
-          スキップ
+          {t('reward.cardRewardSkip')}
         </button>
       </section>
     </main>
@@ -353,11 +359,12 @@ interface OmamoriProps {
 }
 
 export const OmamoriRewardScreen = ({ omamoris, onPick }: OmamoriProps) => {
+  const { t } = useLanguage();
   useVictoryRewardBgm();
   return (
     <main className="flow-screen">
       <section className="flow-card">
-        <h2>お守りを選べ！</h2>
+        <h2>{t('reward.omamoriPickTitle')}</h2>
         <div className="flow-list">
           {omamoris.map((omamori) => (
             <button
@@ -369,7 +376,7 @@ export const OmamoriRewardScreen = ({ omamoris, onPick }: OmamoriProps) => {
               {omamori.imageUrl ? (
                 <img
                   src={omamori.imageUrl}
-                  alt={omamori.name}
+                  alt={t(omamoriNameKey(omamori.id), undefined, omamori.name)}
                   className="omamori-reward-img"
                   draggable={false}
                   onContextMenu={(e) => e.preventDefault()}
@@ -378,7 +385,8 @@ export const OmamoriRewardScreen = ({ omamoris, onPick }: OmamoriProps) => {
                 <span className="omamori-reward-icon">{omamori.icon}</span>
               )}
               <span className="omamori-reward-text">
-                {omamori.name} - {omamori.description}
+                {t(omamoriNameKey(omamori.id), undefined, omamori.name)} -{' '}
+                {t(omamoriDescKey(omamori.id), undefined, omamori.description)}
               </span>
             </button>
           ))}

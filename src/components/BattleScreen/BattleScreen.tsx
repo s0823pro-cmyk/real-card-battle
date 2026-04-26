@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLanguage, type TFunction } from '../../contexts/LanguageContext';
 import type {
   CSSProperties,
   PointerEvent as ReactPointerEvent,
@@ -18,7 +19,7 @@ import BattleVictoryOverlay from '../Result/BattleVictoryOverlay';
 import Timeline from '../Timeline/Timeline';
 import { useGameState } from '../../hooks/useGameState';
 import { ICONS } from '../../assets/icons';
-import type { Card, GameState } from '../../types/game';
+import type { Card, GameState, JobId } from '../../types/game';
 import type { BattleResult, BattleSetup, Omamori } from '../../types/run';
 import {
   cardHasDamageImmunityThisTurn,
@@ -30,6 +31,8 @@ import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
 import { getAdsRemoved } from '../../utils/adsRemoved';
 import { showInterstitialIfAllowed } from '../../utils/adMobClient';
+import { reportRankingScore } from '../../utils/rankingClient';
+import { omamoriDescKey, omamoriNameKey, translatedEnemyName } from '../../i18n/entityKeys';
 import { hasTutorialSeen, markTutorialSeen } from '../../utils/tutorialState';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
 import { isEnemyTargetCard } from '../../utils/cardTarget';
@@ -124,20 +127,23 @@ const getAutoUpgradeType = (card: Card): 'damage' | 'block' | 'time' => {
   if ((card.block ?? 0) > 0) return 'block';
   return 'time';
 };
-const getUpgradePreviewText = (card: Card): string => {
+const getUpgradePreviewText = (card: Card, t: TFunction): string => {
   const type = getAutoUpgradeType(card);
   if (type === 'damage') {
     const before = card.damage ?? 0;
-    return `ダメージ ${before} → ${before + 3}`;
+    return t('battle.upgradePreview.damage', { before, after: before + 3 });
   }
   if (type === 'block') {
     const before = card.block ?? 0;
-    return `ブロック ${before} → ${before + 3}`;
+    return t('battle.upgradePreview.block', { before, after: before + 3 });
   }
-  return `所要時間 ${card.timeCost} → ${Math.max(1, card.timeCost - 1)}秒`;
+  const before = card.timeCost;
+  const after = Math.max(1, card.timeCost - 1);
+  return t('battle.upgradePreview.time', { before, after });
 };
 
 const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
+  const { t } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -168,7 +174,7 @@ const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
       {omamori.imageUrl ? (
         <img
           src={omamori.imageUrl}
-          alt={omamori.name}
+          alt={t(omamoriNameKey(omamori.id), undefined, omamori.name)}
           className="battle-omamori-img"
           draggable={false}
           onContextMenu={(e) => e.preventDefault()}
@@ -177,8 +183,8 @@ const BattleOmamoriItem = ({ omamori }: { omamori: Omamori }) => {
         <span className="battle-omamori-icon">{omamori.icon}</span>
       )}
       <div ref={tooltipRef} className="battle-omamori-tooltip">
-        <p className="battle-omamori-tooltip-name">{omamori.name}</p>
-        <p className="battle-omamori-tooltip-desc">{omamori.description}</p>
+        <p className="battle-omamori-tooltip-name">{t(omamoriNameKey(omamori.id), undefined, omamori.name)}</p>
+        <p className="battle-omamori-tooltip-desc">{t(omamoriDescKey(omamori.id), undefined, omamori.description)}</p>
       </div>
     </div>
   );
@@ -196,7 +202,10 @@ const BattleScreen = ({
   canOfferDefeatRevive = false,
   onDefeatReviveConsumed,
 }: BattleScreenProps) => {
+  const { t, locale, switchLocale, isLocaleLoading } = useLanguage();
   const noop = () => {};
+  const rankingJobRef = useRef<JobId>('unemployed');
+  rankingJobRef.current = setup?.jobId ?? initialGameState?.player.jobId ?? 'unemployed';
   const {
     playSe,
     playBgm,
@@ -263,6 +272,7 @@ const BattleScreen = ({
     initialGameState,
     canOfferDefeatRevive,
     onDefeatReviveConsumed,
+    onRankingScore: (pts) => reportRankingScore(rankingJobRef.current, pts),
   });
 
   const reserveCardByIdRef = useRef(reserveCardById);
@@ -1198,8 +1208,11 @@ const BattleScreen = ({
     return [];
   }, [showPile, gameState.drawPile, gameState.discardPile, gameState.exhaustedCards, gameState.drawPileDisplayOrder]);
   const startTitle = useMemo(
-    () => `── ${gameState.enemies.map((enemy) => enemy.name).join(' / ')} 現れ──`,
-    [gameState.enemies],
+    () =>
+      t('battle.enemiesAppearLine', {
+        names: gameState.enemies.map((enemy) => translatedEnemyName(enemy, t)).join(' / '),
+      }),
+    [gameState.enemies, t],
   );
   const jobId = gameState.player.jobId;
   const isScaffoldHigh = jobId === 'carpenter' && gameState.player.scaffold >= 5;
@@ -1209,7 +1222,7 @@ const BattleScreen = ({
   const hungryEffect = isUnemployedBattle ? hungryFlash : null;
   const canOpenBattleSettings = gameState.phase === 'battle_start' || gameState.phase === 'player_turn';
   const handleConcedeBattle = () => {
-    const confirmed = window.confirm('このバトルをあきらめますか？');
+    const confirmed = window.confirm(t('battle.concedeConfirm'));
     if (!confirmed) return;
     setShowBattleSettings(false);
     concedeBattle();
@@ -1233,7 +1246,7 @@ const BattleScreen = ({
 
   return (
     <main
-      className={`battle-screen ${screenShake ? 'battle-screen--shake' : ''} ${
+      className={`battle-screen ${
         gameState.player.mental <= 3 ? 'battle-screen--low-mental' : ''
       } ${hungryVisualState === 'hungry' ? 'battle-screen--hungry' : ''} ${
         hungryVisualState === 'awakened' ? 'battle-screen--awakened' : ''
@@ -1261,15 +1274,18 @@ const BattleScreen = ({
           isCookingHigh ? 'cooking-high' : ''
         }`}
       />
+      <div
+        className={`battle-screen-shake-layer ${screenShake ? 'battle-screen--shake' : ''}`}
+      >
       <div className={isMentalHit ? 'mental-hit-flash' : ''} />
       {hungryEffect && (
         <div className={`hungry-popup hungry-popup--${hungryEffect}`}>
-          {hungryEffect === 'hungry' ? '🔥 ハングリー' : '⚡ 覚醒'}
+          {hungryEffect === 'hungry' ? t('battle.hungry') : t('battle.awakened')}
         </div>
       )}
       {showRevivalEffect && (
         <div className="revival-effect">
-          <span className="revival-text">🔄 七転び八起き！</span>
+          <span className="revival-text">{t('battle.revival')}</span>
         </div>
       )}
       {/* お守りリスト */}
@@ -1285,9 +1301,9 @@ const BattleScreen = ({
           type="button"
           className="battle-settings-trigger"
           onClick={() => setShowBattleSettings(true)}
-          aria-label="バトル設定を開く"
+          aria-label={t('battle.settingsOpenAria')}
         >
-          設定
+          {t('common.settings')}
         </button>
       )}
       <section
@@ -1451,7 +1467,7 @@ const BattleScreen = ({
         {skillEffect && <div className="effect-skill" />}
       </div>
 
-      {gameState.shuffleAnimation && <div className="shuffle-popup">🔀 シャッフル中</div>}
+      {gameState.shuffleAnimation && <div className="shuffle-popup">{t('battle.shuffle')}</div>}
 
       {handDrag.isDragging && handDrag.card && (
         <div
@@ -1502,6 +1518,7 @@ const BattleScreen = ({
           <h3>BATTLE START</h3>
         </div>
       )}
+      </div>
       {gameState.phase === 'victory' && (
         <BattleVictoryOverlay
           onContinue={noop}
@@ -1513,8 +1530,8 @@ const BattleScreen = ({
       {showDefeatReviveModal && (
         <div className="defeat-revive-overlay" role="dialog" aria-modal="true">
           <div className="defeat-revive-dialog">
-            <p className="defeat-revive-title">復活しますか？</p>
-            <p className="defeat-revive-desc">HPが最大の50%まで回復します（このランは1回のみ）</p>
+            <p className="defeat-revive-title">{t('battle.reviveTitle')}</p>
+            <p className="defeat-revive-desc">{t('battle.reviveDesc')}</p>
             <div className="defeat-revive-actions">
               <button
                 type="button"
@@ -1529,10 +1546,10 @@ const BattleScreen = ({
                   })();
                 }}
               >
-                {getAdsRemoved() ? '広告なしで復活' : '広告を見て復活'}
+                {getAdsRemoved() ? t('battle.reviveNoAd') : t('battle.reviveWithAd')}
               </button>
               <button type="button" className="defeat-revive-btn defeat-revive-btn--ghost" onClick={giveUpDefeatOffer}>
-                あきらめる
+                {t('battle.reviveGiveUp')}
               </button>
             </div>
           </div>
@@ -1545,17 +1562,19 @@ const BattleScreen = ({
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal
-          aria-label="捨て札からカードを選ぶ"
+          aria-label={t('battle.discardPickAria')}
         >
           <div className="battle-deck-modal battle-deck-modal--fullscreen" onClick={(event) => event.stopPropagation()}>
             <div className="battle-deck-modal-header">
               <h2 className="battle-deck-modal-title">
-                {discardPickIngredientOnly ? '捨て札から食材を選ぶ' : '捨て札から選ぶ'}（残り
-                {pendingDiscardPicks}枚）
+                {discardPickIngredientOnly
+                  ? t('battle.discardPickIngredientTitle')
+                  : t('battle.discardPickTitle')}
+                {t('battle.discardPickRemain', { n: pendingDiscardPicks })}
               </h2>
             </div>
             <p className="battle-pick-discard-hint">
-              {discardPickIngredientOnly ? '食材カードをタップして手札に加えます' : 'カードをタップして手札に加えます'}
+              {discardPickIngredientOnly ? t('battle.discardPickIngredientHint') : t('battle.discardPickHint')}
             </p>
             <div className="battle-deck-card-grid battle-deck-card-grid--pile card-display-grid">
               {(
@@ -1601,12 +1620,12 @@ const BattleScreen = ({
                 </button>
               ))}
               {gameState.discardPile.length === 0 && (
-                <p className="battle-pile-empty">捨て札がありません</p>
+                <p className="battle-pile-empty">{t('battle.pileEmptyDiscard')}</p>
               )}
               {discardPickIngredientOnly &&
                 gameState.discardPile.length > 0 &&
                 !gameState.discardPile.some((c) => isIngredientCard(c)) && (
-                  <p className="battle-pile-empty">捨て札に食材がありません</p>
+                  <p className="battle-pile-empty">{t('battle.pileEmptyIngredient')}</p>
                 )}
             </div>
           </div>
@@ -1618,10 +1637,10 @@ const BattleScreen = ({
             <div className="battle-deck-modal-header">
               <h2 className="battle-deck-modal-title">
                 {showPile === 'draw'
-                  ? `山札 (${gameState.drawPile.length}枚)`
+                  ? t('battle.pileTabDraw', { n: gameState.drawPile.length })
                   : showPile === 'discard'
-                    ? `捨て札 (${gameState.discardPile.length}枚)`
-                    : `除外 (${gameState.exhaustedCards.length}枚)`}
+                    ? t('battle.pileTabDiscard', { n: gameState.discardPile.length })
+                    : t('battle.pileTabExhaust', { n: gameState.exhaustedCards.length })}
               </h2>
               <button type="button" className="battle-btn-close" onClick={() => setShowPile(null)}>
                 ×</button>
@@ -1632,21 +1651,21 @@ const BattleScreen = ({
                 className={`battle-pile-tab ${showPile === 'draw' ? 'battle-pile-tab--active' : ''}`}
                 onClick={() => setShowPile('draw')}
               >
-                山札 ({gameState.drawPile.length})
+                {t('battle.pileTabDraw', { n: gameState.drawPile.length })}
               </button>
               <button
                 type="button"
                 className={`battle-pile-tab ${showPile === 'discard' ? 'battle-pile-tab--active' : ''}`}
                 onClick={() => setShowPile('discard')}
               >
-                捨て札 ({gameState.discardPile.length})
+                {t('battle.pileTabDiscard', { n: gameState.discardPile.length })}
               </button>
               <button
                 type="button"
                 className={`battle-pile-tab ${showPile === 'exhaust' ? 'battle-pile-tab--active' : ''}`}
                 onClick={() => setShowPile('exhaust')}
               >
-                除外 ({gameState.exhaustedCards.length})
+                {t('battle.pileTabExhaust', { n: gameState.exhaustedCards.length })}
               </button>
             </div>
             <div className="battle-deck-card-grid battle-deck-card-grid--pile card-display-grid">
@@ -1677,7 +1696,7 @@ const BattleScreen = ({
                   />
                 </div>
               ))}
-              {currentPileCards.length === 0 && <p className="battle-pile-empty">カードがありません</p>}
+              {currentPileCards.length === 0 && <p className="battle-pile-empty">{t('battle.pileEmpty')}</p>}
             </div>
           </div>
         </div>
@@ -1686,12 +1705,11 @@ const BattleScreen = ({
         <div className="battle-deck-overlay" onClick={skipHandUpgradeSelection}>
           <div className="battle-deck-modal" onClick={(event) => event.stopPropagation()}>
             <div className="battle-deck-modal-header">
-              <h2 className="battle-deck-modal-title">リフォーム: 強化するカードを選択</h2>
+              <h2 className="battle-deck-modal-title">{t('battle.upgradeTitle')}</h2>
               <button type="button" className="battle-btn-close" onClick={skipHandUpgradeSelection}>
                 ×</button>
             </div>
-            <div className="battle-upgrade-guide">
-              残り {pendingHandUpgradeCount} 枚</div>
+            <div className="battle-upgrade-guide">{t('battle.upgradeRemain', { n: pendingHandUpgradeCount })}</div>
             <div className="battle-deck-card-grid card-display-grid">
               {upgradeableHandCards.map((card, idx) => (
                 <button
@@ -1728,10 +1746,12 @@ const BattleScreen = ({
                     onMouseEnter={noop}
                     onMouseLeave={noop}
                   />
-                  <span className="battle-upgrade-preview">{getUpgradePreviewText(card)}</span>
+                  <span className="battle-upgrade-preview">{getUpgradePreviewText(card, t)}</span>
                 </button>
               ))}
-              {upgradeableHandCards.length === 0 && <p className="battle-pile-empty">強化できるカードがありません</p>}
+              {upgradeableHandCards.length === 0 && (
+                <p className="battle-pile-empty">{t('battle.noUpgradeable')}</p>
+              )}
             </div>
           </div>
         </div>
@@ -1740,7 +1760,7 @@ const BattleScreen = ({
         <div className="battle-settings-overlay" onClick={() => setShowBattleSettings(false)}>
           <div className="battle-settings-modal" onClick={(event) => event.stopPropagation()}>
             <div className="battle-settings-header">
-              <h2 className="battle-settings-title">バトル設定</h2>
+              <h2 className="battle-settings-title">{t('battle.settingsTitle')}</h2>
               <button type="button" className="battle-btn-close" onClick={() => setShowBattleSettings(false)}>
                 ×
               </button>
@@ -1752,7 +1772,7 @@ const BattleScreen = ({
                 onClick={() => setBattleVolumeOpen((v) => !v)}
                 aria-expanded={battleVolumeOpen}
               >
-                <span>🔊 音量</span>
+                <span>{t('common.volume')}</span>
                 <span className="battle-settings-volume-toggle-arrow" aria-hidden>
                   {battleVolumeOpen ? '▲' : '▼'}
                 </span>
@@ -1761,7 +1781,7 @@ const BattleScreen = ({
                 <div className="battle-settings-audio">
                   <div className="battle-settings-audio-item">
                     <div className="battle-settings-audio-head">
-                      <span className="battle-settings-audio-title">BGM</span>
+                      <span className="battle-settings-audio-title">{t('common.bgm')}</span>
                       <button
                         type="button"
                         className={`battle-settings-mute ${bgmMuted ? 'battle-settings-mute--off' : 'battle-settings-mute--on'}`}
@@ -1770,13 +1790,13 @@ const BattleScreen = ({
                           setBgmMuted(next);
                         }}
                       >
-                        {bgmMuted ? '🔇 OFF' : '🔊 ON'}
+                        {bgmMuted ? t('common.audioOff') : t('common.audioOn')}
                       </button>
                     </div>
                   </div>
                   <div className="battle-settings-audio-item">
                     <div className="battle-settings-audio-head">
-                      <span className="battle-settings-audio-title">SE</span>
+                      <span className="battle-settings-audio-title">{t('common.se')}</span>
                       <button
                         type="button"
                         className={`battle-settings-mute ${seMuted ? 'battle-settings-mute--off' : 'battle-settings-mute--on'}`}
@@ -1785,8 +1805,31 @@ const BattleScreen = ({
                           setSeMuted(next);
                         }}
                       >
-                        {seMuted ? '🔇 OFF' : '🔊 ON'}
+                        {seMuted ? t('common.audioOff') : t('common.audioOn')}
                       </button>
+                    </div>
+                  </div>
+                  <div className="settings-item settings-item--audio settings-language-block battle-settings-language">
+                    <span className="settings-language-label">{t('common.language')}</span>
+                    {isLocaleLoading && <p className="settings-locale-loading">{t('common.localeLoading')}</p>}
+                    <div className="settings-language-row" role="group" aria-label={t('common.language')}>
+                      {(
+                        [
+                          { code: 'ja' as const, labelKey: 'lang.ja' as const },
+                          { code: 'en' as const, labelKey: 'lang.en' as const },
+                          { code: 'ko' as const, labelKey: 'lang.ko' as const },
+                        ] as const
+                      ).map(({ code, labelKey }) => (
+                        <button
+                          key={code}
+                          type="button"
+                          disabled={isLocaleLoading}
+                          className={`settings-lang-btn ${locale === code ? 'settings-lang-btn--active' : ''}`}
+                          onClick={() => void switchLocale(code)}
+                        >
+                          {t(labelKey)}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1799,10 +1842,10 @@ const BattleScreen = ({
                   setShowBattleGlossary(true);
                 }}
               >
-                📖 用語集
+                {t('battle.glossary')}
               </button>
               <button type="button" className="battle-settings-surrender" onClick={handleConcedeBattle}>
-                あきらめる
+                {t('battle.concede')}
               </button>
             </div>
           </div>

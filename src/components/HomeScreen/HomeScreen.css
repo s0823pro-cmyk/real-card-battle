@@ -17,13 +17,21 @@
   justify-content: center;
   gap: 0;
   overflow: hidden;
-  background: #0d1117;
+  background: transparent;
   color: #e6edf3;
+}
+
+/* ビューポート全面（ステータスバー／ノッチ下まで）にホーム背景を敷く */
+.home-screen-fullbleed-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .home-screen::before {
   content: '';
-  position: absolute;
+  position: fixed;
   inset: 0;
   background:
     radial-gradient(ellipse at 85% 10%, rgba(255, 255, 255, 0.14) 0%, transparent 42%),
@@ -201,6 +209,7 @@
 
 .btn-home-zukan,
 .btn-home-records,
+.btn-home-ranking,
 .btn-home-howto,
 .btn-home-settings,
 .btn-home-credits {
@@ -242,6 +251,7 @@
 .btn-home-start,
 .btn-home-zukan,
 .btn-home-records,
+.btn-home-ranking,
 .btn-home-howto,
 .btn-home-settings,
 .btn-home-credits {
@@ -259,6 +269,7 @@
 .btn-home-start::before,
 .btn-home-zukan::before,
 .btn-home-records::before,
+.btn-home-ranking::before,
 .btn-home-howto::before,
 .btn-home-settings::before,
 .btn-home-credits::before {
@@ -285,6 +296,13 @@
 .btn-home-records {
   background-image: url('../../assets/buttons/btn_records.png');
   color: #1a1a00;
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+.btn-home-ranking {
+  background-image: url('../../assets/buttons/btn_zukan.png');
+  color: #f5e6c8;
   font-size: 12px;
   padding: 8px 0;
 }
@@ -360,6 +378,7 @@
 .btn-home-start:active,
 .btn-home-zukan:active,
 .btn-home-records:active,
+.btn-home-ranking:active,
 .btn-home-howto:active,
 .btn-home-settings:active,
 .btn-home-credits:active {
@@ -375,6 +394,7 @@
 .btn-home-start:focus,
 .btn-home-zukan:focus,
 .btn-home-records:focus,
+.btn-home-ranking:focus,
 .btn-home-howto:focus,
 .btn-home-settings:focus,
 .btn-home-credits:focus {
@@ -820,6 +840,40 @@
   background: #666;
 }
 
+.settings-language-block {
+  margin-top: 4px;
+}
+.settings-language-label {
+  display: block;
+  font-weight: bold;
+  font-size: 15px;
+  color: #e6edf3;
+  margin-bottom: 8px;
+  font-family: var(--font-display);
+}
+.settings-language-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.settings-lang-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.2);
+  color: #e8d5a3;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--font-display, sans-serif);
+}
+.settings-lang-btn--active {
+  border-color: #c8a96e;
+  background: rgba(200, 169, 110, 0.22);
+  box-shadow: 0 0 0 1px rgba(200, 169, 110, 0.35);
+}
+
 .settings-item {
   display: flex;
   align-items: center;
@@ -1217,7 +1271,9 @@
 .records-page {
   position: fixed;
   inset: 0;
-  background: #0d1117;
+  background: rgba(13, 17, 23, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
   z-index: 100;
@@ -1362,4 +1418,72 @@
   font-size: 11px;
   color: #8b949e;
   margin: 0;
+}
+
+.ranking-nickname-modal-desc {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: #8b949e;
+  margin: 0 0 12px;
+  text-align: left;
+}
+
+.ranking-nickname-modal-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #161b22;
+  color: #e6edf3;
+  font-family: var(--font-display);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.ranking-nickname-modal-error {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: #f85149;
+  margin: 0 0 8px;
+  text-align: left;
+}
+
+.ranking-nickname-modal-notice {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: #f0b429;
+  margin: 12px 0 14px;
+  padding: 10px 12px;
+  text-align: center;
+  border: 1px solid rgba(240, 180, 41, 0.55);
+  border-radius: 8px;
+  background: rgba(240, 180, 41, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.ranking-nickname-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.ranking-nickname-modal-submit {
+  font-family: var(--font-display);
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #f0b429;
+  background: #f0b429;
+  color: #0d1117;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ranking-nickname-modal-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

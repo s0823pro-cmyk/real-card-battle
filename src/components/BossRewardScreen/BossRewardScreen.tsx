@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import type { MessageKey } from '../../i18n';
 import CardComponent from '../Hand/CardComponent';
 import { FLOW_BG_BOSS_REWARD } from '../../data/flowBackgrounds';
 import { BOSS_REWARDS } from '../../data/bossRewards';
@@ -55,6 +57,7 @@ const generateRareRewardCards = (jobId: JobId): Card[] => {
 };
 
 export const BossRewardScreen = ({ jobId, onComplete }: BossRewardScreenProps) => {
+  const { t } = useLanguage();
   const { playBgm } = useAudioContext();
   useEffect(() => {
     playBgm('victory');
@@ -110,7 +113,7 @@ export const BossRewardScreen = ({ jobId, onComplete }: BossRewardScreenProps) =
   return (
     <div className="boss-reward-screen boss-reward-screen--with-bg" style={bossRewardRootStyle}>
       <div className="boss-reward-header">
-        <h2 className="boss-reward-title">報酬を選択してください</h2>
+        <h2 className="boss-reward-title">{t('bossReward.title')}</h2>
       </div>
 
       {!showCardSelect && (
@@ -126,9 +129,13 @@ export const BossRewardScreen = ({ jobId, onComplete }: BossRewardScreenProps) =
             >
               <span className="boss-reward-option-icon">{reward.icon}</span>
               <div className="boss-reward-option-info">
-                <p className="boss-reward-option-label">{reward.label}</p>
+                <p className="boss-reward-option-label">
+                  {t(`bossReward.${reward.type}.label` as MessageKey, undefined, reward.label)}
+                </p>
                 {reward.type !== 'rare_card' && (
-                  <p className="boss-reward-option-desc">{reward.description}</p>
+                  <p className="boss-reward-option-desc">
+                    {t(`bossReward.${reward.type}.desc` as MessageKey, undefined, reward.description)}
+                  </p>
                 )}
               </div>
               {selectedReward?.type === reward.type && <span className="boss-reward-option-check">✓</span>}
@@ -142,7 +149,7 @@ export const BossRewardScreen = ({ jobId, onComplete }: BossRewardScreenProps) =
               disabled={!selectedReward}
               onClick={handleMainScreenConfirm}
             >
-              決定
+              {t('bossReward.confirm')}
             </button>
           </div>
         </div>
@@ -150,7 +157,7 @@ export const BossRewardScreen = ({ jobId, onComplete }: BossRewardScreenProps) =
 
       {showCardSelect && (
         <div className="boss-reward-card-select">
-          <p className="boss-reward-card-title">レアカードを1枚選択</p>
+          <p className="boss-reward-card-title">{t('bossReward.rarePickTitle')}</p>
           <div className="boss-reward-card-list" ref={listRef}>
             {rareCards.map((card, i) => (
               <div
@@ -204,7 +211,7 @@ export const BossRewardScreen = ({ jobId, onComplete }: BossRewardScreenProps) =
               setSelectedReward(null);
             }}
           >
-            ← 戻る
+            {t('bossReward.back')}
           </button>
         </div>
       )}

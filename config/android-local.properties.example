@@ -1,0 +1,15 @@
+# android/local.properties にコピーして使う例（このファイルはリポジトリ用の雛形。実ファイルは android/ 側に置く）
+#
+# 手順:
+# 1) npx cap sync android で android/ を揃える
+# 2) android/local.properties を作成し、以下を自分の環境に合わせて記入
+#
+# sdk.dir は Android Studio が自動で書くこともあります。
+
+sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
+
+# keystore はリポジトリにコミットしない。絶対パス推奨。
+release.storeFile=/Users/YOUR_USERNAME/path/to/keystore.jks
+release.storePassword=YOUR_STORE_PASSWORD
+release.keyAlias=key0
+release.keyPassword=YOUR_KEY_PASSWORD

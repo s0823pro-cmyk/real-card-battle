@@ -108,11 +108,16 @@ const pushIf = (ids: string[], cond: boolean, id: string): void => {
   if (cond) ids.push(id);
 };
 
-/** 料理人ジョブ：エリア2ボス撃破実績、または累計敗北20回（隠し）で解放。既に解放済みなら何もしない */
+/** 料理人ジョブ：大工 or 料理人でエリア2ボス撃破、または累計敗北20回（隠し）で解放。既に解放済みなら何もしない */
 const maybeUnlockCookJobFromConditions = (): void => {
   if (isJobUnlocked('cook')) return;
   const ids = getUnlockedAchievementIds();
-  if (ids.has('cook_area2_clear') || getDefeatCount() >= 20) {
+  // 大工 or 料理人でエリア2ボス撃破、または累計20敗で解放
+  if (
+    ids.has('cook_area2_clear') ||
+    ids.has('area2_clear') ||
+    getDefeatCount() >= 20
+  ) {
     unlockJob('cook');
   }
 };

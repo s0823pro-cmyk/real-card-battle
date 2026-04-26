@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { MessageKey } from '../../i18n';
 import type { CSSProperties } from 'react';
 import { getJobConfig } from '../../data/jobs';
 import type { JobId } from '../../types/game';
@@ -9,6 +10,7 @@ import jobSelectBackgroundImage from '../../assets/job_select_background.png';
 import { hasTutorialSeen, markTutorialSeen } from '../../utils/tutorialState';
 import { hasSeenJobUnlock, isJobUnlocked, markJobUnlockSeen } from '../../utils/jobUnlockSystem';
 import { TutorialOverlay } from '../Tutorial/TutorialOverlay';
+import { useLanguage } from '../../contexts/LanguageContext';
 import './JobSelectScreen.css';
 
 /** アニメ終了はフレーム数では切らず、onComplete で UI を閉じる */
@@ -102,45 +104,36 @@ interface JobCard {
   comingSoon?: boolean;
 }
 
-const JOB_CARDS: JobCard[] = [
+const JOB_CARD_DEFS: Omit<JobCard, 'name' | 'mechanic' | 'catchphrase'>[] = [
   {
     id: 'carpenter',
     selectableJobId: 'carpenter',
-    name: '大工',
     icon: '🔨',
     imageUrl: carpenterSymbolImage,
     color: '#c0392b',
     hp: 80,
     timeBar: 10.8,
     mental: 7,
-    mechanic: '足場を積み上げて大ダメージ',
-    catchphrase: '腕一本で生き抜く',
   },
   {
     id: 'cook',
     selectableJobId: 'cook',
-    name: '料理人',
     icon: '🔪',
     imageUrl: cookSymbolImage,
     color: '#f9ca24',
     hp: 100,
     timeBar: 10.4,
     mental: 6,
-    mechanic: '調理ゲージを爆発させる',
-    catchphrase: '厨房は戦場だ',
   },
   {
     id: 'unemployed',
     selectableJobId: 'unemployed',
-    name: '無職',
     icon: '✊',
     imageUrl: unemployedSymbolImage,
     color: '#8b949e',
     hp: 70,
     timeBar: 12.0,
     mental: 10,
-    mechanic: 'ピンチほど強くなる',
-    catchphrase: '失うものは何もない',
     comingSoon: true,
   },
 ];
@@ -186,6 +179,18 @@ interface JobSelectScreenProps {
 }
 
 const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
+  const { t } = useLanguage();
+  const JOB_CARDS: JobCard[] = useMemo(
+    () =>
+      JOB_CARD_DEFS.map((d) => ({
+        ...d,
+        name: t(`job.${d.id}.name` as MessageKey),
+        mechanic: t(`job.${d.id}.mechanic` as MessageKey),
+        catchphrase: t(`job.${d.id}.catchphrase` as MessageKey),
+      })),
+    [t],
+  );
+
   // 拡大表示中のカード
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   // ドラッグ中のカードインデックス
@@ -209,7 +214,15 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const [showJobTutorial, setShowJobTutorial] = useState(false);
   const [showCookUnlockCelebration, setShowCookUnlockCelebration] = useState(false);
 
-  const cookUnlocked = isJobUnlocked('cook');
+  const [cookUnlocked, setCookUnlocked] = useState(() => isJobUnlocked('cook'));
+
+  useEffect(() => {
+    const check = () => setCookUnlocked(isJobUnlocked('cook'));
+    check();
+    window.addEventListener('focus', check);
+    return () => window.removeEventListener('focus', check);
+  }, []);
+
   const isCookCardLocked = (job: JobCard) => job.id === 'cook' && !cookUnlocked;
 
   const celebrationRanRef = useRef(false);
@@ -234,6 +247,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
 
   const tryStartCookUnlockCelebration = () => {
     if (celebrationRanRef.current) return;
+    // localStorage 直読み（setCookUnlocked 直後のクロージャより確実）
     if (!isJobUnlocked('cook') || hasSeenJobUnlock('cook')) return;
     celebrationRanRef.current = true;
     setShowCookUnlockCelebration(true);
@@ -259,18 +273,19 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   }, [showCookUnlockCelebration]);
 
   useEffect(() => {
-    if (!isJobUnlocked('cook') || hasSeenJobUnlock('cook')) return;
+    if (!cookUnlocked || hasSeenJobUnlock('cook')) return;
     if (!hasTutorialSeen('job_select')) return;
     const t = window.setTimeout(() => tryStartCookUnlockCelebration(), 450);
     return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- マウント時のみ（チュートリアル済みで初回のみ演出）
-  }, []);
+    // cookUnlocked が後から true になった場合（別タブ解放→フォーカス等）も演出を試す
+  }, [cookUnlocked]);
 
   const handleJobTutorialDone = () => {
     markTutorialSeen('job_select');
     setShowJobTutorial(false);
     window.setTimeout(() => {
       if (isJobUnlocked('cook') && !hasSeenJobUnlock('cook')) {
+        setCookUnlocked(true);
         tryStartCookUnlockCelebration();
       }
     }, 350);
@@ -456,7 +471,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   }, []);
 
   const handLayout = useMemo(
-    () => calcHandLayout(JOB_CARDS.length, handAreaWidth),
+    () => calcHandLayout(JOB_CARD_DEFS.length, handAreaWidth),
     [handAreaWidth],
   );
 
@@ -474,17 +489,17 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const expandedMentalCap =
     expandedJob?.selectableJobId != null ? getJobConfig(expandedJob.selectableJobId).maxMental : 10;
 
+  const jobSelectFullbleedStyle: CSSProperties = {
+    backgroundImage: `url(${jobSelectBackgroundImage})`,
+    backgroundColor: '#0b1118',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center top',
+    backgroundRepeat: 'no-repeat',
+  };
+
   return (
-    <main
-      className="job-select-screen"
-      style={{
-        backgroundImage: `url(${jobSelectBackgroundImage})`,
-        backgroundColor: '#0b1118',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center top',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
+    <main className="job-select-screen">
+      <div className="job-select-fullbleed-bg" style={jobSelectFullbleedStyle} aria-hidden />
       <div className="job-select-overlay" />
       {topLightIntensity > 0.01 && (
         <div
@@ -494,7 +509,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
       )}
 
       <button type="button" className="btn-job-back" onClick={onBack}>
-        ← 戻る
+        {t('common.back')}
       </button>
 
       {/* 拡大表示パネル（手札とは独立） */}
@@ -539,7 +554,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
             <p className="job-detail-catch">{expandedJob.catchphrase}</p>
             <div className="job-detail-stats">
               <div className="job-detail-stat">
-                <span className="job-detail-stat-label">❤️ HP</span>
+                <span className="job-detail-stat-label">{t('job.detail.hp')}</span>
                 <div className="job-detail-stat-bar">
                   <div
                     className="job-detail-stat-fill"
@@ -549,7 +564,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                 <span className="job-detail-stat-value">{expandedJob.hp}</span>
               </div>
               <div className="job-detail-stat">
-                <span className="job-detail-stat-label">⏱ タイム</span>
+                <span className="job-detail-stat-label">{t('job.detail.time')}</span>
                 <div className="job-detail-stat-bar">
                   <div
                     className="job-detail-stat-fill"
@@ -562,7 +577,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                 <span className="job-detail-stat-value">{expandedJob.timeBar}s</span>
               </div>
               <div className="job-detail-stat">
-                <span className="job-detail-stat-label">🧠 メンタル</span>
+                <span className="job-detail-stat-label">{t('job.detail.mental')}</span>
                 <div className="job-detail-stat-bar">
                   <div
                     className="job-detail-stat-fill"
@@ -581,7 +596,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
               className="job-detail-mechanic"
               style={{ borderColor: `${expandedJob.color}44` }}
             >
-              <span className="job-detail-mechanic-label">固有スキル</span>
+              <span className="job-detail-mechanic-label">{t('job.detail.uniqueSkill')}</span>
               <p className="job-detail-mechanic-text">{expandedJob.mechanic}</p>
             </div>
           </div>
@@ -668,7 +683,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                 <div className="job-hand-card-topline" style={{ background: job.color }} />
                 <div className="job-hand-card-name-area">
                   <span className="job-hand-card-name">
-                    {cookLocked || job.comingSoon ? '？？？' : job.name}
+                    {cookLocked || job.comingSoon ? t('job.unknownName') : job.name}
                   </span>
                 </div>
                 <div className="job-hand-card-symbol">
@@ -705,7 +720,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                 )}
                 {cookLocked && (
                   <div className="job-hand-card-cook-lock-hint" role="status">
-                    エリア2ボス撃破で解放
+                    {t('job.cookLockHint')}
                   </div>
                 )}
               </div>
@@ -727,7 +742,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
         <>
           <canvas ref={confettiCanvasRef} className="job-cook-unlock-confetti" aria-hidden />
           <div className="job-cook-unlock-overlay" role="dialog" aria-live="polite">
-            <p className="job-cook-unlock-message">🔪 料理人が解放されました！</p>
+            <p className="job-cook-unlock-message">{t('job.cookUnlockCelebration')}</p>
           </div>
         </>
       )}

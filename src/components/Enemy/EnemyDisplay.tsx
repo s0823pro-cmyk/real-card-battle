@@ -1,6 +1,8 @@
 import type { Enemy, EnemyIntent, PlayerState } from '../../types/game';
 import { useState } from 'react';
 import { ICONS } from '../../assets/icons';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { translatedEnemyName } from '../../i18n/entityKeys';
 import EnemyIntentView from './EnemyIntent';
 import Tooltip from '../Tooltip/Tooltip';
 import './Enemy.css';
@@ -37,6 +39,7 @@ const EnemyDisplay = ({
   dragCardAppliesEnemyVulnerable = false,
   enemyDebuffHintEnemyId = null,
 }: Props) => {
+  const { t } = useLanguage();
   const [failedImageEnemyIds, setFailedImageEnemyIds] = useState<Set<string>>(() => new Set());
 
   const getStatusValue = (enemy: Enemy, type: Enemy['statusEffects'][number]['type']): number =>
@@ -50,6 +53,7 @@ const EnemyDisplay = ({
   return (
     <section className={`enemy-list ${layoutClass}`}>
       {enemies.map((enemy) => {
+        const displayEnemyName = translatedEnemyName(enemy, t);
         const previewInfo = previewByEnemy?.[enemy.id];
         const previewDamage = previewInfo?.damage ?? 0;
         const previewHp = previewInfo?.previewHp ?? 0;
@@ -82,7 +86,7 @@ const EnemyDisplay = ({
             } ${targetedClass ?? ''}`}
             data-enemy-id={enemy.id}
           >
-            <h3 className="enemy-name">{enemy.name}</h3>
+            <h3 className="enemy-name">{displayEnemyName}</h3>
             <div className="enemy-hp-top">
               <div className="enemy-hp-bar-container">
                 <span className={`enemy-hp-bar-fill ${hpClass}`} style={{ width: `${hpPercent}%` }} />
@@ -122,7 +126,7 @@ const EnemyDisplay = ({
               {enemy.imageUrl && !failedImageEnemyIds.has(enemy.id) ? (
                 <img
                   src={enemy.imageUrl}
-                  alt={enemy.name}
+                  alt={displayEnemyName}
                   className="enemy-illustration-img"
                   draggable={false}
                   onError={() => {

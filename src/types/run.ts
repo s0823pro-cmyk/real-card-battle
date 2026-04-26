@@ -15,6 +15,7 @@ export type GameScreen =
   | 'home'
   | 'title'
   | 'zukan'
+  | 'ranking'
   | 'job_select'
   | 'map'
   | 'dice_rolling'
@@ -161,6 +162,8 @@ export interface BattleResult {
   kind: BattleKind;
   battleTurns?: number;
   defeatedBy?: string;
+  /** ランキング用（勝利時のみ useGameState が付与）敵の攻撃で受けたHPダメージ合計 */
+  rankingEnemyAttackHpDamageSum?: number;
 }
 
 export interface EnemyTemplateLike {

@@ -149,7 +149,7 @@ function computeEffectiveCardValuesInner(
     if (player.deathWishActive && card.type === 'attack') {
       damage += 4;
     }
-    // calculateCardDamage と同順（弱体前）：次アタック+damage・逆境・レシピ・具材・ナイフ
+    // calculateCardDamage と同順（弱体前）：次アタック+damage・逆境・全アタック/ターン加算・お守り攻撃加算・具材・ナイフ
     if (card.type === 'attack' && player.nextAttackDamageBoost > 0) {
       damage += player.nextAttackDamageBoost;
     }
@@ -164,6 +164,9 @@ function computeEffectiveCardValuesInner(
     }
     if (card.type === 'attack' && (player.turnAttackDamageBonus ?? 0) > 0) {
       damage += player.turnAttackDamageBonus ?? 0;
+    }
+    if (card.type === 'attack' && (player.relicAttackDamageBonus ?? 0) > 0) {
+      damage += player.relicAttackDamageBonus ?? 0;
     }
     if (card.type === 'attack' && player.nextIngredientBonus > 0 && isIngredientCard(card)) {
       damage += player.nextIngredientBonus;

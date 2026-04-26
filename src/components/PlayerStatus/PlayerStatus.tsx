@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import type { Card, PlayerState, ToolSlot } from '../../types/game';
 import type { RunItem } from '../../types/run';
 import type { HungryState } from '../../utils/hungrySystem';
@@ -55,6 +56,7 @@ const PlayerStatus = ({
   onOpenDrawPile,
   onOpenDiscardPile,
 }: Props) => {
+  const { t } = useLanguage();
   const displayCurrentHp = previewHp != null ? previewHp : player.currentHp;
   const hpRatio = displayCurrentHp / Math.max(1, player.maxHp);
   const hpColorClass =
@@ -285,10 +287,10 @@ const PlayerStatus = ({
         </div>
         <div className="stat-piles">
           <button type="button" className="btn-pile" onClick={onOpenDrawPile}>
-            山:{drawPileCount}
+            {t('player.drawAbbr')}:{drawPileCount}
           </button>
           <button type="button" className="btn-pile" onClick={onOpenDiscardPile}>
-            捨:{discardPileCount}
+            {t('player.discardAbbr')}:{discardPileCount}
           </button>
           <button
             type="button"
@@ -299,18 +301,20 @@ const PlayerStatus = ({
               onEndTurn();
             }}
           >
-            終了
+            {t('player.turnEnd')}
           </button>
         </div>
       </div>
       {itemConfirm && (
         <div className="reserve-confirm-overlay">
           <div className="reserve-confirm-dialog">
-            <p className="reserve-confirm-title">「{itemConfirm.name}」を使用しますか？</p>
+            <p className="reserve-confirm-title">
+              {t('player.itemUseTitle', { name: itemConfirm.name })}
+            </p>
             <p className="reserve-confirm-note">{itemConfirm.description}</p>
             <div className="reserve-confirm-buttons">
               <button type="button" className="btn-reserve-cancel" onClick={() => setItemConfirm(null)}>
-                キャンセル
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -320,7 +324,7 @@ const PlayerStatus = ({
                   setItemConfirm(null);
                 }}
               >
-                使用する
+                {t('player.itemUse')}
               </button>
             </div>
           </div>

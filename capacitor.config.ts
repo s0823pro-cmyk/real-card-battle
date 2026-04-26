@@ -12,6 +12,10 @@ const config: CapacitorConfig = {
      * 上余白は App.css の html.cap-ios #root { padding-top: var(--sat) } と --root-safe-top で各画面を補正。
      */
     contentInset: 'never',
+    backgroundColor: '#000000',
+    allowsLinkPreview: false,
+    scrollEnabled: false,
+    limitsNavigationsToAppBoundDomains: true,
   },
   server: {
     androidScheme: 'https',

@@ -93,6 +93,8 @@ import {
   recordShrineVisitForAchievements,
   recordShopCardBuyForAchievements,
 } from '../utils/achievementSystem';
+import { maybePromptAppStoreReviewOnRunDefeat } from '../utils/appStoreReviewPrompt';
+import { finalizeRankingRunEnd, reportRankingScore, resetCurrentRunRankingScore } from '../utils/rankingClient';
 import { playSeByType } from './useAudio';
 
 /** 開発用: 拡張プールの全カード（各1枚分の定義） */
@@ -159,6 +161,7 @@ const NON_RESUMABLE_SCREENS = [
   'home',
   'title',
   'zukan',
+  'ranking',
   'job_select',
   'victory',
   'game_over',
@@ -823,6 +826,10 @@ export const useRunProgress = () => {
    * エリア1・2のエリアボス後に誤ってストーリーが被り、VICTORY タップが奪われることがある。
    */
   const pendingArea3RunVictoryStoryRef = useRef(false);
+  /** ランキング: 1ランでゴールド1000超えボーナスを付与済みか */
+  const rankingRunGoldBonusGrantedRef = useRef(false);
+  /** ランキング: 連続バトル勝利数（敗北でリセット） */
+  const rankingBattleWinStreakRef = useRef(0);
   const pendingBattleOpenRef = useRef<(() => void) | null>(null);
   /** マップ→バトル: 'in' で暗転、'out' で明転、null で非表示 */
   const [battleFadeOverlay, setBattleFadeOverlay] = useState<'in' | 'out' | null>(null);
@@ -1078,6 +1085,7 @@ export const useRunProgress = () => {
         dispatch({ type: 'add_traveled_edge', from: fromId, to: toId });
         dispatch({ type: 'set_current_tile', tileId: toId });
         dispatch({ type: 'set_pending_steps', steps: Math.max(0, value - i - 1) });
+        reportRankingScore(after.jobId, 10);
         fromId = toId;
         await wait(260);
       }
@@ -1096,6 +1104,7 @@ export const useRunProgress = () => {
         dispatch({ type: 'add_traveled_edge', from: fromId, to: toId });
         dispatch({ type: 'set_current_tile', tileId: toId });
         dispatch({ type: 'set_pending_steps', steps: Math.max(0, value - i - 1) });
+        reportRankingScore(after.jobId, 10);
         fromId = toId;
         await wait(260);
       }
@@ -1126,6 +1135,7 @@ export const useRunProgress = () => {
         dispatch({ type: 'add_traveled_edge', from: fromId, to: toId });
         dispatch({ type: 'set_current_tile', tileId: toId });
         dispatch({ type: 'set_pending_steps', steps: Math.max(0, stepsToAdvance - i - 1) });
+        reportRankingScore(current.jobId, 10);
         fromId = toId;
         await wait(260);
       }
@@ -1144,10 +1154,20 @@ export const useRunProgress = () => {
 
   const closeEventCardPreview = () => {
     dispatch({ type: 'close_event_card_preview' });
+    queueMicrotask(() => {
+      if (stateRef.current.currentScreen === 'map') {
+        reportRankingScore(stateRef.current.jobId, 10);
+      }
+    });
   };
 
   const closeEventGainModal = () => {
     dispatch({ type: 'close_event_gain_modal' });
+    queueMicrotask(() => {
+      if (stateRef.current.currentScreen === 'map') {
+        reportRankingScore(stateRef.current.jobId, 10);
+      }
+    });
   };
 
   const chooseEventChoice = (choiceIndex: number) => {
@@ -1170,6 +1190,7 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_event', event: null });
       recordEventResolvedForAchievements(stateRef.current.jobId);
       dispatch({ type: 'set_screen', screen: 'map' });
+      reportRankingScore(stateRef.current.jobId, 10);
       return;
     }
     if (event.id === 'mystery_medicine' && choiceIndex === 0) {
@@ -1190,6 +1211,7 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_event', event: null });
       recordEventResolvedForAchievements(stateRef.current.jobId);
       dispatch({ type: 'set_screen', screen: 'map' });
+      reportRankingScore(stateRef.current.jobId, 10);
       return;
     }
 
@@ -1291,6 +1313,7 @@ export const useRunProgress = () => {
       dispatch({ type: 'show_event_gain_modal', payload: pendingGain });
     } else {
       dispatch({ type: 'set_screen', screen: 'map' });
+      reportRankingScore(stateRef.current.jobId, 10);
     }
   };
 
@@ -1323,6 +1346,7 @@ export const useRunProgress = () => {
       },
     });
     dispatch({ type: 'set_screen', screen: 'map' });
+    reportRankingScore(stateRef.current.jobId, 10);
   };
 
   const hotelMeditate = () => {
@@ -1338,16 +1362,19 @@ export const useRunProgress = () => {
       },
     });
     dispatch({ type: 'set_screen', screen: 'map' });
+    reportRankingScore(stateRef.current.jobId, 10);
   };
 
   const hotelGetItem = () => {
     if (stateRef.current.hotelItemReceivedThisVisit) {
       dispatch({ type: 'set_screen', screen: 'map' });
+      reportRankingScore(stateRef.current.jobId, 10);
       return;
     }
     const randomItem = generateShopItems(1)[0];
     if (!randomItem) {
       dispatch({ type: 'set_screen', screen: 'map' });
+      reportRankingScore(stateRef.current.jobId, 10);
       return;
     }
     if (stateRef.current.items.length >= 3) {
@@ -1360,6 +1387,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_items', items: [...stateRef.current.items, randomItem] });
     dispatch({ type: 'set_hotel_item_received', used: true });
     dispatch({ type: 'set_screen', screen: 'map' });
+    reportRankingScore(stateRef.current.jobId, 10);
   };
 
   const upgradeDeckCard = (cardId: string) => {
@@ -1446,6 +1474,7 @@ export const useRunProgress = () => {
     if (shop.type === 'card') {
       recordShopCardBuyForAchievements(stateRef.current.jobId);
     }
+    reportRankingScore(stateRef.current.jobId, 5);
   };
 
   const resolvePendingItemReplacement = (discardIndex: number | null) => {
@@ -1464,6 +1493,7 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_hotel_item_received', used: true });
       dispatch({ type: 'set_pending_item_replacement', value: null });
       dispatch({ type: 'set_screen', screen: 'map' });
+      reportRankingScore(stateRef.current.jobId, 10);
       return;
     }
 
@@ -1508,6 +1538,7 @@ export const useRunProgress = () => {
       player: { ...stateRef.current.player, gold: stateRef.current.player.gold + sellPrice },
     });
     dispatch({ type: 'set_pawnshop_sell_used', used: true });
+    reportRankingScore(stateRef.current.jobId, 5);
   };
 
   const closePawnshop = () => {
@@ -1599,12 +1630,45 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_deck', deck: cleanedDeck });
       dispatch({ type: 'set_items', items: result.items });
       dispatch({ type: 'set_battle_setup', setup: null, tileType: preservedLastTileType });
+      maybePromptAppStoreReviewOnRunDefeat();
       dispatch({
         type: 'set_screen_with_achievements',
         screen: 'game_over',
         achievements: newAchievements,
       });
+      rankingBattleWinStreakRef.current = 0;
+      finalizeRankingRunEnd(stateRef.current.jobId);
       return;
+    }
+
+    rankingBattleWinStreakRef.current += 1;
+    {
+      const jobId = stateRef.current.jobId;
+      let pts = 0;
+      if (result.kind === 'elite') {
+        pts += 150;
+      } else if (result.kind === 'boss') {
+        pts += 300;
+      } else {
+        const c = result.defeatedEnemies.filter((e) => e.currentHp <= 0).length || result.defeatedEnemies.length;
+        if (c >= 3) pts += 100;
+        else if (c === 2) pts += 70;
+        else pts += 50;
+      }
+      const hpDmg = result.rankingEnemyAttackHpDamageSum ?? 0;
+      if (hpDmg === 0) pts += 30;
+      if (result.player.currentHp > 0 && result.player.currentHp <= 10) pts += 30;
+      if (result.player.gold > 1000 && !rankingRunGoldBonusGrantedRef.current) {
+        rankingRunGoldBonusGrantedRef.current = true;
+        pts += 20;
+      }
+      if (rankingBattleWinStreakRef.current >= 3 && rankingBattleWinStreakRef.current % 3 === 0) {
+        pts += 50;
+      }
+      if (result.kind === 'boss' && preservedLastTileType === 'area_boss' && battleArea >= 3) {
+        pts += 500;
+      }
+      reportRankingScore(jobId, pts);
     }
 
     let sanitizedPlayer = sanitizePlayerAfterBattle(result.player);
@@ -1708,6 +1772,7 @@ export const useRunProgress = () => {
     const omamori = stateRef.current.omamoriRewardChoices?.find((item) => item.id === omamoriId);
     const source = stateRef.current.omamoriRewardSource;
     const lastTile = stateRef.current.lastTileType;
+    const jobId = stateRef.current.jobId;
     if (omamori) dispatch({ type: 'set_omamoris', omamoris: [...stateRef.current.omamoris, omamori] });
     dispatch({ type: 'set_omamori_reward', omamoris: null, source: null });
     if (source === 'battle' && lastTile === 'area_boss') {
@@ -1724,6 +1789,9 @@ export const useRunProgress = () => {
       return;
     }
     dispatch({ type: 'set_screen', screen: 'map' });
+    if (source === 'shrine') {
+      reportRankingScore(jobId, 10);
+    }
   };
 
   const applyBossReward = (rewardType: BossRewardType, selectedCard?: Card): PlayerState => {
@@ -1874,6 +1942,7 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_last_victory_rewards', rewardGold: 0, mentalRecovery: 0 });
     dispatch({ type: 'set_battle_victory_seq', value: 0 });
     dispatch({ type: 'set_screen', screen: 'home' });
+    resetCurrentRunRankingScore();
   };
 
   const startRunFromHome = () => {
@@ -1882,6 +1951,7 @@ export const useRunProgress = () => {
 
   const continueFromSave = (saved: GameProgress) => {
     lastBattleVictoryCardChoicesRef.current = null;
+    rankingRunGoldBonusGrantedRef.current = saved.player.gold > 1000;
     let resolvedScreen: GameScreen = saved.currentScreen;
     if (resolvedScreen === 'event_card_preview' || resolvedScreen === 'event_gain_modal') {
       resolvedScreen = 'map';
@@ -1943,6 +2013,14 @@ export const useRunProgress = () => {
 
   const openZukanFromHome = () => {
     dispatch({ type: 'set_screen', screen: 'zukan' });
+  };
+
+  const openRankingFromHome = () => {
+    dispatch({ type: 'set_screen', screen: 'ranking' });
+  };
+
+  const backToHomeFromRanking = () => {
+    dispatch({ type: 'set_screen', screen: 'home' });
   };
 
   const backToHomeFromJobSelect = () => {
@@ -2268,6 +2346,9 @@ export const useRunProgress = () => {
     dispatch({ type: 'set_defeat_revive_used', used: false });
     dispatch({ type: 'set_last_victory_rewards', rewardGold: 0, mentalRecovery: 0 });
     dispatch({ type: 'set_screen', screen: 'map' });
+    rankingRunGoldBonusGrantedRef.current = false;
+    rankingBattleWinStreakRef.current = 0;
+    resetCurrentRunRankingScore();
   };
 
   return {
@@ -2301,8 +2382,10 @@ export const useRunProgress = () => {
     continueFromSave,
     startRunFromHome,
     openZukanFromHome,
+    openRankingFromHome,
     backToHomeFromJobSelect,
     backToHomeFromZukan,
+    backToHomeFromRanking,
     unlockAllCardsForDebug,
     addExpansionCardsTwiceToDeckDev,
     startDevNavigation,

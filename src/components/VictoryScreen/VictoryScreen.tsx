@@ -1,9 +1,11 @@
 import { Capacitor } from '@capacitor/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import type { MessageKey } from '../../i18n';
+import { achievementDescKey, achievementNameKey } from '../../i18n/entityKeys';
 import { mountCardRewardBanner, removeBannerAd } from '../../utils/adMobClient';
 import type { JobId } from '../../types/game';
-import type { AchievementTier } from '../../utils/achievementTypes';
 import {
   getCumulativeAchievementProgressSuffix,
   getDefeatCount,
@@ -13,12 +15,6 @@ import { loadAchievementCounters } from '../../utils/achievementCounters';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import '../HomeScreen/HomeScreen.css';
 import './VictoryScreen.css';
-
-const TIER_LABEL: Record<AchievementTier, string> = {
-  easy: '（アンコモン×2）',
-  medium: '（アンコモン+レア）',
-  hard: '（レア×2）',
-};
 
 interface VictoryScreenProps {
   jobId: JobId;
@@ -42,6 +38,7 @@ export const VictoryScreen = ({
   suppressNativeBanner = false,
   onHome,
 }: VictoryScreenProps) => {
+  const { t } = useLanguage();
   const [showStats, setShowStats] = useState(false);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
@@ -139,7 +136,7 @@ export const VictoryScreen = ({
   const bannerBottomClass =
     !adsRemoved && !suppressNativeBanner && Capacitor.isNativePlatform() ? ' victory-screen--with-banner' : '';
 
-  const jobName = { carpenter: '大工', cook: '料理人', unemployed: '無職' }[jobId] ?? jobId;
+  const jobName = t(`job.${jobId}.name` as MessageKey);
   const jobColor = { carpenter: '#c0392b', cook: '#f9ca24', unemployed: '#8b949e' }[jobId] ?? '#ffffff';
 
   return (
@@ -151,8 +148,8 @@ export const VictoryScreen = ({
           <p className="victory-job" style={{ color: jobColor }}>
             {jobName}
           </p>
-          <h1 className="victory-title">クリア！</h1>
-          <p className="victory-sub">全エリアを制覇した！</p>
+          <h1 className="victory-title">{t('victory.title')}</h1>
+          <p className="victory-sub">{t('victory.sub')}</p>
         </div>
 
         {showStats && (
@@ -160,22 +157,22 @@ export const VictoryScreen = ({
             <div className="victory-stat-card">
               <span className="victory-stat-icon">🗺️</span>
               <div className="victory-stat-info">
-                <p className="victory-stat-label">到達エリア</p>
-                <p className="victory-stat-value">エリア{area}</p>
+                <p className="victory-stat-label">{t('victory.statArea')}</p>
+                <p className="victory-stat-value">{t('victory.statAreaValue', { n: area })}</p>
               </div>
             </div>
             <div className="victory-stat-card">
               <span className="victory-stat-icon">⚔️</span>
               <div className="victory-stat-info">
-                <p className="victory-stat-label">総ターン数</p>
-                <p className="victory-stat-value">{turnCount}ターン</p>
+                <p className="victory-stat-label">{t('victory.statTurns')}</p>
+                <p className="victory-stat-value">{t('victory.statTurnsValue', { n: turnCount })}</p>
               </div>
             </div>
             <div className="victory-stat-card">
               <span className="victory-stat-icon">🃏</span>
               <div className="victory-stat-info">
-                <p className="victory-stat-label">獲得カード数</p>
-                <p className="victory-stat-value">{cardsAcquired}枚</p>
+                <p className="victory-stat-label">{t('victory.statCards')}</p>
+                <p className="victory-stat-value">{t('victory.statCardsValue', { n: cardsAcquired })}</p>
               </div>
             </div>
           </div>
@@ -184,7 +181,9 @@ export const VictoryScreen = ({
         {showStats && newAchievements.length > 0 && (
           <div className="victory-achievements">
             <h3 className="victory-achievements-title">
-              🎖️ 実績解除！{newAchievements.length > 1 ? `（${newAchievements.length}件）` : ''}
+              {newAchievements.length > 1
+                ? t('victory.achievementTitleMulti', { n: newAchievements.length })
+                : t('victory.achievementTitle')}
             </h3>
             <div className="achievement-list">
               {newAchievements.map((a) => (
@@ -196,17 +195,17 @@ export const VictoryScreen = ({
                 >
                   <span className="achievement-icon">{a.icon}</span>
                   <div className="achievement-info">
-                    <p className="achievement-name">{a.name}</p>
+                    <p className="achievement-name">{t(achievementNameKey(a.id), undefined, a.name)}</p>
                     <p className="achievement-desc">
-                      {a.description}
+                      {t(achievementDescKey(a.id), undefined, a.description)}
                       {getCumulativeAchievementProgressSuffix(
                         a.id,
                         cumulativeDisplayState.counters,
                         cumulativeDisplayState.defeatCount,
                       ) ?? ''}
                     </p>
-                    <p className="achievement-tier">{TIER_LABEL[a.tier]}</p>
-                    <p className="achievement-reward">報酬: カード2枚（タップで表示）</p>
+                    <p className="achievement-tier">{t(`achievement.tier.${a.tier}` as MessageKey)}</p>
+                    <p className="achievement-reward">{t('victory.rewardLine')}</p>
                   </div>
                 </button>
               ))}
@@ -216,7 +215,7 @@ export const VictoryScreen = ({
 
         {showStats && (
           <button type="button" className="btn-victory-home" onClick={onHome}>
-            ホームに戻る
+            {t('victory.home')}
           </button>
         )}
       </div>

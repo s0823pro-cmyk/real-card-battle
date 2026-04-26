@@ -93,6 +93,7 @@
   padding: 16px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .card-display-item {
@@ -122,6 +123,17 @@
 
 .card-display-item--unaffordable:hover {
   transform: none;
+}
+
+/* 図鑑の .zukan-card-preview * と同様：内側の要素がタッチを奪うと親のスクロールに届かず、
+   CardComponent の touchstart preventDefault で縦スクロールも止まる */
+.card-display-item .hand-card,
+.card-display-item .hand-card * {
+  pointer-events: none !important;
+}
+
+.card-display-item .hand-card {
+  touch-action: pan-y;
 }
 
 .shop-grid {
@@ -396,6 +408,7 @@
   overflow-y: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding: 8px 12px;
 }
 
@@ -432,8 +445,13 @@
   box-shadow: 0 0 12px rgba(240, 180, 41, 0.4);
 }
 
+.upgrade-card-item .hand-card,
+.upgrade-card-item .hand-card * {
+  pointer-events: none !important;
+}
+
 .upgrade-card-item .hand-card {
-  pointer-events: none;
+  touch-action: pan-y;
 }
 
 .upgrade-screen .card-upgrade-badge {
@@ -829,7 +847,18 @@
   background-color: transparent;
 }
 
-.flow-screen--with-bg::before,
+/* flow-screen は max-width 列内のため、写真＋オーバーレイは fixed でノッチ下まで全面に */
+.flow-screen--with-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--flow-bg-image);
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+}
+
 .boss-reward-screen--with-bg::before {
   content: '';
   position: absolute;
@@ -841,7 +870,15 @@
   pointer-events: none;
 }
 
-.flow-screen--with-bg::after,
+.flow-screen--with-bg::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: var(--flow-bg-overlay, rgba(0, 0, 0, 0.45));
+  pointer-events: none;
+}
+
 .boss-reward-screen--with-bg::after {
   content: '';
   position: absolute;

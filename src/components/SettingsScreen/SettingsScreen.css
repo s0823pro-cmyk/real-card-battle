@@ -114,6 +114,38 @@
   border-bottom: none;
 }
 
+.settings-language-block {
+  margin-top: 4px;
+}
+.settings-language-label {
+  display: block;
+  font-weight: bold;
+  font-size: 15px;
+  color: #e8d5a3;
+  margin-bottom: 8px;
+}
+.settings-language-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.settings-lang-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+  color: #e8d5a3;
+  font-size: 13px;
+  cursor: pointer;
+}
+.settings-lang-btn--active {
+  border-color: #c8a96e;
+  background: rgba(200, 169, 110, 0.25);
+  box-shadow: 0 0 0 1px rgba(200, 169, 110, 0.4);
+}
+
 .settings-item-header {
   display: flex;
   justify-content: space-between;

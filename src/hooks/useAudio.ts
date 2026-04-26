@@ -1,17 +1,39 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { App } from '@capacitor/app';
-import { Capacitor } from '@capacitor/core';
 
 let sharedAudioContext: AudioContext | null = null;
+/** SE（とアンロック用サイレント音）を destination の手前でまとめ、画面録画時のミキシングを安定させる */
+let seMasterCompressor: DynamicsCompressorNode | null = null;
 const decodedBuffers = new Map<string, AudioBuffer>();
+
+function getSeDestinationCompressor(ctx: AudioContext): DynamicsCompressorNode {
+  if (!seMasterCompressor || seMasterCompressor.context !== ctx) {
+    seMasterCompressor = ctx.createDynamicsCompressor();
+    seMasterCompressor.connect(ctx.destination);
+  }
+  return seMasterCompressor;
+}
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
-    const AudioContextClass =
-      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    seMasterCompressor = null;
+    const w = window as unknown as { webkitAudioContext?: typeof AudioContext };
+    const AudioContextClass = window.AudioContext ?? w.webkitAudioContext;
     if (!AudioContextClass) return null;
-    sharedAudioContext = new AudioContextClass();
+    const opts: AudioContextOptions = { latencyHint: 'playback', sampleRate: 44100 };
+    try {
+      sharedAudioContext = new AudioContextClass(opts);
+    } catch {
+      try {
+        sharedAudioContext = new AudioContextClass({ latencyHint: 'playback' });
+      } catch {
+        try {
+          sharedAudioContext = new AudioContextClass();
+        } catch {
+          return null;
+        }
+      }
+    }
   }
   return sharedAudioContext;
 }
@@ -25,7 +47,7 @@ export async function unlockAudioContext(): Promise<void> {
   const buf = ctx.createBuffer(1, 1, 22050);
   const src = ctx.createBufferSource();
   src.buffer = buf;
-  src.connect(ctx.destination);
+  src.connect(getSeDestinationCompressor(ctx));
   src.start(0);
 }
 
@@ -176,6 +198,7 @@ function playBgmModule(type: BgmType, volume: number, muted: boolean): void {
   bgmElement.loop = LOOP_BGM.includes(type);
   bgmElement.volume = muted ? 0 : volume;
   bgmElement.muted = muted; // iOS WebView 対策
+  void bgmElement.load();
   const playPromise = bgmElement.play();
   if (playPromise !== undefined) {
     playPromise.catch(() => {
@@ -187,6 +210,27 @@ function playBgmModule(type: BgmType, volume: number, muted: boolean): void {
     });
   }
   currentBgmType = type;
+}
+
+/**
+ * ミュート解除後など、同一トラックでも確実に再ロードして再生する。
+ * （playBgmModule は currentBgmType が同じだと何もしないため別経路）
+ */
+function forceRestartCurrentBgmModule(volume: number, muted: boolean): void {
+  const typeToPlay = currentBgmType;
+  if (typeToPlay === 'none') return;
+  currentBgmType = 'none';
+  if (bgmElement) {
+    bgmElement.pause();
+    bgmElement.currentTime = 0;
+    try {
+      bgmElement.removeAttribute('src');
+      bgmElement.load();
+    } catch {
+      /* ignore */
+    }
+  }
+  playBgmModule(typeToPlay, volume, muted);
 }
 
 function suspendForBackgroundModule(): void {
@@ -216,6 +260,15 @@ function resumeAfterBackgroundModule(): void {
     const vol = readStoredFloat('bgmVolume', 0.4);
     const muted = typeof localStorage !== 'undefined' && localStorage.getItem('bgmMuted') === 'true';
     playBgmModule(snap, vol, muted);
+  }
+}
+
+/** Capacitor `App` のフォアグラウンド／バックグラウンド（App.tsx の appStateChange と併用） */
+export function applyAppStateToAudio(isActive: boolean): void {
+  if (isActive) {
+    resumeAfterBackgroundModule();
+  } else {
+    suspendForBackgroundModule();
   }
 }
 
@@ -259,6 +312,12 @@ function readStoredFloat(key: string, fallback: number): number {
   return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
 }
 
+function clearSeDecodedBuffers(): void {
+  for (const src of Object.values(SE_FILES)) {
+    decodedBuffers.delete(src);
+  }
+}
+
 function playSeFromSrc(src: string, volume: number): void {
   const fallback = () => {
     const audio = new Audio(src);
@@ -280,7 +339,7 @@ function playSeFromSrc(src: string, volume: number): void {
       gainNode.gain.value = volume;
       source.buffer = buffer;
       source.connect(gainNode);
-      gainNode.connect(ctx.destination);
+      gainNode.connect(getSeDestinationCompressor(ctx));
       source.start(0);
     } catch {
       fallback();
@@ -332,9 +391,14 @@ export const useAudio = () => {
   const toggleBgmMute = useCallback((): boolean => {
     bgmMutedRef.current = !bgmMutedRef.current;
     localStorage.setItem('bgmMuted', String(bgmMutedRef.current));
-    if (bgmElement) {
-      bgmElement.volume = bgmMutedRef.current ? 0 : bgmVolumeRef.current;
-      bgmElement.muted = bgmMutedRef.current; // iOS WebView 対策
+    if (bgmMutedRef.current) {
+      if (bgmElement) {
+        bgmElement.pause();
+        bgmElement.volume = 0;
+        bgmElement.muted = true;
+      }
+    } else {
+      forceRestartCurrentBgmModule(bgmVolumeRef.current, false);
     }
     return bgmMutedRef.current;
   }, []);
@@ -342,6 +406,10 @@ export const useAudio = () => {
   const toggleSeMute = useCallback((): boolean => {
     seMutedRef.current = !seMutedRef.current;
     localStorage.setItem('seMuted', String(seMutedRef.current));
+    if (!seMutedRef.current) {
+      clearSeDecodedBuffers();
+      void unlockAudioContext();
+    }
     return seMutedRef.current;
   }, []);
 
@@ -401,26 +469,10 @@ export const useAudio = () => {
       document.addEventListener('enterpictureinpicture', onEnterPip);
       document.addEventListener('leavepictureinpicture', onLeavePip);
 
-      let removeAppListener: (() => void) | undefined;
-      if (Capacitor.isNativePlatform()) {
-        void App.addListener('appStateChange', ({ isActive }) => {
-          if (!isActive) {
-            suspendForBackgroundModule();
-          } else {
-            resumeAfterBackgroundModule();
-          }
-        }).then((handle) => {
-          removeAppListener = () => {
-            void handle.remove();
-          };
-        });
-      }
-
       lifecycleCleanup = () => {
         document.removeEventListener('visibilitychange', onVisibility);
         document.removeEventListener('enterpictureinpicture', onEnterPip);
         document.removeEventListener('leavepictureinpicture', onLeavePip);
-        removeAppListener?.();
       };
     }
     return () => {

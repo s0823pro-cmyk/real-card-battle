@@ -4,8 +4,15 @@ import { Capacitor } from '@capacitor/core'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import './index.css'
 import App from './App.tsx'
+import { LanguageProvider } from './contexts/LanguageContext'
+import { ensureRankingDeviceId } from './utils/rankingClient'
 try {
   localStorage.removeItem('real-card-battle:debug-enemy-hp1')
+} catch {
+  // ignore
+}
+try {
+  ensureRankingDeviceId()
 } catch {
   // ignore
 }
@@ -13,7 +20,7 @@ try {
 if (Capacitor.isNativePlatform()) {
   StatusBar.setOverlaysWebView({ overlay: false })
   StatusBar.setStyle({ style: Style.Dark })
-  StatusBar.setBackgroundColor({ color: '#000000' })
+  StatusBar.setBackgroundColor({ color: '#0d1117' })
 }
 
 /** Android: decorFitsSystemWindows(true) で WebView は既にステータスバー下から始まる。--android-inset-top を足すと表示とタッチの Y がズレやすいので 0 */
@@ -30,7 +37,9 @@ if (Capacitor.getPlatform() === 'ios') {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <LanguageProvider>
+      <App />
+    </LanguageProvider>
   </StrictMode>,
 )
 // cache bust 03/31/2026 22:23:20
