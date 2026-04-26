@@ -16,7 +16,10 @@ import {
   UNEMPLOYED_COMMON_POOL,
   UNEMPLOYED_RARE_POOL_UNFILTERED,
   UNEMPLOYED_UNCOMMON_POOL_UNFILTERED,
+  UNEMPLOYED_STARTER_DECK,
 } from '../data/jobs/unemployed';
+import { CARPENTER_STARTER_DECK } from '../data/carpenterDeck';
+import { COOK_STARTER_DECK } from '../data/jobs/cook';
 import { getUnlockedCardIds } from './achievementSystem';
 
 /** 実績報酬は大工＋無色のみ。抽選プール用に料理人・無職の全カードも参照する */
@@ -56,9 +59,46 @@ add(NEUTRAL_CARD_POOL);
 add(CARPENTER_ALL);
 add(COOK_ALL);
 add(JOB_CARD_SOURCES.unemployed);
+/** スターター専用 id（hammer_1 等）はプールに無いがランキング・統計に載る */
+add(CARPENTER_STARTER_DECK);
+add(COOK_STARTER_DECK);
+add(UNEMPLOYED_STARTER_DECK);
 
 /** アプリ内のカード定義を ID で解決（図鑑・統計プレビュー等） */
 export const getCardById = (cardId: string): Card | null => LOOKUP.get(cardId) ?? null;
+
+/**
+ * ランキング／マイ統計に保存された card_id（インスタンス付き）から定義カードを解決する。
+ * 例: hammer_1_11 → hammer_1、build_scaffold_18 → build_scaffold、cloneRewardCard の _reward_n を剥がす。
+ */
+function stripOneStoredCardIdLayer(id: string): string | null {
+  const shopDev = id.match(/^shop_card_dev_\d+_(.+)$/);
+  if (shopDev) return shopDev[1];
+  const shop = id.match(/^shop_card_\d+_(.+)$/);
+  if (shop) return shop[1];
+  const shopOffer = id.match(/^(.*)_shop_\d+_\d+$/);
+  if (shopOffer) return shopOffer[1];
+  const reward = id.match(/^(.*)_reward_\d+$/);
+  if (reward) return reward[1];
+  const tailDigits = id.match(/^(.*)_(\d+)$/);
+  if (tailDigits) return tailDigits[1];
+  return null;
+}
+
+export const resolveCardFromStoredInstanceId = (storedId: string): Card | null => {
+  const seen = new Set<string>();
+  let cur = storedId;
+  for (let i = 0; i < 24; i++) {
+    if (!cur || seen.has(cur)) break;
+    seen.add(cur);
+    const hit = getCardById(cur);
+    if (hit) return hit;
+    const next = stripOneStoredCardIdLayer(cur);
+    if (next == null || next === cur) break;
+    cur = next;
+  }
+  return null;
+};
 
 /** 実績報酬カード1枚をIDで取得 */
 export const getAchievementRewardCard = getCardById;

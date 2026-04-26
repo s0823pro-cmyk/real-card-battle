@@ -63,7 +63,7 @@ import {
   translatedCardName,
 } from '../../i18n/entityKeys';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
-import { getCardById, getDisplayJobIdForCard } from '../../utils/achievementRewardLookup';
+import { getDisplayJobIdForCard, resolveCardFromStoredInstanceId } from '../../utils/achievementRewardLookup';
 import CardComponent from '../Hand/CardComponent';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
@@ -947,7 +947,7 @@ const HomeScreen = ({
                 ) : (
                   <div className="settings-mystats-top-cards-row" role="list" aria-label={t('home.settings.myStatsTopCards')}>
                     {myStatsData.top_cards.slice(0, 3).map((row, idx) => {
-                      const card = getCardById(row.card_id);
+                      const card = resolveCardFromStoredInstanceId(row.card_id);
                       const previewH = Math.floor(MY_STATS_CARD_PREVIEW_WIDTH * 1.6);
                       return (
                         <div
