@@ -506,6 +506,15 @@ const pruneUnselectedBranchRoutes = (
     }));
 };
 
+/**
+ * 図鑑（ZukanScreen）は `unlockedCardNames` にカードの `name` が入っているかで解放を判定。
+ * バトル報酬の3枚が表示された時点で、選ばなかったカードも含めて全て登録する（Set なので重複なし）。
+ */
+const mergeZukanUnlocksFromRewardCards = (prev: Set<string>, cards: Card[] | null | undefined): Set<string> => {
+  if (!cards?.length) return prev;
+  return new Set([...prev, ...cards.map((c) => c.name)]);
+};
+
 const reducer = (state: GameProgress, action: Action): GameProgress => {
   switch (action.type) {
     case 'set_screen':
@@ -592,6 +601,7 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
       return {
         ...state,
         cardReward: action.cards ? { cards: action.cards, canSkip: true } : null,
+        unlockedCardNames: mergeZukanUnlocksFromRewardCards(state.unlockedCardNames, action.cards),
       };
     case 'set_omamori_reward': {
       const hasChoices = Boolean(action.omamoris && action.omamoris.length > 0);
@@ -616,6 +626,9 @@ const reducer = (state: GameProgress, action: Action): GameProgress => {
         ...state,
         cardReward: hasCards ? { cards: raw!, canSkip: true } : null,
         currentScreen: hasCards ? 'card_reward' : 'map',
+        unlockedCardNames: hasCards
+          ? mergeZukanUnlocksFromRewardCards(state.unlockedCardNames, raw!)
+          : state.unlockedCardNames,
       };
     }
     case 'set_battle_setup':
