@@ -10,6 +10,10 @@ export async function postBattleStats(params: {
 	cardsUsed: Record<string, number>;
 	enemiesKilled: Record<string, number>;
 	winStreak: number;
+	playTimeSeconds: number;
+	areaReached: number;
+	areaCleared: boolean;
+	topCards: string[];
 }): Promise<void> {
 	try {
 		await fetch(`${RANKING_API}/stats`, {
@@ -24,6 +28,10 @@ export async function postBattleStats(params: {
 				cards_used: params.cardsUsed,
 				enemies_killed: params.enemiesKilled,
 				win_streak: params.winStreak,
+				play_time_seconds: params.playTimeSeconds,
+				area_reached: params.areaReached,
+				area_cleared: params.areaCleared,
+				top_cards: params.topCards,
 			}),
 		});
 	} catch {

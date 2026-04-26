@@ -89,6 +89,14 @@ type AdminSummaryPayload = {
   top_cards: Array<{ card_id: string; total_use_count: number }>;
   top_enemies: Array<{ enemy_id: string; total_kill_count: number }>;
   avg_gold_per_play: number;
+  avg_play_time_seconds?: number;
+  area_stats?: Array<{
+    area: number;
+    total_reached: number;
+    total_cleared: number;
+    clear_rate: number;
+  }>;
+  top_combos?: Array<{ combo_key: string; use_count: number }>;
 };
 
 function isAdminSummary(s: unknown): s is AdminSummaryPayload {
@@ -107,6 +115,16 @@ function isAdminSummary(s: unknown): s is AdminSummaryPayload {
 function enemyRowTemplateId(enemyId: string): string {
   const m = enemyId.match(/^enemy_(.+)_\d+$/);
   return m ? m[1] : enemyId;
+}
+
+function adminComboLabel(
+  comboKey: string,
+  t: (key: MessageKey | string, vars?: Record<string, string | number>, fallback?: string) => string,
+): string {
+  const parts = comboKey.split('|');
+  if (parts.length !== 2) return comboKey;
+  const [a, b] = parts;
+  return `${t(cardNameKey(a), {}, a)} + ${t(cardNameKey(b), {}, b)}`;
 }
 type StoryEpisodeId =
   | 'carpenter_opening'
@@ -1193,7 +1211,31 @@ const HomeScreen = ({
                     <dt>{t('home.settings.avgGoldPerPlay')}</dt>
                     <dd>{adminSummary.avg_gold_per_play.toFixed(1)}</dd>
                   </div>
+                  <div>
+                    <dt>{t('home.settings.adminAvgPlayTimeLabel')}</dt>
+                    <dd>
+                      {t('home.settings.adminAvgPlayTimeFmt', {
+                        m: Math.floor((adminSummary.avg_play_time_seconds ?? 0) / 60),
+                        sec: (adminSummary.avg_play_time_seconds ?? 0) % 60,
+                      })}
+                    </dd>
+                  </div>
                 </dl>
+                <h4 className="settings-admin-subheading">{t('home.settings.adminAreaClearTitle')}</h4>
+                <ul className="settings-admin-list">
+                  {(adminSummary.area_stats ?? []).map((row) => (
+                    <li key={row.area}>
+                      <span className="settings-admin-list-label">
+                        {t('home.settings.adminAreaLine', {
+                          n: row.area,
+                          reached: row.total_reached,
+                          cleared: row.total_cleared,
+                          pct: row.clear_rate,
+                        })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
                 <h4 className="settings-admin-subheading">{t('home.settings.jobStatsTitle')}</h4>
                 <ul className="settings-admin-list">
                   {adminSummary.job_stats.map((row) => (
@@ -1230,6 +1272,15 @@ const HomeScreen = ({
                       </li>
                     );
                   })}
+                </ol>
+                <h4 className="settings-admin-subheading">{t('home.settings.adminComboPairsTitle')}</h4>
+                <ol className="settings-admin-ol">
+                  {(adminSummary.top_combos ?? []).slice(0, 10).map((row, idx) => (
+                    <li key={`${row.combo_key}-${idx}`}>
+                      <span className="settings-admin-list-label">{adminComboLabel(row.combo_key, t)}</span>
+                      <span className="settings-admin-list-num">{row.use_count}</span>
+                    </li>
+                  ))}
                 </ol>
               </div>
             </div>

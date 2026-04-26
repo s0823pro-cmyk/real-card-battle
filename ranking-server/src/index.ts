@@ -57,6 +57,51 @@ function parseIdCountMap(v: unknown): Record<string, number> | null {
 	return out;
 }
 
+function parseOptionalPlayTimeSeconds(v: unknown): number {
+	if (v === undefined || v === null) return 0;
+	if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+	return Math.max(0, Math.min(86400, Math.trunc(v)));
+}
+
+function parseOptionalAreaReached(v: unknown): number {
+	if (v === undefined || v === null) return 1;
+	if (typeof v !== "number" || !Number.isFinite(v)) return 1;
+	return Math.min(3, Math.max(1, Math.trunc(v)));
+}
+
+function parseOptionalAreaCleared(v: unknown): boolean {
+	return v === true;
+}
+
+/** 上位3枚想定のカードID配列（欠損・不正は無視） */
+function parseTopCards(v: unknown): string[] {
+	if (!Array.isArray(v)) return [];
+	const out: string[] = [];
+	for (const x of v) {
+		if (typeof x !== "string" || x.length === 0 || x.length > MAX_ID_LEN) continue;
+		out.push(x);
+		if (out.length >= 3) break;
+	}
+	return out;
+}
+
+function sortedPairComboKey(a: string, b: string): string {
+	return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+/** 重複除去後のIDから2枚ペアを全生成 */
+function comboKeysFromTopCardIds(ids: string[]): string[] {
+	const uniq = [...new Set(ids)];
+	if (uniq.length < 2) return [];
+	const keys: string[] = [];
+	for (let i = 0; i < uniq.length; i++) {
+		for (let j = i + 1; j < uniq.length; j++) {
+			keys.push(sortedPairComboKey(uniq[i], uniq[j]));
+		}
+	}
+	return keys;
+}
+
 export default {
 	async fetch(request, env, _ctx): Promise<Response> {
 		const url = new URL(request.url);
@@ -232,7 +277,20 @@ async function handlePostStats(request: Request, env: Env): Promise<Response> {
 		return json({ ok: false, error: "invalid_body" }, 400);
 	}
 	const b = body as Record<string, unknown>;
-	const { device_id, job_id, outcome, kills, gold, cards_used, enemies_killed, win_streak } = b;
+	const {
+		device_id,
+		job_id,
+		outcome,
+		kills,
+		gold,
+		cards_used,
+		enemies_killed,
+		win_streak,
+		play_time_seconds,
+		area_reached,
+		area_cleared,
+		top_cards,
+	} = b;
 
 	if (!isNonEmptyDeviceId(device_id)) {
 		return json({ ok: false, error: "invalid_device_id" }, 400);
@@ -262,6 +320,12 @@ async function handlePostStats(request: Request, env: Env): Promise<Response> {
 	if (cardsMap === null) return json({ ok: false, error: "invalid_cards_used" }, 400);
 	if (enemiesMap === null) return json({ ok: false, error: "invalid_enemies_killed" }, 400);
 
+	const playTimeN = parseOptionalPlayTimeSeconds(play_time_seconds);
+	const areaN = parseOptionalAreaReached(area_reached);
+	const areaClr = parseOptionalAreaCleared(area_cleared);
+	const topCardIds = parseTopCards(top_cards);
+	const comboKeys = comboKeysFromTopCardIds(topCardIds);
+
 	const exists = await env.DB.prepare(`SELECT 1 AS x FROM players WHERE device_id = ? LIMIT 1`)
 		.bind(device_id)
 		.first<{ x: number }>();
@@ -274,8 +338,8 @@ async function handlePostStats(request: Request, env: Env): Promise<Response> {
 	const now = Date.now();
 
 	await env.DB.prepare(
-		`INSERT INTO player_stats (device_id, job_id, play_count, win_count, defeat_count, total_kills, total_gold, max_win_streak, updated_at)
-     VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO player_stats (device_id, job_id, play_count, win_count, defeat_count, total_kills, total_gold, max_win_streak, total_play_time, updated_at)
+     VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(device_id, job_id) DO UPDATE SET
        play_count = player_stats.play_count + 1,
        win_count = player_stats.win_count + excluded.win_count,
@@ -283,10 +347,35 @@ async function handlePostStats(request: Request, env: Env): Promise<Response> {
        total_kills = player_stats.total_kills + excluded.total_kills,
        total_gold = player_stats.total_gold + excluded.total_gold,
        max_win_streak = MAX(player_stats.max_win_streak, excluded.max_win_streak),
+       total_play_time = player_stats.total_play_time + excluded.total_play_time,
        updated_at = excluded.updated_at`,
 	)
-		.bind(device_id, job_id, winInc, defInc, killsN, goldN, streakN, now)
+		.bind(device_id, job_id, winInc, defInc, killsN, goldN, streakN, playTimeN, now)
 		.run();
+
+	const clearedInc = areaClr ? 1 : 0;
+	await env.DB.prepare(
+		`INSERT INTO area_stats (device_id, area, reached_count, cleared_count)
+     VALUES (?, ?, 1, ?)
+     ON CONFLICT(device_id, area) DO UPDATE SET
+       reached_count = area_stats.reached_count + 1,
+       cleared_count = area_stats.cleared_count + excluded.cleared_count`,
+	)
+		.bind(device_id, areaN, clearedInc)
+		.run();
+
+	const comboStmts: D1PreparedStatement[] = [];
+	for (const key of comboKeys) {
+		comboStmts.push(
+			env.DB.prepare(
+				`INSERT INTO card_combos (combo_key, use_count)
+         VALUES (?, 1)
+         ON CONFLICT(combo_key) DO UPDATE SET
+           use_count = card_combos.use_count + 1`,
+			).bind(key),
+		);
+	}
+	await runBatches(env.DB, comboStmts);
 
 	const cardStmts: D1PreparedStatement[] = [];
 	for (const [cardId, delta] of Object.entries(cardsMap)) {
@@ -377,17 +466,21 @@ async function handleGetAdminSummary(request: Request, env: Env): Promise<Respon
        COALESCE(SUM(play_count), 0) AS total_plays,
        COALESCE(SUM(win_count), 0) AS total_victories,
        COALESCE(SUM(defeat_count), 0) AS total_defeats,
-       COALESCE(SUM(total_gold), 0) AS sum_gold
+       COALESCE(SUM(total_gold), 0) AS sum_gold,
+       COALESCE(SUM(total_play_time), 0) AS sum_play_time
      FROM player_stats`,
 	).first<{
 		total_plays: number;
 		total_victories: number;
 		total_defeats: number;
 		sum_gold: number;
+		sum_play_time: number;
 	}>();
 
 	const sumPlays = aggRow?.total_plays ?? 0;
 	const avgGoldPerPlay = sumPlays > 0 ? (aggRow?.sum_gold ?? 0) / sumPlays : 0;
+	const avgPlayTimeSeconds =
+		sumPlays > 0 ? Math.floor((aggRow?.sum_play_time ?? 0) / sumPlays) : 0;
 
 	const { results: jobRows } = await env.DB.prepare(
 		`SELECT job_id, SUM(play_count) AS play_count, SUM(win_count) AS win_count, SUM(defeat_count) AS defeat_count
@@ -411,6 +504,32 @@ async function handleGetAdminSummary(request: Request, env: Env): Promise<Respon
      LIMIT 20`,
 	).all<{ enemy_id: string; total_kill_count: number }>();
 
+	const { results: areaAggRows } = await env.DB.prepare(
+		`SELECT area, SUM(reached_count) AS total_reached, SUM(cleared_count) AS total_cleared
+     FROM area_stats
+     GROUP BY area`,
+	).all<{ area: number; total_reached: number; total_cleared: number }>();
+
+	const reachedByArea = new Map<number, { total_reached: number; total_cleared: number }>();
+	for (const r of areaAggRows ?? []) {
+		reachedByArea.set(r.area, { total_reached: r.total_reached, total_cleared: r.total_cleared });
+	}
+	const area_stats = [1, 2, 3].map((area) => {
+		const row = reachedByArea.get(area);
+		const total_reached = row?.total_reached ?? 0;
+		const total_cleared = row?.total_cleared ?? 0;
+		const clear_rate =
+			total_reached > 0 ? Math.round((1000 * total_cleared) / total_reached) / 10 : 0;
+		return { area, total_reached, total_cleared, clear_rate };
+	});
+
+	const { results: topComboRows } = await env.DB.prepare(
+		`SELECT combo_key, use_count
+     FROM card_combos
+     ORDER BY use_count DESC
+     LIMIT 10`,
+	).all<{ combo_key: string; use_count: number }>();
+
 	return json({
 		total_players: totalPlayers,
 		total_plays: sumPlays,
@@ -431,5 +550,11 @@ async function handleGetAdminSummary(request: Request, env: Env): Promise<Respon
 			total_kill_count: r.total_kill_count,
 		})),
 		avg_gold_per_play: avgGoldPerPlay,
+		avg_play_time_seconds: avgPlayTimeSeconds,
+		area_stats,
+		top_combos: (topComboRows ?? []).map((r) => ({
+			combo_key: r.combo_key,
+			use_count: r.use_count,
+		})),
 	});
 }

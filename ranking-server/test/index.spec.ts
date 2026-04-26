@@ -36,6 +36,7 @@ async function ensureSchema(): Promise<void> {
       total_kills INTEGER NOT NULL DEFAULT 0,
       total_gold INTEGER NOT NULL DEFAULT 0,
       max_win_streak INTEGER NOT NULL DEFAULT 0,
+      total_play_time INTEGER NOT NULL DEFAULT 0,
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (device_id, job_id)
     )`,
@@ -54,6 +55,22 @@ async function ensureSchema(): Promise<void> {
       enemy_id TEXT NOT NULL,
       kill_count INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (device_id, enemy_id)
+    )`,
+	).run();
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS area_stats (
+      device_id TEXT NOT NULL,
+      area INTEGER NOT NULL,
+      reached_count INTEGER NOT NULL DEFAULT 0,
+      cleared_count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (device_id, area)
+    )`,
+	).run();
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS card_combos (
+      combo_key TEXT NOT NULL,
+      use_count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (combo_key)
     )`,
 	).run();
 	await env.DB.prepare(
@@ -191,6 +208,10 @@ describe("ranking worker", () => {
 				cards_used: { hammer_strike: 3 },
 				enemies_killed: { wildCat: 1 },
 				win_streak: 2,
+				play_time_seconds: 90,
+				area_reached: 1,
+				area_cleared: true,
+				top_cards: ["hammer_strike", "dodge", "focus"],
 			}),
 		});
 		res = await worker.fetch(postStats, env, ctx);
@@ -199,10 +220,18 @@ describe("ranking worker", () => {
 		expect(await res.json()).toEqual({ ok: true });
 
 		const row = await env.DB.prepare(
-			`SELECT play_count, win_count, defeat_count, total_kills, total_gold, max_win_streak FROM player_stats WHERE device_id = ? AND job_id = ?`,
+			`SELECT play_count, win_count, defeat_count, total_kills, total_gold, max_win_streak, total_play_time FROM player_stats WHERE device_id = ? AND job_id = ?`,
 		)
 			.bind(device, "carpenter")
-			.first<{ play_count: number; win_count: number; defeat_count: number; total_kills: number; total_gold: number; max_win_streak: number }>();
+			.first<{
+				play_count: number;
+				win_count: number;
+				defeat_count: number;
+				total_kills: number;
+				total_gold: number;
+				max_win_streak: number;
+				total_play_time: number;
+			}>();
 		expect(row).toMatchObject({
 			play_count: 1,
 			win_count: 1,
@@ -210,7 +239,26 @@ describe("ranking worker", () => {
 			total_kills: 2,
 			total_gold: 50,
 			max_win_streak: 2,
+			total_play_time: 90,
 		});
+
+		const areaRow = await env.DB.prepare(
+			`SELECT reached_count, cleared_count FROM area_stats WHERE device_id = ? AND area = ?`,
+		)
+			.bind(device, 1)
+			.first<{ reached_count: number; cleared_count: number }>();
+		expect(areaRow).toEqual({ reached_count: 1, cleared_count: 1 });
+
+		const { results: comboList } = await env.DB.prepare(
+			`SELECT combo_key, use_count FROM card_combos ORDER BY combo_key`,
+		).all<{ combo_key: string; use_count: number }>();
+		const keys = new Set((comboList ?? []).map((r) => r.combo_key));
+		expect(keys.has("dodge|hammer_strike")).toBe(true);
+		expect(keys.has("focus|hammer_strike")).toBe(true);
+		expect(keys.has("dodge|focus")).toBe(true);
+		for (const r of comboList ?? []) {
+			expect(r.use_count).toBe(1);
+		}
 	});
 
 	it("POST /code and GET /admin/summary with admin code", async () => {
@@ -240,8 +288,14 @@ describe("ranking worker", () => {
 			top_cards: unknown[];
 			top_enemies: unknown[];
 			avg_gold_per_play: number;
+			avg_play_time_seconds?: number;
+			area_stats?: unknown[];
+			top_combos?: unknown[];
 		};
 		expect(typeof sum.total_players).toBe("number");
 		expect(Array.isArray(sum.job_stats)).toBe(true);
+		expect(typeof sum.avg_play_time_seconds).toBe("number");
+		expect(Array.isArray(sum.area_stats)).toBe(true);
+		expect(Array.isArray(sum.top_combos)).toBe(true);
 	});
 });

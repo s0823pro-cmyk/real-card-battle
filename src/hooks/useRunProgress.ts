@@ -831,6 +831,8 @@ export const useRunProgress = () => {
   const rankingRunGoldBonusGrantedRef = useRef(false);
   /** ランキング: 連続バトル勝利数（敗北でリセット） */
   const rankingBattleWinStreakRef = useRef(0);
+  /** ランキング統計: バトル開始（初回ターン開始）からの経過秒用 */
+  const battleStatsStartedAtRef = useRef<number | null>(null);
   const pendingBattleOpenRef = useRef<(() => void) | null>(null);
   /** マップ→バトル: 'in' で暗転、'out' で明転、null で非表示 */
   const [battleFadeOverlay, setBattleFadeOverlay] = useState<'in' | 'out' | null>(null);
@@ -882,6 +884,9 @@ export const useRunProgress = () => {
   }, []);
 
   const onBattleTurnStart = (gameState: GameState) => {
+    if (battleStatsStartedAtRef.current === null) {
+      battleStatsStartedAtRef.current = Date.now();
+    }
     saveBattleState(gameState, stateRef.current);
   };
 
@@ -1602,6 +1607,13 @@ export const useRunProgress = () => {
   });
 
   const onBattleEnd = (result: BattleResult) => {
+    const statsBattleStartedAt = battleStatsStartedAtRef.current;
+    battleStatsStartedAtRef.current = null;
+    const playTimeSeconds =
+      statsBattleStartedAt != null
+        ? Math.max(0, Math.floor((Date.now() - statsBattleStartedAt) / 1000))
+        : 0;
+
     lastBattleVictoryCardChoicesRef.current = null;
     lastBattleResultKindRef.current = result.kind;
     pendingArea3RunVictoryStoryRef.current = false;
@@ -1609,6 +1621,7 @@ export const useRunProgress = () => {
 
     {
       const jobId = stateRef.current.jobId;
+      const areaReached = stateRef.current.currentArea;
       const deckFiltered = result.deck.filter((c) => c.type !== 'status' && c.type !== 'curse');
       const cardsUsed: Record<string, number> = {};
       for (const c of deckFiltered) {
@@ -1622,6 +1635,11 @@ export const useRunProgress = () => {
       }
       const winStreakForStats =
         result.outcome === 'defeat' ? 0 : rankingBattleWinStreakRef.current + 1;
+      const topCards = Object.entries(cardsUsed)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 3)
+        .map(([id]) => id);
+      const areaCleared = result.outcome === 'victory' && result.kind === 'boss';
       void postBattleStats({
         deviceId: ensureRankingDeviceId(),
         jobId,
@@ -1631,6 +1649,10 @@ export const useRunProgress = () => {
         cardsUsed,
         enemiesKilled,
         winStreak: winStreakForStats,
+        playTimeSeconds,
+        areaReached,
+        areaCleared,
+        topCards,
       });
     }
 
