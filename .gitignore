@@ -37,3 +37,5 @@ android/
 
 # Android 署名（リポジトリ直下に置く場合の誤コミット防止）
 keystore.jks
+.vercel
+.env*.local

@@ -43,6 +43,7 @@ import { DEBUG_ENEMY_HP1_KEY, getDebugEnemyHp1, setDebugEnemyHp1 } from '../../u
 import { unlockJob } from '../../utils/jobUnlockSystem';
 import { resetTutorial } from '../../utils/tutorialState';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
+import { getAdminSummary, verifyCode } from '../../utils/statsApi';
 import type { JobId } from '../../types/game';
 import {
   getStoredRankingNickname,
@@ -51,7 +52,7 @@ import {
 } from '../../utils/rankingClient';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { MessageKey } from '../../i18n';
-import { achievementDescKey, achievementNameKey } from '../../i18n/entityKeys';
+import { achievementDescKey, achievementNameKey, cardNameKey, enemyNameKey } from '../../i18n/entityKeys';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 
@@ -78,6 +79,35 @@ const achievementRewardModalJobId = (a: Achievement | null): JobId => {
   if (j === 'cook' || j === 'unemployed' || j === 'carpenter') return j;
   return 'carpenter';
 };
+
+type AdminSummaryPayload = {
+  total_players: number;
+  total_plays: number;
+  total_victories: number;
+  total_defeats: number;
+  job_stats: Array<{ job_id: string; play_count: number; win_count: number; defeat_count: number }>;
+  top_cards: Array<{ card_id: string; total_use_count: number }>;
+  top_enemies: Array<{ enemy_id: string; total_kill_count: number }>;
+  avg_gold_per_play: number;
+};
+
+function isAdminSummary(s: unknown): s is AdminSummaryPayload {
+  if (typeof s !== 'object' || s === null) return false;
+  const o = s as Record<string, unknown>;
+  return (
+    typeof o.total_players === 'number' &&
+    typeof o.total_plays === 'number' &&
+    Array.isArray(o.job_stats) &&
+    Array.isArray(o.top_cards) &&
+    Array.isArray(o.top_enemies)
+  );
+}
+
+/** `enemy_claimer_0` → `claimer`（表示用） */
+function enemyRowTemplateId(enemyId: string): string {
+  const m = enemyId.match(/^enemy_(.+)_\d+$/);
+  return m ? m[1] : enemyId;
+}
 type StoryEpisodeId =
   | 'carpenter_opening'
   | 'carpenter_e1'
@@ -445,6 +475,12 @@ const HomeScreen = ({
   const [isAdFree, setIsAdFree] = useState(() => getAdsRemoved());
   const [iapBusy, setIapBusy] = useState(false);
   const [debugEnemyHp1, setDebugEnemyHp1Local] = useState(() => getDebugEnemyHp1());
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [adminSummary, setAdminSummary] = useState<AdminSummaryPayload | null>(null);
+  const [giftToast, setGiftToast] = useState<string | null>(null);
+  const giftToastTimerRef = useRef<number | null>(null);
 
   const toggleSettingsSection = (section: string) => {
     setOpenSettingsSection((prev) => (prev === section ? null : section));
@@ -454,6 +490,12 @@ const HomeScreen = ({
     const onAdsRemoved = () => setIsAdFree(getAdsRemoved());
     window.addEventListener('ads-removed-changed', onAdsRemoved);
     return () => window.removeEventListener('ads-removed-changed', onAdsRemoved);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (giftToastTimerRef.current != null) window.clearTimeout(giftToastTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -489,6 +531,51 @@ const HomeScreen = ({
       window.alert(t('home.settings.iapRestoreFail'));
     } finally {
       setIapBusy(false);
+    }
+  };
+
+  const jobLabel = (jobId: string) => {
+    if (jobId === 'carpenter') return t('job.carpenter.name');
+    if (jobId === 'cook') return t('job.cook.name');
+    if (jobId === 'unemployed') return t('job.unemployed.name');
+    return jobId;
+  };
+
+  const handleVerifyCode = async () => {
+    const trimmed = codeInput.trim();
+    setCodeError(null);
+    if (!trimmed) {
+      setCodeError(t('home.settings.codeInvalid'));
+      return;
+    }
+    setCodeBusy(true);
+    try {
+      const v = await verifyCode(trimmed);
+      if (!v.ok || (v.type !== 'admin' && v.type !== 'gift')) {
+        setCodeError(t('home.settings.codeInvalid'));
+        return;
+      }
+      if (v.type === 'gift') {
+        setGiftToast(t('home.settings.giftReceived'));
+        if (giftToastTimerRef.current != null) window.clearTimeout(giftToastTimerRef.current);
+        giftToastTimerRef.current = window.setTimeout(() => {
+          setGiftToast(null);
+          giftToastTimerRef.current = null;
+        }, 3200);
+        return;
+      }
+      const raw = await getAdminSummary(trimmed);
+      if (raw === null || (typeof raw === 'object' && raw !== null && 'error' in raw)) {
+        setCodeError(t('home.settings.summaryLoadError'));
+        return;
+      }
+      if (!isAdminSummary(raw)) {
+        setCodeError(t('home.settings.summaryLoadError'));
+        return;
+      }
+      setAdminSummary(raw);
+    } finally {
+      setCodeBusy(false);
     }
   };
 
@@ -799,6 +886,43 @@ const HomeScreen = ({
       <div className="settings-accordion">
         <button
           type="button"
+          className={`settings-accordion-header ${openSettingsSection === 'code' ? 'is-open' : ''}`}
+          onClick={() => toggleSettingsSection('code')}
+        >
+          <span>{t('home.settings.codeSection')}</span>
+          <span className="settings-accordion-arrow">
+            {openSettingsSection === 'code' ? '▲' : '▼'}
+          </span>
+        </button>
+        {openSettingsSection === 'code' && (
+          <div className="settings-accordion-body">
+            <div className="settings-code-block">
+              <input
+                type="text"
+                className="settings-code-input"
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                placeholder={t('home.settings.codePlaceholder')}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                className="settings-code-verify-btn"
+                disabled={codeBusy}
+                onClick={() => void handleVerifyCode()}
+              >
+                {codeBusy ? t('home.settings.codeBusy') : t('home.settings.codeVerify')}
+              </button>
+            </div>
+            {codeError ? <p className="settings-code-error">{codeError}</p> : null}
+          </div>
+        )}
+      </div>
+
+      <div className="settings-accordion">
+        <button
+          type="button"
           className={`settings-accordion-header ${openSettingsSection === 'purchase' ? 'is-open' : ''}`}
           onClick={() => toggleSettingsSection('purchase')}
         >
@@ -1025,6 +1149,92 @@ const HomeScreen = ({
             </div>
           </div>
         )}
+        {giftToast ? <div className="settings-gift-toast" role="status">{giftToast}</div> : null}
+        {adminSummary ? (
+          <div
+            className="settings-admin-modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="home-settings-admin-summary-title"
+            onClick={() => setAdminSummary(null)}
+          >
+            <div className="settings-admin-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="settings-admin-modal-header">
+                <h3 id="home-settings-admin-summary-title" className="settings-admin-modal-title">
+                  {t('home.settings.adminSummaryTitle')}
+                </h3>
+                <button
+                  type="button"
+                  className="settings-admin-modal-close"
+                  onClick={() => setAdminSummary(null)}
+                >
+                  {t('common.close')}
+                </button>
+              </div>
+              <div className="settings-admin-modal-body">
+                <dl className="settings-admin-dl">
+                  <div>
+                    <dt>{t('home.settings.totalPlayers')}</dt>
+                    <dd>{adminSummary.total_players}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.settings.totalPlays')}</dt>
+                    <dd>{adminSummary.total_plays}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.settings.totalVictories')}</dt>
+                    <dd>{adminSummary.total_victories}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.settings.totalDefeats')}</dt>
+                    <dd>{adminSummary.total_defeats}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.settings.avgGoldPerPlay')}</dt>
+                    <dd>{adminSummary.avg_gold_per_play.toFixed(1)}</dd>
+                  </div>
+                </dl>
+                <h4 className="settings-admin-subheading">{t('home.settings.jobStatsTitle')}</h4>
+                <ul className="settings-admin-list">
+                  {adminSummary.job_stats.map((row) => (
+                    <li key={row.job_id}>
+                      <span className="settings-admin-list-label">{jobLabel(row.job_id)}</span>
+                      <span className="settings-admin-list-value">
+                        {t('home.settings.jobShortPlays')} {row.play_count} · {t('home.settings.jobShortWins')}{' '}
+                        {row.win_count} · {t('home.settings.jobShortLosses')} {row.defeat_count}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <h4 className="settings-admin-subheading">{t('home.settings.topCardsTitle')}</h4>
+                <ol className="settings-admin-ol">
+                  {adminSummary.top_cards.slice(0, 10).map((row, idx) => (
+                    <li key={`${row.card_id}-${idx}`}>
+                      <span className="settings-admin-list-label">
+                        {t(cardNameKey(row.card_id), {}, row.card_id)}
+                      </span>
+                      <span className="settings-admin-list-num">{row.total_use_count}</span>
+                    </li>
+                  ))}
+                </ol>
+                <h4 className="settings-admin-subheading">{t('home.settings.topEnemiesTitle')}</h4>
+                <ol className="settings-admin-ol">
+                  {adminSummary.top_enemies.slice(0, 10).map((row, idx) => {
+                    const tid = enemyRowTemplateId(row.enemy_id);
+                    return (
+                      <li key={`${row.enemy_id}-${idx}`}>
+                        <span className="settings-admin-list-label">
+                          {t(enemyNameKey(tid), {}, tid)}
+                        </span>
+                        <span className="settings-admin-list-num">{row.total_kill_count}</span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </>
     );
   }
