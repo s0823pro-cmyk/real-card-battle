@@ -1,4 +1,14 @@
+import type { Enemy } from '../types/game';
+
 export type EnemyEncounterStatus = 'none' | 'encountered' | 'defeated';
+
+/** ランキング統計用: templateId（claimer / bicycle 等）。図鑑・recordEnemyDefeated と揃える */
+export const getEnemyTemplateIdForStats = (enemy: Pick<Enemy, 'id' | 'templateId'>): string => {
+  const tid = enemy.templateId?.trim();
+  if (tid) return tid;
+  const m = enemy.id.match(/^enemy_(.+)_\d+$/);
+  return m ? m[1] : enemy.id;
+};
 
 const ENEMY_RECORD_KEY = 'jobless_enemy_records';
 const ENEMY_DEFEAT_COUNT_KEY = 'jobless_enemy_defeat_counts';

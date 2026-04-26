@@ -101,6 +101,8 @@ export type EnemyIntentType =
 
 export interface Card {
   id: string;
+  /** ランキング集計用: インスタンス id（hammer_1_3 等）からも元の定義 id を参照できるようにする */
+  definitionId?: string;
   name: string;
   type: CardType;
   timeCost: number;

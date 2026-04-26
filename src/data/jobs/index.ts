@@ -35,12 +35,14 @@ let rewardSerial = 0;
 
 const cloneStarterCard = (card: Card): Card => {
   starterSerial += 1;
-  return { ...card, id: `${card.id}_${starterSerial}` };
+  const definitionId = card.definitionId ?? card.id;
+  return { ...card, id: `${card.id}_${starterSerial}`, definitionId };
 };
 
 export const cloneRewardCard = (card: Card): Card => {
   rewardSerial += 1;
-  return { ...card, id: `${card.id}_reward_${rewardSerial}` };
+  const definitionId = card.definitionId ?? card.id;
+  return { ...card, id: `${card.id}_reward_${rewardSerial}`, definitionId };
 };
 
 const createFixedStarterDeck = (cards: Card[]): Card[] => cards.map(cloneStarterCard);

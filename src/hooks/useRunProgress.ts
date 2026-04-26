@@ -95,6 +95,8 @@ import {
 } from '../utils/achievementSystem';
 import { maybePromptAppStoreReviewOnRunDefeat } from '../utils/appStoreReviewPrompt';
 import { ensureRankingDeviceId, finalizeRankingRunEnd, reportRankingScore, resetCurrentRunRankingScore } from '../utils/rankingClient';
+import { getCanonicalCardIdForStats } from '../utils/achievementRewardLookup';
+import { getEnemyTemplateIdForStats } from '../utils/enemyRecord';
 import { postBattleStats } from '../utils/statsApi';
 import { playSeByType } from './useAudio';
 
@@ -1625,12 +1627,14 @@ export const useRunProgress = () => {
       const deckFiltered = result.deck.filter((c) => c.type !== 'status' && c.type !== 'curse');
       const cardsUsed: Record<string, number> = {};
       for (const c of deckFiltered) {
-        cardsUsed[c.id] = (cardsUsed[c.id] ?? 0) + 1;
+        const defId = getCanonicalCardIdForStats(c);
+        cardsUsed[defId] = (cardsUsed[defId] ?? 0) + 1;
       }
       const enemiesKilled: Record<string, number> = {};
       for (const e of result.defeatedEnemies) {
         if (e.currentHp <= 0) {
-          enemiesKilled[e.id] = (enemiesKilled[e.id] ?? 0) + 1;
+          const enemyKey = getEnemyTemplateIdForStats(e);
+          enemiesKilled[enemyKey] = (enemiesKilled[enemyKey] ?? 0) + 1;
         }
       }
       const winStreakForStats =

@@ -136,9 +136,11 @@ let serial = 0;
 
 const assignId = (card: Card): Card => {
     serial += 1;
+    const definitionId = card.definitionId ?? card.id;
     return {
       ...card,
       id: `${card.id}_${serial}`,
+      definitionId,
     };
   };
 

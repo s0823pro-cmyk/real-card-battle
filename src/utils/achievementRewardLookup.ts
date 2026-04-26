@@ -100,6 +100,15 @@ export const resolveCardFromStoredInstanceId = (storedId: string): Card | null =
   return null;
 };
 
+/** バトル終了時の cards_used 集計用（定義 id に正規化） */
+export const getCanonicalCardIdForStats = (card: Pick<Card, 'id' | 'definitionId'>): string => {
+  if (typeof card.definitionId === 'string' && card.definitionId.length > 0) {
+    return card.definitionId;
+  }
+  const resolved = resolveCardFromStoredInstanceId(card.id);
+  return resolved?.id ?? card.id;
+};
+
 /** 実績報酬カード1枚をIDで取得 */
 export const getAchievementRewardCard = getCardById;
 
