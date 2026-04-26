@@ -24,6 +24,32 @@ export { getDefeatCountForJob, loadAchievementCountersForJob } from './achieveme
 
 const ACHIEVEMENT_KEY = 'real-card-battle:achievements';
 
+/** 既存ユーザー向けワンショット移行（HomeScreen マウント時） */
+export const COOK_ACHIEVEMENTS_RESET_V1_KEY = 'real-card-battle:cook-achievements-reset-v1';
+
+const COOK_ACHIEVEMENT_IDS = new Set(
+  ACHIEVEMENTS.filter((a) => a.jobId === 'cook').map((a) => a.id),
+);
+
+/**
+ * 料理人（jobId === cook）の実績達成のみを localStorage から外す。
+ * 大工・共通の実績 ID は触らない。報酬カードは `getUnlockedCardIds()` が
+ * 達成済み実績から都度算出するため、料理人実績を外せば当該 rewardCardIds のみ除外される。
+ */
+export const resetCookAchievements = (): void => {
+  const unlocked = getUnlockedAchievementIds();
+  let changed = false;
+  for (const id of COOK_ACHIEVEMENT_IDS) {
+    if (unlocked.delete(id)) changed = true;
+  }
+  if (!changed) return;
+  try {
+    localStorage.setItem(ACHIEVEMENT_KEY, JSON.stringify([...unlocked]));
+  } catch {
+    /* localStorage 不可 */
+  }
+};
+
 /** 達成済みIDセットを取得 */
 export const getUnlockedAchievementIds = (): Set<string> => {
   try {

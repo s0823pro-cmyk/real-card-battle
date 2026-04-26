@@ -31,9 +31,11 @@ import './HomeScreen.css';
 import type { Achievement } from '../../utils/achievementSystem';
 import {
   ACHIEVEMENTS,
+  COOK_ACHIEVEMENTS_RESET_V1_KEY,
   clearAchievements,
   getCumulativeAchievementProgressSuffix,
   getUnlockedAchievementIds,
+  resetCookAchievements,
   unlockAllAchievements,
 } from '../../utils/achievementSystem';
 import { getAdsRemoved, PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
@@ -383,6 +385,18 @@ const HomeScreen = ({
   );
 
   const unlockedIds = useMemo(() => getUnlockedAchievementIds(), [achievementRefreshKey]);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(COOK_ACHIEVEMENTS_RESET_V1_KEY)) return;
+      resetCookAchievements();
+      localStorage.setItem(COOK_ACHIEVEMENTS_RESET_V1_KEY, '1');
+      setAchievementRefreshKey((k) => k + 1);
+    } catch {
+      /* localStorage 不可 */
+    }
+  }, []);
+
   const filteredAchievements = useMemo(() => {
     if (achievementJobTab === 'all') return ACHIEVEMENTS;
     return ACHIEVEMENTS.filter((a) => a.jobId === achievementJobTab);
