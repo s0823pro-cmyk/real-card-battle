@@ -50,6 +50,8 @@ import {
   getStoredRankingNickname,
   nicknameCharLength,
   postRankingNickname,
+  RANKING_DEVICE_ID_KEY,
+  RANKING_NICKNAME_KEY,
 } from '../../utils/rankingClient';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { MessageKey } from '../../i18n';
@@ -1017,6 +1019,8 @@ const HomeScreen = ({
                   const keysToDelete = [
                     PENDING_DEFEAT_INTERSTITIAL_KEY,
                     DEBUG_ENEMY_HP1_KEY,
+                    RANKING_DEVICE_ID_KEY,
+                    RANKING_NICKNAME_KEY,
                     'real-card-battle:save-data',
                     'jobless_battle_save',
                     'jobless_enemy_records',
