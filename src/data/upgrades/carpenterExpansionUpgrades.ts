@@ -86,7 +86,7 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   釘袋整理: {
     name: '釘袋整理+',
     timeCost: 2,
-    description: '捨て札からカードを2枚選んで手札に加える',
+    description: '捨て札からランダムで2枚を手札に加える',
     effects: [{ type: 'pick_from_discard', value: 2 }],
   },
   木粉払い: { name: '木粉払い+', damage: 5, description: '全体5ダメージ' },

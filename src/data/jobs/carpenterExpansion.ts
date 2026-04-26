@@ -265,7 +265,7 @@ export const CARPENTER_EXPANSION_COMMON: Card[] = [
     name: '釘袋整理',
     type: 'skill',
     timeCost: 2,
-    description: '捨て札からカードを1枚選んで手札に加える',
+    description: '捨て札からランダムで1枚を手札に加える',
     icon: '🧰',
     sellValue: 6,
     effects: [{ type: 'pick_from_discard', value: 1 }],

@@ -261,7 +261,7 @@ export interface UseGameStateResult {
   hungryFlash: 'hungry' | 'awakened' | null;
   showRevivalEffect: boolean;
   pendingHandUpgradeCount: number;
-  /** 釘袋整理：捨て札から選ぶ残り枚数 */
+  /** 捨て札から選ぶ残り枚数（食材選択のみ UI 使用） */
   pendingDiscardPicks: number;
   /** true のとき捨て札選択は食材カードのみ */
   discardPickIngredientOnly: boolean;
@@ -1236,6 +1236,27 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       handFinal = [...handFinal, ...take];
       discardPile = [...non, ...restIng];
     }
+
+    const pickFromDiscardSum = (concentratedCard.effects ?? [])
+      .filter((e) => e.type === 'pick_from_discard')
+      .reduce((s, e) => s + e.value, 0);
+    if (pickFromDiscardSum > 0) {
+      const picks = Math.min(pickFromDiscardSum, discardPile.length);
+      if (picks === 0) {
+        pushPopup('捨て札がありません', 'player', 'buff');
+      } else {
+        const pool = [...discardPile];
+        const picked: Card[] = [];
+        for (let n = 0; n < picks; n++) {
+          const ri = Math.floor(Math.random() * pool.length);
+          picked.push(pool.splice(ri, 1)[0]!);
+        }
+        handFinal = [...handFinal, ...picked];
+        discardPile = pool;
+        playSe('card');
+      }
+    }
+
     const drawPileDisplayOrder = nextDrawPileDisplayOrder(
       gameState.drawPileDisplayOrder,
       gameState.drawPile,
@@ -1341,9 +1362,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       }
     }
 
-    const pickFromDiscardSum = (concentratedCard.effects ?? [])
-      .filter((e) => e.type === 'pick_from_discard')
-      .reduce((s, e) => s + e.value, 0);
     const pickFromDiscardIngredientSum = (concentratedCard.effects ?? [])
       .filter((e) => e.type === 'pick_from_discard_ingredient')
       .reduce((s, e) => s + e.value, 0);
@@ -1353,14 +1371,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       setDiscardPickIngredientOnly(true);
       if (picks === 0) {
         pushPopup('捨て札に食材がありません', 'player', 'buff');
-      } else {
-        setPendingDiscardPicks(picks);
-      }
-    } else if (pickFromDiscardSum > 0) {
-      const picks = Math.min(pickFromDiscardSum, discardPile.length);
-      setDiscardPickIngredientOnly(false);
-      if (picks === 0) {
-        pushPopup('捨て札がありません', 'player', 'buff');
       } else {
         setPendingDiscardPicks(picks);
       }

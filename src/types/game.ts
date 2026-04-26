@@ -62,7 +62,7 @@ export type EffectType =
   | 'reserve_double_next'
   /** 集中力：プレイ後に次の攻撃・スキル1枚へ数値1.5倍 */
   | 'concentration_next'
-  /** 釘袋整理：捨て札から指定枚数を手札へ（選択UI） */
+  /** 釘袋整理：捨て札からランダムで指定枚数を手札へ（自動） */
   | 'pick_from_discard'
   /** 捨て札から食材カードのみ指定枚数を手札へ */
   | 'pick_from_discard_ingredient'
