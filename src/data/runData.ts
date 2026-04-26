@@ -86,6 +86,7 @@ export const TILE_LABELS: Record<TileType, { icon: string; iconImg: string; name
 
 export const AREA1_ELITES: EnemyTemplateLike[] = [
   {
+    id: 'biker_leader',
     templateId: 'biker_leader',
     name: '暴走族リーダー',
     icon: '🏍️',
@@ -99,6 +100,7 @@ export const AREA1_ELITES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'evil_realtor',
     templateId: 'evil_realtor',
     name: '悪徳不動産屋',
     icon: '🏠',
@@ -114,6 +116,7 @@ export const AREA1_ELITES: EnemyTemplateLike[] = [
 ];
 
 export const AREA1_BOSS: EnemyTemplateLike = {
+  id: 'monster_customer',
   templateId: 'monster_customer',
   name: 'モンスターカスタマー',
   icon: '👑',
@@ -1156,6 +1159,7 @@ export const pickEvent = (area: number): GameEvent => {
 
 export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
   {
+    id: 'collector',
     templateId: 'collector',
     name: '取り立て屋',
     icon: '💼',
@@ -1168,6 +1172,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'sloppy_worker',
     templateId: 'sloppy_worker',
     name: '手抜き職人',
     icon: '🔧',
@@ -1180,6 +1185,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'yakuza_minion',
     templateId: 'yakuza_minion',
     name: 'ヤクザの子分',
     icon: '🐉',
@@ -1192,6 +1198,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'evil_sales',
     templateId: 'evil_sales',
     name: '悪徳セールス',
     icon: '📋',
@@ -1204,6 +1211,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'rogue_dump',
     templateId: 'rogue_dump',
     name: '暴走ダンプ',
     icon: '🚛',
@@ -1219,6 +1227,7 @@ export const AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
 
 export const AREA2_ELITES: EnemyTemplateLike[] = [
   {
+    id: 'evil_supervisor',
     templateId: 'evil_supervisor',
     name: '悪徳監督',
     icon: '👷',
@@ -1232,6 +1241,7 @@ export const AREA2_ELITES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'land_shark',
     templateId: 'land_shark',
     name: '地上げ屋の親分',
     icon: '🏚️',
@@ -1247,6 +1257,7 @@ export const AREA2_ELITES: EnemyTemplateLike[] = [
 ];
 
 export const AREA2_BOSS: EnemyTemplateLike = {
+  id: 'evil_ceo',
   templateId: 'evil_ceo',
   name: '悪徳ゼネコン社長',
   icon: '👔',
@@ -1295,6 +1306,7 @@ export const pickArea2Elite = (): EnemyTemplateLike =>
 
 export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
   {
+    id: 'world_tree_root',
     templateId: 'world_tree_root',
     name: '世界樹の根',
     icon: '🌿',
@@ -1307,6 +1319,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'lost_soul',
     templateId: 'lost_soul',
     name: '迷い魂',
     icon: '👻',
@@ -1319,6 +1332,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'stone_soldier',
     templateId: 'stone_soldier',
     name: '石化した兵士',
     icon: '🗿',
@@ -1331,6 +1345,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'light_guardian',
     templateId: 'light_guardian',
     name: '光の番兵',
     icon: '⚔️',
@@ -1343,6 +1358,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'cursed_tree',
     templateId: 'cursed_tree',
     name: '呪われた大木',
     icon: '🌳',
@@ -1358,6 +1374,7 @@ export const AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
 
 export const AREA3_ELITES: EnemyTemplateLike[] = [
   {
+    id: 'world_tree_guardian',
     templateId: 'world_tree_guardian',
     name: '世界樹の守護者',
     icon: '🛡️',
@@ -1371,6 +1388,7 @@ export const AREA3_ELITES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'ancient_ghost',
     templateId: 'ancient_ghost',
     name: '古代の亡霊',
     icon: '💀',
@@ -1386,6 +1404,7 @@ export const AREA3_ELITES: EnemyTemplateLike[] = [
 ];
 
 export const AREA3_BOSS: EnemyTemplateLike = {
+  id: 'world_tree_warden',
   templateId: 'world_tree_warden',
   name: '世界樹の番人',
   icon: '🌲',

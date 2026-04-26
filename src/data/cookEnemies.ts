@@ -28,6 +28,7 @@ import hungerKingOfWorldTreeImage from '../assets/enemies/cook/hunger_king_of_wo
 
 export const COOK_AREA1_NORMAL_ENEMIES: EnemyTemplateLike[] = [
   {
+    id: 'rotten_fruit_seller',
     templateId: 'rotten_fruit_seller',
     name: '腐った果物売り',
     icon: '🍎',
@@ -40,6 +41,7 @@ export const COOK_AREA1_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'black_market_butcher',
     templateId: 'black_market_butcher',
     name: '闇市の肉屋',
     icon: '🔪',
@@ -52,6 +54,7 @@ export const COOK_AREA1_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'ripoff_stall_owner',
     templateId: 'ripoff_stall_owner',
     name: 'ぼったくり屋台主',
     icon: '🏮',
@@ -64,6 +67,7 @@ export const COOK_AREA1_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'pest_swarm',
     templateId: 'pest_swarm',
     name: '害虫の群れ',
     icon: '🪲',
@@ -75,6 +79,7 @@ export const COOK_AREA1_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'corrupt_inspector',
     templateId: 'corrupt_inspector',
     name: '食品検査官（買収済み）',
     icon: '📋',
@@ -90,6 +95,7 @@ export const COOK_AREA1_NORMAL_ENEMIES: EnemyTemplateLike[] = [
 
 export const COOK_AREA1_ELITES: EnemyTemplateLike[] = [
   {
+    id: 'black_market_boss',
     templateId: 'black_market_boss',
     name: '闇市の元締め',
     icon: '🕵️',
@@ -103,6 +109,7 @@ export const COOK_AREA1_ELITES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'food_fraud_broker',
     templateId: 'food_fraud_broker',
     name: '食品偽装ブローカー',
     icon: '🧾',
@@ -118,6 +125,7 @@ export const COOK_AREA1_ELITES: EnemyTemplateLike[] = [
 ];
 
 export const COOK_AREA1_BOSS: EnemyTemplateLike = {
+  id: 'merchant_king_of_rot',
   templateId: 'merchant_king_of_rot',
   name: '腐敗の商人王',
   icon: '👑',
@@ -136,6 +144,7 @@ export const COOK_AREA1_BOSS: EnemyTemplateLike = {
 
 export const COOK_AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
   {
+    id: 'poison_taster_servant',
     templateId: 'poison_taster_servant',
     name: '毒味役の下働き',
     icon: '🥄',
@@ -148,6 +157,7 @@ export const COOK_AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'boiling_cauldron',
     templateId: 'boiling_cauldron',
     name: '煮えたぎる大鍋',
     icon: '🫕',
@@ -160,6 +170,7 @@ export const COOK_AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'knife_throwing_soldier',
     templateId: 'knife_throwing_soldier',
     name: '包丁投げの料理兵',
     icon: '🗡️',
@@ -172,6 +183,7 @@ export const COOK_AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'armored_gatekeeper',
     templateId: 'armored_gatekeeper',
     name: '鎧を着た門番',
     icon: '🛡️',
@@ -184,6 +196,7 @@ export const COOK_AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'cursed_recipe_book',
     templateId: 'cursed_recipe_book',
     name: '呪いの料理書',
     icon: '📖',
@@ -199,6 +212,7 @@ export const COOK_AREA2_NORMAL_ENEMIES: EnemyTemplateLike[] = [
 
 export const COOK_AREA2_ELITES: EnemyTemplateLike[] = [
   {
+    id: 'sous_chef',
     templateId: 'sous_chef',
     name: '副料理長',
     icon: '👨‍🍳',
@@ -212,6 +226,7 @@ export const COOK_AREA2_ELITES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'rampaging_pressure_cooker',
     templateId: 'rampaging_pressure_cooker',
     name: '暴走する圧力鍋',
     icon: '💣',
@@ -226,6 +241,7 @@ export const COOK_AREA2_ELITES: EnemyTemplateLike[] = [
 ];
 
 export const COOK_AREA2_BOSS: EnemyTemplateLike = {
+  id: 'poison_head_chef',
   templateId: 'poison_head_chef',
   name: '毒の料理長',
   icon: '☠️',
@@ -244,6 +260,7 @@ export const COOK_AREA2_BOSS: EnemyTemplateLike = {
 
 export const COOK_AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
   {
+    id: 'starving_wild_dog',
     templateId: 'starving_wild_dog',
     name: '飢えた野犬',
     icon: '🐕',
@@ -256,6 +273,7 @@ export const COOK_AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'withered_tree_spirit',
     templateId: 'withered_tree_spirit',
     name: '枯れた果樹の精',
     icon: '🌵',
@@ -268,6 +286,7 @@ export const COOK_AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'giant_insect',
     templateId: 'giant_insect',
     name: '巨大な蟲',
     icon: '🦟',
@@ -279,6 +298,7 @@ export const COOK_AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'moss_covered_statue',
     templateId: 'moss_covered_statue',
     name: '苔むした石像',
     icon: '🗿',
@@ -291,6 +311,7 @@ export const COOK_AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'diseased_root',
     templateId: 'diseased_root',
     name: '病んだ根',
     icon: '🌿',
@@ -306,6 +327,7 @@ export const COOK_AREA3_NORMAL_ENEMIES: EnemyTemplateLike[] = [
 
 export const COOK_AREA3_ELITES: EnemyTemplateLike[] = [
   {
+    id: 'avatar_of_hunger',
     templateId: 'avatar_of_hunger',
     name: '飢餓の化身',
     icon: '💀',
@@ -319,6 +341,7 @@ export const COOK_AREA3_ELITES: EnemyTemplateLike[] = [
     ],
   },
   {
+    id: 'fallen_gourmet',
     templateId: 'fallen_gourmet',
     name: '堕ちた美食家',
     icon: '🍷',
@@ -334,6 +357,7 @@ export const COOK_AREA3_ELITES: EnemyTemplateLike[] = [
 ];
 
 export const COOK_AREA3_BOSS: EnemyTemplateLike = {
+  id: 'hunger_king_of_world_tree',
   templateId: 'hunger_king_of_world_tree',
   name: '世界樹の飢餓王',
   icon: '🌲',

@@ -101,7 +101,10 @@ export const resolveCardFromStoredInstanceId = (storedId: string): Card | null =
 };
 
 /** バトル終了時の cards_used 集計用（定義 id に正規化） */
-export const getCanonicalCardIdForStats = (card: Pick<Card, 'id' | 'definitionId'>): string => {
+export const getCanonicalCardIdForStats = (card: Pick<Card, 'id' | 'definitionId' | 'baseCardId'>): string => {
+  if (typeof card.baseCardId === 'string' && card.baseCardId.length > 0) {
+    return card.baseCardId;
+  }
   if (typeof card.definitionId === 'string' && card.definitionId.length > 0) {
     return card.definitionId;
   }

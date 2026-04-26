@@ -2,8 +2,10 @@ import type { Enemy } from '../types/game';
 
 export type EnemyEncounterStatus = 'none' | 'encountered' | 'defeated';
 
-/** ランキング統計用: templateId（claimer / bicycle 等）。図鑑・recordEnemyDefeated と揃える */
-export const getEnemyTemplateIdForStats = (enemy: Pick<Enemy, 'id' | 'templateId'>): string => {
+/** ランキング統計用: enemyDefinitionId → templateId → インスタンス id から復元 */
+export const getEnemyTemplateIdForStats = (enemy: Pick<Enemy, 'id' | 'templateId' | 'enemyDefinitionId'>): string => {
+  const def = enemy.enemyDefinitionId?.trim();
+  if (def) return def;
   const tid = enemy.templateId?.trim();
   if (tid) return tid;
   const m = enemy.id.match(/^enemy_(.+)_\d+$/);

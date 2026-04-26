@@ -167,6 +167,8 @@ export interface BattleResult {
 }
 
 export interface EnemyTemplateLike {
+  /** 統計・撃破カウント用の固定ID（省略時は templateId と同じ扱い） */
+  id?: string;
   templateId: string;
   name: string;
   icon: string;

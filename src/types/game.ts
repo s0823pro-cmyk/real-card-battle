@@ -103,6 +103,8 @@ export interface Card {
   id: string;
   /** ランキング集計用: インスタンス id（hammer_1_3 等）からも元の定義 id を参照できるようにする */
   definitionId?: string;
+  /** 集計用の代表カード id（例: hammer_2〜4 を hammer_1 にまとめる） */
+  baseCardId?: string;
   name: string;
   type: CardType;
   timeCost: number;
@@ -164,6 +166,8 @@ export interface EnemyIntent {
 
 export interface Enemy {
   id: string;
+  /** 統計用の定義 ID（テンプレ由来。省略時は templateId） */
+  enemyDefinitionId?: string;
   templateId: string;
   name: string;
   maxHp: number;

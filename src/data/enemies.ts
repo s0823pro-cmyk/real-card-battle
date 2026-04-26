@@ -113,6 +113,7 @@ let enemySerial = 0;
 const createEnemy = (
   templateId: string,
   template: {
+    id?: string;
     name: string;
     icon: string;
     imageUrl?: string;
@@ -121,8 +122,10 @@ const createEnemy = (
   },
 ): Enemy => {
   enemySerial += 1;
+  const enemyDefinitionId = template.id ?? templateId;
   return {
     id: `enemy_${templateId}_${enemySerial}`,
+    enemyDefinitionId,
     templateId,
     name: template.name,
     maxHp: template.maxHp,
@@ -139,11 +142,8 @@ const createEnemy = (
 export const createEncounterFromTemplateIds = (keys: string[]): Enemy[] =>
   keys.map((key) => {
     const builtIn = ENEMY_TEMPLATES[key as TemplateKey];
-    if (builtIn) return createEnemy(key, builtIn);
-    return createEnemy(
-      key,
-      ENEMY_TEMPLATES.claimer,
-    );
+    if (builtIn) return createEnemy(key, { ...builtIn, id: key });
+    return createEnemy(key, { ...ENEMY_TEMPLATES.claimer, id: key });
   });
 
 export const createEncounterFromTemplates = (templates: EnemyTemplateLike[]): Enemy[] =>
