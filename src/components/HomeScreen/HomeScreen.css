@@ -1729,3 +1729,90 @@
   font-size: 12px;
   color: rgba(232, 213, 163, 0.55);
 }
+
+/* マイ統計：TOP3 カードプレビュー（報酬画面と同じ CardComponent） */
+.settings-mystats-top-cards-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 4px 0;
+}
+
+.settings-mystats-top-card-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-mystats-top-card-wrap {
+  position: relative;
+  flex-shrink: 0;
+  transform: none;
+  transition: none;
+  pointer-events: none;
+}
+
+.settings-mystats-top-card-wrap .hand-card {
+  transform: none;
+  transition: none;
+}
+
+.settings-mystats-top-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  text-align: center;
+}
+
+.settings-mystats-top-card-name {
+  font-family: var(--font-display, system-ui);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: rgba(232, 213, 163, 0.95);
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.settings-mystats-top-card-count {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 214, 120, 0.9);
+}
+
+.settings-mystats-top-card-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 100px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px dashed rgba(232, 213, 163, 0.35);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-mystats-top-card-fallback-id {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  line-height: 1.3;
+  word-break: break-all;
+  color: rgba(232, 213, 163, 0.75);
+  text-align: center;
+}

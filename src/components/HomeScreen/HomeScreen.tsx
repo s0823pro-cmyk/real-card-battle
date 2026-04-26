@@ -45,7 +45,7 @@ import { resetTutorial } from '../../utils/tutorialState';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
 import { getAdminSummary, getMyStats, verifyCode } from '../../utils/statsApi';
 import type { MyStatsResponse } from '../../utils/statsApi';
-import type { JobId } from '../../types/game';
+import type { Card, JobId } from '../../types/game';
 import {
   getStoredRankingNickname,
   nicknameCharLength,
@@ -55,7 +55,16 @@ import {
 } from '../../utils/rankingClient';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { MessageKey } from '../../i18n';
-import { achievementDescKey, achievementNameKey, cardNameKey, enemyNameKey } from '../../i18n/entityKeys';
+import {
+  achievementDescKey,
+  achievementNameKey,
+  cardNameKey,
+  enemyNameKey,
+  translatedCardName,
+} from '../../i18n/entityKeys';
+import type { EffectiveCardValues } from '../../utils/cardPreview';
+import { getCardById, getDisplayJobIdForCard } from '../../utils/achievementRewardLookup';
+import CardComponent from '../Hand/CardComponent';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 
@@ -101,6 +110,31 @@ type AdminSummaryPayload = {
   }>;
   top_combos?: Array<{ combo_key: string; use_count: number }>;
 };
+
+const MY_STATS_CARD_PREVIEW_WIDTH = 72;
+
+const myStatsCardPreviewNoop = () => {};
+
+const getMyStatsCardBaseEffectiveValues = (card: Card): EffectiveCardValues => ({
+  damage: card.damage ?? null,
+  block: card.block ?? null,
+  heal:
+    (card.effects ?? []).filter((effect) => effect.type === 'heal').reduce((sum, effect) => sum + effect.value, 0) ||
+    null,
+  effectiveTimeCost: card.timeCost,
+  isTimeBuffed: false,
+  isTimeDebuffed: false,
+  isDamageBuffed: false,
+  isDamageDebuffed: false,
+  isBlockBuffed: false,
+  isBlockDebuffed: false,
+  isHealBuffed: false,
+  isHealDebuffed: false,
+  isAttackDamageWeakDebuffed: false,
+  isBoosted: false,
+  isDamageBoosted: false,
+  isBlockBoosted: false,
+});
 
 function isAdminSummary(s: unknown): s is AdminSummaryPayload {
   if (typeof s !== 'object' || s === null) return false;
@@ -911,16 +945,64 @@ const HomeScreen = ({
                 {myStatsData.top_cards.length === 0 ? (
                   <p className="settings-mystats-subempty">{t('home.settings.myStatsNoValue')}</p>
                 ) : (
-                  <ol className="settings-admin-ol">
-                    {myStatsData.top_cards.map((row, idx) => (
-                      <li key={`${row.card_id}-${idx}`}>
-                        <span className="settings-admin-list-label">
-                          {t(cardNameKey(row.card_id), {}, row.card_id)}
-                        </span>
-                        <span className="settings-admin-list-num">{row.use_count}</span>
-                      </li>
-                    ))}
-                  </ol>
+                  <div className="settings-mystats-top-cards-row" role="list" aria-label={t('home.settings.myStatsTopCards')}>
+                    {myStatsData.top_cards.slice(0, 3).map((row, idx) => {
+                      const card = getCardById(row.card_id);
+                      const previewH = Math.floor(MY_STATS_CARD_PREVIEW_WIDTH * 1.6);
+                      return (
+                        <div
+                          key={`${row.card_id}-${idx}`}
+                          className="settings-mystats-top-card-slot"
+                          role="listitem"
+                        >
+                          {card ? (
+                            <>
+                              <div
+                                className="settings-mystats-top-card-wrap"
+                                style={
+                                  {
+                                    '--hand-card-width': `${MY_STATS_CARD_PREVIEW_WIDTH}px`,
+                                    '--hand-card-height': `${previewH}px`,
+                                  } as CSSProperties
+                                }
+                              >
+                                <CardComponent
+                                  card={card}
+                                  jobId={getDisplayJobIdForCard(card)}
+                                  selected={false}
+                                  disabled={false}
+                                  locked={false}
+                                  isSelling={false}
+                                  isReturning={false}
+                                  isGhost={false}
+                                  isDragging={false}
+                                  isDragUnavailable={false}
+                                  zukanMode="list"
+                                  effectiveValues={getMyStatsCardBaseEffectiveValues(card)}
+                                  onSelect={myStatsCardPreviewNoop}
+                                  onPointerDown={myStatsCardPreviewNoop}
+                                  onPointerMove={myStatsCardPreviewNoop}
+                                  onPointerUp={myStatsCardPreviewNoop}
+                                  onPointerCancel={myStatsCardPreviewNoop}
+                                  onMouseEnter={myStatsCardPreviewNoop}
+                                  onMouseLeave={myStatsCardPreviewNoop}
+                                />
+                              </div>
+                              <div className="settings-mystats-top-card-meta">
+                                <span className="settings-mystats-top-card-name">{translatedCardName(card, t)}</span>
+                                <span className="settings-mystats-top-card-count">{row.use_count}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="settings-mystats-top-card-fallback">
+                              <span className="settings-mystats-top-card-fallback-id">{row.card_id}</span>
+                              <span className="settings-mystats-top-card-count">{row.use_count}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
                 <h4 className="settings-admin-subheading">{t('home.settings.myStatsTopEnemies')}</h4>
                 {myStatsData.top_enemies.length === 0 ? (

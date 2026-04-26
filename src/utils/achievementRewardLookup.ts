@@ -55,9 +55,21 @@ const add = (cards: Card[]): void => {
 add(NEUTRAL_CARD_POOL);
 add(CARPENTER_ALL);
 add(COOK_ALL);
+add(JOB_CARD_SOURCES.unemployed);
+
+/** アプリ内のカード定義を ID で解決（図鑑・統計プレビュー等） */
+export const getCardById = (cardId: string): Card | null => LOOKUP.get(cardId) ?? null;
 
 /** 実績報酬カード1枚をIDで取得 */
-export const getAchievementRewardCard = (rewardId: string): Card | null => LOOKUP.get(rewardId) ?? null;
+export const getAchievementRewardCard = getCardById;
+
+/** CardComponent の jobId 用（無色は大工表示に寄せる） */
+export const getDisplayJobIdForCard = (card: Card): JobId => {
+	if (card.neutral) return 'carpenter';
+	if (JOB_ID_SET.cook.has(card.id)) return 'cook';
+	if (JOB_ID_SET.unemployed.has(card.id)) return 'unemployed';
+	return 'carpenter';
+};
 
 export const getAchievementRewardCards = (rewardIdA: string, rewardIdB: string): [Card | null, Card | null] => [
   getAchievementRewardCard(rewardIdA),
