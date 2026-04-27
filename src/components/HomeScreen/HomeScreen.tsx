@@ -52,6 +52,7 @@ import {
   postRankingNickname,
   RANKING_DEVICE_ID_KEY,
   RANKING_NICKNAME_KEY,
+  RANKING_SCORE_CACHE_STORAGE_KEYS,
 } from '../../utils/rankingClient';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { MessageKey } from '../../i18n';
@@ -1142,6 +1143,7 @@ const HomeScreen = ({
                     DEBUG_ENEMY_HP1_KEY,
                     RANKING_DEVICE_ID_KEY,
                     RANKING_NICKNAME_KEY,
+                    ...RANKING_SCORE_CACHE_STORAGE_KEYS,
                     'real-card-battle:save-data',
                     'jobless_battle_save',
                     'jobless_enemy_records',

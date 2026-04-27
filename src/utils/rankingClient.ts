@@ -16,11 +16,21 @@ export const RANKING_BEST_SCORE_KEYS: Record<JobId, string> = {
 export const RANKING_CURRENT_RUN_SCORE_KEY = 'real-card-battle:ranking-current-score';
 
 /** 旧累積方式のキー（初回読み込み時に best へ移行） */
-const LEGACY_CUMULATIVE_SCORE_KEYS: Record<JobId, string> = {
+export const LEGACY_RANKING_CUMULATIVE_SCORE_KEYS: Record<JobId, string> = {
 	carpenter: 'real-card-battle:ranking-score-carpenter',
 	cook: 'real-card-battle:ranking-score-cook',
 	unemployed: 'real-card-battle:ranking-score-unemployed',
 };
+
+/**
+ * 設定の「データ初期化」で localStorage から消すランキング用スコアキャッシュのみ。
+ * device-id / nickname は別途削除し、サーバー側のランキング行は削除しない。
+ */
+export const RANKING_SCORE_CACHE_STORAGE_KEYS: readonly string[] = [
+	...Object.values(RANKING_BEST_SCORE_KEYS),
+	RANKING_CURRENT_RUN_SCORE_KEY,
+	...Object.values(LEGACY_RANKING_CUMULATIVE_SCORE_KEYS),
+];
 
 function randomUuidV4(): string {
 	if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -58,7 +68,7 @@ function migrateLegacyBestScoreOnce(jobId: JobId): void {
 	if (typeof localStorage === 'undefined') return;
 	const bestKey = RANKING_BEST_SCORE_KEYS[jobId];
 	if (localStorage.getItem(bestKey) != null) return;
-	const legacyRaw = localStorage.getItem(LEGACY_CUMULATIVE_SCORE_KEYS[jobId]);
+	const legacyRaw = localStorage.getItem(LEGACY_RANKING_CUMULATIVE_SCORE_KEYS[jobId]);
 	if (legacyRaw == null) return;
 	const n = Number.parseInt(legacyRaw, 10);
 	if (Number.isFinite(n) && n > 0) {
