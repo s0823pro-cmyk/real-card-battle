@@ -129,7 +129,7 @@ export const ja = {
   'home.ranking.errLength': '2〜12文字で入力してください',
   'home.ranking.errNetwork': '通信に失敗しました',
   'home.ranking.errNickname': '使用できないニックネームです',
-  'home.ranking.errNicknameTaken': 'このニックネームは既に使用されています',
+  'home.ranking.errNicknameTaken': 'その名前は既に登録されています',
   'home.ranking.errRegister': '登録に失敗しました',
 
   'settings.gameSection': '⚙️ ゲーム設定',
