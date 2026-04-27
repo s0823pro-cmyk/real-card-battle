@@ -165,6 +165,49 @@ describe("ranking worker", () => {
 		expect(body.ranking[0]).toMatchObject({ rank: 1, nickname: "プレイヤー", score: 20 });
 	});
 
+	it("POST /nickname rejects duplicate nickname for another device", async () => {
+		const ctx = createExecutionContext();
+		const first = new IncomingRequest("http://example.com/nickname", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ device_id: "dev-a", nickname: "共有太郎" }),
+		});
+		let res = await worker.fetch(first, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ ok: true });
+
+		const second = new IncomingRequest("http://example.com/nickname", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ device_id: "dev-b", nickname: "共有太郎" }),
+		});
+		res = await worker.fetch(second, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ ok: false, error: "nickname_taken" });
+	});
+
+	it("POST /nickname allows same device to resubmit same nickname", async () => {
+		const ctx = createExecutionContext();
+		const body = JSON.stringify({ device_id: "dev-resubmit", nickname: "再登録" });
+		const req = () =>
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body,
+			});
+		let res = await worker.fetch(req(), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ ok: true });
+
+		res = await worker.fetch(req(), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ ok: true });
+	});
+
 	it("POST /score ignores unknown device_id", async () => {
 		const postScore = new IncomingRequest("http://example.com/score", {
 			method: "POST",

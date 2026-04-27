@@ -174,6 +174,13 @@ async function handlePostNickname(request: Request, env: Env): Promise<Response>
 		return json({ ok: false, error: "nickname_not_allowed" }, 400);
 	}
 
+	const owner = await env.DB.prepare(`SELECT device_id FROM players WHERE nickname = ? LIMIT 1`)
+		.bind(trimmed)
+		.first<{ device_id: string }>();
+	if (owner && owner.device_id !== device_id) {
+		return json({ ok: false, error: "nickname_taken" }, 400);
+	}
+
 	const now = Date.now();
 	await env.DB.prepare(
 		`INSERT INTO players (device_id, nickname, created_at)

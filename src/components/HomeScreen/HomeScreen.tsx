@@ -777,6 +777,7 @@ const HomeScreen = ({
       const err = res.error;
       if (err === 'network') setRankingNicknameErr(t('home.ranking.errNetwork'));
       else if (err === 'nickname_not_allowed') setRankingNicknameErr(t('home.ranking.errNickname'));
+      else if (err === 'nickname_taken') setRankingNicknameErr(t('home.ranking.errNicknameTaken'));
       else if (err === 'nickname_length') setRankingNicknameErr(t('home.ranking.errLength'));
       else setRankingNicknameErr(t('home.ranking.errRegister'));
       return;
