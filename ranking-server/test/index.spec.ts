@@ -188,6 +188,46 @@ describe("ranking worker", () => {
 		expect(await res.json()).toEqual({ ok: false, error: "nickname_taken" });
 	});
 
+	it("POST /nickname rejects change to nickname held by another device", async () => {
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: "dev-x", nickname: "先取り" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: "dev-y", nickname: "別名" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: "dev-y", nickname: "先取り" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ ok: false, error: "nickname_taken" });
+	});
+
 	it("POST /nickname allows same device to resubmit same nickname", async () => {
 		const ctx = createExecutionContext();
 		const body = JSON.stringify({ device_id: "dev-resubmit", nickname: "再登録" });
