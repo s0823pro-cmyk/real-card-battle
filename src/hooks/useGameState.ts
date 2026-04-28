@@ -1131,7 +1131,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const upgradeAllHandCard =
       (playedCard.effects ?? []).some((effect) => effect.type === 'upgrade_all_hand_card');
     const tempUpgradeSource = isBattleTempUpgradeSourceCard(playedCard);
-    let battleCardRevertMap: Record<string, Card> = { ...(gameState.battleCardRevertMap ?? {}) };
+    const battleCardRevertMap: Record<string, Card> = { ...(gameState.battleCardRevertMap ?? {}) };
     let handAfterPlay = [
       ...gameState.hand.filter((item) => item.id !== cardId),
       ...drawResult.drawn,

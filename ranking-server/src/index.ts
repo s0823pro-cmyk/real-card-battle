@@ -11,6 +11,7 @@ const CORS_HEADERS: Record<string, string> = {
 const BATCH_SIZE = 80;
 const MAX_ID_MAP_ENTRIES = 500;
 const MAX_ID_LEN = 128;
+const MAX_SCORE_POINTS = 10_000_000;
 
 function json(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), {
@@ -240,11 +241,14 @@ async function handlePostScore(request: Request, env: Env): Promise<Response> {
 	if (!isNonEmptyDeviceId(device_id) || typeof job_id !== "string" || job_id.length === 0 || job_id.length > 64) {
 		return json({ ok: false, score: 0 }, 400);
 	}
+	if (!ALLOWED_JOB_IDS.has(job_id)) {
+		return json({ ok: false, score: 0 }, 400);
+	}
 	if (typeof points !== "number" || !Number.isFinite(points)) {
 		return json({ ok: false, score: 0 }, 400);
 	}
 	const add = Math.trunc(points);
-	if (add < 0 || add > 1_000_000_000) {
+	if (add < 0 || add > MAX_SCORE_POINTS) {
 		return json({ ok: false, score: 0 }, 400);
 	}
 

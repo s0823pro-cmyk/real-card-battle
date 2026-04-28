@@ -260,6 +260,53 @@ describe("ranking worker", () => {
 		expect(await res.json()).toEqual({ ok: false, score: 0 });
 	});
 
+	it("POST /score rejects unknown job_id and extreme points", async () => {
+		const device = "score-guard-device";
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, nickname: "防御テスト" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/score", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, job_id: "hacker", points: 100 }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ ok: false, score: 0 });
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/score", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, job_id: "cook", points: 10_000_001 }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ ok: false, score: 0 });
+
+		const row = await env.DB.prepare(`SELECT score FROM scores WHERE device_id = ?`)
+			.bind(device)
+			.first<{ score: number }>();
+		expect(row).toBeNull();
+	});
+
 	it("SELF.fetch integration smoke", async () => {
 		const response = await SELF.fetch("http://example.com/ranking/carpenter");
 		expect(response.status).toBe(200);
