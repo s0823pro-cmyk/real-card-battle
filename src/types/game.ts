@@ -241,7 +241,7 @@ export interface PlayerState {
   fullSprintUsedCount?: number;
   /** バトル中の調理ゲージ獲得累計（cook_cooking_10/20 実績用） */
   totalCookingGaugeGained?: number;
-  /** バトル中の満腹ボーナス（HP回復）発動回数（cook_fullness_3 実績用） */
+  /** バトル中の満腹ボーナス発動回数（1回目HP回復、2回目ブロック、3回目以降ダメージ） */
   fullnessBonusCount?: number;
   /** 伝説のレシピ：このターン食材カードの時間コスト0 */
   ingredientCostFreeThisTurn?: boolean;

@@ -387,6 +387,7 @@ const mergeCardResolveResults = (a: CardResolveResult, b: CardResolveResult): Ca
   cookingGaugeGained: a.cookingGaugeGained + b.cookingGaugeGained,
   fullnessGaugeGained: a.fullnessGaugeGained + b.fullnessGaugeGained,
   fullnessAutoHealTriggered: a.fullnessAutoHealTriggered || b.fullnessAutoHealTriggered,
+  fullnessEffect: b.fullnessEffect ?? a.fullnessEffect,
   equippedTool: b.equippedTool ?? a.equippedTool,
   isDandoriActive: b.isDandoriActive,
   goldGained: a.goldGained + b.goldGained,
@@ -1458,8 +1459,16 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (result.cookingGaugeGained > 0 && !playedMysteryPot) {
       pushPopup(`+${result.cookingGaugeGained}🍳`, 'player', 'buff');
     }
-    if (result.fullnessAutoHealTriggered) {
-      pushPopup('+🍖', 'player', 'buff');
+    if (result.fullnessEffect) {
+      if (result.fullnessEffect.type === 'heal') {
+        pushPopup(`🍖 +${result.fullnessEffect.value}HP`, 'player', 'buff');
+      } else if (result.fullnessEffect.type === 'block') {
+        pushPopup('🍖 満腹ガード！', 'player', 'block');
+      } else {
+        setIsPlayerHit(true);
+        pushPopup(`🍖 お腹が苦しい -${result.fullnessEffect.value}HP`, 'player', 'damage', 2200);
+        window.setTimeout(() => setIsPlayerHit(false), 420);
+      }
     }
     if (drawAmount > 0) {
       pushPopup(`+${drawAmount}ドロー`, 'player', 'buff');
@@ -1480,8 +1489,11 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     /** 勝利のお守り等の on_kill 回復だけでは回復SEを鳴らさない（カード回復・敵回復は従来どおり）。満腹5回復も含める */
     const shouldPlayHealSe =
       anyEnemyHpIncreasedForHealSe || (playerHpIncreasedOverall && playerHpIncreasedFromCardResolve);
-    if (shouldPlayHealSe || result.fullnessAutoHealTriggered) {
+    if (shouldPlayHealSe || result.fullnessEffect?.type === 'heal') {
       playSe('heal');
+    }
+    if (result.fullnessEffect?.type === 'damage') {
+      playSe('damage');
     }
     if (result.isDandoriActive) {
       pushPopup('⚡段取り！', 'player', 'dandori');

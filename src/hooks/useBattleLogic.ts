@@ -14,8 +14,9 @@ export interface CardResolveResult {
   scaffoldGained: number;
   cookingGaugeGained: number;
   fullnessGaugeGained: number;
-  /** 満腹ゲージが5以上で自動回復が発動した（ポップ用） */
+  /** 満腹ゲージが5以上で自動効果が発動した（ポップ用） */
   fullnessAutoHealTriggered: boolean;
+  fullnessEffect: { type: 'heal' | 'block' | 'damage'; value: number } | null;
   equippedTool: Card | null;
   isDandoriActive: boolean;
   goldGained: number;
@@ -36,6 +37,42 @@ export type ApplyOneToolSlotOptions = {
    * ターン開始時の applyToolEffects では false のまま（毎ターンの装備ブロックを加算）。
    */
   omitStaticCardBlock?: boolean;
+};
+
+const applyFullnessMilestone = (
+  player: PlayerState,
+): { player: PlayerState; effect: CardResolveResult['fullnessEffect'] } => {
+  if ((player.fullnessGauge ?? 0) < 5) {
+    return { player, effect: null };
+  }
+
+  const triggerCount = (player.fullnessBonusCount ?? 0) + 1;
+  let nextPlayer: PlayerState = {
+    ...player,
+    fullnessGauge: 0,
+    fullnessBonusCount: triggerCount,
+  };
+
+  if (triggerCount === 1) {
+    const healAmount = 5 + (nextPlayer.relicIronStomach ? 1 : 0);
+    if (!nextPlayer.deathWishActive) {
+      nextPlayer.currentHp = Math.min(nextPlayer.maxHp, nextPlayer.currentHp + healAmount);
+    }
+    return { player: nextPlayer, effect: { type: 'heal', value: healAmount } };
+  }
+
+  if (triggerCount === 2) {
+    const blockAmount = 10;
+    nextPlayer.block += blockAmount;
+    return { player: nextPlayer, effect: { type: 'block', value: blockAmount } };
+  }
+
+  const damageAmount = 3;
+  nextPlayer = {
+    ...nextPlayer,
+    currentHp: Math.max(0, nextPlayer.currentHp - damageAmount),
+  };
+  return { player: nextPlayer, effect: { type: 'damage', value: damageAmount } };
 };
 
 /** 装備1枠分のターン開始時相当の効果（プレイ直後にも適用する） */
@@ -236,27 +273,20 @@ export const useBattleLogic = () => {
         np = upsertPlayerPoison(np, poisonTurns);
       }
 
-      let fullnessAutoHealTriggered = false;
-      if ((np.fullnessGauge ?? 0) >= 5) {
-        if (!np.deathWishActive) {
-          const ironExtra = np.relicIronStomach ? 1 : 0;
-          np.currentHp = Math.min(np.maxHp, np.currentHp + 5 + ironExtra);
-        }
-        np.fullnessGauge = 0;
-        fullnessAutoHealTriggered = true;
-        np.fullnessBonusCount = (np.fullnessBonusCount ?? 0) + 1;
-      }
+      const fullnessMilestone = applyFullnessMilestone(np);
+      np = fullnessMilestone.player;
 
       return {
         player: np,
         enemies: ne,
         targetEnemyId: tid,
         damage: damageOut,
-        blockGained: 0,
+        blockGained: fullnessMilestone.effect?.type === 'block' ? fullnessMilestone.effect.value : 0,
         scaffoldGained: 0,
         cookingGaugeGained: cgGained,
         fullnessGaugeGained: 0,
-        fullnessAutoHealTriggered,
+        fullnessAutoHealTriggered: fullnessMilestone.effect?.type === 'heal',
+        fullnessEffect: fullnessMilestone.effect,
         equippedTool: null,
         isDandoriActive: false,
         goldGained: 0,
@@ -493,15 +523,10 @@ export const useBattleLogic = () => {
       }
     }
 
-    let fullnessAutoHealTriggered = false;
-    if (nextPlayer.fullnessGauge >= 5) {
-      if (!nextPlayer.deathWishActive) {
-        const ironExtra = nextPlayer.relicIronStomach ? 1 : 0;
-        nextPlayer.currentHp = Math.min(nextPlayer.maxHp, nextPlayer.currentHp + 5 + ironExtra);
-      }
-      nextPlayer.fullnessGauge = 0;
-      fullnessAutoHealTriggered = true;
-      nextPlayer.fullnessBonusCount = (nextPlayer.fullnessBonusCount ?? 0) + 1;
+    const fullnessMilestone = applyFullnessMilestone(nextPlayer);
+    nextPlayer = fullnessMilestone.player;
+    if (fullnessMilestone.effect?.type === 'block') {
+      blockGained += fullnessMilestone.effect.value;
     }
 
     if (card.id === 'kitchen_heat' || card.id.startsWith('kitchen_heat_')) {
@@ -584,7 +609,8 @@ export const useBattleLogic = () => {
       scaffoldGained,
       cookingGaugeGained,
       fullnessGaugeGained,
-      fullnessAutoHealTriggered,
+      fullnessAutoHealTriggered: fullnessMilestone.effect?.type === 'heal',
+      fullnessEffect: fullnessMilestone.effect,
       equippedTool,
       isDandoriActive,
       goldGained,

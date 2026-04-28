@@ -11,6 +11,7 @@ export default defineConfig([
     'node_modules',
     'android',
     'ios',
+    'releases',
     'ranking-server',
     'ranking-server/node_modules',
     'ranking-server/worker-configuration.d.ts',
