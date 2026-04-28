@@ -116,7 +116,11 @@ export const VictoryScreen = ({
     })();
     return () => {
       cancelled = true;
-      void remove?.();
+      if (remove) {
+        void remove();
+      } else {
+        void removeBannerAd();
+      }
     };
   }, [adsRemoved, suppressNativeBanner]);
 
