@@ -227,18 +227,15 @@ function App() {
     showStory,
     showBossReward,
   });
-  statusBarSnapRef.current = {
-    currentScreen: state.currentScreen,
-    showStory,
-    showBossReward,
-  };
 
   useLayoutEffect(() => {
-    applyStatusBarForAppState({
+    const snap = {
       currentScreen: state.currentScreen,
       showStory,
       showBossReward,
-    });
+    };
+    statusBarSnapRef.current = snap;
+    applyStatusBarForAppState(snap);
   }, [state.currentScreen, showStory, showBossReward]);
 
   /** フォアグラウンド復帰時に Safe Area の env() を再評価させる（WebView の初期描画ずれ対策） */
