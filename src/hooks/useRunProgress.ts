@@ -865,7 +865,11 @@ export const useRunProgress = () => {
   }, [state.currentScreen, state.currentTileId]);
 
   useEffect(() => {
-    if (state.currentScreen !== 'map') return;
+    const canShowDice =
+      state.currentScreen === 'map' ||
+      state.currentScreen === 'dice_rolling' ||
+      state.currentScreen === 'branch_select';
+    if (canShowDice) return;
     if (!state.dice.rolling && state.dice.value === null) return;
     dispatch({ type: 'set_dice', value: null, rolling: false });
   }, [state.currentScreen, state.dice.rolling, state.dice.value]);
@@ -906,6 +910,8 @@ export const useRunProgress = () => {
   };
 
   const openTileScreen = (tile: BoardTile) => {
+    dispatch({ type: 'set_dice', value: null, rolling: false });
+
     if (tile.type === 'enemy' || tile.type === 'unique_boss' || tile.type === 'area_boss') {
       pendingBattleOpenRef.current = () => {
         if (tile.type === 'enemy') {

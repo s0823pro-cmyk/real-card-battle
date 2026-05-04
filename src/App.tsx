@@ -113,6 +113,10 @@ function App() {
     battleFadeOverlay,
   } = useRunProgress();
   const diceFaceRange = useMemo(() => getRouletteFaceRange(state.omamoris), [state.omamoris]);
+  const isMapFlowScreen =
+    state.currentScreen === 'map' ||
+    state.currentScreen === 'branch_select' ||
+    state.currentScreen === 'dice_rolling';
   const [savedProgress, setSavedProgress] = useState(() => loadSavedProgress());
   const [battleSave, setBattleSave] = useState<BattleSaveData | null>(() => loadBattleState());
   const [showBattleRestorePrompt, setShowBattleRestorePrompt] = useState(() => loadBattleState() !== null);
@@ -706,20 +710,14 @@ function App() {
   return (
     <AudioCtx.Provider value={audio}>
     <div
-      className={`app ${
-        state.currentScreen === 'map' ||
-        state.currentScreen === 'branch_select' ||
-        state.currentScreen === 'dice_rolling'
-          ? 'app--map'
-          : ''
-      }`}
+      className={`app ${isMapFlowScreen ? 'app--map' : ''}`}
     >
       {renderScreen()}
       <div className="rotate-warning">
         <span className="rotate-warning-icon">📱</span>
         <p>縦向きでプレイしてください</p>
       </div>
-      {(state.currentScreen === 'dice_rolling' || state.dice.value !== null) && (
+      {isMapFlowScreen && (state.currentScreen === 'dice_rolling' || state.dice.value !== null) && (
         <RouletteOverlay
           rolling={state.dice.rolling}
           value={state.dice.value}
