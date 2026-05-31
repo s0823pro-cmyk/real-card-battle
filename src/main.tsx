@@ -5,9 +5,18 @@ import { StatusBar, Style } from '@capacitor/status-bar'
 import './index.css'
 import App from './App.tsx'
 import { LanguageProvider } from './contexts/LanguageContext'
-import { ensureRankingDeviceId } from './utils/rankingClient'
+import { ensureRankingDeviceId, RANKING_SEASON_DEBUG_PREVIEW_KEY } from './utils/rankingClient'
+import { DEBUG_TOOLS_KEY } from './utils/debugTools'
 try {
   localStorage.removeItem('real-card-battle:debug-enemy-hp1')
+} catch {
+  // ignore
+}
+try {
+  if (import.meta.env.PROD && import.meta.env.VITE_ENABLE_DEV_TOOLS !== 'true') {
+    localStorage.removeItem(DEBUG_TOOLS_KEY)
+    localStorage.removeItem(RANKING_SEASON_DEBUG_PREVIEW_KEY)
+  }
 } catch {
   // ignore
 }

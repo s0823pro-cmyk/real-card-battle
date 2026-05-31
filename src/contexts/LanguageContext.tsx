@@ -44,7 +44,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [koBundle, setKoBundle] = useState<Record<string, string>>(() => readLocaleBundleFromStorage('ko') ?? {});
   const [isLocaleLoading, setIsLocaleLoading] = useState(false);
 
-  const activeBundle = locale === 'en' ? enBundle : locale === 'ko' ? koBundle : {};
+  const activeBundle = useMemo(
+    () => (locale === 'en' ? enBundle : locale === 'ko' ? koBundle : {}),
+    [locale, enBundle, koBundle],
+  );
   const isJaLocale = locale === 'ja';
   const localeReady = isJaLocale || Object.keys(activeBundle).length > 0;
   const showLocaleBootOverlay = !localeReady && !isJaLocale;
@@ -154,6 +157,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useLanguage(): {
   locale: Locale;
   switchLocale: (l: Locale) => Promise<void>;

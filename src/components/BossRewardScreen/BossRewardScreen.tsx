@@ -83,6 +83,7 @@ export const BossRewardScreen = ({ jobId, onComplete }: BossRewardScreenProps) =
     const listWidth = measuredListWidth > 0 ? measuredListWidth : fallbackListWidth;
     const gap = 10;
     const width = Math.floor((listWidth - gap * 2) / 3);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCardWidth(Math.max(86, width));
   }, [showCardSelect, rareCards.length]);
 

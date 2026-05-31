@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import type { StoryScene } from '../../data/stories/carpenterStory';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { storySceneTextKey } from '../../i18n/entityKeys';
 import type { JobId } from '../../types/game';
+import { keepImmersiveStatusBarActive } from '../../utils/nativeStatusBar';
 import './StoryScreen.css';
 
 interface StoryScreenProps {
@@ -54,11 +55,10 @@ export const StoryScreen = ({
     return next.length > 0 ? next : currentScene.lines;
   }, [storyBundleId, currentScene.id, currentScene.lines, t]);
 
-  const currentLine = linesForCurrentScene[lineIndex] ?? '';
+  const safeLineIndex = Math.min(lineIndex, Math.max(0, linesForCurrentScene.length - 1));
+  const currentLine = linesForCurrentScene[safeLineIndex] ?? '';
 
-  useEffect(() => {
-    setLineIndex((prev) => Math.min(prev, Math.max(0, linesForCurrentScene.length - 1)));
-  }, [linesForCurrentScene]);
+  useLayoutEffect(() => keepImmersiveStatusBarActive(), []);
 
   useEffect(() => {
     const bgmArea = storyBgmArea ?? (showStartButton ? currentArea : undefined);
@@ -68,6 +68,10 @@ export const StoryScreen = ({
         if (area === 1) playBgm('cook_story_area1');
         else if (area === 2) playBgm('cook_story_area2');
         else playBgm('cook_story_area3');
+      } else if (jobId === 'unemployed') {
+        if (area === 1) playBgm('unemployed_story_area1');
+        else if (area === 2) playBgm('unemployed_story_area2');
+        else playBgm('unemployed_story_area3');
       } else {
         if (area === 1) playBgm('story_area1');
         else if (area === 2) playBgm('story_area2');
@@ -87,6 +91,8 @@ export const StoryScreen = ({
   }, [onComplete, stopBgm]);
 
   useEffect(() => {
+    // タイプライター演出の開始時だけ表示状態をリセットする。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisplayed('');
     setIsTyping(true);
 
@@ -141,7 +147,7 @@ export const StoryScreen = ({
       return;
     }
 
-    const isLastLine = lineIndex >= linesForCurrentScene.length - 1;
+    const isLastLine = safeLineIndex >= linesForCurrentScene.length - 1;
     const isLastScene = sceneIndex >= scenes.length - 1;
 
     if (!isLastLine) {
@@ -158,18 +164,17 @@ export const StoryScreen = ({
     }
     finishStory();
   }, [
-    currentLine,
     linesForCurrentScene,
     finishStory,
     isTyping,
-    lineIndex,
+    safeLineIndex,
     sceneIndex,
     scenes.length,
     showStartButton,
   ]);
 
   const isLastScene = sceneIndex >= scenes.length - 1;
-  const isLastLine = lineIndex >= linesForCurrentScene.length - 1;
+  const isLastLine = safeLineIndex >= linesForCurrentScene.length - 1;
   const isEnd = isLastScene && isLastLine && !isTyping;
   const finalStartOnly = isEnd && showStartButton;
   /** 開幕以外のストーリー：最終コマはタップで終了させず「進む」ボタンのみ */
@@ -191,6 +196,7 @@ export const StoryScreen = ({
       />
 
       <div className="story-overlay" />
+      <div className="story-status-gradient" />
       <div className="story-bottom-vignette" />
 
       <div className="story-progress">

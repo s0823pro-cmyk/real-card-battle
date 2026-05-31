@@ -115,6 +115,21 @@
   animation-duration: 1s, 1.5s;
 }
 
+.battle-courier-down-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 995;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 0%, transparent 38%, rgba(6, 18, 36, 0.2) 54%, rgba(7, 21, 52, 0.68) 100%),
+    radial-gradient(ellipse at center, rgba(118, 211, 255, 0.08) 0%, rgba(55, 145, 255, 0.12) 42%, rgba(42, 104, 255, 0.34) 74%, rgba(7, 22, 55, 0.76) 100%);
+  box-shadow:
+    inset 0 0 42px rgba(102, 217, 255, 0.5),
+    inset 0 0 118px rgba(28, 91, 255, 0.62),
+    inset 0 0 210px rgba(1, 7, 23, 0.92);
+  animation: courier-down-vignette-pulse 1.8s ease-in-out infinite;
+}
+
 .battle-screen--hungry::before {
   content: '';
   position: fixed;
@@ -1020,6 +1035,47 @@
   align-items: flex-end;
 }
 
+
+.next-draw-preview {
+  position: fixed;
+  left: 50%;
+  bottom: calc(172px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 980;
+  max-width: min(88vw, 420px);
+  padding: 10px 14px;
+  border: 1px solid rgba(125, 211, 252, 0.55);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(8, 47, 73, 0.94), rgba(15, 23, 42, 0.94));
+  color: #e0f2fe;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), 0 0 18px rgba(56, 189, 248, 0.22);
+  pointer-events: none;
+  text-align: center;
+}
+
+.next-draw-preview__label {
+  display: block;
+  margin-bottom: 4px;
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.next-draw-preview__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.next-draw-preview__card {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 山札・捨て札・除外一覧：全画面 */
 .battle-deck-overlay--fullscreen {
   align-items: stretch;
@@ -1397,6 +1453,18 @@
   }
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes courier-down-vignette-pulse {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.018);
   }
 }
 

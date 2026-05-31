@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { clearPendingDefeatInterstitial } from './adsRemoved';
+import { clearPendingDefeatInterstitial, isDebugAdsDisabled } from './adsRemoved';
 
 let initPromise: Promise<void> | null = null;
 /** 広告表示〜終了までの連打防止 */
@@ -7,10 +7,17 @@ let isAdPlaying = false;
 
 /** バナー広告の表示を全体的に抑止するフラグ。マップ画面で true にする */
 let bannerSuppressed = false;
+/** 非同期 showBanner が画面遷移後に遅れて完了するのを無効化する世代番号 */
+let bannerGeneration = 0;
+
+function invalidateBannerGeneration(): void {
+  bannerGeneration += 1;
+}
 
 export function setBannerSuppressed(value: boolean): void {
   bannerSuppressed = value;
   if (value) {
+    invalidateBannerGeneration();
     // 抑止モードに入った瞬間、既存のバナーも消す
     void (async () => {
       if (!Capacitor.isNativePlatform()) return;
@@ -25,6 +32,7 @@ export function setBannerSuppressed(value: boolean): void {
 }
 
 export async function ensureAdMobInitialized(): Promise<void> {
+  if (isDebugAdsDisabled()) return;
   if (!Capacitor.isNativePlatform()) return;
   if (!initPromise) {
     initPromise = (async () => {
@@ -40,7 +48,7 @@ export async function showInterstitialIfAllowed(
   adsRemoved: boolean,
   onAdComplete?: () => void,
 ): Promise<void> {
-  if (adsRemoved || !Capacitor.isNativePlatform()) {
+  if (isDebugAdsDisabled() || adsRemoved || !Capacitor.isNativePlatform()) {
     onAdComplete?.();
     return;
   }
@@ -91,6 +99,8 @@ export async function showInterstitialIfAllowed(
 
 /** ストーリー重ね表示などでネイティブバナーだけ消す */
 export async function removeBannerAd(): Promise<void> {
+  invalidateBannerGeneration();
+  if (isDebugAdsDisabled()) return;
   if (!Capacitor.isNativePlatform()) return;
   await ensureAdMobInitialized();
   const { AdMob } = await import('@capacitor-community/admob');
@@ -99,18 +109,19 @@ export async function removeBannerAd(): Promise<void> {
 
 /** カード報酬画面用バナー。戻り値のクリーンアップで removeBanner する */
 export async function mountCardRewardBanner(adsRemoved: boolean): Promise<() => Promise<void>> {
-  if (adsRemoved || !Capacitor.isNativePlatform()) {
+  if (isDebugAdsDisabled() || adsRemoved || !Capacitor.isNativePlatform()) {
     return async () => {};
   }
+  const generation = bannerGeneration;
   // バナー抑止モード中は表示しない（マップ画面に遷移した後の非同期完了を無効化）
-  if (bannerSuppressed) {
+  if (bannerSuppressed || generation !== bannerGeneration) {
     return async () => {};
   }
   await ensureAdMobInitialized();
   const { AdMob, BannerAdPosition } = await import('@capacitor-community/admob');
   const { getBannerAdUnitId } = await import('../config/admob');
   // 直前に再確認（await 中にマップ画面に遷移している可能性）
-  if (bannerSuppressed) {
+  if (bannerSuppressed || generation !== bannerGeneration) {
     return async () => {};
   }
   await AdMob.showBanner({
@@ -119,11 +130,13 @@ export async function mountCardRewardBanner(adsRemoved: boolean): Promise<() => 
     margin: 0,
   });
   // 表示直後にも抑止チェック。既に抑止モードなら即座に消す
-  if (bannerSuppressed) {
+  if (bannerSuppressed || generation !== bannerGeneration) {
     await AdMob.removeBanner().catch(() => {});
     return async () => {};
   }
   return async () => {
+    if (generation !== bannerGeneration) return;
+    invalidateBannerGeneration();
     await AdMob.removeBanner().catch(() => {});
   };
 }

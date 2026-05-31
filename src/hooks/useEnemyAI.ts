@@ -27,6 +27,40 @@ export interface EnemyTurnResult {
 
 /** 敵がプレイヤーに付与するデバフの最低ターン数（duration / value のベース） */
 const MIN_PLAYER_DEBUFF_TURNS_FROM_ENEMY = 2;
+const ATTACK_FORCE_RATE_BY_TURN: Record<number, number> = {
+  1: 0,
+  2: 0.18,
+  3: 0.32,
+  4: 0.48,
+  5: 0.64,
+  6: 0.78,
+  7: 0.9,
+};
+
+const getAttackForceRate = (battleTurn: number): number => {
+  if (battleTurn >= 8) return 1;
+  return ATTACK_FORCE_RATE_BY_TURN[battleTurn] ?? 0;
+};
+
+const deterministicRoll = (seed: number, battleTurn: number): number => {
+  const n = Math.imul(seed + 0x9e3779b9, 2654435761) ^ Math.imul(battleTurn + 0x85ebca6b, 2246822519);
+  return ((n >>> 0) % 10000) / 10000;
+};
+
+const pickAttackIntentForTurnPressure = (
+  available: EnemyIntent[],
+  enemy: Enemy,
+  battleTurn: number,
+): EnemyIntent | null => {
+  const attackIntents = available.filter((intent) => intent.type === 'attack');
+  if (attackIntents.length === 0) return null;
+  const forceRate = getAttackForceRate(battleTurn);
+  if (forceRate <= 0) return null;
+  const roll = deterministicRoll(enemy.currentIntentIndex, battleTurn);
+  if (roll >= forceRate) return null;
+  const indexSeed = Math.imul(enemy.currentIntentIndex + battleTurn, 1103515245) >>> 0;
+  return attackIntents[indexSeed % attackIntents.length];
+};
 
 const upsertStatus = (statuses: StatusEffect[], next: StatusEffect): StatusEffect[] => {
   const found = statuses.find((status) => status.type === next.type);
@@ -194,20 +228,28 @@ export const finalizeEnemyAfterDotTicks = (enemy: Enemy): Enemy => {
 export const useEnemyAI = () => {
   const getAvailableIntents = getAvailableIntentsForEnemy;
 
-  const getEnemyIntent = (enemy: Enemy): EnemyIntent => {
+  const getEnemyIntent = (enemy: Enemy, battleTurn = 1): EnemyIntent => {
     if (enemy.templateId === 'lost_soul' && enemy.intentHistory.length >= 3) {
-      return enemy.intentHistory[enemy.currentIntentIndex % 3];
+      const available = enemy.intentHistory.slice(0, 3);
+      return (
+        pickAttackIntentForTurnPressure(available, enemy, battleTurn) ??
+        enemy.intentHistory[enemy.currentIntentIndex % 3]
+      );
     }
     const available = getAvailableIntents(enemy);
     if (available.length === 0) return enemy.intentHistory[0];
-    return available[enemy.currentIntentIndex % available.length];
+    return (
+      pickAttackIntentForTurnPressure(available, enemy, battleTurn) ??
+      available[enemy.currentIntentIndex % available.length]
+    );
   };
 
   const executeEnemyTurn = (
     enemy: Enemy,
     player: PlayerState,
+    battleTurn = 1,
   ): EnemyTurnResult => {
-    const intent = getEnemyIntent(enemy);
+    const intent = getEnemyIntent(enemy, battleTurn);
     let damage = 0;
     let mentalDamage = 0;
     let goldStolen = 0;

@@ -42,6 +42,7 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
     damage: 5,
     description: '全体5ダメージ。弱体2ターン',
     effects: [{ type: 'weak', value: 2 }],
+    tags: ['aoe', 'aoe_debuff'],
   },
   '鉄のフライパン': {
     name: '鉄のフライパン+',
@@ -76,7 +77,7 @@ export const COOK_UPGRADES: Record<string, CardUpgrade> = {
     name: '包丁研ぎ+',
     description: 'このターン、次に使用するアタックカードのダメージ+5。調理+2',
     effects: [
-      { type: 'next_attack_damage_boost', value: 5 },
+      { type: 'next_attack_damage_boost_this_turn', value: 5 },
       { type: 'cooking_gauge', value: 2 },
     ],
   },

@@ -5,7 +5,7 @@ import type { MessageKey } from '../../i18n';
 import { enemyNameKey, translatedCardName } from '../../i18n/entityKeys';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import CardComponent from '../Hand/CardComponent';
-import type { Card, CardRarity, CardType, JobId } from '../../types/game';
+import type { Card, CardBadge, CardRarity, CardType, JobId } from '../../types/game';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { CARPENTER_STARTER_DECK } from '../../data/carpenterDeck';
 import {
@@ -21,11 +21,18 @@ import {
 } from '../../data/jobs/cook';
 import {
   UNEMPLOYED_STARTER_DECK,
-  UNEMPLOYED_COMMON_POOL,
-  UNEMPLOYED_UNCOMMON_POOL,
-  UNEMPLOYED_RARE_POOL,
+  UNEMPLOYED_ZUKAN_COMMON_POOL,
+  UNEMPLOYED_ZUKAN_UNCOMMON_POOL,
+  UNEMPLOYED_ZUKAN_RARE_POOL_ALL,
 } from '../../data/jobs/unemployed';
+import {
+  COURIER_COMMON_POOL_UNFILTERED,
+  COURIER_RARE_POOL_ALL,
+  COURIER_STARTER_DECK,
+  COURIER_UNCOMMON_POOL_UNFILTERED,
+} from '../../data/jobs/courier';
 import { NEUTRAL_CARD_POOL } from '../../data/cards/neutralCards';
+import { DAR_REQUIEM_CARD, LEGENDARY_WINNERS } from '../../data/legendaryRewardCards';
 import {
   CARPENTER_STORY,
   CARPENTER_E1_STORY,
@@ -39,6 +46,18 @@ import {
   COOK_E2_STORY,
   COOK_E3_STORY,
 } from '../../data/stories/cookStory';
+import {
+  UNEMPLOYED_STORY,
+  UNEMPLOYED_E1_STORY,
+  UNEMPLOYED_E2_STORY,
+  UNEMPLOYED_E3_STORY,
+} from '../../data/stories/unemployedStory';
+import {
+  COURIER_STORY,
+  COURIER_E1_STORY,
+  COURIER_E2_STORY,
+  COURIER_E3_STORY,
+} from '../../data/stories/courierStory';
 import type { StoryScene } from '../../data/stories/carpenterStory';
 import { StoryScreen } from '../StoryScreen/StoryScreen';
 import { ENEMY_ZUKAN_DATA } from '../../data/enemyZukanData';
@@ -47,39 +66,85 @@ import { getEnemyDefeatCount, getEnemyStatus } from '../../utils/enemyRecord';
 import { formatZukanIntentDetail, getEnemyIntentsForZukan } from '../../utils/enemyIntentCatalog';
 import { upgradeCardByJobId } from '../../utils/cardUpgrade';
 import { getUpgradeForCard } from '../../data/upgrades';
-import { isAchievementRewardCardVisibleInCatalog } from '../../utils/achievementSystem';
+import {
+  ACHIEVEMENT_LOCKED_CARD_IDS,
+  getUnlockedCardIds,
+  isAchievementRewardCardVisibleInCatalog,
+} from '../../utils/achievementSystem';
+import {
+  canUseStarterIllustration2,
+  getSelectedCardIllustrationVariant,
+  hasMasteryIllustration2Asset,
+  isStarterIllustration2Eligible,
+  JOB_MASTERY_CHANGED_EVENT,
+  setSelectedCardIllustrationVariant,
+} from '../../utils/jobMasterySystem';
 import './ZukanScreen.css';
 
 type MainTab = 'cards' | 'stories' | 'enemies';
-type JobTab = 'carpenter' | 'cook' | 'unemployed' | 'neutral';
+type JobTab = 'carpenter' | 'cook' | 'unemployed' | 'courier' | 'neutral' | 'legendary';
 type RarityFilter = 'all' | CardRarity;
 type TypeFilter = 'all' | Extract<CardType, 'attack' | 'skill' | 'power' | 'tool'>;
 type EnemyTypeFilter = 'all' | 'normal' | 'elite' | 'boss';
 type FrameRarity = CardRarity | 'starter';
 
+const CARD_BADGE_SEARCH_LABELS: Record<CardBadge, string[]> = {
+  exhaust: ['消耗', '使用後除外', 'exhaust'],
+  vanish: ['消滅', 'デッキから削除', 'vanish'],
+  limited: ['制限', '所持制限', '1枚制限', 'limited'],
+  setup: ['準備', 'setup'],
+  self_damage: ['自傷', '自分にダメージ', 'self damage', 'self_damage'],
+  reserve: ['温存', 'reserve'],
+  oikomi: ['追込', '追い込み', 'oikomi'],
+  ingredient: ['食材', 'ingredient'],
+  cooking: ['調理', 'cooking'],
+  stamina: ['スタミナ', '過労', 'stamina'],
+  immovable: ['不動', '過労ダウン中のみ', 'immovable'],
+  unyielding: ['不屈', '過労ダウン中でも使用可能', 'unyielding'],
+};
+
 interface StoryEntry {
   storyId: string;
   icon: string;
+  jobId: JobId;
   scenes: StoryScene[];
 }
 
 const STORY_LIST: StoryEntry[] = [
-  { storyId: 'carpenter_opening', icon: '🔨', scenes: CARPENTER_STORY },
-  { storyId: 'carpenter_e1', icon: '🔨', scenes: CARPENTER_E1_STORY },
-  { storyId: 'carpenter_e2', icon: '🔨', scenes: CARPENTER_E2_STORY },
-  { storyId: 'carpenter_e3', icon: '🔨', scenes: CARPENTER_E3_STORY },
-  { storyId: 'cook_opening', icon: '🔪', scenes: COOK_STORY },
-  { storyId: 'cook_e1', icon: '🔪', scenes: COOK_E1_STORY },
-  { storyId: 'cook_e2', icon: '🔪', scenes: COOK_E2_STORY },
-  { storyId: 'cook_e3', icon: '🔪', scenes: COOK_E3_STORY },
+  { storyId: 'carpenter_opening', icon: '🔨', jobId: 'carpenter', scenes: CARPENTER_STORY },
+  { storyId: 'carpenter_e1', icon: '🔨', jobId: 'carpenter', scenes: CARPENTER_E1_STORY },
+  { storyId: 'carpenter_e2', icon: '🔨', jobId: 'carpenter', scenes: CARPENTER_E2_STORY },
+  { storyId: 'carpenter_e3', icon: '🔨', jobId: 'carpenter', scenes: CARPENTER_E3_STORY },
+  { storyId: 'cook_opening', icon: '🔪', jobId: 'cook', scenes: COOK_STORY },
+  { storyId: 'cook_e1', icon: '🔪', jobId: 'cook', scenes: COOK_E1_STORY },
+  { storyId: 'cook_e2', icon: '🔪', jobId: 'cook', scenes: COOK_E2_STORY },
+  { storyId: 'cook_e3', icon: '🔪', jobId: 'cook', scenes: COOK_E3_STORY },
+  { storyId: 'unemployed_opening', icon: '✊', jobId: 'unemployed', scenes: UNEMPLOYED_STORY },
+  { storyId: 'unemployed_e1', icon: '✊', jobId: 'unemployed', scenes: UNEMPLOYED_E1_STORY },
+  { storyId: 'unemployed_e2', icon: '✊', jobId: 'unemployed', scenes: UNEMPLOYED_E2_STORY },
+  { storyId: 'unemployed_e3', icon: '✊', jobId: 'unemployed', scenes: UNEMPLOYED_E3_STORY },
+  { storyId: 'courier_opening', icon: '🏍️', jobId: 'courier', scenes: COURIER_STORY },
+  { storyId: 'courier_e1', icon: '🏍️', jobId: 'courier', scenes: COURIER_E1_STORY },
+  { storyId: 'courier_e2', icon: '🏍️', jobId: 'courier', scenes: COURIER_E2_STORY },
+  { storyId: 'courier_e3', icon: '🏍️', jobId: 'courier', scenes: COURIER_E3_STORY },
 ];
 
-const JOB_TABS: { id: JobTab; labelKey: MessageKey; icon: string }[] = [
+const JOB_TABS: { id: JobTab; labelKey?: MessageKey; label?: string; icon: string }[] = [
   { id: 'carpenter', labelKey: 'job.carpenter.name', icon: '🔨' },
   { id: 'cook', labelKey: 'job.cook.name', icon: '🔪' },
-  /* 無職はプレイで選択できないため図鑑タブからは除外（カードプールは dev 全解放用に保持） */
+  { id: 'unemployed', labelKey: 'job.unemployed.name', icon: '✊' },
+  { id: 'courier', labelKey: 'job.courier.name', icon: '🏍️' },
   { id: 'neutral', labelKey: 'zukan.job.neutral', icon: '⬜' },
+  { id: 'legendary', label: '伝説', icon: '🌈' },
 ];
+
+const getJobTabLabel = (tab: (typeof JOB_TABS)[number], t: ReturnType<typeof useLanguage>['t']): string =>
+  tab.label ?? (tab.labelKey ? t(tab.labelKey) : tab.id);
+
+const getLegendaryOwnerName = (card: Card): string | null => {
+  if (!card.tags?.includes('legendary')) return null;
+  return LEGENDARY_WINNERS.find((winner) => winner.card.name === card.name)?.winnerName ?? null;
+};
 
 const withRarity = (cards: Card[], rarity: CardRarity): Card[] =>
   cards.map((card) => ({ ...card, rarity: card.rarity ?? rarity }));
@@ -100,21 +165,37 @@ const ZUKAN_CARD_POOLS = {
   ],
   unemployed: [
     ...UNEMPLOYED_STARTER_DECK,
-    ...withRarity(UNEMPLOYED_COMMON_POOL, 'common'),
-    ...withRarity(UNEMPLOYED_UNCOMMON_POOL, 'uncommon'),
-    ...withRarity(UNEMPLOYED_RARE_POOL, 'rare'),
+    ...withRarity(UNEMPLOYED_ZUKAN_COMMON_POOL, 'common'),
+    ...withRarity(UNEMPLOYED_ZUKAN_UNCOMMON_POOL, 'uncommon'),
+    ...withRarity(UNEMPLOYED_ZUKAN_RARE_POOL_ALL, 'rare'),
+  ],
+  courier: [
+    ...COURIER_STARTER_DECK,
+    ...withRarity(COURIER_COMMON_POOL_UNFILTERED, 'common'),
+    ...withRarity(COURIER_UNCOMMON_POOL_UNFILTERED, 'uncommon'),
+    ...withRarity(COURIER_RARE_POOL_ALL, 'rare'),
   ],
   neutral: withRarity(NEUTRAL_CARD_POOL, 'common'),
+  legendary: [DAR_REQUIEM_CARD],
 };
 
 const ALL_CARDS: Record<JobTab, Card[]> = {
   carpenter: ZUKAN_CARD_POOLS.carpenter,
   cook: ZUKAN_CARD_POOLS.cook,
   unemployed: ZUKAN_CARD_POOLS.unemployed,
+  courier: ZUKAN_CARD_POOLS.courier,
   neutral: ZUKAN_CARD_POOLS.neutral,
+  legendary: ZUKAN_CARD_POOLS.legendary,
 };
 
-const JOB_TABS_WITH_UPGRADE_PREVIEW: JobTab[] = ['carpenter', 'cook'];
+const JOB_TABS_WITH_UPGRADE_PREVIEW: JobTab[] = [
+  'carpenter',
+  'cook',
+  'unemployed',
+  'courier',
+  'neutral',
+  'legendary',
+];
 
 /** 図鑑タブのカードプールに、少なくとも1枚は強化定義があるか（no_upgrade は除外） */
 const jobTabPoolHasAnyUpgrade = (tab: JobTab, pool: Card[]): boolean => {
@@ -159,6 +240,19 @@ const noop = () => {
 
 const getCardRarity = (card: Card): CardRarity => card.rarity ?? 'common';
 const getFrameRarity = (card: Card): FrameRarity => card.rarity ?? 'starter';
+const normalizeSearchText = (value: string): string => value.toLocaleLowerCase('ja-JP').normalize('NFKC');
+
+const getCardSearchText = (card: Card, t: ReturnType<typeof useLanguage>['t']): string =>
+  normalizeSearchText(
+    [
+      translatedCardName(card, t),
+      card.name,
+      card.description,
+      card.type,
+      card.rarity ?? 'starter',
+      ...(card.badges ?? []).flatMap((badge) => [badge, ...(CARD_BADGE_SEARCH_LABELS[badge] ?? [])]),
+    ].join(' '),
+  );
 
 const deduplicateCards = (cards: Card[]): Card[] => {
   const seen = new Set<string>();
@@ -173,12 +267,20 @@ interface ZukanScreenProps {
   onClose: () => void;
   unlockedCardNames: Set<string>;
   onUnlockAll: (names: Set<string>) => void;
+  initialTab?: MainTab;
+  debugUnlockAll?: boolean;
 }
 
-export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanScreenProps) => {
+export const ZukanScreen = ({
+  onClose,
+  unlockedCardNames,
+  onUnlockAll,
+  initialTab,
+  debugUnlockAll = false,
+}: ZukanScreenProps) => {
   const { t } = useLanguage();
   const { playBgm } = useAudioContext();
-  const [mainTab, setMainTab] = useState<MainTab>('cards');
+  const [mainTab, setMainTab] = useState<MainTab>(initialTab ?? 'cards');
   const [activeTab, setActiveTab] = useState<JobTab>('carpenter');
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
@@ -186,9 +288,12 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [playingStory, setPlayingStory] = useState<StoryEntry | null>(null);
   const [selectedEnemy, setSelectedEnemy] = useState<EnemyZukanEntry | null>(null);
-  const [enemySkillsOpen, setEnemySkillsOpen] = useState(false);
+  const [enemySkillsEnemyId, setEnemySkillsEnemyId] = useState<string | null>(null);
   const [showUpgradePreview, setShowUpgradePreview] = useState(false);
+  const [cardSearchQuery, setCardSearchQuery] = useState('');
+  const [masteryRevision, setMasteryRevision] = useState(0);
   const suppressOverlayCloseRef = useRef(false);
+  const enemySkillsOpen = selectedEnemy ? enemySkillsEnemyId === selectedEnemy.id : false;
 
   const handleStoryComplete = useCallback(() => {
     setPlayingStory(null);
@@ -196,37 +301,69 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   }, [playBgm]);
 
   useEffect(() => {
-    setEnemySkillsOpen(false);
-  }, [selectedEnemy]);
+    const onMasteryChanged = () => setMasteryRevision((v) => v + 1);
+    window.addEventListener(JOB_MASTERY_CHANGED_EVENT, onMasteryChanged);
+    return () => window.removeEventListener(JOB_MASTERY_CHANGED_EVENT, onMasteryChanged);
+  }, []);
+
+  const isAlwaysUnlockedCard = useCallback(
+    (card: Card) => activeTab === 'legendary' || card.tags?.includes('legendary') === true,
+    [activeTab],
+  );
+
+  const unlockedAchievementCardIds = useMemo(() => getUnlockedCardIds(), []);
+  const getZukanEnemyStatus = useCallback(
+    (enemyId: string) => (debugUnlockAll ? 'defeated' : getEnemyStatus(enemyId)),
+    [debugUnlockAll],
+  );
+
+  const shouldShowCardInCatalog = useCallback(
+    (card: Card) => isAlwaysUnlockedCard(card) || debugUnlockAll || isAchievementRewardCardVisibleInCatalog(card.id),
+    [debugUnlockAll, isAlwaysUnlockedCard],
+  );
+
+  const isCardUnlockedInCatalog = useCallback(
+    (card: Card, unlockName: string) => {
+      if (isAlwaysUnlockedCard(card) || debugUnlockAll) return true;
+      if (ACHIEVEMENT_LOCKED_CARD_IDS.has(card.id)) return unlockedAchievementCardIds.has(card.id);
+      return unlockedCardNames.has(unlockName);
+    },
+    [debugUnlockAll, isAlwaysUnlockedCard, unlockedAchievementCardIds, unlockedCardNames],
+  );
 
   const filteredCardsBase = useMemo(() => {
-    const cards = deduplicateCards(ALL_CARDS[activeTab]).filter((c) =>
-      isAchievementRewardCardVisibleInCatalog(c.id),
-    );
+    const cards = deduplicateCards(ALL_CARDS[activeTab]).filter(shouldShowCardInCatalog);
+    const searchTerms = normalizeSearchText(cardSearchQuery)
+      .split(/\s+/)
+      .map((term) => term.trim())
+      .filter(Boolean);
     return cards.filter((card) => {
       if (rarityFilter !== 'all' && getCardRarity(card) !== rarityFilter) return false;
       if (typeFilter !== 'all' && card.type !== typeFilter) return false;
+      if (searchTerms.length > 0) {
+        if (!isCardUnlockedInCatalog(card, card.name)) return false;
+        const searchText = getCardSearchText(card, t);
+        if (!searchTerms.every((term) => searchText.includes(term))) return false;
+      }
       return true;
     });
-  }, [activeTab, rarityFilter, typeFilter]);
+  }, [activeTab, cardSearchQuery, isCardUnlockedInCatalog, rarityFilter, shouldShowCardInCatalog, t, typeFilter]);
 
   const filteredCards = useMemo(() => {
     if (!showUpgradePreview || !JOB_TABS_WITH_UPGRADE_PREVIEW.includes(activeTab)) {
       return filteredCardsBase;
     }
     return filteredCardsBase.map((card) =>
-      upgradeCardByJobId({ ...card, upgraded: false }, activeTab as JobId),
+      upgradeCardByJobId({ ...card, upgraded: false }, activeTab),
     );
   }, [activeTab, showUpgradePreview, filteredCardsBase]);
 
   const showZukanUpgradeToggle = useMemo(() => {
-    const pool = deduplicateCards(ALL_CARDS[activeTab]).filter((c) =>
-      isAchievementRewardCardVisibleInCatalog(c.id),
-    );
+    const pool = deduplicateCards(ALL_CARDS[activeTab]).filter(shouldShowCardInCatalog);
     return jobTabPoolHasAnyUpgrade(activeTab, pool);
-  }, [activeTab]);
+  }, [activeTab, shouldShowCardInCatalog]);
 
-  const previewJobId: JobId = activeTab === 'neutral' ? 'carpenter' : activeTab;
+  const previewJobId: JobId = activeTab === 'neutral' || activeTab === 'legendary' ? 'carpenter' : activeTab;
   const activeSelectedIndex =
     selectedIndex !== null && selectedIndex >= 0 && selectedIndex < filteredCards.length
       ? selectedIndex
@@ -256,7 +393,19 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
     }, 180);
     setSelectedIndex(index);
   };
-  const selectedCardUnlocked = selectedUnlockName ? unlockedCardNames.has(selectedUnlockName) : false;
+  const selectedCardUnlocked = selectedUnlockName && selectedCard ? isCardUnlockedInCatalog(selectedCard, selectedUnlockName) : false;
+  const selectedCardCanUseIllustration2 =
+    selectedCard != null &&
+    activeTab !== 'neutral' &&
+    activeTab !== 'legendary' &&
+    selectedCardUnlocked &&
+    canUseStarterIllustration2(previewJobId) &&
+    isStarterIllustration2Eligible(previewJobId, selectedCard);
+  const selectedCardIllustrationVariant =
+    selectedCard && selectedCardCanUseIllustration2
+      ? getSelectedCardIllustrationVariant(previewJobId, selectedCard)
+      : 'v1';
+  void masteryRevision;
   const goNext = () => {
     if (activeSelectedIndex === null || filteredCards.length === 0) return;
     setSelectedIndex((activeSelectedIndex + 1) % filteredCards.length);
@@ -271,7 +420,9 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
         ...ZUKAN_CARD_POOLS.carpenter,
         ...ZUKAN_CARD_POOLS.cook,
         ...ZUKAN_CARD_POOLS.unemployed,
+        ...ZUKAN_CARD_POOLS.courier,
         ...ZUKAN_CARD_POOLS.neutral,
+        ...ZUKAN_CARD_POOLS.legendary,
       ]
         .filter((card) => isAchievementRewardCardVisibleInCatalog(card.id))
         .map((card) => card.name),
@@ -280,7 +431,6 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
   };
 
   if (playingStory) {
-    const isCook = playingStory.storyId.startsWith('cook');
     const storyBgmArea =
       playingStory.storyId.endsWith('_e1')
         ? 2
@@ -293,7 +443,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
         onComplete={handleStoryComplete}
         showStartButton={false}
         storyBundleId={playingStory.storyId}
-        jobId={isCook ? 'cook' : 'carpenter'}
+        jobId={playingStory.jobId}
         storyBgmArea={storyBgmArea}
       />
     );
@@ -345,7 +495,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
         {mainTab === 'stories' && (
           <div className="zukan-story-list">
             {STORY_LIST.map((entry) => {
-              const unlocked = hasSeenStory(entry.storyId);
+              const unlocked = debugUnlockAll || hasSeenStory(entry.storyId);
               return (
                 <button
                   key={entry.storyId}
@@ -394,7 +544,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                   {ENEMY_ZUKAN_DATA
                     .filter((enemy) => enemy.area === area && (enemyTypeFilter === 'all' || enemy.type === enemyTypeFilter))
                     .map((enemy) => {
-                    const status = getEnemyStatus(enemy.id);
+                    const status = getZukanEnemyStatus(enemy.id);
                     const defeatCount = getEnemyDefeatCount(enemy.id);
                     return (
                       <div
@@ -447,20 +597,21 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                   key={tab.id}
                   type="button"
                   className={`zukan-job-tab ${activeTab === tab.id ? 'zukan-job-tab--active' : ''}`}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setRarityFilter('all');
-                    setTypeFilter('all');
-                    setSelectedIndex(null);
-                    setShowUpgradePreview(false);
-                  }}
+	                  onClick={() => {
+	                    setActiveTab(tab.id);
+	                    setRarityFilter('all');
+	                    setTypeFilter('all');
+	                    setCardSearchQuery('');
+	                    setSelectedIndex(null);
+	                    setShowUpgradePreview(false);
+	                  }}
                 >
-                  {tab.icon} {t(tab.labelKey)}
+                  {tab.icon} {getJobTabLabel(tab, t)}
                 </button>
               ))}
             </div>
 
-            <div className="zukan-filters">
+	            <div className="zukan-filters">
               <div className="zukan-filter-group">
                 {(['all', 'common', 'uncommon', 'rare'] as RarityFilter[]).map((rarity) => (
                   <button
@@ -494,10 +645,38 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                             : 'TL'}
                   </button>
                 ))}
-              </div>
-            </div>
+	              </div>
+	            </div>
 
-            <div className="zukan-count-row">
+	            <div className="zukan-card-search">
+	              <input
+	                className="zukan-card-search-input"
+	                type="search"
+	                value={cardSearchQuery}
+	                placeholder={t('zukan.search.placeholder')}
+	                aria-label={t('zukan.search.placeholder')}
+	                enterKeyHint="search"
+	                onChange={(event) => {
+	                  setCardSearchQuery(event.target.value);
+	                  setSelectedIndex(null);
+	                }}
+	              />
+	              {cardSearchQuery.trim() && (
+	                <button
+	                  type="button"
+	                  className="zukan-card-search-clear"
+	                  aria-label={t('zukan.search.clear')}
+	                  onClick={() => {
+	                    setCardSearchQuery('');
+	                    setSelectedIndex(null);
+	                  }}
+	                >
+	                  ×
+	                </button>
+	              )}
+	            </div>
+
+	            <div className="zukan-count-row">
               <p className="zukan-count">{t('zukan.cardCount', { n: filteredCards.length })}</p>
               {showZukanUpgradeToggle && (
                 <button
@@ -519,7 +698,8 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                   showUpgradePreview && JOB_TABS_WITH_UPGRADE_PREVIEW.includes(activeTab)
                     ? filteredCardsBase[index]?.name ?? card.name
                     : card.name;
-                const isUnlocked = unlockedCardNames.has(unlockName);
+                const isUnlocked = isCardUnlockedInCatalog(card, unlockName);
+                const legendaryOwnerName = getLegendaryOwnerName(card);
                 const frameRarity = getFrameRarity(card);
                 const zukanRarityClass =
                   frameRarity === 'starter' ? 'zukan-card-item--common' : `zukan-card-item--${frameRarity}`;
@@ -573,6 +753,11 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                         onMouseEnter={noop}
                         onMouseLeave={noop}
                       />
+                      {legendaryOwnerName && (
+                        <span className="zukan-legend-owner-badge">
+                          ユーザー名：{legendaryOwnerName}
+                        </span>
+                      )}
                     </div>
                     {!isUnlocked && (
                       <div className="zukan-locked-overlay">
@@ -606,6 +791,34 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                       >
                         強化
                       </button>
+                    </div>
+                  )}
+                  {selectedCard && selectedCardCanUseIllustration2 && (
+                    <div className="zukan-detail-skin-bar">
+                      <span className="zukan-detail-skin-label">熟練度イラスト</span>
+                      <button
+                        type="button"
+                        className={`zukan-skin-toggle ${selectedCardIllustrationVariant === 'v1' ? 'zukan-skin-toggle--active' : ''}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedCardIllustrationVariant(previewJobId, selectedCard, 'v1');
+                        }}
+                      >
+                        1
+                      </button>
+                      <button
+                        type="button"
+                        className={`zukan-skin-toggle ${selectedCardIllustrationVariant === 'v2' ? 'zukan-skin-toggle--active' : ''}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedCardIllustrationVariant(previewJobId, selectedCard, 'v2');
+                        }}
+                      >
+                        2
+                      </button>
+                      {!hasMasteryIllustration2Asset(selectedCard) && (
+                        <small className="zukan-detail-skin-note">画像2未登録</small>
+                      )}
                     </div>
                   )}
                   <button
@@ -644,6 +857,11 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                       onMouseEnter={noop}
                       onMouseLeave={noop}
                     />
+                    {getLegendaryOwnerName(selectedCard) && (
+                      <span className="zukan-legend-owner-badge zukan-legend-owner-badge--detail">
+                        ユーザー名：{getLegendaryOwnerName(selectedCard)}
+                      </span>
+                    )}
                   </div>
                   {!selectedCardUnlocked && (
                     <div className="zukan-locked-overlay zukan-locked-overlay--large">
@@ -684,10 +902,10 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                     <button
                       type="button"
                       className={`zukan-enemy-skills-btn ${enemySkillsOpen ? 'zukan-enemy-skills-btn--active' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setEnemySkillsOpen(true);
-                      }}
+	                      onClick={(event) => {
+	                        event.stopPropagation();
+	                        setEnemySkillsEnemyId(selectedEnemy.id);
+	                      }}
                     >
                       {t('zukan.enemy.skills')}
                     </button>
@@ -698,10 +916,10 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                   <span>{t('zukan.areaTitle', { n: selectedEnemy.area })}</span>
                   <span>{t('zukan.enemy.defeatCount', { n: getEnemyDefeatCount(selectedEnemy.id) })}</span>
                 </div>
-                {getEnemyStatus(selectedEnemy.id) === 'defeated' && (
+                {getZukanEnemyStatus(selectedEnemy.id) === 'defeated' && (
                   <p className="zukan-enemy-modal-desc">{selectedEnemy.description}</p>
                 )}
-                {getEnemyStatus(selectedEnemy.id) === 'encountered' && (
+                {getZukanEnemyStatus(selectedEnemy.id) === 'encountered' && (
                   <p className="zukan-enemy-modal-desc zukan-enemy-modal-desc--unknown">
                     {t('zukan.enemy.unlockHint')}
                   </p>
@@ -710,10 +928,10 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
               <button
                 type="button"
                 className="zukan-enemy-modal-close"
-                onClick={() => {
-                  setEnemySkillsOpen(false);
-                  setSelectedEnemy(null);
-                }}
+	                onClick={() => {
+	                  setEnemySkillsEnemyId(null);
+	                  setSelectedEnemy(null);
+	                }}
               >
                 ✕
               </button>
@@ -721,11 +939,11 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
           </div>
         )}
         {selectedEnemy && enemySkillsOpen && getEnemyIntentsForZukan(selectedEnemy.id).length > 0 && (
-          <div
-            className="zukan-enemy-skills-overlay"
-            onClick={() => setEnemySkillsOpen(false)}
-            role="presentation"
-          >
+	          <div
+	            className="zukan-enemy-skills-overlay"
+	            onClick={() => setEnemySkillsEnemyId(null)}
+	            role="presentation"
+	          >
             <div className="zukan-enemy-skills-modal" onClick={(event) => event.stopPropagation()}>
               <div className="zukan-enemy-skills-modal-header">
                 <h3 className="zukan-enemy-skills-modal-title">{t('zukan.enemySkillsTitle')}</h3>
@@ -734,7 +952,7 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                 </p>
               </div>
               <div className="zukan-enemy-skills-modal-body">
-                {getEnemyStatus(selectedEnemy.id) === 'defeated' ? (
+                {getZukanEnemyStatus(selectedEnemy.id) === 'defeated' ? (
                   <ul className="zukan-enemy-skills-list">
                     {getEnemyIntentsForZukan(selectedEnemy.id).map((intent, idx) => (
                       <li key={`${selectedEnemy.id}-intent-${idx}`} className="zukan-enemy-skill-row">
@@ -757,10 +975,10 @@ export const ZukanScreen = ({ onClose, unlockedCardNames, onUnlockAll }: ZukanSc
                 )}
               </div>
               <button
-                type="button"
-                className="zukan-enemy-skills-modal-close"
-                onClick={() => setEnemySkillsOpen(false)}
-              >
+	                type="button"
+	                className="zukan-enemy-skills-modal-close"
+	                onClick={() => setEnemySkillsEnemyId(null)}
+	              >
                 閉じる
               </button>
             </div>

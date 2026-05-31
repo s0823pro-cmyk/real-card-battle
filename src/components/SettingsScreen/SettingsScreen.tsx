@@ -4,6 +4,7 @@ import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { getAdsRemoved } from '../../utils/adsRemoved';
 import { getDebugEnemyHp1, setDebugEnemyHp1 } from '../../utils/debugEnemyHp1';
+import { DEBUG_TOOLS_CHANGED_EVENT, getDebugToolsEnabled } from '../../utils/debugTools';
 import { unlockJob } from '../../utils/jobUnlockSystem';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
 import { useAudioContext } from '../../contexts/AudioContext';
@@ -13,6 +14,8 @@ import type { Locale } from '../../i18n';
 
 const TERMS_URL = 'https://s0823pro-cmyk.github.io/real-card-battle/terms.html';
 const PRIVACY_URL = 'https://s0823pro-cmyk.github.io/real-card-battle/privacy.html';
+const ENABLE_DEV_TOOLS =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true';
 
 const openUrl = async (url: string) => {
   if (Capacitor.isNativePlatform()) {
@@ -40,6 +43,7 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
   const [isAdFree, setIsAdFree] = useState(() => getAdsRemoved());
   const [iapBusy, setIapBusy] = useState(false);
   const [debugEnemyHp1, setDebugEnemyHp1Local] = useState(() => getDebugEnemyHp1());
+  const [debugToolsEnabled, setDebugToolsEnabledLocal] = useState(() => getDebugToolsEnabled());
 
   const toggleSection = (section: string) => {
     setOpenSection((prev) => (prev === section ? null : section));
@@ -50,6 +54,14 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
     window.addEventListener('ads-removed-changed', onAdsRemoved);
     return () => window.removeEventListener('ads-removed-changed', onAdsRemoved);
   }, []);
+
+  useEffect(() => {
+    const onDebugToolsChanged = () => setDebugToolsEnabledLocal(getDebugToolsEnabled());
+    window.addEventListener(DEBUG_TOOLS_CHANGED_EVENT, onDebugToolsChanged);
+    return () => window.removeEventListener(DEBUG_TOOLS_CHANGED_EVENT, onDebugToolsChanged);
+  }, []);
+
+  const canShowDevTools = ENABLE_DEV_TOOLS || debugToolsEnabled;
 
   const handleIapPurchase = async (productId: string) => {
     if (!Capacitor.isNativePlatform()) {
@@ -285,10 +297,13 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
           <p className="settings-legal-text">{t('home.settings.adRemoveLegal')}</p>
         </div>
 
-        {import.meta.env.DEV && onDevNavigate && (
+        {canShowDevTools && onDevNavigate && (
           <div className="dev-tools">
             <p className="dev-tools-title">{t('settings.devTools')}</p>
             <div className="dev-tools-grid">
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate('courier_all_cards_run')}>
+                🏍️ 配達員全カードラン
+              </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_normal')}>
                 {t('settings.dev.normalBattle')}
               </button>
@@ -324,6 +339,15 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('story')}>
                 {t('settings.dev.story')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate('debug_zukan_cards')}>
+                {t('settings.dev.debugZukanCards')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate('debug_zukan_enemies')}>
+                {t('settings.dev.debugZukanEnemies')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate('debug_zukan_stories')}>
+                {t('settings.dev.debugZukanStories')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_all_cards')}>
                 {t('settings.dev.allCardsBattle')}

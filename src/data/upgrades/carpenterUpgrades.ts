@@ -21,6 +21,8 @@ export interface CardUpgrade {
   tags?: string[];
   /** 指定時はバッジを差し替え（段取り・消耗など） */
   badges?: CardBadge[];
+  battleUseLimit?: number;
+  powerTurnsRemaining?: number;
 }
 
 export const CARPENTER_UPGRADES: Record<string, CardUpgrade> = {

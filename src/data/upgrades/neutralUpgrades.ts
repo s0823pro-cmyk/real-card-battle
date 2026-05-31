@@ -15,9 +15,11 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
   応急処置: {
     name: '応急処置+',
     timeCost: 7,
-    description: 'HP5回復。使用後除外しない。',
+    description: 'HP5回復。2回使用後除外。',
     effects: [{ type: 'heal', value: 5 }],
     tags: [],
+    badges: ['exhaust'],
+    battleUseLimit: 2,
   },
   かわす: {
     name: 'かわす+',
@@ -57,6 +59,18 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
     name: '底力+',
     description: '毎ターンカード+2枚ドロー（所要時間5秒）',
     effects: [{ type: 'draw_per_turn', value: 2 }],
+  },
+  ダーのレクイエム: {
+    name: 'ダーのレクイエム+',
+    description: 'カード3枚ドロー。敵全体に弱体と毒を1ターン。次のカード効果+50%。使用後除外。',
+    effects: [
+      { type: 'draw', value: 3 },
+      { type: 'weak', value: 1, duration: 1 },
+      { type: 'enemy_poison', value: 1 },
+      { type: 'next_card_effect_boost', value: 0.5 },
+    ],
+    tags: ['legendary', 'aoe_debuff', 'exhaust'],
+    badges: ['limited', 'exhaust'],
   },
 
   ...NEUTRAL_EXPANSION_UPGRADES,

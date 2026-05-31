@@ -33,11 +33,14 @@ const resolveStorySeenKey = (jobId: string): string => {
   if (jobId === 'cook_opening') {
     return 'cook';
   }
+  if (jobId === 'unemployed_opening') {
+    return 'unemployed';
+  }
   return jobId;
 };
 
 export const hasSeenStory = (jobId: string): boolean => {
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV || import.meta.env.VITE_UNLOCK_ALL_STORIES === 'true') {
     return true;
   }
   const storyKey = resolveStorySeenKey(jobId);

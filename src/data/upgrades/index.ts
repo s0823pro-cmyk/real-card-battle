@@ -4,14 +4,16 @@ import type { CardUpgrade } from './carpenterUpgrades';
 import { COOK_UPGRADES } from './cookUpgrades';
 import { NEUTRAL_UPGRADES } from './neutralUpgrades';
 import { UNEMPLOYED_UPGRADES } from './unemployedUpgrades';
+import { COURIER_UPGRADES } from './courierUpgrades';
 
 export type { CardUpgrade };
-export { CARPENTER_UPGRADES, COOK_UPGRADES, NEUTRAL_UPGRADES, UNEMPLOYED_UPGRADES };
+export { CARPENTER_UPGRADES, COOK_UPGRADES, NEUTRAL_UPGRADES, UNEMPLOYED_UPGRADES, COURIER_UPGRADES };
 
 const ALL_UPGRADES: Record<string, Record<string, CardUpgrade>> = {
   carpenter: CARPENTER_UPGRADES,
   cook: COOK_UPGRADES,
   unemployed: UNEMPLOYED_UPGRADES,
+  courier: COURIER_UPGRADES,
 };
 
 export function getUpgradeForCard(card: Card, jobId: string): CardUpgrade | null {

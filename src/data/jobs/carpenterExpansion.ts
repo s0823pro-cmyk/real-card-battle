@@ -233,7 +233,7 @@ export const CARPENTER_EXPANSION_COMMON: Card[] = [
     sellValue: 5,
     tags: ['preparation'],
     badges: ['setup'],
-    effects: [{ type: 'next_attack_damage_boost', value: 5 }],
+    effects: [{ type: 'next_attack_damage_boost_this_turn', value: 5 }],
     imageUrl: daikuNomiMejirushiImage,
   },
   {
@@ -251,7 +251,7 @@ export const CARPENTER_EXPANSION_COMMON: Card[] = [
   },
   {
     id: 'yaneura_kakunin',
-    name: '屋根裏確認',
+    name: '屋根裏からの一撃',
     type: 'attack',
     timeCost: 2.5,
     damage: 8,

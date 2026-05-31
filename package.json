@@ -1,7 +1,7 @@
 {
   "name": "real-card-battle",
   "private": true,
-  "version": "2.2.0",
+  "version": "4.1.0",
   "type": "module",
   "scripts": {
     "postinstall": "patch-package",
@@ -16,7 +16,10 @@
     "android:clean-gradle": "powershell -ExecutionPolicy Bypass -File ./scripts/clean-android-gradle.ps1",
     "compress:images": "node scripts/compress-images.cjs",
     "generate:locales": "tsx scripts/generate-locale-json.ts",
-    "translate:locales": "tsx scripts/translate-locales.ts"
+    "translate:locales": "tsx scripts/translate-locales.ts",
+    "ios:sync": "bash scripts/ios-sync.sh",
+    "ios:build:device": "bash scripts/ios-build-device.sh",
+    "ios:install:device": "bash scripts/ios-install-device.sh"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",

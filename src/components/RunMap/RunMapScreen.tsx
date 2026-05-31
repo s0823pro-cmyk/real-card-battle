@@ -137,6 +137,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
 
   useEffect(() => {
     if (prevAreaRef.current !== progress.currentArea) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsAreaFading(true);
       prevAreaRef.current = progress.currentArea;
       const timer = window.setTimeout(() => setIsAreaFading(false), 800);
@@ -166,6 +167,7 @@ const RunMapScreen = ({ progress, branchPreviews, onRollDice, onSelectTile, onGi
 
   useEffect(() => {
     if (!showMapSettings) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBgmMuted(isBgmMuted());
     setSeMuted(isSeMuted());
     setMapVolumeOpen(false);

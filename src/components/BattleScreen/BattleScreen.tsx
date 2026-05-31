@@ -9,6 +9,9 @@ import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 import ActionBar from '../ActionBar/ActionBar';
 import DamagePopup from '../Effects/DamagePopup';
 import ShieldEffect from '../Effects/ShieldEffect';
+import AttackImpactEffect from '../Effects/AttackImpactEffect';
+import SkillCastEffect from '../Effects/SkillCastEffect';
+import PlayerImpactEffect from '../Effects/PlayerImpactEffect';
 import Tooltip from '../Tooltip/Tooltip';
 import EnemyDisplay from '../Enemy/EnemyDisplay';
 import CardComponent from '../Hand/CardComponent';
@@ -31,7 +34,7 @@ import type { EffectiveCardValues } from '../../utils/cardPreview';
 import { calculateEffectiveDamage } from '../../utils/damage';
 import { getAdsRemoved } from '../../utils/adsRemoved';
 import { showInterstitialIfAllowed } from '../../utils/adMobClient';
-import { reportRankingScore } from '../../utils/rankingClient';
+import { reportRankingScore, resetCurrentBattleRankingBreakdown } from '../../utils/rankingClient';
 import { omamoriDescKey, omamoriNameKey, translatedEnemyName } from '../../i18n/entityKeys';
 import { hasTutorialSeen, markTutorialSeen } from '../../utils/tutorialState';
 import { applyMultiplierAndBoostToCard, getEnhancedCardForPlay } from '../../utils/playCardMultipliers';
@@ -44,18 +47,24 @@ import {
 } from '../../utils/enemyDebuffPreview';
 import { isIngredientCard, isRecipeStudyInEffect } from '../../utils/cardBadgeRules';
 import { useAudioContext } from '../../contexts/AudioContext';
-import bgBattleArea1 from '../../assets/backgrounds/bg_battle_area1.png';
-import bgBattleArea2 from '../../assets/backgrounds/bg_battle_area2.png';
-import bgBattleArea3 from '../../assets/backgrounds/bg_battle_area3.png';
+import bgBattleCarpenterArea1 from '../../assets/backgrounds/bg_battle_carpenter_area1.png';
+import bgBattleCarpenterArea2 from '../../assets/backgrounds/bg_battle_carpenter_area2.png';
+import bgBattleCarpenterArea3 from '../../assets/backgrounds/bg_battle_carpenter_area3.png';
 import bgBossArea1 from '../../assets/backgrounds/bg_boss_area1.png';
 import bgBossArea2 from '../../assets/backgrounds/bg_boss_area2.png';
 import bgBossArea3 from '../../assets/backgrounds/bg_boss_area3.png';
-import bgBattleCookArea1 from '../../assets/backgrounds/bg_battle_cook_area1.png';
-import bgBattleCookArea2 from '../../assets/backgrounds/bg_battle_cook_area2.png';
-import bgBattleCookArea3 from '../../assets/backgrounds/bg_battle_cook_area3.png';
+import bgBattleCookArea1 from '../../assets/backgrounds/bg_battle_cook_area1_v2.png';
+import bgBattleCookArea2 from '../../assets/backgrounds/bg_battle_cook_area2_v2.png';
+import bgBattleCookArea3 from '../../assets/backgrounds/bg_battle_cook_area3_v2.png';
 import bgBossCookArea1 from '../../assets/backgrounds/bg_boss_cook_area1.png';
 import bgBossCookArea2 from '../../assets/backgrounds/bg_boss_cook_area2.png';
 import bgBossCookArea3 from '../../assets/backgrounds/bg_boss_cook_area3.png';
+import bgBattleUnemployedArea1 from '../../assets/backgrounds/bg_battle_unemployed_area1.png';
+import bgBattleUnemployedArea2 from '../../assets/backgrounds/bg_battle_unemployed_area2.png';
+import bgBattleUnemployedArea3 from '../../assets/backgrounds/bg_battle_unemployed_area3.png';
+import bgBattleCourierArea1 from '../../assets/backgrounds/bg_battle_courier_area1.png';
+import bgBattleCourierArea2 from '../../assets/backgrounds/bg_battle_courier_area2.png';
+import bgBattleCourierArea3 from '../../assets/backgrounds/bg_battle_courier_area3.png';
 import '../Enemy/Enemy.css';
 import '../Effects/Effects.css';
 import '../PlayerStatus/PlayerStatus.css';
@@ -92,6 +101,12 @@ interface DragStartState {
   card: Card;
   index: number;
   pointerId: number;
+}
+
+interface AttackImpactItem {
+  id: number;
+  x: number;
+  y: number;
 }
 
 interface BattleScreenProps {
@@ -229,6 +244,7 @@ const BattleScreen = ({
     dotPoisonFlash,
     isMentalHit,
     hitEnemyId,
+    animatedEnemyHpById,
     shieldEffect,
     canSellInBattle,
     showStartBanner,
@@ -269,8 +285,12 @@ const BattleScreen = ({
     initialGameState,
     canOfferDefeatRevive,
     onDefeatReviveConsumed,
-    onRankingScore: (pts) => reportRankingScore(rankingJobRef.current, pts),
+    onRankingScore: (pts, detail) => reportRankingScore(rankingJobRef.current, pts, detail),
   });
+
+  useEffect(() => {
+    resetCurrentBattleRankingBreakdown(true);
+  }, [setup]);
 
   const reserveCardByIdRef = useRef(reserveCardById);
   reserveCardByIdRef.current = reserveCardById;
@@ -294,9 +314,19 @@ const BattleScreen = ({
       if (area === 2) return bgBossArea2;
       return bgBossArea3;
     }
-    if (area === 1) return bgBattleArea1;
-    if (area === 2) return bgBattleArea2;
-    return bgBattleArea3;
+    if (jid === 'unemployed') {
+      if (area === 1) return bgBattleUnemployedArea1;
+      if (area === 2) return bgBattleUnemployedArea2;
+      return bgBattleUnemployedArea3;
+    }
+    if (jid === 'courier') {
+      if (area === 1) return bgBattleCourierArea1;
+      if (area === 2) return bgBattleCourierArea2;
+      return bgBattleCourierArea3;
+    }
+    if (area === 1) return bgBattleCarpenterArea1;
+    if (area === 2) return bgBattleCarpenterArea2;
+    return bgBattleCarpenterArea3;
   }, [currentArea, setup?.kind, gameState.player.jobId]);
 
   const enemyAreaRef = useRef<HTMLElement | null>(null);
@@ -330,6 +360,9 @@ const BattleScreen = ({
   const timelineGaugeStyle = 'bar' as const;
   const [skillEffect, setSkillEffect] = useState(false);
   const skillEffectTimerRef = useRef<number | null>(null);
+  const [attackImpacts, setAttackImpacts] = useState<AttackImpactItem[]>([]);
+  const attackImpactIdRef = useRef(0);
+  const attackImpactTimersRef = useRef<number[]>([]);
   const lastCardPlayTimeRef = useRef<number>(0);
   const CARD_PLAY_COOLDOWN = 600;
 
@@ -348,7 +381,6 @@ const BattleScreen = ({
       return damage >= 10;
     });
     if (!heavyPlayerHit) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setScreenShake(true);
     const timer = window.setTimeout(() => setScreenShake(false), 400);
     return () => window.clearTimeout(timer);
@@ -357,9 +389,43 @@ const BattleScreen = ({
   useEffect(
     () => () => {
       if (skillEffectTimerRef.current !== null) window.clearTimeout(skillEffectTimerRef.current);
+      attackImpactTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      attackImpactTimersRef.current = [];
     },
     [],
   );
+
+  const getEnemyImpactPoint = useCallback((enemyId: string | null): { x: number; y: number } => {
+    if (enemyId && enemyAreaRef.current) {
+      const selector = `.enemy-card[data-enemy-id="${CSS.escape(enemyId)}"] .enemy-illustration`;
+      const target = enemyAreaRef.current.querySelector<HTMLElement>(selector);
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        return {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height * 0.48,
+        };
+      }
+    }
+    return { x: window.innerWidth * 0.5, y: window.innerHeight * 0.2 };
+  }, []);
+
+  const triggerAttackImpact = useCallback((enemyIds: Array<string | null>, staggerMs = 140) => {
+    const targets = enemyIds.length > 0 ? enemyIds.slice(0, 5) : [null];
+    targets.forEach((enemyId, i) => {
+      const timer = window.setTimeout(() => {
+        const id = attackImpactIdRef.current + 1;
+        attackImpactIdRef.current = id;
+        const point = getEnemyImpactPoint(enemyId);
+        setAttackImpacts((prev) => [...prev, { id, ...point }]);
+        const removeTimer = window.setTimeout(() => {
+          setAttackImpacts((prev) => prev.filter((impact) => impact.id !== id));
+        }, 620);
+        attackImpactTimersRef.current.push(removeTimer);
+      }, i * staggerMs);
+      attackImpactTimersRef.current.push(timer);
+    });
+  }, [getEnemyImpactPoint]);
 
   useEffect(() => {
     if (gameState.phase === 'victory' || gameState.phase === 'defeat') {
@@ -550,7 +616,7 @@ const BattleScreen = ({
     skillEffectTimerRef.current = window.setTimeout(() => {
       setSkillEffect(false);
       skillEffectTimerRef.current = null;
-    }, 400);
+    }, 720);
   };
 
   const onHandCardPointerDown = (
@@ -576,7 +642,7 @@ const BattleScreen = ({
     dragStartRef.current = {
       x: event.clientX,
       y: event.clientY,
-      time: Date.now(),
+      time: performance.now(),
       card,
       index,
       pointerId: event.pointerId,
@@ -592,7 +658,7 @@ const BattleScreen = ({
     const dx = event.clientX - start.x;
     const dy = event.clientY - start.y;
     const moved = Math.hypot(dx, dy) > 10;
-    const longPress = Date.now() - start.time > 150;
+    const longPress = performance.now() - start.time > 150;
     if (!handDrag.isDragging && !(moved || longPress)) return;
 
     event.preventDefault();
@@ -735,7 +801,8 @@ const BattleScreen = ({
       const finalTarget = finalDetection.target;
       const enemyTargetCard = isEnemyTargetCard(handDrag.card);
 
-      const now = Date.now();
+      // eslint-disable-next-line react-hooks/purity
+      const now = performance.now();
       const isPlayTarget = finalTarget === 'enemy' || finalTarget === 'timebar';
       if (isPlayTarget && now - lastCardPlayTimeRef.current < CARD_PLAY_COOLDOWN) {
         resetDragInteraction();
@@ -747,7 +814,8 @@ const BattleScreen = ({
           // 自バフ系（金槌の響きの next_attack_boost 等）：敵エリアにドロップしてもタイムライン発動として扱う
           const result = playCardInstant(handDrag.card.id, { type: 'field' });
           if (result.played) {
-            lastCardPlayTimeRef.current = Date.now();
+            // eslint-disable-next-line react-hooks/purity
+            lastCardPlayTimeRef.current = performance.now();
             playSe('card');
             if (handDrag.card.type === 'skill') triggerSkillEffect();
             if (result.blockGained > 0) playSe('block');
@@ -763,17 +831,20 @@ const BattleScreen = ({
         const preferred = finalHoveredEnemyId ?? hoveredEnemyId ?? aliveEnemies[0]?.id ?? null;
         const result = playCardInstant(handDrag.card.id, { type: 'enemy', enemyId: preferred });
         if (result.played) {
-          lastCardPlayTimeRef.current = Date.now();
+          // eslint-disable-next-line react-hooks/purity
+          lastCardPlayTimeRef.current = performance.now();
           playSe('card');
           if (handDrag.card.type === 'attack') {
             const multiHitStaggerMs = 280;
             if (result.multiHitJabs && result.multiHitJabs.length > 0) {
+              triggerAttackImpact(result.multiHitJabs.map((jab) => jab.enemyId), multiHitStaggerMs);
               result.multiHitJabs.forEach((_, i) => {
                 window.setTimeout(() => {
                   playSe('attack');
                 }, i * multiHitStaggerMs);
               });
             } else {
+              triggerAttackImpact([preferred]);
               playSe('attack');
             }
           }
@@ -790,7 +861,8 @@ const BattleScreen = ({
         }
         const result = playCardInstant(handDrag.card.id, { type: 'field' });
         if (result.played) {
-          lastCardPlayTimeRef.current = Date.now();
+          // eslint-disable-next-line react-hooks/purity
+          lastCardPlayTimeRef.current = performance.now();
           playSe('card');
           if (handDrag.card.type === 'skill') triggerSkillEffect();
           if (result.blockGained > 0) playSe('block');
@@ -909,9 +981,7 @@ const BattleScreen = ({
     if (!enemy || enemy.currentHp <= 0) return null;
     return { [enemy.id]: computeForEnemy(enemy) };
   }, [
-    gameState.enemies,
-    gameState.player,
-    gameState.toolSlots,
+    gameState,
     handDrag.card,
     hoveredEnemyId,
     isEnemyPreviewActive,
@@ -919,7 +989,6 @@ const BattleScreen = ({
     doubleNextCharges,
     doubleNextReplayCharges,
     attackItemBuff,
-    canPlayCard,
   ]);
 
   /** ドラッグ中：デバフ付与後の敵インテント数値（虎の視線など） */
@@ -949,12 +1018,12 @@ const BattleScreen = ({
     if (!enemy || enemy.currentHp <= 0) return null;
     return { [enemy.id]: applyOne(enemy) };
   }, [
+    gameState,
     canPlayCard,
     handDrag.isDragging,
     handDrag.card,
     handDrag.dropTarget,
     hoveredEnemyId,
-    gameState.enemies,
   ]);
 
   /** 敵の物理攻撃がこのターン無効化される見た目（カード使用後のみ0表示。無効化カードドラッグ中は敵攻撃表示は変えない） */
@@ -1029,9 +1098,16 @@ const BattleScreen = ({
     if (!handDrag.isDragging || !handDrag.card) return null;
     if (!canPlayCard(handDrag.card)) return null;
     const selfDamageEffect = handDrag.card.effects?.find((effect) => effect.type === 'self_damage');
-    if (!selfDamageEffect) return null;
-    return Math.max(0, gameState.player.currentHp - selfDamageEffect.value);
-  }, [canPlayCard, handDrag.isDragging, handDrag.card, gameState.player.currentHp]);
+    if (selfDamageEffect) return Math.max(0, gameState.player.currentHp - selfDamageEffect.value);
+    const conditionalSelfDamageEffect = handDrag.card.effects?.find(
+      (effect) => effect.type === 'self_damage_above_hp_ratio',
+    );
+    if (!conditionalSelfDamageEffect) return null;
+    const threshold = conditionalSelfDamageEffect.threshold ?? 0.5;
+    const ratio = gameState.player.currentHp / Math.max(1, gameState.player.maxHp);
+    if (ratio <= threshold) return null;
+    return Math.max(0, gameState.player.currentHp - conditionalSelfDamageEffect.value);
+  }, [canPlayCard, handDrag.isDragging, handDrag.card, gameState.player.currentHp, gameState.player.maxHp]);
 
   const previewScaffoldValue = useMemo(() => {
     if (!handDrag.isDragging || !handDrag.card) return null;
@@ -1106,7 +1182,7 @@ const BattleScreen = ({
     const poisonTurns = poisonFx.reduce((a, s) => a + s.duration, 0);
     if (vulnerable === 0 && weak === 0 && burnDamage === 0 && poisonTurns === 0) return null;
     return { vulnerable, weak, burnDamage, burnTurns, poisonTurns };
-  }, [gameState.player.statusEffects]);
+  }, [gameState.player]);
 
   const reserveFull = gameState.reserved.length >= 2;
 
@@ -1135,7 +1211,7 @@ const BattleScreen = ({
     } else if (handDrag.isDragging && handDrag.dropTarget !== 'reserve') {
       setPendingReserveCardId(null);
     }
-  }, [handDrag.isDragging, handDrag.dropTarget, handDrag.card?.id]);
+  }, [handDrag.isDragging, handDrag.dropTarget, handDrag.card]);
 
   const scheduleReserveFromDrop = useCallback(
     (cardId: string) => {
@@ -1193,6 +1269,12 @@ const BattleScreen = ({
     isDamageBoosted: false,
     isBlockBoosted: false,
   });
+  const revealedDrawCards = useMemo(() => {
+    const count = Math.max(0, Math.floor(gameState.revealedDrawCount ?? 0));
+    if (count <= 0 || gameState.drawPile.length === 0) return [];
+    return gameState.drawPile.slice(-count).reverse();
+  }, [gameState.drawPile, gameState.revealedDrawCount]);
+
   const currentPileCards = useMemo(() => {
     if (showPile === 'draw') {
       const pile = gameState.drawPile;
@@ -1215,6 +1297,7 @@ const BattleScreen = ({
   const isScaffoldHigh = jobId === 'carpenter' && gameState.player.scaffold >= 5;
   const isCookingHigh = jobId === 'cook' && gameState.player.cookingGauge >= 5;
   const isUnemployedBattle = gameState.player.jobId === 'unemployed';
+  const isCourierDownVisual = jobId === 'courier' && (gameState.player.deliveryDownTurns ?? 0) > 0;
   const hungryVisualState = isUnemployedBattle ? hungryState : 'normal';
   const hungryEffect = isUnemployedBattle ? hungryFlash : null;
   const canOpenBattleSettings = gameState.phase === 'battle_start' || gameState.phase === 'player_turn';
@@ -1271,6 +1354,7 @@ const BattleScreen = ({
           isCookingHigh ? 'cooking-high' : ''
         }`}
       />
+      {isCourierDownVisual && <div className="battle-courier-down-vignette" aria-hidden />}
       <div
         className={`battle-screen-shake-layer ${screenShake ? 'battle-screen--shake' : ''}`}
       >
@@ -1313,6 +1397,7 @@ const BattleScreen = ({
           enemies={gameState.enemies}
           intents={enemyIntents}
           hitEnemyId={hitEnemyId}
+          animatedHpByEnemy={animatedEnemyHpById}
           previewByEnemy={previewByEnemy}
           intentPreviewEnemyById={previewIntentEnemyById}
           intentAttackDamageImmunity={intentAttackDamageImmunityInfo.show}
@@ -1459,12 +1544,30 @@ const BattleScreen = ({
       </section>
 
       <div className="effects-layer">
+        {isPlayerHit && <PlayerImpactEffect kind="damage" />}
+        {isMentalHit && <PlayerImpactEffect kind="mental" />}
+        {dotBurnFlash && <PlayerImpactEffect kind="burn" />}
+        {dotPoisonFlash && <PlayerImpactEffect kind="poison" />}
         <DamagePopup popups={battlePopups} />
+        <AttackImpactEffect impacts={attackImpacts} />
         <ShieldEffect active={shieldEffect} />
-        {skillEffect && <div className="effect-skill" />}
+        {skillEffect && <SkillCastEffect />}
       </div>
 
       {gameState.shuffleAnimation && <div className="shuffle-popup">{t('battle.shuffle')}</div>}
+
+      {revealedDrawCards.length > 0 && (
+        <div className="next-draw-preview" aria-live="polite">
+          <span className="next-draw-preview__label">次ドロー予定</span>
+          <span className="next-draw-preview__cards">
+            {revealedDrawCards.map((card, index) => (
+              <span key={`${card.id}-${index}`} className="next-draw-preview__card">
+                {index + 1}. {card.name}
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
 
       {handDrag.isDragging && handDrag.card && (
         <div
@@ -1788,4 +1891,3 @@ const BattleScreen = ({
 };
 
 export default BattleScreen;
-

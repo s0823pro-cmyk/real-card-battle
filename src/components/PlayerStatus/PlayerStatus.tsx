@@ -3,6 +3,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import type { Card, PlayerState, ToolSlot } from '../../types/game';
 import type { RunItem } from '../../types/run';
 import type { HungryState } from '../../utils/hungrySystem';
+import { COURIER_MAX_STAMINA, getCourierDownTurns, getCourierStamina } from '../../utils/courierSystem';
 import type { CookingFullnessPreview } from '../../utils/cardPreview';
 import { ICONS } from '../../assets/icons';
 import ToolSlots from './ToolSlots';
@@ -81,6 +82,8 @@ const PlayerStatus = ({
     cookingFullnessPreview != null &&
     (cookingFullnessPreview.fullnessFrom !== cookingFullnessPreview.fullnessTo ||
       cookingFullnessPreview.fullnessTriggerHint);
+  const courierStamina = getCourierStamina(player);
+  const courierDownTurns = getCourierDownTurns(player);
   const [itemConfirm, setItemConfirm] = useState<RunItem | null>(null);
   const itemSlotsRow = (
     <div className="stat-items stat-items--sub-row">
@@ -175,11 +178,6 @@ const PlayerStatus = ({
             )}
           </div>
           <div className="player-info-row-icons">
-            {player.jobId === 'unemployed' && (
-              <Tooltip tooltipKey="hungry">
-                <span className={unemployedClass}>{unemployedLabel}</span>
-              </Tooltip>
-            )}
             {player.concentrationActive && (
               <Tooltip label="🎯 集中" description="次の攻撃・スキル1枚の数値効果が1.5倍（1回限り）">
                 <span className="status-concentration">🎯</span>
@@ -200,6 +198,16 @@ const PlayerStatus = ({
         <ToolSlots toolSlots={toolSlots} activePowers={activePowers} jobId={player.jobId} />
       </div>
       <div className="player-row player-row--sub">
+        {player.jobId === 'unemployed' && (
+          <Tooltip tooltipKey="hungry">
+            <span
+              key={`hungry-${hungryState}-${remainingToAwake}`}
+              className={`awake-gauge awake-gauge--sub-row scaffold-bounce ${unemployedClass}`}
+            >
+              {unemployedLabel}
+            </span>
+          </Tooltip>
+        )}
         {player.jobId === 'carpenter' && (
           <Tooltip tooltipKey="scaffold">
             <span
@@ -267,6 +275,26 @@ const PlayerStatus = ({
               </span>
             </Tooltip>
           </>
+        )}
+        {player.jobId === 'courier' && (
+          <Tooltip
+            label="🏃 スタミナ"
+            description="毎ターン1減少。減った分だけカードコスト+0.5秒。0になると4ターン過労ダウン"
+          >
+            <span
+              key={`courier-${courierStamina}-${courierDownTurns}`}
+              className={`courier-stamina courier-stamina--sub-row scaffold-bounce${
+                courierDownTurns > 0 ? ' courier-stamina--down' : ''
+              }`}
+            >
+              <span className="courier-stamina-icon" aria-hidden>
+                {courierDownTurns > 0 ? '💤' : '🏃'}
+              </span>
+              <span className="courier-stamina-value">
+                {courierDownTurns > 0 ? `${courierDownTurns}T` : `${courierStamina}/${COURIER_MAX_STAMINA}`}
+              </span>
+            </span>
+          </Tooltip>
         )}
         <div className="player-sub-spacer" />
         <div className="player-sub-prep-items">

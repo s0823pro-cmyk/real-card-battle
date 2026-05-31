@@ -114,6 +114,12 @@ export type BgmType =
   | 'cook_story_area1'
   | 'cook_story_area2'
   | 'cook_story_area3'
+  | 'unemployed_area1'
+  | 'unemployed_area2'
+  | 'unemployed_area3'
+  | 'unemployed_story_area1'
+  | 'unemployed_story_area2'
+  | 'unemployed_story_area3'
   | 'none';
 
 const SE_FILES: Record<SeType, string> = {
@@ -153,6 +159,12 @@ const BGM_FILES: Record<Exclude<BgmType, 'none'>, string> = {
   cook_story_area1: publicSoundUrl('bgm-cook-story-area1.mp3'),
   cook_story_area2: publicSoundUrl('bgm-cook-story-area2.mp3'),
   cook_story_area3: publicSoundUrl('bgm-cook-story-area3.mp3'),
+  unemployed_area1: publicSoundUrl('bgm-unemployed-area1.mp3'),
+  unemployed_area2: publicSoundUrl('bgm-unemployed-area2.mp3'),
+  unemployed_area3: publicSoundUrl('bgm-unemployed-area3.mp3'),
+  unemployed_story_area1: publicSoundUrl('bgm-unemployed-story-area1.mp3'),
+  unemployed_story_area2: publicSoundUrl('bgm-unemployed-story-area2.mp3'),
+  unemployed_story_area3: publicSoundUrl('bgm-unemployed-story-area3.mp3'),
 };
 
 const BGM_SRC_SET = new Set<string>(Object.values(BGM_FILES));
@@ -161,7 +173,20 @@ function isBgmSrc(src: string): boolean {
   return BGM_SRC_SET.has(src);
 }
 
-const LOOP_BGM: BgmType[] = ['menu', 'battle', 'boss', 'area1', 'area2', 'area3', 'cook_area1', 'cook_area2', 'cook_area3'];
+const LOOP_BGM: BgmType[] = [
+  'menu',
+  'battle',
+  'boss',
+  'area1',
+  'area2',
+  'area3',
+  'cook_area1',
+  'cook_area2',
+  'cook_area3',
+  'unemployed_area1',
+  'unemployed_area2',
+  'unemployed_area3',
+];
 
 /** BGM はアプリ全体で 1 つの HTMLAudioElement を共有（二重再生防止） */
 let bgmElement: HTMLAudioElement | null = null;

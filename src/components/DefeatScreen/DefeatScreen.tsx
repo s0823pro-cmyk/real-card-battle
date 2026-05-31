@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { MessageKey } from '../../i18n';
@@ -6,6 +6,8 @@ import { achievementNameKey } from '../../i18n/entityKeys';
 import type { JobId } from '../../types/game';
 import type { Achievement } from '../../utils/achievementSystem';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
+import { MasteryXpGainPanel } from '../MasteryXpGainPanel/MasteryXpGainPanel';
+import { RunEndRankingPrompt } from '../RunEndRankingPrompt/RunEndRankingPrompt';
 import './DefeatScreen.css';
 
 interface DefeatScreenProps {
@@ -15,6 +17,7 @@ interface DefeatScreenProps {
   totalFloors: number;
   defeatedBy: string;
   newAchievements?: Achievement[];
+  onOpenRanking: () => void;
   onHome: () => void;
   onRetry: () => void;
 }
@@ -28,6 +31,9 @@ const DEFEAT_FLAVOR_KEYS = [
   'defeat.flavor5',
 ] as const satisfies readonly MessageKey[];
 
+const pickDefeatFlavorKey = (): MessageKey =>
+  DEFEAT_FLAVOR_KEYS[Math.floor(Math.random() * DEFEAT_FLAVOR_KEYS.length)]!;
+
 export const DefeatScreen = ({
   jobId,
   area,
@@ -35,6 +41,7 @@ export const DefeatScreen = ({
   totalFloors,
   defeatedBy,
   newAchievements = [],
+  onOpenRanking,
   onHome,
   onRetry,
 }: DefeatScreenProps) => {
@@ -42,10 +49,7 @@ export const DefeatScreen = ({
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const { playBgm } = useAudioContext();
 
-  const flavorKey = useMemo(
-    () => DEFEAT_FLAVOR_KEYS[Math.floor(Math.random() * DEFEAT_FLAVOR_KEYS.length)]!,
-    [],
-  );
+  const [flavorKey] = useState<MessageKey>(pickDefeatFlavorKey);
 
   useEffect(() => {
     playBgm('defeat');
@@ -112,6 +116,10 @@ export const DefeatScreen = ({
             </div>
           </div>
         )}
+
+        <MasteryXpGainPanel jobId={jobId} />
+
+        <RunEndRankingPrompt jobId={jobId} onOpenRanking={onOpenRanking} />
 
         <div className="defeat-buttons">
           <button type="button" className="btn-defeat-retry" onClick={onRetry}>

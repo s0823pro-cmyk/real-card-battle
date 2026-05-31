@@ -4,6 +4,12 @@ import type { CSSProperties, RefObject } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { getEffectiveCardValues } from '../../utils/cardPreview';
 import { isIngredientCard, isRecipeStudyInEffect } from '../../utils/cardBadgeRules';
+import {
+  canUseCardDuringCourierDown,
+  canUseCourierStaminaRecoverCardThisTurn,
+  isCourierDown,
+  isCourierDownOnlyCard,
+} from '../../utils/courierSystem';
 import { getEffectiveTimeCost } from '../../utils/timeline';
 import CardComponent from './CardComponent';
 import './Hand.css';
@@ -127,8 +133,17 @@ const Hand = ({
         {hand.map((card, cardIndex) => {
           const isSoloPlayOnlyCard = card.tags?.includes('solo_play_only') ?? false;
           const violatesSoloPlayCondition = isSoloPlayOnlyCard && hand.length > 1;
+          const courierDown = isCourierDown(player);
+          const disabledByCourierState = courierDown
+            ? !canUseCardDuringCourierDown(card)
+            : isCourierDownOnlyCard(card);
+          const disabledByCourierStaminaRecover = !canUseCourierStaminaRecoverCardThisTurn(player, card);
+          const disabledByCourierAttackBlock = Boolean(player.attackCardsBlockedThisTurn && card.type === 'attack');
           const placeDisabled =
             card.type === 'status' ||
+            disabledByCourierState ||
+            disabledByCourierStaminaRecover ||
+            disabledByCourierAttackBlock ||
             violatesSoloPlayCondition ||
             usedTime + getEffectiveTimeCost(card, lastPlayedCard, player, player.jobId) > maxTime;
           const effectiveValues = getEffectiveCardValues(

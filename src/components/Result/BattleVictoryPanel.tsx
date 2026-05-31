@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JobId } from '../../types/game';
+import type { RankingScoreBreakdown } from '../../utils/rankingScore';
 import { getCumulativeAchievementProgressSuffix, type Achievement } from '../../utils/achievementSystem';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { MessageKey } from '../../i18n';
@@ -14,6 +15,8 @@ export interface BattleVictoryPanelProps {
   rewardGold: number;
   totalGold: number;
   mentalRecovery: number;
+  rankingPoints?: number;
+  rankingBreakdown?: RankingScoreBreakdown | null;
   onContinue: () => void;
   /**
    * ラン用。指定時はこの値が変わったときだけタップ待ちをリセットします。
@@ -32,6 +35,8 @@ export const BattleVictoryPanel = ({
   rewardGold,
   totalGold,
   mentalRecovery,
+  rankingPoints,
+  rankingBreakdown,
   onContinue,
   tapArmKey,
   newAchievements = [],
@@ -41,6 +46,8 @@ export const BattleVictoryPanel = ({
   const [displayGold, setDisplayGold] = useState(0);
   const [tapToContinueEnabled, setTapToContinueEnabled] = useState(false);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+  const [rankingDetailOpen, setRankingDetailOpen] = useState(false);
+  const tapResetKey = tapArmKey ?? `${rewardGold}:${mentalRecovery}`;
   /** タッチ直後に続く click を二重に進めない（touchend で進んだ場合） */
   const skipNextClickRef = useRef(false);
 
@@ -61,14 +68,15 @@ export const BattleVictoryPanel = ({
 
   // 空依存だと再マウントなしの再表示で 900ms 待ちが走らずタップ不能になる。勝利のたびにリセットする。
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTapToContinueEnabled(false);
     const id = window.setTimeout(() => setTapToContinueEnabled(true), VICTORY_TAP_DELAY_MS);
     return () => window.clearTimeout(id);
-  }, tapArmKey !== undefined ? [tapArmKey] : [rewardGold, mentalRecovery]);
+  }, [tapResetKey]);
 
   useEffect(() => {
     skipNextClickRef.current = false;
-  }, tapArmKey !== undefined ? [tapArmKey] : [rewardGold, mentalRecovery]);
+  }, [tapResetKey]);
 
   const fireContinue = () => {
     if (!tapToContinueEnabled) return;
@@ -93,6 +101,14 @@ export const BattleVictoryPanel = ({
         fireContinue();
       }}
     >
+      <div className="result-particles result-particles--victory" aria-hidden>
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+      </div>
       <div className="battle-victory-panel-inner">
         <h2>VICTORY</h2>
         <p>{t('battleVictory.sub')}</p>
@@ -100,6 +116,45 @@ export const BattleVictoryPanel = ({
           <p>{t('battleVictory.goldLabel')}</p>
           <strong>💰 +{displayGold}G</strong>
         </div>
+        {rankingPoints !== undefined && (
+          <div className="victory-ranking-points" aria-label={t('battleVictory.rankingPointsAria')}>
+            <button
+              type="button"
+              className="victory-ranking-summary"
+              onTouchEnd={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setRankingDetailOpen((v) => !v);
+              }}
+            >
+              <span>{t('battleVictory.rankingPointsLabel')}</span>
+              <strong>🏆 +{rankingPoints}pt</strong>
+              <small>{rankingDetailOpen ? '詳細を閉じる' : '詳細を見る'}</small>
+            </button>
+            {rankingDetailOpen && rankingBreakdown && rankingBreakdown.categories.length > 0 && (
+              <div
+                className="victory-ranking-breakdown"
+                onTouchEnd={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {rankingBreakdown.categories.map((category) => (
+                  <div key={category.id} className="victory-ranking-category">
+                    <div className="victory-ranking-category-head">
+                      <span>{category.label}</span>
+                      <strong>+{category.points}</strong>
+                    </div>
+                    {category.details.map((detail) => (
+                      <div key={`${category.id}-${detail.label}`} className="victory-ranking-detail-row">
+                        <span>{detail.label}</span>
+                        <strong>+{detail.points}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <p>{t('battleVictory.mentalLine', { n: mentalRecovery })}</p>
         <p>{t('battleVictory.totalLine', { n: totalGold })}</p>
 

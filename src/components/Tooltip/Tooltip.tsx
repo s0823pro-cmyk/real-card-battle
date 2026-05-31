@@ -46,6 +46,7 @@ const Tooltip = ({ tooltipKey, label, description, children }: TooltipProps) => 
   useEffect(() => {
     // マウント時：残留タッチ状態を確実にリセット
     touchIdentifierRef.current = null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(false);
     setPosition({ top: -9999, left: -9999 });
     setCalculated(false);

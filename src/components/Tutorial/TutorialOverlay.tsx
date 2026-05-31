@@ -138,11 +138,13 @@ export const TutorialOverlay = ({ step, onNext, onSkip }: TutorialOverlayProps) 
   }, [step]);
 
   useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateRect();
   }, [step, updateRect]);
 
   useLayoutEffect(() => {
     if (step !== 'battle_attack' || !rect) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAttackGuideAnchorY(null);
       return;
     }

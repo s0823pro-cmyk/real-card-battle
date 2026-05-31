@@ -13,11 +13,17 @@ import {
   COOK_UNCOMMON_POOL_UNFILTERED,
 } from '../data/jobs/cook';
 import {
-  UNEMPLOYED_COMMON_POOL,
-  UNEMPLOYED_RARE_POOL_UNFILTERED,
+  UNEMPLOYED_COMMON_POOL_UNFILTERED,
+  UNEMPLOYED_RARE_POOL_ALL,
   UNEMPLOYED_UNCOMMON_POOL_UNFILTERED,
   UNEMPLOYED_STARTER_DECK,
 } from '../data/jobs/unemployed';
+import {
+  COURIER_COMMON_POOL_UNFILTERED,
+  COURIER_RARE_POOL_ALL,
+  COURIER_STARTER_DECK,
+  COURIER_UNCOMMON_POOL_UNFILTERED,
+} from '../data/jobs/courier';
 import { CARPENTER_STARTER_DECK } from '../data/carpenterDeck';
 import { COOK_STARTER_DECK } from '../data/jobs/cook';
 import { getUnlockedCardIds } from './achievementSystem';
@@ -38,13 +44,15 @@ const COOK_ALL: Card[] = [
 const JOB_CARD_SOURCES: Record<JobId, Card[]> = {
   carpenter: CARPENTER_ALL,
   cook: COOK_ALL,
-  unemployed: [...UNEMPLOYED_COMMON_POOL, ...UNEMPLOYED_UNCOMMON_POOL_UNFILTERED, ...UNEMPLOYED_RARE_POOL_UNFILTERED],
+  unemployed: [...UNEMPLOYED_COMMON_POOL_UNFILTERED, ...UNEMPLOYED_UNCOMMON_POOL_UNFILTERED, ...UNEMPLOYED_RARE_POOL_ALL],
+  courier: [...COURIER_COMMON_POOL_UNFILTERED, ...COURIER_UNCOMMON_POOL_UNFILTERED, ...COURIER_RARE_POOL_ALL],
 };
 
 const JOB_ID_SET: Record<JobId, Set<string>> = {
   carpenter: new Set(JOB_CARD_SOURCES.carpenter.map((c) => c.id)),
   cook: new Set(JOB_CARD_SOURCES.cook.map((c) => c.id)),
   unemployed: new Set(JOB_CARD_SOURCES.unemployed.map((c) => c.id)),
+  courier: new Set(JOB_CARD_SOURCES.courier.map((c) => c.id)),
 };
 
 const NEUTRAL_IDS = new Set(NEUTRAL_CARD_POOL.map((c) => c.id));
@@ -59,10 +67,12 @@ add(NEUTRAL_CARD_POOL);
 add(CARPENTER_ALL);
 add(COOK_ALL);
 add(JOB_CARD_SOURCES.unemployed);
+add(JOB_CARD_SOURCES.courier);
 /** スターター専用 id（hammer_1 等）はプールに無いがランキング・統計に載る */
 add(CARPENTER_STARTER_DECK);
 add(COOK_STARTER_DECK);
 add(UNEMPLOYED_STARTER_DECK);
+add(COURIER_STARTER_DECK);
 
 /** アプリ内のカード定義を ID で解決（図鑑・統計プレビュー等） */
 export const getCardById = (cardId: string): Card | null => LOOKUP.get(cardId) ?? null;
@@ -120,6 +130,7 @@ export const getDisplayJobIdForCard = (card: Card): JobId => {
 	if (card.neutral) return 'carpenter';
 	if (JOB_ID_SET.cook.has(card.id)) return 'cook';
 	if (JOB_ID_SET.unemployed.has(card.id)) return 'unemployed';
+	if (JOB_ID_SET.courier.has(card.id)) return 'courier';
 	return 'carpenter';
 };
 

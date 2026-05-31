@@ -1,20 +1,22 @@
 {
-  "name": "ranking-server",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "build": "tsc",
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
-    "test": "vitest",
-    "cf-typegen": "wrangler types"
-  },
-  "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.4",
-    "@types/node": "^25.6.0",
-    "typescript": "^5.5.2",
-    "vitest": "~3.2.0",
-    "wrangler": "^4.84.1"
-  }
+	"name": "ranking-server",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"build": "tsc",
+		"deploy": "wrangler deploy",
+		"migrate:remote": "wrangler d1 migrations apply jobless-ranking-db --remote",
+		"deploy:safe": "npm run build && npm test -- --run && npm run migrate:remote && npm run deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"test": "vitest",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.12.4",
+		"@types/node": "^25.6.0",
+		"typescript": "^5.5.2",
+		"vitest": "~3.2.0",
+		"wrangler": "^4.84.1"
+	}
 }

@@ -71,7 +71,9 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           e.stopPropagation();
           try {
             e.currentTarget.releasePointerCapture(e.pointerId);
-          } catch {}
+          } catch {
+            // Pointer capture may already be released on some mobile browsers.
+          }
         }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => {
@@ -169,7 +171,9 @@ const ToolSlots = ({ toolSlots, activePowers, jobId }: Props) => {
           e.stopPropagation();
           try {
             e.currentTarget.releasePointerCapture(e.pointerId);
-          } catch {}
+          } catch {
+            // Pointer capture may already be released on some mobile browsers.
+          }
         }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => {

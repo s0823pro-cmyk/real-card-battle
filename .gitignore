@@ -9,8 +9,11 @@ lerna-debug.log*
 
 node_modules
 dist
+build
+tmp
 dist-ssr
 *.local
+releases/
 
 # Android SDK / 署名（各環境の local.properties。android/ 配下を追跡する場合も漏れないよう明示）
 local.properties
@@ -27,8 +30,22 @@ local.properties
 *.sw?
 
 # Capacitor native projects
-ios/
+# iOSは別環境でも署名・実機ビルドを再現できるように、本体プロジェクトだけGit管理する。
+# 同期済みweb assets / Pods / DerivedData / Xcode個人設定は生成物なので除外。
 android/
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/App/config*.xml
+ios/App/Pods/
+ios/App/Podfile
+ios/App/Podfile.lock
+ios/App/App.xcworkspace/
+ios/App/build/
+ios/App/DerivedData*/
+ios/DerivedData*/
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+ios/App/CapApp-SPM/.swiftpm/
 
 # Environment variables
 .env
@@ -36,6 +53,14 @@ android/
 .env.production
 
 # Android 署名（リポジトリ直下に置く場合の誤コミット防止）
+keystore
 keystore.jks
 .vercel
 .env*.local
+# Xcode derived data
+DerivedData*/
+
+# Generated/reference assets that are not loaded by the app
+docs/generated-assets/
+public/models/
+src/assets/cards/unemployed/desperate_focus_v3 2.png

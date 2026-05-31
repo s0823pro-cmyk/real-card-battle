@@ -36,17 +36,33 @@ import { getHungryState } from '../utils/hungrySystem';
 import { shuffle } from '../utils/shuffle';
 import { isEnemyTargetCard } from '../utils/cardTarget';
 import { getEffectiveTimeCost } from '../utils/timeline';
+import {
+  advanceCourierTurnStart,
+  canUseCourierStaminaRecoverCardThisTurn,
+  canUseCardDuringCourierDown,
+  COURIER_DOWN_TURNS,
+  COURIER_MAX_STAMINA,
+  getCourierDownTurns,
+  isCourierDown,
+  isCourierDownOnlyCard,
+  noteCourierStaminaRecoverCardPlayed,
+  recoverCourierStamina,
+} from '../utils/courierSystem';
 import { upgradeCardByJobId } from '../utils/cardUpgrade';
 import { applyBattleCardReverts, isBattleTempUpgradeSourceCard } from '../utils/battleCardRevert';
 import { getEffectiveMaxMental } from '../utils/mentalLimits';
 import { recordEnemyDefeated, recordEnemyEncounter } from '../utils/enemyRecord';
 import {
   canPlaySelfDamageBadgeCard,
+  cardExhaustsByBattleUseLimit,
   cardExhaustsWhenPlayed,
+  cardVanishesAfterBattle,
+  clearBattleUseState,
   comebackShouldExhaustAfterPlay,
   exhaustsWhenIdleInReserveAtTurnStart,
   isIngredientCard,
   isReserveDoubleNextEffectActive,
+  markBattleUse,
   reserveBonusActiveForCard,
   shouldTrackReserveDrawCount,
 } from '../utils/cardBadgeRules';
@@ -56,6 +72,7 @@ import {
   getEnhancedCardForPlay,
   hasConcentrationNextEffect,
 } from '../utils/playCardMultipliers';
+import type { RankingScoreDetailInput } from '../utils/rankingScore';
 
 const MAX_RESERVED = 2;
 /** 温存時に次ターンへ加算する時間ペナルティ（秒）。UI の温存プレビュー計算と共有 */
@@ -66,6 +83,32 @@ const DRAW_COUNT = 5;
 const SELL_ANIMATION_MS = 220;
 const INITIAL_MENTAL = 7;
 const CARPENTER_CAN_SELL_IN_BATTLE = false;
+
+const getRankingInstalledPowerCount = (state: GameState): number => state.activePowers.length;
+const getRankingInstalledToolCount = (state: GameState): number => state.toolSlots.filter((slot) => slot !== null).length;
+const isRankingEnemyAbnormalStatus = (status: StatusEffect): boolean =>
+  status.type === 'burn' ||
+  status.type === 'poison' ||
+  status.type === 'weak' ||
+  status.type === 'vulnerable' ||
+  status.type === 'attack_down';
+const hasSelfDamageEffect = (card: Card): boolean =>
+  Boolean(card.badges?.includes('self_damage')) ||
+  (card.effects ?? []).some((effect) => effect.type === 'self_damage' || effect.type === 'self_damage_above_hp_ratio');
+const createsCookingGaugeConsume = (card: Card, player: PlayerState): boolean =>
+  player.jobId === 'cook' &&
+  (player.cookingGauge ?? 0) > 0 &&
+  (Boolean(card.tags?.includes('cooking_consume')) || Boolean(card.tags?.includes('cooking_half_consume')));
+const buildBattleResultDeck = (state: GameState): Card[] =>
+  [
+    ...state.drawPile,
+    ...state.discardPile,
+    ...state.hand,
+    ...state.reserved,
+    ...state.exhaustedCards.filter((card) => !cardVanishesAfterBattle(card)),
+    ...state.activePowers.filter((card) => !cardVanishesAfterBattle(card)),
+    ...state.toolSlots.map((slot) => slot.card),
+  ].map(clearBattleUseState);
 const ENEMY_GOLD_REWARDS: Record<string, number> = {
   // エリア1
   claimer: 10,
@@ -245,6 +288,7 @@ export interface UseGameStateResult {
   /** プレイヤー毒 DoT 時の画面フラッシュ（battle-screen--poison-flash） */
   dotPoisonFlash: boolean;
   hitEnemyId: string | null;
+  animatedEnemyHpById: Record<string, number> | null;
   shieldEffect: boolean;
   isMentalHit: boolean;
   canSellInBattle: boolean;
@@ -272,7 +316,7 @@ export interface UseGameStateResult {
   ) => {
     played: boolean;
     blockGained: number;
-    multiHitJabs?: { enemyId: string; damage: number }[];
+    multiHitJabs?: { enemyId: string; damage: number; hpAfter: number }[];
   };
   reserveCardById: (cardId: string) => boolean;
   sellCardById: (cardId: string) => boolean;
@@ -298,7 +342,7 @@ interface UseGameStateOptions {
   canOfferDefeatRevive?: boolean;
   onDefeatReviveConsumed?: () => void;
   /** ランキング用: バトル中の加点（非同期送信は親側） */
-  onRankingScore?: (points: number) => void;
+  onRankingScore?: (points: number, detail?: RankingScoreDetailInput) => void;
 }
 
 const getMaxTime = (mental: number, timeBonusPerTurn = 0): number =>
@@ -387,10 +431,12 @@ const mergeCardResolveResults = (a: CardResolveResult, b: CardResolveResult): Ca
   cookingGaugeGained: a.cookingGaugeGained + b.cookingGaugeGained,
   fullnessGaugeGained: a.fullnessGaugeGained + b.fullnessGaugeGained,
   fullnessAutoHealTriggered: a.fullnessAutoHealTriggered || b.fullnessAutoHealTriggered,
+  fullnessEffect: b.fullnessEffect ?? a.fullnessEffect,
   equippedTool: b.equippedTool ?? a.equippedTool,
   isDandoriActive: b.isDandoriActive,
   goldGained: a.goldGained + b.goldGained,
   lighterBurnApplied: a.lighterBurnApplied || b.lighterBurnApplied,
+  enemyStatusAppliedCount: a.enemyStatusAppliedCount + b.enemyStatusAppliedCount,
   attackBuff: b.attackBuff ?? a.attackBuff,
   multiHitJabs:
     a.multiHitJabs && b.multiHitJabs
@@ -402,6 +448,17 @@ const getEnemyReward = (templateId: string): number => ENEMY_GOLD_REWARDS[templa
 
 const isCardVariantId = (cardId: string, baseId: string): boolean =>
   cardId === baseId || cardId.startsWith(`${baseId}_`);
+
+const removeFirstRevivalPower = (cards: Card[]): Card[] => {
+  let removed = false;
+  return cards.filter((card) => {
+    if (!removed && isCardVariantId(card.id, 'revival')) {
+      removed = true;
+      return false;
+    }
+    return true;
+  });
+};
 
 const getOmamoriBonus = (
   omamoris: Omamori[],
@@ -417,20 +474,30 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   hasRevival: player.hasRevival ?? false,
   revivalUsed: player.revivalUsed ?? false,
   revivalHp: player.revivalHp,
+  revivalCharges: player.revivalCharges ?? (player.hasRevival && !player.revivalUsed ? 1 : 0),
+  revivalHpStack: player.revivalHpStack ?? (player.hasRevival && !player.revivalUsed ? [player.revivalHp ?? 1] : []),
   deathWishActive: player.deathWishActive ?? false,
+  deathWishDamageBonus: player.deathWishDamageBonus ?? 0,
   ridgepoleActive: player.ridgepoleActive ?? false,
   templeCarpenterActive: player.templeCarpenterActive ?? false,
   templeCarpenterMultiplier: player.templeCarpenterMultiplier,
   cliffEdgeActive: player.cliffEdgeActive ?? false,
+  cliffEdgeTimeBonus: player.cliffEdgeTimeBonus ?? 0,
+  cliffEdgeDrawBonus: player.cliffEdgeDrawBonus ?? 0,
   nextAttackTimeReduce: player.nextAttackTimeReduce ?? 0,
   blockPersistTurns: player.blockPersistTurns ?? 0,
+  persistedBlock: player.persistedBlock ?? 0,
   nextAttackDamageBoost: player.nextAttackDamageBoost ?? 0,
+  nextAttackDamageBoostThisTurn: player.nextAttackDamageBoostThisTurn ?? 0,
   damageImmunityThisTurn: player.damageImmunityThisTurn ?? false,
   nextTurnNoBlock: player.nextTurnNoBlock ?? false,
+  nextTurnBlockMultiplier: player.nextTurnBlockMultiplier ?? 1,
+  blockGainMultiplierThisTurn: player.blockGainMultiplierThisTurn ?? 1,
   nextTurnTimePenalty: player.nextTurnTimePenalty ?? 0,
   nextTurnTimeBonus: player.nextTurnTimeBonus ?? 0,
   canBlock: player.canBlock ?? true,
   lowHpDamageBoost: player.lowHpDamageBoost ?? 0,
+  lowHpDamageBoostThreshold: player.lowHpDamageBoostThreshold ?? 0.5,
   kitchenDemonActive: player.kitchenDemonActive ?? false,
   firstCookingUsedThisTurn: player.firstCookingUsedThisTurn ?? false,
   lastTurnDamageTaken: player.lastTurnDamageTaken ?? 0,
@@ -464,6 +531,13 @@ const withBattleFlagDefaults = (player: PlayerState): PlayerState => ({
   relicIronStomach: player.relicIronStomach ?? false,
   relicIngredientCookingBonus: player.relicIngredientCookingBonus ?? 0,
   relicSetupCardDraw: player.relicSetupCardDraw ?? 0,
+  deliveryStamina: player.jobId === 'courier' ? (player.deliveryStamina ?? COURIER_MAX_STAMINA) : player.deliveryStamina,
+  deliveryDownTurns: player.jobId === 'courier' ? (player.deliveryDownTurns ?? 0) : player.deliveryDownTurns,
+  staminaRecoverCardsUsedThisTurn: 0,
+  nextCardTimeReduce: 0,
+  turnAttackTimeDiscount: 0,
+  freeSkillCardsThisTurn: 0,
+  attackCardsBlockedThisTurn: false,
 });
 
 const createInitialGameState = (setup?: BattleSetup | null): GameState => {
@@ -473,7 +547,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
   const fallbackConfig = getJobConfig(initialJobId);
   const deck = shuffle(
     (setup?.deck ?? fallbackConfig.createStarterDeck()).map((card) => ({
-      ...card,
+      ...clearBattleUseState(card),
       wasReserved: false,
       reservedThisTurn: false,
     })),
@@ -510,20 +584,30 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     hasRevival: false,
     revivalUsed: false,
     revivalHp: undefined,
+    revivalCharges: 0,
+    revivalHpStack: [],
     deathWishActive: false,
+    deathWishDamageBonus: 0,
     ridgepoleActive: false,
     templeCarpenterActive: false,
     templeCarpenterMultiplier: undefined,
     cliffEdgeActive: false,
+    cliffEdgeTimeBonus: 0,
+    cliffEdgeDrawBonus: 0,
     nextAttackTimeReduce: 0,
     blockPersistTurns: 0,
+    persistedBlock: 0,
     nextAttackDamageBoost: 0,
+    nextAttackDamageBoostThisTurn: 0,
     damageImmunityThisTurn: false,
     nextTurnNoBlock: false,
+    nextTurnBlockMultiplier: 1,
+    blockGainMultiplierThisTurn: 1,
     nextTurnTimePenalty: 0,
     nextTurnTimeBonus: 0,
     canBlock: true,
     lowHpDamageBoost: 0,
+    lowHpDamageBoostThreshold: 0.5,
     kitchenDemonActive: false,
     firstCookingUsedThisTurn: false,
     lastTurnDamageTaken: 0,
@@ -543,6 +627,13 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     attackDamageBonusAllAttacks: 0,
     turnAttackDamageBonus: 0,
     nextCardEffectBoost: 0,
+    deliveryStamina: initialJobId === 'courier' ? COURIER_MAX_STAMINA : undefined,
+    deliveryDownTurns: 0,
+    staminaRecoverCardsUsedThisTurn: 0,
+    nextCardTimeReduce: 0,
+    turnAttackTimeDiscount: 0,
+    freeSkillCardsThisTurn: 0,
+    attackCardsBlockedThisTurn: false,
   };
 
   const bpMental0 = basePlayer.mental ?? INITIAL_MENTAL;
@@ -593,6 +684,7 @@ const createInitialGameState = (setup?: BattleSetup | null): GameState => {
     executingIndex: -1,
     toolSlots: [],
     battleCardRevertMap: {},
+    revealedDrawCount: 0,
     pendingCurseCards: [],
   };
 };
@@ -617,6 +709,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   /** セーブから再開したときバトル開始演出をスキップ */
   const skipBattleStartAnimationRef = useRef(!!options?.initialGameState);
   const [hitEnemyId, setHitEnemyId] = useState<string | null>(null);
+  const [animatedEnemyHpById, setAnimatedEnemyHpById] = useState<Record<string, number> | null>(null);
   const [isPlayerHit, setIsPlayerHit] = useState(false);
   const [dotBurnFlash, setDotBurnFlash] = useState(false);
   const [dotPoisonFlash, setDotPoisonFlash] = useState(false);
@@ -637,8 +730,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   /** ランキング: 敵の攻撃で受けたHPダメージ累計 */
   const rankingEnemyAttackHpDamageRef = useRef(0);
   const cardsPlayedThisTurnRef = useRef(0);
-  const rankingScaffold10AwardedRef = useRef(false);
-  const rankingCooking10AwardedRef = useRef(false);
+  const rankingScaffoldThresholdsAwardedRef = useRef<Set<number>>(new Set());
+  const rankingCookConsumedCookingGaugeRef = useRef(false);
+  const rankingCookFullnessPainRef = useRef(false);
+  const rankingCookDefeatedStatusEnemyRef = useRef(false);
+  const rankingUnemployedSelfDamageCardsUsedRef = useRef(0);
+  const rankingUnemployedRevivalTriggeredRef = useRef(false);
+  const rankingCourierRecoveredFromDownRef = useRef(false);
   const canPlayWithHandCondition = (card: Card, hand: Card[]): boolean => {
     const isSoloPlayOnlyCard = card.tags?.includes('solo_play_only') ?? false;
     if (!isSoloPlayOnlyCard) return true;
@@ -646,6 +744,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   };
 
   const battleOmamoris = options?.setup?.omamoris ?? [];
+  const onTurnStart = options?.onTurnStart;
   const prevHungryStateRef = useRef<'normal' | 'hungry' | 'awakened'>('normal');
   const endTurnRef = useRef<() => Promise<void>>(async () => {});
   /** 敵ターン終了〜プレイヤーDoT直列演出中はカード操作を拒否 */
@@ -658,8 +757,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (!options?.setup) return;
     rankingEnemyAttackHpDamageRef.current = 0;
     cardsPlayedThisTurnRef.current = 0;
-    rankingScaffold10AwardedRef.current = false;
-    rankingCooking10AwardedRef.current = false;
+    rankingScaffoldThresholdsAwardedRef.current.clear();
+    rankingCookConsumedCookingGaugeRef.current = false;
+    rankingCookFullnessPainRef.current = false;
+    rankingCookDefeatedStatusEnemyRef.current = false;
+    rankingUnemployedSelfDamageCardsUsedRef.current = 0;
+    rankingUnemployedRevivalTriggeredRef.current = false;
+    rankingCourierRecoveredFromDownRef.current = false;
     if (options?.initialGameState) {
       setBattleItems(options.setup.items ?? []);
       setBattleMessage(
@@ -671,7 +775,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       return;
     }
     skipBattleStartAnimationRef.current = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGameState(createInitialGameState(options.setup));
     setBattleItems(options.setup.items ?? []);
     setSelectedCardId(null);
@@ -705,7 +808,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       skipBattleStartAnimationRef.current = false;
       setGameState((prev) => {
         const nextState = { ...prev, phase: 'player_turn' as const };
-        options?.onTurnStart?.(nextState);
+        onTurnStart?.(nextState);
         return nextState;
       });
       setShowStartBanner(false);
@@ -715,14 +818,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const timer = window.setTimeout(() => {
       setGameState((prev) => {
         const nextState = { ...prev, phase: 'player_turn' as const };
-        options?.onTurnStart?.(nextState);
+        onTurnStart?.(nextState);
         return nextState;
       });
       setShowStartBanner(false);
       setBattleMessage('カードを配置してターン終了');
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [gameState.phase]);
+  }, [gameState.phase, onTurnStart]);
 
   useEffect(() => {
     if (!gameState.shuffleAnimation) return;
@@ -758,7 +861,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (state === prev) return;
     if (state === 'normal') return;
     if (state === 'hungry') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHungryFlash('hungry');
       pushPopupRef.current('🔥ハングリー！', 'player', 'buff');
     } else {
@@ -791,13 +893,22 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
 
   const applyRevivalIfNeeded = (player: PlayerState): { player: PlayerState; revived: boolean } => {
     if (player.currentHp > 0) return { player, revived: false };
-    if (!player.hasRevival || player.revivalUsed) return { player, revived: false };
+    const stack = player.revivalHpStack?.length
+      ? player.revivalHpStack
+      : player.hasRevival && !player.revivalUsed
+        ? [player.revivalHp ?? 1]
+        : [];
+    if (stack.length <= 0) return { player, revived: false };
+    const [revivalHp, ...remainingStack] = stack;
     return {
       player: {
         ...player,
-        currentHp: player.revivalHp ?? 1,
-        hasRevival: false,
-        revivalUsed: true,
+        currentHp: revivalHp ?? 1,
+        hasRevival: remainingStack.length > 0,
+        revivalUsed: remainingStack.length <= 0,
+        revivalHp: remainingStack[0],
+        revivalCharges: remainingStack.length,
+        revivalHpStack: remainingStack,
       },
       revived: true,
     };
@@ -822,20 +933,30 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     hasRevival: false,
     revivalUsed: false,
     revivalHp: undefined,
+    revivalCharges: 0,
+    revivalHpStack: [],
     deathWishActive: false,
+    deathWishDamageBonus: 0,
     ridgepoleActive: false,
     templeCarpenterActive: false,
     templeCarpenterMultiplier: undefined,
     cliffEdgeActive: false,
+    cliffEdgeTimeBonus: 0,
+    cliffEdgeDrawBonus: 0,
     nextAttackTimeReduce: 0,
     blockPersistTurns: 0,
+    persistedBlock: 0,
     nextAttackDamageBoost: 0,
+    nextAttackDamageBoostThisTurn: 0,
     damageImmunityThisTurn: false,
     nextTurnNoBlock: false,
+    nextTurnBlockMultiplier: 1,
+    blockGainMultiplierThisTurn: 1,
     nextTurnTimePenalty: 0,
     nextTurnTimeBonus: 0,
     canBlock: true,
     lowHpDamageBoost: 0,
+    lowHpDamageBoostThreshold: 0.5,
     kitchenDemonActive: false,
     firstCookingUsedThisTurn: false,
     lastTurnDamageTaken: 0,
@@ -855,6 +976,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     attackDamageBonusAllAttacks: 0,
     turnAttackDamageBonus: 0,
     fullSprintUsedCount: 0,
+    deliveryStamina: player.jobId === 'courier' ? COURIER_MAX_STAMINA : undefined,
+    deliveryDownTurns: 0,
+    staminaRecoverCardsUsedThisTurn: 0,
+    nextCardTimeReduce: 0,
+    turnAttackTimeDiscount: 0,
+    freeSkillCardsThisTurn: 0,
+    attackCardsBlockedThisTurn: false,
   });
 
   const selectedCard = useMemo(
@@ -869,8 +997,16 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (card.tags?.includes('require_below_half_hp')) {
       if (gameState.player.currentHp > Math.floor(gameState.player.maxHp / 2)) return false;
     }
-    if (!canPlaySelfDamageBadgeCard(card, gameState.player.currentHp)) return false;
+    if (!canPlaySelfDamageBadgeCard(card, gameState.player.currentHp, gameState.player.jobId)) return false;
     if (!canPlayWithHandCondition(card, gameState.hand)) return false;
+    if (gameState.player.attackCardsBlockedThisTurn && card.type === 'attack') return false;
+    if (!canUseCourierStaminaRecoverCardThisTurn(gameState.player, card)) return false;
+    if (card.requiredStamina !== undefined && gameState.player.jobId === 'courier') {
+      const currentStamina = gameState.player.deliveryStamina ?? COURIER_MAX_STAMINA;
+      if (currentStamina < card.requiredStamina) return false;
+    }
+    if (!isCourierDown(gameState.player) && isCourierDownOnlyCard(card)) return false;
+    if (isCourierDown(gameState.player) && !canUseCardDuringCourierDown(card)) return false;
     return (
       gameState.usedTime + getEffectiveTimeCost(card, lastPlayedCard, gameState.player, gameState.player.jobId) <=
       gameState.maxTime
@@ -882,10 +1018,10 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   const enemyIntents = useMemo(() => {
     const intents: Record<string, EnemyIntent> = {};
     gameState.enemies.forEach((enemy) => {
-      intents[enemy.id] = getEnemyIntent(enemy);
+      intents[enemy.id] = getEnemyIntent(enemy, gameState.turn);
     });
     return intents;
-  }, [gameState.enemies, getEnemyIntent]);
+  }, [gameState.enemies, gameState.turn, getEnemyIntent]);
 
   const isDandoriReady = Boolean(lastPlayedCard?.badges?.includes('setup'));
   const upgradeableHandCards = useMemo(
@@ -909,7 +1045,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   ): {
     played: boolean;
     blockGained: number;
-    multiHitJabs?: { enemyId: string; damage: number }[];
+    multiHitJabs?: { enemyId: string; damage: number; hpAfter: number }[];
   } => {
     if (dotSequenceInProgressRef.current) return { played: false, blockGained: 0 };
     if (gameState.phase !== 'player_turn') return { played: false, blockGained: 0 };
@@ -937,7 +1073,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     });
     const concentratedCard = applyConcentrationMultiplierToCard(multipliedCard, gameState.player);
 
-    const enemiesBefore = gameState.enemies.map((enemy) => ({ id: enemy.id, hp: enemy.currentHp, templateId: enemy.templateId }));
+    const enemiesBefore = gameState.enemies.map((enemy) => ({
+      id: enemy.id,
+      hp: enemy.currentHp,
+      templateId: enemy.templateId,
+      statusEffects: enemy.statusEffects,
+    }));
     const enemyDebuffTotalsBefore = gameState.enemies.map((e) => ({
       id: e.id,
       burn: sumEnemyBurnTurns(e),
@@ -950,7 +1091,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         : concentratedCard;
     const playedCard: Card = { ...buffedCard, wasReserved: false, reservedThisTurn: false };
     // 捨て札/除外には温存ボーナス適用前の基礎値を保持する
-    let cardForDiscard: Card = { ...card, wasReserved: false, reservedThisTurn: false };
+    let cardForDiscard: Card = markBattleUse({ ...card, wasReserved: false, reservedThisTurn: false });
     if (isCardVariantId(card.id, 'delivery')) {
       cardForDiscard = {
         ...cardForDiscard,
@@ -982,18 +1123,56 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         ),
       );
     }
+    result = {
+      ...result,
+      player: noteCourierStaminaRecoverCardPlayed(result.player, playedCard),
+    };
+    if (createsCookingGaugeConsume(playedCard, gameState.player)) {
+      rankingCookConsumedCookingGaugeRef.current = true;
+    }
+    if (gameState.player.jobId === 'cook' && result.fullnessEffect?.type === 'damage') {
+      rankingCookFullnessPainRef.current = true;
+    }
+    if (gameState.player.jobId === 'cook') {
+      const defeatedStatusEnemy = result.enemies.some((enemy) => {
+        if (enemy.currentHp > 0) return false;
+        const before = enemiesBefore.find((item) => item.id === enemy.id);
+        if (!before || before.hp <= 0) return false;
+        return (
+          enemy.statusEffects.some(isRankingEnemyAbnormalStatus) ||
+          before.statusEffects.some(isRankingEnemyAbnormalStatus)
+        );
+      });
+      if (defeatedStatusEnemy) {
+        rankingCookDefeatedStatusEnemyRef.current = true;
+      }
+    }
+    if (gameState.player.jobId === 'unemployed' && hasSelfDamageEffect(playedCard)) {
+      rankingUnemployedSelfDamageCardsUsedRef.current += 1;
+    }
     const playerAfterPowerFlags: PlayerState = (() => {
+      if (isCardVariantId(playedCard.id, 'legendary_recipe')) {
+        return { ...result.player, ingredientCostFreeThisTurn: true };
+      }
       if (playedCard.type !== 'power') return result.player;
       if (isCardVariantId(playedCard.id, 'revival')) {
+        const revivalHp = playedCard.upgraded ? 10 : 1;
+        const revivalHpStack = [...(result.player.revivalHpStack ?? []), revivalHp];
         return {
           ...result.player,
           hasRevival: true,
           revivalUsed: false,
-          revivalHp: playedCard.upgraded ? 10 : 1,
+          revivalHp: revivalHpStack[0],
+          revivalCharges: revivalHpStack.length,
+          revivalHpStack,
         };
       }
       if (isCardVariantId(playedCard.id, 'death_wish')) {
-        return { ...result.player, deathWishActive: true };
+        return {
+          ...result.player,
+          deathWishActive: true,
+          deathWishDamageBonus: playedCard.upgraded ? 6 : 4,
+        };
       }
       if (isCardVariantId(playedCard.id, 'ridgepole')) {
         return { ...result.player, ridgepoleActive: true };
@@ -1006,7 +1185,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         };
       }
       if (isCardVariantId(playedCard.id, 'cliff_edge')) {
-        return { ...result.player, cliffEdgeActive: true };
+        return {
+          ...result.player,
+          cliffEdgeActive: true,
+          cliffEdgeTimeBonus: playedCard.upgraded ? 2 : 1,
+          cliffEdgeDrawBonus: playedCard.upgraded ? 3 : 2,
+        };
       }
       if (isCardVariantId(playedCard.id, 'recipe_study')) {
         return { ...result.player, recipeStudyActive: true };
@@ -1021,12 +1205,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       if (isCardVariantId(playedCard.id, 'kitchen_demon')) {
         return { ...result.player, kitchenDemonActive: true };
       }
-      if (isCardVariantId(playedCard.id, 'legendary_recipe')) {
-        return { ...result.player, ingredientCostFreeThisTurn: true };
-      }
       return result.player;
     })();
     const revivalOutcome = applyRevivalIfNeeded(playerAfterPowerFlags);
+    if (revivalOutcome.revived && playerAfterPowerFlags.jobId === 'unemployed') {
+      rankingUnemployedRevivalTriggeredRef.current = true;
+    }
     const playerAfterCardBase = revivalOutcome.player;
     const effectiveTimeCost = getEffectiveTimeCost(
       playedCard,
@@ -1039,11 +1223,41 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       if (playedCard.type === 'attack' && p.nextAttackTimeReduce > 0) {
         p = { ...p, nextAttackTimeReduce: 0 };
       }
+      if (playedCard.type === 'skill' && (gameState.player.freeSkillCardsThisTurn ?? 0) > 0) {
+        p = {
+          ...p,
+          freeSkillCardsThisTurn: Math.max(0, (gameState.player.freeSkillCardsThisTurn ?? 0) - 1),
+        };
+      }
       if (isCardVariantId(playedCard.id, 'full_sprint')) {
         p = { ...p, fullSprintUsedCount: (p.fullSprintUsedCount ?? 0) + 1 };
       }
       if (isCardVariantId(playedCard.id, 'food_essence')) {
         p = { ...p, handTimeCostDiscountThisTurn: 1 };
+      }
+      if ((gameState.player.nextCardTimeReduce ?? 0) > 0) {
+        p = { ...p, nextCardTimeReduce: 0 };
+      }
+      const nextCardTimeReduce = (playedCard.effects ?? [])
+        .filter((effect) => effect.type === 'next_card_time_reduce')
+        .reduce((sum, effect) => sum + effect.value, 0);
+      if (nextCardTimeReduce > 0) {
+        p = { ...p, nextCardTimeReduce };
+      }
+      const turnAttackTimeDiscount = (playedCard.effects ?? [])
+        .filter((effect) => effect.type === 'turn_attack_time_discount')
+        .reduce((sum, effect) => sum + effect.value, 0);
+      if (turnAttackTimeDiscount > 0) {
+        p = { ...p, turnAttackTimeDiscount: (p.turnAttackTimeDiscount ?? 0) + turnAttackTimeDiscount };
+      }
+      const freeSkillCards = (playedCard.effects ?? [])
+        .filter((effect) => effect.type === 'turn_skill_free_count')
+        .reduce((sum, effect) => sum + effect.value, 0);
+      if (freeSkillCards > 0) {
+        p = { ...p, freeSkillCardsThisTurn: (p.freeSkillCardsThisTurn ?? 0) + freeSkillCards };
+      }
+      if ((playedCard.effects ?? []).some((effect) => effect.type === 'block_attack_cards_this_turn')) {
+        p = { ...p, attackCardsBlockedThisTurn: true };
       }
       return p;
     })();
@@ -1117,9 +1331,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       .reduce((sum, effect) => sum + effect.value, 0);
     // 捨て札ではなく exhaustedCards へ：【消耗】/集中力温存プレイ + 起死回生の【追込】（HP閾値以下）
     const shouldExhaust =
-      cardExhaustsWhenPlayed(card, cardWasReserved) || comebackShouldExhaustAfterPlay(card, gameState.player);
+      cardExhaustsWhenPlayed(card, cardWasReserved) ||
+      comebackShouldExhaustAfterPlay(card, gameState.player) ||
+      cardExhaustsByBattleUseLimit(cardForDiscard);
+    const vanishPowerStaysActive = playedCard.type === 'power' && cardVanishesAfterBattle(playedCard);
     const activePowers =
-      playedCard.type === 'power' && !shouldExhaust
+      playedCard.type === 'power' && (!shouldExhaust || vanishPowerStaysActive)
         ? [...gameState.activePowers, { ...playedCard }]
         : gameState.activePowers;
     const upgradeRandomHandCardCountBase = (playedCard.effects ?? [])
@@ -1131,7 +1348,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     const upgradeAllHandCard =
       (playedCard.effects ?? []).some((effect) => effect.type === 'upgrade_all_hand_card');
     const tempUpgradeSource = isBattleTempUpgradeSourceCard(playedCard);
-    let battleCardRevertMap: Record<string, Card> = { ...(gameState.battleCardRevertMap ?? {}) };
+    const battleCardRevertMap: Record<string, Card> = { ...(gameState.battleCardRevertMap ?? {}) };
     let handAfterPlay = [
       ...gameState.hand.filter((item) => item.id !== cardId),
       ...drawResult.drawn,
@@ -1209,7 +1426,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         });
       }
     }
-    const exhaustedCards = shouldExhaust
+    const exhaustedCards = shouldExhaust && !vanishPowerStaysActive
       ? [...gameState.exhaustedCards, cardForDiscard]
       : gameState.exhaustedCards;
     let discardPile =
@@ -1275,12 +1492,31 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       drawResult.drawPile,
       drawResult.shuffled,
     );
+    const peekNextDrawCount = (playedCard.effects ?? [])
+      .filter((effect) => effect.type === 'peek_next_draw')
+      .reduce((sum, effect) => sum + effect.value, 0);
+    const revealedDrawCount = peekNextDrawCount > 0
+      ? Math.min(drawResult.drawPile.length, Math.max(gameState.revealedDrawCount ?? 0, peekNextDrawCount))
+      : drawAmount > 0
+        ? 0
+        : (gameState.revealedDrawCount ?? 0);
+    if (peekNextDrawCount > 0) {
+      const peeked = drawResult.drawPile.slice(-peekNextDrawCount).reverse();
+      if (peeked.length > 0) {
+        pushPopup(`🪞 次ドロー: ${peeked.map((c) => c.name).join(' / ')}`, 'player', 'buff', 1800);
+      } else {
+        pushPopup('🪞 次ドロー: 山札なし', 'player', 'buff', 1400);
+      }
+    }
 
     const nextCardDoubleConsumed = gameState.player.nextCardDoubleEffect && reserveOrDoubleMultiplier > 1;
     const nextCardEffectBoostConsumed = shouldUseTenBoost;
+    const nextCardEffectBoostGranted = (playedCard.effects ?? [])
+      .filter((effect) => effect.type === 'next_card_effect_boost')
+      .reduce((max, effect) => Math.max(max, effect.value), 0);
     const nextCardEffectBoostAfterPlay = nextCardEffectBoostConsumed
-      ? 0
-      : (playerAfterKill.nextCardEffectBoost ?? 0);
+      ? nextCardEffectBoostGranted
+      : Math.max(playerAfterKill.nextCardEffectBoost ?? 0, nextCardEffectBoostGranted);
     const hadConcentration = gameState.player.concentrationActive ?? false;
     const consumedConcentration =
       hadConcentration &&
@@ -1304,13 +1540,16 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       exhaustedCards,
       player: playerAfterKillResolved,
       enemies: result.enemies,
-      activePowers,
+      activePowers: revivalOutcome.revived
+        ? removeFirstRevivalPower(activePowers)
+        : activePowers,
       toolSlots: result.equippedTool ? equipTool(result.equippedTool, gameState.toolSlots) : gameState.toolSlots,
       hand: handFinal,
       usedTime: gameState.usedTime + effectiveTimeCost,
       maxTime: gameState.maxTime + timeBoost + mentalTimeDelta,
       shuffleAnimation: drawResult.shuffled,
       battleCardRevertMap,
+      revealedDrawCount,
     };
 
     setGameState((prev) => ({
@@ -1327,12 +1566,15 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       exhaustedCards,
       player: playerAfterKillResolved,
       enemies: result.enemies,
-      activePowers,
+      activePowers: revivalOutcome.revived
+        ? removeFirstRevivalPower(activePowers)
+        : activePowers,
       toolSlots: result.equippedTool ? equipTool(result.equippedTool, prev.toolSlots) : prev.toolSlots,
       usedTime: prev.usedTime + effectiveTimeCost,
       maxTime: prev.maxTime + timeBoost + mentalTimeDelta,
       shuffleAnimation: drawResult.shuffled,
       battleCardRevertMap,
+      revealedDrawCount,
     }));
     setDoubleNextCharges(
       (prev) => Math.max(0, prev - (doubleNextCharges > 0 && reserveOrDoubleMultiplier > 1 ? 1 : 0)) + gainedDoubleNext,
@@ -1345,32 +1587,40 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (rankPts) {
       cardsPlayedThisTurnRef.current += 1;
       if (consumedConcentration) {
-        rankPts(5);
+        rankPts(5, { category: 'combat', label: '集中消費' });
       }
-      const prevFull = gameState.player.fullnessBonusCount ?? 0;
-      const nextFull = playerAfterKillResolved.fullnessBonusCount ?? 0;
-      if (nextFull > prevFull) {
-        rankPts(15 * (nextFull - prevFull));
+      if (gameState.player.jobId === 'cook') {
+        if (result.cookingGaugeGained > 0) {
+          rankPts(2 * result.cookingGaugeGained, { category: 'job', label: '料理人: 調理ゲージ加算' });
+        }
+        if (result.fullnessGaugeGained > 0) {
+          rankPts(5 * result.fullnessGaugeGained, { category: 'job', label: '料理人: 満腹ゲージ加算' });
+        }
+        if (result.enemyStatusAppliedCount > 0) {
+          rankPts(2 * result.enemyStatusAppliedCount, { category: 'job', label: '料理人: 敵に異常状態付与' });
+        }
+        if (result.fullnessEffect?.type === 'block') {
+          rankPts(15, { category: 'job', label: '料理人: 満腹2回目ブロック発動' });
+        }
       }
-      if (
-        gameState.player.jobId === 'carpenter' &&
-        !rankingScaffold10AwardedRef.current &&
-        gameState.player.scaffold < 10 &&
-        playerAfterKillResolved.scaffold >= 10
-      ) {
-        rankingScaffold10AwardedRef.current = true;
-        rankPts(20);
-      }
-      const prevCook = gameState.player.totalCookingGaugeGained ?? 0;
-      const nextCook = playerAfterKillResolved.totalCookingGaugeGained ?? 0;
-      if (
-        gameState.player.jobId === 'cook' &&
-        !rankingCooking10AwardedRef.current &&
-        prevCook < 10 &&
-        nextCook >= 10
-      ) {
-        rankingCooking10AwardedRef.current = true;
-        rankPts(20);
+      if (gameState.player.jobId === 'carpenter') {
+        const scaffoldThresholds = [
+          { threshold: 5, points: 10 },
+          { threshold: 10, points: 30 },
+          { threshold: 15, points: 50 },
+        ] as const;
+        const reachedScaffoldStage = [...scaffoldThresholds]
+          .reverse()
+          .find(
+            ({ threshold }) =>
+              !rankingScaffoldThresholdsAwardedRef.current.has(threshold) &&
+              gameState.player.scaffold < threshold &&
+              playerAfterKillResolved.scaffold >= threshold,
+          );
+        if (reachedScaffoldStage) {
+          rankingScaffoldThresholdsAwardedRef.current.add(reachedScaffoldStage.threshold);
+          rankPts(reachedScaffoldStage.points, { category: 'job', label: `大工: 足場${reachedScaffoldStage.threshold}到達` });
+        }
       }
     }
 
@@ -1406,13 +1656,26 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       }
     } else if (!playedMysteryPot && result.multiHitJabs && result.multiHitJabs.length > 0) {
       const multiHitStaggerMs = 280;
+      const initialHpById: Record<string, number> = {};
+      result.multiHitJabs.forEach((jab) => {
+        const before = enemiesBefore.find((item) => item.id === jab.enemyId);
+        if (before) initialHpById[jab.enemyId] = before.hp;
+      });
+      if (Object.keys(initialHpById).length > 0) {
+        setAnimatedEnemyHpById(initialHpById);
+      }
       result.multiHitJabs.forEach((jab, i) => {
         window.setTimeout(() => {
           setHitEnemyId(jab.enemyId);
+          setAnimatedEnemyHpById((prev) => ({ ...(prev ?? {}), [jab.enemyId]: jab.hpAfter }));
           pushPopup(`-${jab.damage}`, 'enemy', 'damage');
           window.setTimeout(() => setHitEnemyId(null), 260);
         }, i * multiHitStaggerMs);
       });
+      window.setTimeout(
+        () => setAnimatedEnemyHpById(null),
+        result.multiHitJabs.length * multiHitStaggerMs + 320,
+      );
     } else if (!playedMysteryPot && result.damage > 0 && result.targetEnemyId) {
       setHitEnemyId(result.targetEnemyId);
       pushPopup(`-${result.damage}`, 'enemy', 'damage');
@@ -1421,7 +1684,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (result.blockGained > 0) {
       setShieldEffect(true);
       pushPopup(`+${result.blockGained}🛡`, 'player', 'block');
-      window.setTimeout(() => setShieldEffect(false), 260);
+      window.setTimeout(() => setShieldEffect(false), 620);
     }
     if (isCardVariantId(playedCard.id, 'gamble')) {
       const winDmg = playedCard.upgraded ? 35 : 25;
@@ -1435,6 +1698,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       }
     }
     if (result.goldGained > 0) {
+      playSe('shop_sell');
       pushPopup(`💰 +${result.goldGained}G ゲット！`, 'player', 'buff');
       spawnCoinBurst();
     }
@@ -1458,8 +1722,16 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (result.cookingGaugeGained > 0 && !playedMysteryPot) {
       pushPopup(`+${result.cookingGaugeGained}🍳`, 'player', 'buff');
     }
-    if (result.fullnessAutoHealTriggered) {
-      pushPopup('+🍖', 'player', 'buff');
+    if (result.fullnessEffect) {
+      if (result.fullnessEffect.type === 'heal') {
+        pushPopup(`🍖 +${result.fullnessEffect.value}HP`, 'player', 'buff');
+      } else if (result.fullnessEffect.type === 'block') {
+        pushPopup('🍖 満腹ガード！', 'player', 'block');
+      } else {
+        setIsPlayerHit(true);
+        pushPopup(`🍖 お腹が苦しい -${result.fullnessEffect.value}HP`, 'player', 'damage', 2200);
+        window.setTimeout(() => setIsPlayerHit(false), 420);
+      }
     }
     if (drawAmount > 0) {
       pushPopup(`+${drawAmount}ドロー`, 'player', 'buff');
@@ -1480,11 +1752,17 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     /** 勝利のお守り等の on_kill 回復だけでは回復SEを鳴らさない（カード回復・敵回復は従来どおり）。満腹5回復も含める */
     const shouldPlayHealSe =
       anyEnemyHpIncreasedForHealSe || (playerHpIncreasedOverall && playerHpIncreasedFromCardResolve);
-    if (shouldPlayHealSe || result.fullnessAutoHealTriggered) {
+    if (shouldPlayHealSe || result.fullnessEffect?.type === 'heal') {
       playSe('heal');
+    }
+    if (result.fullnessEffect?.type === 'damage') {
+      playSe('damage');
     }
     if (result.isDandoriActive) {
       pushPopup('⚡段取り！', 'player', 'dandori');
+      if (gameState.player.jobId === 'carpenter') {
+        options?.onRankingScore?.(5, { category: 'job', label: '大工: 段取りボーナス発動' });
+      }
     }
     if (reserveBonusActiveForCard(card)) {
       pushPopup('✨温存ボーナス！', 'player', 'buff');
@@ -1548,15 +1826,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             gold: playerAfterKill.gold + reward,
             mental: nextMental,
           },
-          deck: [
-            ...revertedVictory.drawPile,
-            ...revertedVictory.discardPile,
-            ...revertedVictory.hand,
-            ...revertedVictory.reserved,
-            ...revertedVictory.exhaustedCards,
-            ...revertedVictory.activePowers,
-            ...revertedVictory.toolSlots.map((slot) => slot.card),
-          ],
+          deck: buildBattleResultDeck(revertedVictory),
           items: battleItems,
           defeatedEnemies: result.enemies,
           rewardGold: reward,
@@ -1564,6 +1834,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           kind: options?.setup?.kind ?? 'battle',
           battleTurns: gameState.turn,
           rankingEnemyAttackHpDamageSum: rankingEnemyAttackHpDamageRef.current,
+          rankingActivePowerCount: getRankingInstalledPowerCount(revertedVictory),
+          rankingToolCount: getRankingInstalledToolCount(revertedVictory),
+          rankingCookConsumedCookingGauge: rankingCookConsumedCookingGaugeRef.current,
+          rankingCookFullnessPain: rankingCookFullnessPainRef.current,
+          rankingCookDefeatedStatusEnemy: rankingCookDefeatedStatusEnemyRef.current,
+          rankingUnemployedSelfDamageCardsUsed: rankingUnemployedSelfDamageCardsUsedRef.current,
+          rankingUnemployedRevivalTriggered: rankingUnemployedRevivalTriggeredRef.current,
+          rankingCourierRecoveredFromDown: rankingCourierRecoveredFromDownRef.current,
         });
       }, 500);
     }
@@ -1671,6 +1949,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       };
     });
     if (didReserve) {
+      options?.onRankingScore?.(5, { category: 'combat', label: '温存' });
       setSelectedCardId((prev) => (prev === cardId ? null : prev));
     }
     return didReserve;
@@ -1708,7 +1987,6 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       setSellingCardId(null);
       setSelectedCardId((prev) => (prev === cardId ? null : prev));
       spawnCoinBurst();
-      options?.onRankingScore?.(5);
     }, SELL_ANIMATION_MS);
     return true;
   };
@@ -1721,8 +1999,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       state.player.cliffEdgeActive &&
       state.player.jobId === 'unemployed' &&
       getHungryState(state.player) === 'awakened';
-    const cliffEdgeTimeBonus = cliffEdgeAwakened ? 1 : 0;
-    const cliffEdgeDrawBonus = cliffEdgeAwakened ? 2 : 0;
+    const cliffEdgeTimeBonus = cliffEdgeAwakened ? (state.player.cliffEdgeTimeBonus ?? 1) : 0;
+    const cliffEdgeDrawBonus = cliffEdgeAwakened ? (state.player.cliffEdgeDrawBonus ?? 2) : 0;
     const onTurnStartDrawBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'draw');
     const onTurnStartBlockBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'block');
     const onTurnStartTimeBarRelic = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'time_bar');
@@ -1753,9 +2031,22 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       .flatMap((power) => power.effects ?? [])
       .filter((effect) => effect.type === 'scaffold_per_turn')
       .reduce((sum, effect) => sum + effect.value, 0);
+    const hungryStateForPowerBlock = getHungryState(state.player);
+    const powerBlockPerTurn = state.activePowers
+      .flatMap((power) => power.effects ?? [])
+      .reduce((sum, effect) => {
+        if (effect.type === 'block_per_turn') return sum + effect.value;
+        if (effect.type === 'block_per_turn_awakened') {
+          return sum + (hungryStateForPowerBlock === 'awakened' ? effect.value : (effect.normalValue ?? effect.value));
+        }
+        return sum;
+      }, 0);
     const blockPersistTurns = state.player.blockPersistTurns ?? 0;
     const keepBlock = blockPersistTurns > 0;
     const nextBlockPersistTurns = keepBlock ? Math.max(0, blockPersistTurns - 1) : 0;
+    const persistedBlock = keepBlock
+      ? Math.min(state.player.block, state.player.persistedBlock ?? state.player.block)
+      : 0;
     const shouldDisableBlockThisTurn = state.player.nextTurnNoBlock;
 
     const playerAfterReset = applyToolEffects(state.toolSlots, {
@@ -1764,10 +2055,12 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       block:
         shouldDisableBlockThisTurn
           ? 0
-          : (keepBlock ? state.player.block : 0) +
+          : persistedBlock +
+            Math.max(0, powerBlockPerTurn) +
             Math.max(0, onTurnStartBlockBonus) +
             Math.max(0, lowHpBlockRelic),
       blockPersistTurns: nextBlockPersistTurns,
+      persistedBlock: 0,
       scaffold: state.player.scaffold + scaffoldPerTurn,
       canBlock: !shouldDisableBlockThisTurn,
       nextTurnNoBlock: false,
@@ -1775,6 +2068,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       nextTurnTimeBonus: 0,
       damageImmunityThisTurn: false,
       firstCookingUsedThisTurn: false,
+      blockGainMultiplierThisTurn: state.player.nextTurnBlockMultiplier ?? 1,
+      nextTurnBlockMultiplier: 1,
       lastTurnDamageTaken: state.player.currentTurnDamageTaken,
       currentTurnDamageTaken: 0,
       firstIngredientUsedThisTurn: false,
@@ -1784,17 +2079,57 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       ingredientCostFreeThisTurn: false,
       handTimeCostDiscountThisTurn: 0,
       cookingGaugePlaysThisTurn: 0,
+      staminaRecoverCardsUsedThisTurn: 0,
+      nextCardTimeReduce: 0,
+      turnAttackTimeDiscount: 0,
+      freeSkillCardsThisTurn: 0,
+      attackCardsBlockedThisTurn: false,
       statusEffects: dot.statusEffects,
       fullnessGauge: (state.player.fullnessGauge ?? 0) + foodLoverFullness,
       turnAttackDamageBonus:
         (state.player.turnAttackDamageBonus ?? 0) + Math.max(0, onTurnStartAttackRelic),
     });
+    const staminaRecoverPerTurn = state.activePowers
+      .flatMap((power) => power.effects ?? [])
+      .filter((effect) => effect.type === 'stamina_recover_per_turn')
+      .reduce((sum, effect) => sum + effect.value, 0);
+    const playerAfterCourier = staminaRecoverPerTurn > 0
+      ? recoverCourierStamina(advanceCourierTurnStart(playerAfterReset), staminaRecoverPerTurn)
+      : advanceCourierTurnStart(playerAfterReset);
+    let mentalRecoveredByPowers = 0;
+    const tickedActivePowers = state.activePowers.map((power) => {
+      let nextPower = power;
+      if (
+        power.effects?.some((effect) => effect.type === 'stamina_recover_per_turn') &&
+        power.powerTurnsRemaining !== undefined
+      ) {
+        nextPower = { ...nextPower, powerTurnsRemaining: power.powerTurnsRemaining - 1 };
+      }
+      const periodicMental = power.effects?.find((effect) => effect.type === 'mental_recover_every_n_turns');
+      if (periodicMental) {
+        const interval = Math.max(1, periodicMental.count ?? 3);
+        const nextCounter = (power.powerTurnCounter ?? 0) + 1;
+        if (nextCounter >= interval) {
+          mentalRecoveredByPowers += periodicMental.value;
+          nextPower = { ...nextPower, powerTurnCounter: 0 };
+        } else {
+          nextPower = { ...nextPower, powerTurnCounter: nextCounter };
+        }
+      }
+      return nextPower;
+    });
+    const playerAfterPowerMental = mentalRecoveredByPowers > 0
+      ? {
+          ...playerAfterCourier,
+          mental: Math.min(getEffectiveMaxMental(playerAfterCourier), playerAfterCourier.mental + mentalRecoveredByPowers),
+        }
+      : playerAfterCourier;
     const playerAfterKitchenDemon = state.player.kitchenDemonActive
       ? {
-          ...playerAfterReset,
-          cookingGauge: playerAfterReset.cookingGauge + 1,
+          ...playerAfterPowerMental,
+          cookingGauge: playerAfterPowerMental.cookingGauge + 1,
         }
-      : playerAfterReset;
+      : playerAfterPowerMental;
     const powerDrawPerTurn = state.activePowers
       .flatMap((power) => power.effects ?? [])
       .filter((effect) => effect.type === 'draw_per_turn')
@@ -1832,6 +2167,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       playerAfterKitchenDemon.mental <= 0,
     );
     const pendingCurses = state.pendingCurseCards ?? [];
+    const expiredTurnLimitedPowers = tickedActivePowers.filter(
+      (power) => power.powerTurnsRemaining !== undefined && power.powerTurnsRemaining <= 0,
+    );
+    const activePowersAfterTurnStart = tickedActivePowers.filter(
+      (power) => power.powerTurnsRemaining === undefined || power.powerTurnsRemaining > 0,
+    );
+
     return {
       ...state,
       phase: 'player_turn',
@@ -1845,7 +2187,9 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       drawPile: drawResult.drawPile,
       drawPileDisplayOrder: createShuffledDrawPileDisplayOrder(drawResult.drawPile.length),
       discardPile: drawResult.discardPile,
-      exhaustedCards: [...state.exhaustedCards, ...exhaustedFromReserve],
+      exhaustedCards: [...state.exhaustedCards, ...exhaustedFromReserve, ...expiredTurnLimitedPowers],
+      revealedDrawCount: 0,
+      activePowers: activePowersAfterTurnStart,
       player: playerAfterKitchenDemon,
       executingIndex: -1,
       pendingCurseCards: [],
@@ -1865,8 +2209,8 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       revivedPlayer.cliffEdgeActive &&
       revivedPlayer.jobId === 'unemployed' &&
       getHungryState(revivedPlayer) === 'awakened';
-    const cliffEdgeTimeBonus = cliffEdgeAwakened ? 1 : 0;
-    const cliffEdgeDrawBonus = cliffEdgeAwakened ? 2 : 0;
+    const cliffEdgeTimeBonus = cliffEdgeAwakened ? (revivedPlayer.cliffEdgeTimeBonus ?? 1) : 0;
+    const cliffEdgeDrawBonus = cliffEdgeAwakened ? (revivedPlayer.cliffEdgeDrawBonus ?? 2) : 0;
     const onTurnStartDrawBonus = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'draw');
     const onTurnStartTimeBarRelic = getOmamoriBonus(battleOmamoris, 'on_turn_start', 'time_bar');
     const nextTurnTimeBonusSec = revivedPlayer.nextTurnTimeBonus ?? 0;
@@ -1939,6 +2283,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       ),
       discardPile: drawResult.discardPile,
       exhaustedCards: [...state.exhaustedCards, ...exhaustedFromReserve],
+      revealedDrawCount: 0,
       player: revivedPlayer,
       executingIndex: -1,
       pendingCurseCards: [],
@@ -1952,15 +2297,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     return {
       outcome: 'defeat',
       player: clearBattleFlags(reverted.player),
-      deck: [
-        ...reverted.drawPile,
-        ...reverted.discardPile,
-        ...reverted.hand,
-        ...reverted.reserved,
-        ...reverted.exhaustedCards,
-        ...reverted.activePowers,
-        ...reverted.toolSlots.map((slot) => slot.card),
-      ],
+      deck: buildBattleResultDeck(reverted),
       items: battleItems,
       defeatedEnemies: snapshot.enemies,
       rewardGold: 0,
@@ -2024,8 +2361,13 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
   async function endTurn(): Promise<void> {
     if (gameState.phase !== 'player_turn') return;
     if (activePendingHandUpgradeCount > 0) return;
-    if (cardsPlayedThisTurnRef.current >= 3) {
-      options?.onRankingScore?.(10);
+    if (cardsPlayedThisTurnRef.current >= 5) {
+      options?.onRankingScore?.(25, { category: 'combat', label: '1ターンにカード5枚以上使用' });
+      if (gameState.player.jobId === 'courier') {
+        options?.onRankingScore?.(10, { category: 'job', label: '配達員: 1ターンにカード5枚以上使用' });
+      }
+    } else if (cardsPlayedThisTurnRef.current >= 3) {
+      options?.onRankingScore?.(10, { category: 'combat', label: '1ターンにカード3枚以上使用' });
     }
     cardsPlayedThisTurnRef.current = 0;
     setSelectedCardId(null);
@@ -2044,6 +2386,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         nextAttackBoostValue: 0,
         nextAttackBoostCount: 0,
         nextAttackTimeReduce: 0,
+        nextAttackDamageBoostThisTurn: 0,
         nextCardBlockMultiplier: 1,
         turnAttackDamageBonus: 0,
       },
@@ -2088,15 +2431,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           gold: workingState.player.gold + reward,
           mental: nextMental,
         },
-        deck: [
-          ...revertedVictory.drawPile,
-          ...revertedVictory.discardPile,
-          ...revertedVictory.hand,
-          ...revertedVictory.reserved,
-          ...revertedVictory.exhaustedCards,
-          ...revertedVictory.activePowers,
-          ...revertedVictory.toolSlots.map((slot) => slot.card),
-        ],
+        deck: buildBattleResultDeck(revertedVictory),
         items: battleItems,
         defeatedEnemies: workingState.enemies,
         rewardGold: reward,
@@ -2104,6 +2439,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         kind: options?.setup?.kind ?? 'battle',
         battleTurns: workingState.turn,
         rankingEnemyAttackHpDamageSum: rankingEnemyAttackHpDamageRef.current,
+          rankingActivePowerCount: getRankingInstalledPowerCount(revertedVictory),
+          rankingToolCount: getRankingInstalledToolCount(revertedVictory),
+          rankingCookConsumedCookingGauge: rankingCookConsumedCookingGaugeRef.current,
+          rankingCookFullnessPain: rankingCookFullnessPainRef.current,
+          rankingCookDefeatedStatusEnemy: rankingCookDefeatedStatusEnemyRef.current,
+          rankingUnemployedSelfDamageCardsUsed: rankingUnemployedSelfDamageCardsUsedRef.current,
+          rankingUnemployedRevivalTriggered: rankingUnemployedRevivalTriggeredRef.current,
+          rankingCourierRecoveredFromDown: rankingCourierRecoveredFromDownRef.current,
       });
       return;
     }
@@ -2172,15 +2515,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             gold: workingState.player.gold + reward,
             mental: nextMental,
           },
-          deck: [
-            ...revertedVictory.drawPile,
-            ...revertedVictory.discardPile,
-            ...revertedVictory.hand,
-            ...revertedVictory.reserved,
-            ...revertedVictory.exhaustedCards,
-            ...revertedVictory.activePowers,
-            ...revertedVictory.toolSlots.map((slot) => slot.card),
-          ],
+          deck: buildBattleResultDeck(revertedVictory),
           items: battleItems,
           defeatedEnemies: workingState.enemies,
           rewardGold: reward,
@@ -2188,6 +2523,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           kind: options?.setup?.kind ?? 'battle',
           battleTurns: workingState.turn,
           rankingEnemyAttackHpDamageSum: rankingEnemyAttackHpDamageRef.current,
+          rankingActivePowerCount: getRankingInstalledPowerCount(revertedVictory),
+          rankingToolCount: getRankingInstalledToolCount(revertedVictory),
+          rankingCookConsumedCookingGauge: rankingCookConsumedCookingGaugeRef.current,
+          rankingCookFullnessPain: rankingCookFullnessPainRef.current,
+          rankingCookDefeatedStatusEnemy: rankingCookDefeatedStatusEnemyRef.current,
+          rankingUnemployedSelfDamageCardsUsed: rankingUnemployedSelfDamageCardsUsedRef.current,
+          rankingUnemployedRevivalTriggered: rankingUnemployedRevivalTriggeredRef.current,
+          rankingCourierRecoveredFromDown: rankingCourierRecoveredFromDownRef.current,
         });
         return;
       }
@@ -2203,7 +2546,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       const enemy = workingState.enemies[ei];
       if (enemy.currentHp <= 0) continue;
       const blockBeforeEnemy = workingState.player.block;
-      const result = executeEnemyTurn(enemy, workingState.player);
+      const result = executeEnemyTurn(enemy, workingState.player, workingState.turn);
       if (ENEMY_DEBUFF_INTENT_TYPES.includes(result.intentType)) {
         playSe('enemy_debuff');
       }
@@ -2215,8 +2558,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
         enemies: workingState.enemies.map((item) =>
           item.id === enemy.id ? result.enemyBeforeDot : item,
         ),
+        activePowers: revivalOutcome.revived
+          ? removeFirstRevivalPower(workingState.activePowers)
+          : workingState.activePowers,
       };
       if (revivalOutcome.revived) {
+        if (workingState.player.jobId === 'unemployed') {
+          rankingUnemployedRevivalTriggeredRef.current = true;
+        }
         pushPopup('🔄 七転び八起き！', 'player', 'buff');
         triggerRevivalEffect();
       }
@@ -2228,7 +2577,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           playSe('damage');
         }
         if (result.attackFullyBlocked) {
-          options?.onRankingScore?.(10);
+          options?.onRankingScore?.(10, { category: 'combat', label: '敵の攻撃を完全ブロック' });
         }
       }
       if (result.damageToPlayer > 0) {
@@ -2401,15 +2750,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
             gold: workingState.player.gold + reward,
             mental: nextMental,
           },
-          deck: [
-            ...revertedVictory.drawPile,
-            ...revertedVictory.discardPile,
-            ...revertedVictory.hand,
-            ...revertedVictory.reserved,
-            ...revertedVictory.exhaustedCards,
-            ...revertedVictory.activePowers,
-            ...revertedVictory.toolSlots.map((slot) => slot.card),
-          ],
+          deck: buildBattleResultDeck(revertedVictory),
           items: battleItems,
           defeatedEnemies: workingState.enemies,
           rewardGold: reward,
@@ -2417,6 +2758,14 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
           kind: options?.setup?.kind ?? 'battle',
           battleTurns: workingState.turn,
           rankingEnemyAttackHpDamageSum: rankingEnemyAttackHpDamageRef.current,
+          rankingActivePowerCount: getRankingInstalledPowerCount(revertedVictory),
+          rankingToolCount: getRankingInstalledToolCount(revertedVictory),
+          rankingCookConsumedCookingGauge: rankingCookConsumedCookingGaugeRef.current,
+          rankingCookFullnessPain: rankingCookFullnessPainRef.current,
+          rankingCookDefeatedStatusEnemy: rankingCookDefeatedStatusEnemyRef.current,
+          rankingUnemployedSelfDamageCardsUsed: rankingUnemployedSelfDamageCardsUsedRef.current,
+          rankingUnemployedRevivalTriggered: rankingUnemployedRevivalTriggeredRef.current,
+          rankingCourierRecoveredFromDown: rankingCourierRecoveredFromDownRef.current,
         });
         return;
       }
@@ -2543,6 +2892,23 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
       if (onTurnStartBlockBonus > 0 && next.player.canBlock) {
         pushPopup(`⛑️ +${onTurnStartBlockBonus}ブロック`, 'player', 'buff');
       }
+      if (next.player.jobId === 'courier') {
+        const prevDown = getCourierDownTurns(workingState.player);
+        const nextDown = getCourierDownTurns(next.player);
+        if (prevDown === 0 && nextDown === COURIER_DOWN_TURNS) {
+          pushPopup('💤 過労ダウン', 'player', 'damage', 1400);
+        } else if (prevDown > 0 && nextDown === 0) {
+          rankingCourierRecoveredFromDownRef.current = true;
+          pushPopup('🔋 復帰', 'player', 'buff', 1000);
+        }
+        const hasPeriodicMentalPower = workingState.activePowers.some((power) =>
+          power.effects?.some((effect) => effect.type === 'mental_recover_every_n_turns'),
+        );
+        const mentalRecovered = Math.max(0, next.player.mental - workingState.player.mental);
+        if (hasPeriodicMentalPower && mentalRecovered > 0) {
+          pushPopup(`💴 メンタル+${mentalRecovered}`, 'player', 'buff', 1400);
+        }
+      }
 
       if (next.player.currentHp <= 0) {
         const defeatedByDot = dotLethal === 'poison' ? '毒' : '火傷';
@@ -2638,15 +3004,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     if (!['battle_start', 'player_turn', 'enemy_turn', 'executing'].includes(gameState.phase)) return;
     const reverted = applyBattleCardReverts(gameState);
     const clearedPlayer = clearBattleFlags(reverted.player);
-    const deck = [
-      ...reverted.drawPile,
-      ...reverted.discardPile,
-      ...reverted.hand,
-      ...reverted.reserved,
-      ...reverted.exhaustedCards,
-      ...reverted.activePowers,
-      ...reverted.toolSlots.map((slot) => slot.card),
-    ];
+    const deck = buildBattleResultDeck(reverted);
     setSelectedCardId(null);
     setGameState({
       ...reverted,
@@ -2684,6 +3042,7 @@ export const useGameState = (options?: UseGameStateOptions): UseGameStateResult 
     dotPoisonFlash,
     isMentalHit,
     hitEnemyId,
+    animatedEnemyHpById,
     shieldEffect,
     canSellInBattle: CARPENTER_CAN_SELL_IN_BATTLE,
     showStartBanner,

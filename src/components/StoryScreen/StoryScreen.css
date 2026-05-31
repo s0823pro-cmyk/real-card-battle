@@ -7,6 +7,11 @@
   user-select: none;
 }
 
+html.cap-ios .story-screen {
+  top: calc(-1 * var(--root-safe-top, 0px));
+  height: calc(100dvh + var(--root-safe-top, 0px));
+}
+
 /* 初回ストーリー最終ページ: 「冒険を始める」のみ操作可能 */
 .story-screen--final-start-only {
   cursor: default;
@@ -65,6 +70,23 @@
   z-index: 3;
 }
 
+.story-status-gradient {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--sat, env(safe-area-inset-top, 0px)) + 72px);
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(8, 10, 14, 0.78) 0%,
+    rgba(8, 10, 14, 0.48) 46%,
+    rgba(8, 10, 14, 0.14) 78%,
+    rgba(8, 10, 14, 0) 100%
+  );
+  z-index: 8;
+}
+
 .story-bottom-vignette {
   position: fixed;
   left: 0;
@@ -75,12 +97,12 @@
   background: linear-gradient(
     to bottom,
     rgba(24, 26, 30, 0) 0%,
-    rgba(24, 26, 30, 0.05) 18%,
-    rgba(24, 26, 30, 0.16) 38%,
-    rgba(24, 26, 30, 0.34) 58%,
-    rgba(24, 26, 30, 0.58) 78%,
-    rgba(24, 26, 30, 0.78) 90%,
-    rgba(24, 26, 30, 0.9) 100%
+    rgba(24, 26, 30, 0.08) 18%,
+    rgba(24, 26, 30, 0.22) 38%,
+    rgba(24, 26, 30, 0.44) 58%,
+    rgba(24, 26, 30, 0.68) 78%,
+    rgba(24, 26, 30, 0.86) 90%,
+    rgba(24, 26, 30, 0.94) 100%
   );
   z-index: 7;
 }
@@ -93,6 +115,10 @@
   display: flex;
   gap: 8px;
   z-index: 10;
+}
+
+html.cap-ios .story-progress {
+  top: calc(var(--root-safe-top, 0px) + var(--sat) + 2px);
 }
 
 .story-dot {
@@ -123,8 +149,8 @@
   background: linear-gradient(
     to bottom,
     rgba(26, 28, 32, 0) 0%,
-    rgba(26, 28, 32, 0.08) 58%,
-    rgba(26, 28, 32, 0.24) 100%
+    rgba(26, 28, 32, 0.14) 52%,
+    rgba(26, 28, 32, 0.38) 100%
   );
   backdrop-filter: blur(0.6px);
   border-top: none;
@@ -207,4 +233,8 @@
   padding: 6px 14px;
   cursor: pointer;
   z-index: 20;
+}
+
+html.cap-ios .story-btn-skip {
+  top: calc(var(--root-safe-top, 0px) + var(--sat) + 2px);
 }

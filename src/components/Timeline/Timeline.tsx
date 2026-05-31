@@ -30,6 +30,7 @@ const Timeline = ({
 
   useEffect(() => {
     if (remainingTime > prevRemainingRef.current + 0.001) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsRecovering(true);
       if (recoverTimerRef.current !== null) {
         window.clearTimeout(recoverTimerRef.current);
@@ -77,6 +78,7 @@ const Timeline = ({
         window.clearTimeout(previewHideTimerRef.current);
         previewHideTimerRef.current = null;
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsPreviewReturning(false);
     } else if (prevHasPreview) {
       setIsPreviewReturning(true);

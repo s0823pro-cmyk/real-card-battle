@@ -99,6 +99,14 @@ function computeEffectiveCardValuesInner(
   const baseTimeCost = card.timeCost;
 
   if (damage !== null) {
+    if (isCardIdVariantOf(card.id, 'kitchen_law')) {
+      damage = Math.max(0, (player.cookingGaugePlaysThisTurn ?? 0) * (card.upgraded ? 4 : 3));
+    }
+    if (isCardIdVariantOf(card.id, 'death_flambe')) {
+      damage = card.upgraded
+        ? Math.max(1, player.cookingGauge * (card.cookingMultiplier ?? 5))
+        : Math.max(1, (card.damage ?? 0) + player.cookingGauge * (card.cookingMultiplier ?? 3));
+    }
     if (card.type === 'attack' && attackItemBuff && attackItemBuff.charges > 0) {
       damage += attackItemBuff.value;
     }
@@ -108,6 +116,7 @@ function computeEffectiveCardValuesInner(
     }
     if (
       player.jobId === 'cook' &&
+      !isCardIdVariantOf(card.id, 'death_flambe') &&
       (card.tags?.includes('cooking') || card.tags?.includes('cooking_consume')) &&
       card.cookingMultiplier
     ) {
@@ -120,8 +129,15 @@ function computeEffectiveCardValuesInner(
       damage = player.maxHp - player.currentHp + getHungryDamageBonus(getHungryState(player));
     }
     if (card.tags?.includes('missing_hp_damage_scaled')) {
-      const multiplier = getHungryState(player) === 'awakened' ? 0.8 : 0.5;
-      damage = Math.floor((player.maxHp - player.currentHp) * multiplier) + getHungryDamageBonus(getHungryState(player));
+      const hungryState = getHungryState(player);
+      const multiplier = card.upgraded
+        ? hungryState === 'awakened'
+          ? 1.0
+          : 0.7
+        : hungryState === 'awakened'
+          ? 0.8
+          : 0.5;
+      damage = Math.floor((player.maxHp - player.currentHp) * multiplier) + getHungryDamageBonus(hungryState);
     }
     if (card.tags?.includes('low_hp_bonus') && card.lowHpBonus) {
       const ratio = player.currentHp / Math.max(1, player.maxHp);
@@ -135,7 +151,15 @@ function computeEffectiveCardValuesInner(
     }
     if (card.tags?.includes('revenge_damage')) {
       const baseDamage = player.lastTurnDamageTaken ?? 0;
-      damage = getHungryState(player) === 'awakened' ? Math.floor(baseDamage * 1.5) : baseDamage;
+      const hungryState = getHungryState(player);
+      const multiplier = card.upgraded
+        ? hungryState === 'awakened'
+          ? 1.8
+          : 1.3
+        : hungryState === 'awakened'
+          ? 1.5
+          : 1;
+      damage = Math.floor(baseDamage * multiplier);
     }
     if (card.tags?.includes('cooking') && card.name === '闇鍋') {
       damage = 15;
@@ -147,15 +171,18 @@ function computeEffectiveCardValuesInner(
       damage = Math.floor(damage * dandoriMultiplier);
     }
     if (player.deathWishActive && card.type === 'attack') {
-      damage += 4;
+      damage += player.deathWishDamageBonus ?? 4;
     }
     // calculateCardDamage と同順（弱体前）：次アタック+damage・逆境・全アタック/ターン加算・お守り攻撃加算・具材・ナイフ
     if (card.type === 'attack' && player.nextAttackDamageBoost > 0) {
       damage += player.nextAttackDamageBoost;
     }
+    if (card.type === 'attack' && player.nextAttackDamageBoostThisTurn > 0) {
+      damage += player.nextAttackDamageBoostThisTurn;
+    }
     if (card.type === 'attack' && player.lowHpDamageBoost > 0) {
       const ratio = player.currentHp / Math.max(1, player.maxHp);
-      if (ratio <= 0.5) {
+      if (ratio <= (player.lowHpDamageBoostThreshold ?? 0.5)) {
         damage += player.lowHpDamageBoost;
       }
     }
@@ -186,6 +213,7 @@ function computeEffectiveCardValuesInner(
     }
     if (
       (card.damage ?? 0) > 0 ||
+      ((isCardIdVariantOf(card.id, 'kitchen_law') || isCardIdVariantOf(card.id, 'death_flambe')) && damage > 0) ||
       card.tags?.includes('missing_hp_damage') ||
       card.tags?.includes('missing_hp_damage_scaled')
     ) {
@@ -233,6 +261,9 @@ function computeEffectiveCardValuesInner(
     }
     if (concentrationApplies && block > 0) {
       block = Math.floor(block * 1.5);
+    }
+    if ((player.blockGainMultiplierThisTurn ?? 1) < 1 && block > 0) {
+      block = Math.floor(block * (player.blockGainMultiplierThisTurn ?? 1));
     }
   }
 
@@ -295,10 +326,12 @@ export const getEffectiveCardValues = (
   const boostBaselinePlayer: PlayerState = {
     ...player,
     nextAttackDamageBoost: 0,
+    nextAttackDamageBoostThisTurn: 0,
     nextAttackBoostCount: 0,
     nextAttackBoostValue: 0,
     attackDamageBonusAllAttacks: 0,
     turnAttackDamageBonus: 0,
+    lowHpDamageBoost: 0,
   };
   const boostBaselineSlots = (toolSlots ?? []).filter(
     (s) => s?.card && !isCardIdVariantOf(s.card.id, 'knife_set'),

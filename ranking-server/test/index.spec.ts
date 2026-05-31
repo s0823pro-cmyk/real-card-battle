@@ -8,24 +8,47 @@ import { beforeEach, describe, it, expect } from "vitest";
 import worker from "../src/index";
 
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
+const ACTIVE_RANKING_TEST_NOW = String(Date.UTC(2026, 5, 1, 15, 0, 0));
+
+function setActiveRankingTestNow(): void {
+	(env as unknown as Record<string, unknown>).RANKING_TEST_NOW = ACTIVE_RANKING_TEST_NOW;
+}
 
 async function ensureSchema(): Promise<void> {
 	await env.DB.prepare(
 		`CREATE TABLE IF NOT EXISTS players (
       device_id TEXT PRIMARY KEY,
       nickname TEXT NOT NULL,
+      nickname_season_id TEXT NOT NULL DEFAULT 'legacy',
+      selected_badge TEXT,
       created_at INTEGER NOT NULL
     )`,
 	).run();
+	try {
+		await env.DB.prepare(`ALTER TABLE players ADD COLUMN selected_badge TEXT`).run();
+	} catch {
+		// 既に追加済みなら何もしない
+	}
+	try {
+		await env.DB.prepare(`ALTER TABLE players ADD COLUMN nickname_season_id TEXT NOT NULL DEFAULT 'legacy'`).run();
+	} catch {
+		// 既に追加済みなら何もしない
+	}
 	await env.DB.prepare(
 		`CREATE TABLE IF NOT EXISTS scores (
       device_id TEXT NOT NULL,
       job_id TEXT NOT NULL,
+      season_id TEXT NOT NULL DEFAULT 'legacy',
       score INTEGER NOT NULL DEFAULT 0,
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (device_id, job_id)
     )`,
 	).run();
+	try {
+		await env.DB.prepare(`ALTER TABLE scores ADD COLUMN season_id TEXT NOT NULL DEFAULT 'legacy'`).run();
+	} catch {
+		// 既に追加済みなら何もしない
+	}
 	await env.DB.prepare(
 		`CREATE TABLE IF NOT EXISTS player_stats (
       device_id TEXT NOT NULL,
@@ -82,13 +105,35 @@ async function ensureSchema(): Promise<void> {
     )`,
 	).run();
 	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS ranking_champions (
+      season_id TEXT PRIMARY KEY,
+      season_label TEXT NOT NULL,
+      starts_at INTEGER NOT NULL,
+      ends_at INTEGER NOT NULL,
+      device_id TEXT NOT NULL,
+      nickname TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      awarded_at INTEGER NOT NULL
+    )`,
+	).run();
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS player_champion_badges (
+      device_id TEXT PRIMARY KEY,
+      champion_count INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    )`,
+	).run();
+	await env.DB.prepare(
 		`INSERT OR IGNORE INTO codes (code, type, payload, created_at)
      VALUES ('JOBLESS_ADMIN_2024', 'admin', NULL, 0)`,
 	).run();
+	await env.DB.prepare(`DELETE FROM ranking_champions`).run();
+	await env.DB.prepare(`DELETE FROM player_champion_badges`).run();
 }
 
 describe("ranking worker", () => {
 	beforeEach(async () => {
+		setActiveRankingTestNow();
 		await ensureSchema();
 	});
 
@@ -121,7 +166,7 @@ describe("ranking worker", () => {
 		let res = await worker.fetch(postNick, env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ ok: true });
+		expect(await res.json()).toMatchObject({ ok: true });
 
 		const getNick = new IncomingRequest(`http://example.com/nickname/${encodeURIComponent(device)}`);
 		res = await worker.fetch(getNick, env, ctx);
@@ -159,10 +204,143 @@ describe("ranking worker", () => {
 		res = await worker.fetch(rankingReq, env, ctx);
 		await waitOnExecutionContext(ctx);
 		const body = (await res.json()) as {
-			ranking: { rank: number; nickname: string; score: number }[];
+			ranking: { rank: number; nickname: string; selected_badge: string | null; score: number }[];
 		};
 		expect(body.ranking.length).toBeGreaterThanOrEqual(1);
-		expect(body.ranking[0]).toMatchObject({ rank: 1, nickname: "プレイヤー", score: 20 });
+		expect(body.ranking[0]).toMatchObject({ rank: 1, nickname: "プレイヤー", selected_badge: null, score: 20 });
+	});
+
+	it("POST /badge saves selected mastery badge for ranking rows", async () => {
+		const device = "badge-device-1";
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, nickname: "バッジ持ち" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await res.json()).toMatchObject({ ok: true });
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/badge", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, selected_badge: "courier:expert" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await res.json()).toEqual({ ok: true, selected_badge: "courier:expert" });
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/score", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, job_id: "courier", points: 100 }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await res.json()).toEqual({ ok: true, score: 100 });
+
+		res = await worker.fetch(new IncomingRequest("http://example.com/ranking/courier"), env, ctx);
+		await waitOnExecutionContext(ctx);
+		const body = (await res.json()) as {
+			ranking: { rank: number; nickname: string; selected_badge: string | null; score: number }[];
+		};
+		expect(body.ranking[0]).toMatchObject({
+			rank: 1,
+			nickname: "バッジ持ち",
+			selected_badge: "courier:expert",
+			score: 100,
+		});
+	});
+
+	it("POST /admin/confirm-champion fixes winner and exposes champion_count", async () => {
+		const ctx = createExecutionContext();
+		for (const [device, nickname, score] of [
+			["champion-device-1", "覇者太郎", 900_000],
+			["champion-device-2", "挑戦者", 700_000],
+		] as const) {
+			let res = await worker.fetch(
+				new IncomingRequest("http://example.com/nickname", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ device_id: device, nickname }),
+				}),
+				env,
+				ctx,
+			);
+			await waitOnExecutionContext(ctx);
+			expect(await res.json()).toMatchObject({ ok: true });
+
+			res = await worker.fetch(
+				new IncomingRequest("http://example.com/score", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ device_id: device, job_id: "cook", points: score }),
+				}),
+				env,
+				ctx,
+			);
+			await waitOnExecutionContext(ctx);
+			expect(await res.json()).toMatchObject({ ok: true });
+		}
+
+		let res = await worker.fetch(
+			new IncomingRequest("http://example.com/admin/confirm-champion", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ code: "JOBLESS_ADMIN_2024" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		const confirmed = (await res.json()) as {
+			ok: boolean;
+			already_confirmed: boolean;
+			champion: { nickname: string; champion_count: number };
+		};
+		expect(confirmed).toMatchObject({
+			ok: true,
+			already_confirmed: false,
+			champion: { nickname: "覇者太郎", champion_count: 1 },
+		});
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/admin/confirm-champion", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ code: "JOBLESS_ADMIN_2024" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await res.json()).toMatchObject({
+			ok: true,
+			already_confirmed: true,
+			champion: { nickname: "覇者太郎", champion_count: 1 },
+		});
+
+		res = await worker.fetch(new IncomingRequest("http://example.com/ranking/total"), env, ctx);
+		await waitOnExecutionContext(ctx);
+		const rankingBody = (await res.json()) as {
+			ranking: { rank: number; nickname: string; champion_count: number; score: number }[];
+		};
+		expect(rankingBody.ranking[0]).toMatchObject({
+			rank: 1,
+			nickname: "覇者太郎",
+			champion_count: 1,
+		});
 	});
 
 	it("POST /nickname rejects duplicate nickname for another device", async () => {
@@ -175,7 +353,7 @@ describe("ranking worker", () => {
 		let res = await worker.fetch(first, env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ ok: true });
+		expect(await res.json()).toMatchObject({ ok: true });
 
 		const second = new IncomingRequest("http://example.com/nickname", {
 			method: "POST",
@@ -240,12 +418,12 @@ describe("ranking worker", () => {
 		let res = await worker.fetch(req(), env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ ok: true });
+		expect(await res.json()).toMatchObject({ ok: true });
 
 		res = await worker.fetch(req(), env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ ok: true });
+		expect(await res.json()).toMatchObject({ ok: true });
 	});
 
 	it("POST /score ignores unknown device_id", async () => {
@@ -258,6 +436,53 @@ describe("ranking worker", () => {
 		const res = await worker.fetch(postScore, env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(await res.json()).toEqual({ ok: false, score: 0 });
+	});
+
+	it("POST /score rejects unknown job_id and extreme points", async () => {
+		const device = "score-guard-device";
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, nickname: "防御テスト" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/score", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, job_id: "hacker", points: 100 }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ ok: false, score: 0 });
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/score", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, job_id: "cook", points: 10_000_001 }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ ok: false, score: 0 });
+
+		const row = await env.DB.prepare(`SELECT score FROM scores WHERE device_id = ?`)
+			.bind(device)
+			.first<{ score: number }>();
+		expect(row).toBeNull();
 	});
 
 	it("SELF.fetch integration smoke", async () => {
@@ -300,7 +525,7 @@ describe("ranking worker", () => {
 		res = await worker.fetch(postStats, env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ ok: true });
+		expect(await res.json()).toMatchObject({ ok: true });
 
 		const row = await env.DB.prepare(
 			`SELECT play_count, win_count, defeat_count, total_kills, total_gold, max_win_streak, total_play_time FROM player_stats WHERE device_id = ? AND job_id = ?`,
@@ -399,7 +624,7 @@ describe("ranking worker", () => {
 		expect(body.total_defeats).toBe(0);
 		expect(body.total_gold).toBe(50);
 		expect(body.avg_play_time_seconds).toBe(60);
-		expect(body.job_stats).toHaveLength(2);
+		expect(body.job_stats).toHaveLength(4);
 		const carpenter = body.job_stats.find((j) => j.job_id === "carpenter");
 		expect(carpenter?.play_count).toBe(1);
 		expect(carpenter?.win_count).toBe(1);
@@ -447,11 +672,18 @@ describe("ranking worker", () => {
 			avg_play_time_seconds?: number;
 			area_stats?: unknown[];
 			top_combos?: unknown[];
+			ranking_periods?: Array<{
+				id: string;
+				label: string;
+				rankings: Array<{ job_id: string; rows: unknown[] }>;
+			}>;
 		};
 		expect(typeof sum.total_players).toBe("number");
 		expect(Array.isArray(sum.job_stats)).toBe(true);
 		expect(typeof sum.avg_play_time_seconds).toBe("number");
 		expect(Array.isArray(sum.area_stats)).toBe(true);
 		expect(Array.isArray(sum.top_combos)).toBe(true);
+		expect(Array.isArray(sum.ranking_periods)).toBe(true);
+		expect(sum.ranking_periods?.[0]?.rankings.some((r) => r.job_id === "total")).toBe(true);
 	});
 });

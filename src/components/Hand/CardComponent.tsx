@@ -10,6 +10,7 @@ import {
   isIngredientCard,
   reserveBonusActiveForCard,
 } from '../../utils/cardBadgeRules';
+import { getMasteryCardImageUrl, JOB_MASTERY_CHANGED_EVENT } from '../../utils/jobMasterySystem';
 interface Props {
   card: Card;
   jobId: JobId;
@@ -60,6 +61,7 @@ const CardComponent = ({
 }: Props) => {
   const { t } = useLanguage();
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const [masterySkinVersion, setMasterySkinVersion] = useState(0);
   const nameRef = useRef<HTMLSpanElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
 
@@ -69,7 +71,13 @@ const CardComponent = ({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setImageLoadFailed(false);
-  }, [card.id, card.imageUrl]);
+  }, [card.id, card.imageUrl, card.imageVariant2Url, masterySkinVersion]);
+
+  useEffect(() => {
+    const onMasteryChanged = () => setMasterySkinVersion((v) => v + 1);
+    window.addEventListener(JOB_MASTERY_CHANGED_EVENT, onMasteryChanged);
+    return () => window.removeEventListener(JOB_MASTERY_CHANGED_EVENT, onMasteryChanged);
+  }, []);
 
   useEffect(() => {
     const nameEl = nameRef.current;
@@ -101,6 +109,7 @@ const CardComponent = ({
     carpenter: '#c0392b',
     cook: '#f9ca24',
     unemployed: '#3d444d',
+    courier: '#22c55e',
   } as const;
   const NEUTRAL_COLOR = '#ffffff';
 
@@ -146,27 +155,43 @@ const CardComponent = ({
 
   const BADGE_LABELS: Record<CardBadge, string> = {
     exhaust: '消耗',
+    vanish: '消滅',
+    limited: '制限',
     setup: '準備',
     self_damage: '自傷',
     reserve: '温存',
     oikomi: '追込',
     ingredient: '食材',
     cooking: '調理',
+    stamina: 'スタミナ',
+    immovable: '不動',
+    unyielding: '不屈',
   };
 
-  /** 名前行左：温存・消耗・追込・自傷（card.badges の順） */
-  const genericNameBadges: CardBadge[] = (card.badges ?? []).filter((b) =>
-    b === 'exhaust' || b === 'reserve' || b === 'oikomi' || b === 'self_damage',
-  );
-  /** タイプバッジ左：準備 */
-  const hasSetupBadge = (card.badges ?? []).includes('setup');
-  /** タイプバッジ左（単独時）／左：調理 */
+  const SUB_BADGE_PRIORITY: CardBadge[] = [
+    'stamina',
+    'unyielding',
+    'immovable',
+    'setup',
+    'cooking',
+    'ingredient',
+    'reserve',
+    'oikomi',
+  ];
+  const STATUS_BADGE_PRIORITY: CardBadge[] = ['limited', 'vanish', 'exhaust', 'self_damage'];
+
   const hasCookingBadge =
     card.tags?.includes('cooking') || card.effects?.some((e) => e.type === 'cooking_gauge');
   const hasIngredientBadge = isIngredientCard(card);
-  /** 調理+食材のときだけ【食材】をタイプの右。食材のみのときは左に出す */
-  const ingredientAfterType = hasCookingBadge && hasIngredientBadge;
-  const ingredientBeforeType = hasIngredientBadge && !ingredientAfterType;
+  const displayBadgeSet = new Set<CardBadge>(card.badges ?? []);
+  if (hasCookingBadge) displayBadgeSet.add('cooking');
+  if (hasIngredientBadge) displayBadgeSet.add('ingredient');
+  const statusBadges = STATUS_BADGE_PRIORITY.filter((badge) => displayBadgeSet.has(badge)).slice(0, 2);
+  const statusBadgeLabel = statusBadges.map((badge) => BADGE_LABELS[badge]).join('/');
+  const statusBadgeClass = statusBadges[0] ?? null;
+  const displaySubBadges = SUB_BADGE_PRIORITY.filter((badge) => displayBadgeSet.has(badge)).slice(0, 2);
+  const leftSubBadge = displaySubBadges[0] ?? null;
+  const rightSubBadge = displaySubBadges[1] ?? null;
   const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const replaceChangedValue = (
     source: ReactNode[],
@@ -234,8 +259,10 @@ const CardComponent = ({
 
   const typeColor = TYPE_COLORS[card.type] ?? TYPE_COLORS.status;
   const rarity = getRarity(card);
+  const isLegendaryCard = Boolean(card.tags?.includes('legendary'));
   const rarityStyle = RARITY_STYLES[rarity];
   const reserveBonusReady = reserveBonusActiveForCard(card);
+  const displayImageUrl = getMasteryCardImageUrl(jobId, card);
   const getJobColor = (targetCard: Card, targetJobId: JobId): string => {
     if (targetCard.neutral) return NEUTRAL_COLOR;
     return JOB_COLORS[targetJobId] ?? '#3d444d';
@@ -275,17 +302,19 @@ const CardComponent = ({
     >
       <div
         className={`hand-card-inner card-frame card-frame--${rarity} ${
+          isLegendaryCard ? 'card-frame--legend' : ''
+        } ${
           zukanMode === 'list' ? 'card-frame--no-animation' : ''
         }`}
         style={innerStyle}
         ref={headerRef}
       >
-        {(rarity === 'uncommon' || rarity === 'rare') && <div className="card-particles" />}
+        {(rarity === 'uncommon' || rarity === 'rare' || isLegendaryCard) && <div className="card-particles" />}
         <div className="card-bg-illustration">
-          {card.imageUrl && !imageLoadFailed ? (
+          {displayImageUrl && !imageLoadFailed ? (
             <img
               className="card-bg-img"
-              src={card.imageUrl}
+              src={displayImageUrl}
               alt={displayCardName}
               draggable={false}
               onError={() => setImageLoadFailed(true)}
@@ -314,14 +343,10 @@ const CardComponent = ({
           <div className="card-name-row">
             <div className="card-name-cluster">
               <div className="card-name-cluster__side card-name-cluster__side--left">
-                {genericNameBadges.length > 0 && (
-                  <div className="card-name-badges">
-                    {genericNameBadges.map((badge, index) => (
-                      <span key={`name-${badge}-${index}`} className={`card-badge card-badge--${badge}`}>
-                        {BADGE_LABELS[badge]}
-                      </span>
-                    ))}
-                  </div>
+                {statusBadgeClass && (
+                  <span className={`card-badge card-name-badge card-badge--${statusBadgeClass}`}>
+                    {statusBadgeLabel}
+                  </span>
                 )}
               </div>
               <div className="card-name-cluster__center">
@@ -335,14 +360,8 @@ const CardComponent = ({
           <div className="card-type-row">
             <div className="card-type-cluster">
               <div className="card-type-cluster__side card-type-cluster__side--left">
-                {hasSetupBadge && (
-                  <span className="card-badge card-badge--setup">{BADGE_LABELS.setup}</span>
-                )}
-                {hasCookingBadge && (
-                  <span className="card-badge card-badge--cooking">{BADGE_LABELS.cooking}</span>
-                )}
-                {ingredientBeforeType && (
-                  <span className="card-badge card-badge--ingredient">{BADGE_LABELS.ingredient}</span>
+                {leftSubBadge && (
+                  <span className={`card-badge card-badge--${leftSubBadge}`}>{BADGE_LABELS[leftSubBadge]}</span>
                 )}
               </div>
               <div className="card-type-cluster__center">
@@ -354,8 +373,8 @@ const CardComponent = ({
                 </div>
               </div>
               <div className="card-type-cluster__side card-type-cluster__side--right">
-                {ingredientAfterType && (
-                  <span className="card-badge card-badge--ingredient">{BADGE_LABELS.ingredient}</span>
+                {rightSubBadge && (
+                  <span className={`card-badge card-badge--${rightSubBadge}`}>{BADGE_LABELS[rightSubBadge]}</span>
                 )}
               </div>
             </div>

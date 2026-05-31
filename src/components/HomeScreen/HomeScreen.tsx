@@ -16,6 +16,18 @@ import {
   COOK_E2_STORY,
   COOK_E3_STORY,
 } from '../../data/stories/cookStory';
+import {
+  UNEMPLOYED_STORY,
+  UNEMPLOYED_E1_STORY,
+  UNEMPLOYED_E2_STORY,
+  UNEMPLOYED_E3_STORY,
+} from '../../data/stories/unemployedStory';
+import {
+  COURIER_STORY,
+  COURIER_E1_STORY,
+  COURIER_E2_STORY,
+  COURIER_E3_STORY,
+} from '../../data/stories/courierStory';
 import type { StoryScene } from '../../data/stories/carpenterStory';
 import type { GameProgress } from '../../types/run';
 import type { DevDestination } from '../../hooks/useRunProgress';
@@ -40,19 +52,30 @@ import {
 } from '../../utils/achievementSystem';
 import { getAdsRemoved, PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
 import { DEBUG_ENEMY_HP1_KEY, getDebugEnemyHp1, setDebugEnemyHp1 } from '../../utils/debugEnemyHp1';
+import { DEBUG_TOOLS_CHANGED_EVENT, getDebugToolsEnabled, setDebugToolsEnabled } from '../../utils/debugTools';
 import { unlockJob } from '../../utils/jobUnlockSystem';
-import { resetTutorial } from '../../utils/tutorialState';
+import {
+  markTutorialSeen,
+  resetRankingTutorial,
+  resetTutorial,
+  shouldShowRankingRenewalPrompt,
+  snoozeRankingRenewalPrompt,
+} from '../../utils/tutorialState';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
-import { getAdminSummary, getMyStats, verifyCode } from '../../utils/statsApi';
+import { confirmRankingChampion, getAdminSummary, getMyStats, verifyCode } from '../../utils/statsApi';
 import type { MyStatsResponse } from '../../utils/statsApi';
 import type { Card, JobId } from '../../types/game';
 import {
+  getRankingNicknameStorageKeys,
+  getRankingSeasonDebugPreviewEnabled,
   getStoredRankingNickname,
   nicknameCharLength,
   postRankingNickname,
   RANKING_DEVICE_ID_KEY,
   RANKING_NICKNAME_KEY,
+  RANKING_SEASON_DEBUG_PREVIEW_CHANGED_EVENT,
   RANKING_SCORE_CACHE_STORAGE_KEYS,
+  setRankingSeasonDebugPreviewEnabled,
 } from '../../utils/rankingClient';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { MessageKey } from '../../i18n';
@@ -70,6 +93,9 @@ import CardComponent from '../Hand/CardComponent';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
 import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 
+const ENABLE_DEV_TOOLS =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true';
+
 interface HomeScreenProps {
   onStart: () => void;
   onOpenZukan: () => void;
@@ -83,14 +109,14 @@ interface HomeScreenProps {
 
 type ModalType = 'howto' | 'credits' | null;
 type HowtoTab = 'glossary' | 'story';
-type StoryJobKey = 'carpenter' | 'cook' | 'unemployed';
+type StoryJobKey = 'carpenter' | 'cook' | 'unemployed' | 'courier';
 
 /** 実績一覧の職業タブ（「全て」＋職業・共通） */
 type AchievementJobTab = 'all' | JobId | 'common';
 
 const achievementRewardModalJobId = (a: Achievement | null): JobId => {
   const j = a?.jobId;
-  if (j === 'cook' || j === 'unemployed' || j === 'carpenter') return j;
+  if (j === 'cook' || j === 'unemployed' || j === 'courier' || j === 'carpenter') return j;
   return 'carpenter';
 };
 
@@ -111,6 +137,33 @@ type AdminSummaryPayload = {
     clear_rate: number;
   }>;
   top_combos?: Array<{ combo_key: string; use_count: number }>;
+  current_season?: {
+    id: string;
+    label: string;
+    starts_at: number;
+    ends_at: number;
+    tally_ends_at: number;
+    is_active: boolean;
+  };
+  champions?: Array<{
+    season_id: string;
+    season_label: string;
+    device_id: string;
+    nickname: string;
+    score: number;
+    champion_count: number;
+    awarded_at: number;
+  }>;
+  ranking_periods?: Array<{
+    id: string;
+    label: string;
+    starts_at?: number;
+    ends_at?: number;
+    rankings: Array<{
+      job_id: 'total' | string;
+      rows: Array<{ rank: number; nickname: string; score: number; updated_at: number }>;
+    }>;
+  }>;
 };
 
 const MY_STATS_CARD_PREVIEW_WIDTH = 72;
@@ -165,6 +218,16 @@ function adminComboLabel(
   const [a, b] = parts;
   return `${t(cardNameKey(a), {}, a)} + ${t(cardNameKey(b), {}, b)}`;
 }
+
+function formatAdminDateTime(ms?: number): string {
+  if (ms == null || !Number.isFinite(ms)) return '-';
+  return new Date(ms).toLocaleString('ja-JP', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 type StoryEpisodeId =
   | 'carpenter_opening'
   | 'carpenter_e1'
@@ -174,7 +237,14 @@ type StoryEpisodeId =
   | 'cook_e1'
   | 'cook_e2'
   | 'cook_e3'
-  | 'unemployed_planned';
+  | 'unemployed_opening'
+  | 'unemployed_e1'
+  | 'unemployed_e2'
+  | 'unemployed_e3'
+  | 'courier_opening'
+  | 'courier_e1'
+  | 'courier_e2'
+  | 'courier_e3';
 
 interface FireflyParticle {
   x: number;
@@ -385,8 +455,10 @@ const HomeScreen = ({
   const [showTutorialResetModal, setShowTutorialResetModal] = useState(false);
   const [showHomeGlossary, setShowHomeGlossary] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
+  const [showRankingTutorialPrompt, setShowRankingTutorialPrompt] = useState(false);
   const [rankingNicknameModalOpen, setRankingNicknameModalOpen] = useState(false);
   const [rankingNicknameDraft, setRankingNicknameDraft] = useState('');
+  const [rankingNicknameConsent, setRankingNicknameConsent] = useState(false);
   const [rankingNicknameBusy, setRankingNicknameBusy] = useState(false);
   const [rankingNicknameErr, setRankingNicknameErr] = useState<string | null>(null);
   const [achievementRefreshKey, setAchievementRefreshKey] = useState(0);
@@ -399,6 +471,7 @@ const HomeScreen = ({
     carpenter: 0,
     cook: 0,
     unemployed: 0,
+    courier: 0,
   });
   const [fallingIndex, setFallingIndex] = useState<number | null>(null);
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -423,7 +496,10 @@ const HomeScreen = ({
     [t],
   );
 
-  const unlockedIds = useMemo(() => getUnlockedAchievementIds(), [achievementRefreshKey]);
+  const unlockedIds = useMemo(() => {
+    void achievementRefreshKey;
+    return getUnlockedAchievementIds();
+  }, [achievementRefreshKey]);
 
   useEffect(() => {
     try {
@@ -434,6 +510,14 @@ const HomeScreen = ({
     } catch {
       /* localStorage 不可 */
     }
+  }, []);
+
+  useEffect(() => {
+    if (!shouldShowRankingRenewalPrompt()) return;
+    const timer = window.setTimeout(() => {
+      setShowRankingTutorialPrompt(true);
+    }, 450);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const filteredAchievements = useMemo(() => {
@@ -476,12 +560,21 @@ const HomeScreen = ({
           jobNameKey: 'job.unemployed.name' as const,
           icon: '✊',
           episodes: [
-            {
-              id: 'unemployed_planned',
-              chapterKey: 'home.story.planned',
-              scenes: [],
-              planned: true,
-            },
+            { id: 'unemployed_opening', chapterKey: 'home.story.prologue', scenes: UNEMPLOYED_STORY, planned: false },
+            { id: 'unemployed_e1', chapterKey: 'home.story.chapter1', scenes: UNEMPLOYED_E1_STORY, planned: false },
+            { id: 'unemployed_e2', chapterKey: 'home.story.chapter2', scenes: UNEMPLOYED_E2_STORY, planned: false },
+            { id: 'unemployed_e3', chapterKey: 'home.story.ending', scenes: UNEMPLOYED_E3_STORY, planned: false },
+          ] satisfies HowtoStoryEpisode[],
+        },
+        {
+          jobKey: 'courier' as const,
+          jobNameKey: 'job.courier.name' as const,
+          icon: '🏍️',
+          episodes: [
+            { id: 'courier_opening', chapterKey: 'home.story.prologue', scenes: COURIER_STORY, planned: false },
+            { id: 'courier_e1', chapterKey: 'home.story.chapter1', scenes: COURIER_E1_STORY, planned: false },
+            { id: 'courier_e2', chapterKey: 'home.story.chapter2', scenes: COURIER_E2_STORY, planned: false },
+            { id: 'courier_e3', chapterKey: 'home.story.ending', scenes: COURIER_E3_STORY, planned: false },
           ] satisfies HowtoStoryEpisode[],
         },
       ],
@@ -508,6 +601,19 @@ const HomeScreen = ({
       }
     }
     return [];
+  };
+
+  const getStoryJobId = (episodeId: StoryEpisodeId): StoryJobKey => {
+    if (episodeId.startsWith('cook')) return 'cook';
+    if (episodeId.startsWith('unemployed')) return 'unemployed';
+    if (episodeId.startsWith('courier')) return 'courier';
+    return 'carpenter';
+  };
+
+  const getStoryBgmArea = (episodeId: StoryEpisodeId): number => {
+    if (episodeId.endsWith('_e1')) return 2;
+    if (episodeId.endsWith('_e2') || episodeId.endsWith('_e3')) return 3;
+    return 1;
   };
 
   const moveStorySelection = (jobKey: StoryJobKey, direction: -1 | 1, maxLength: number) => {
@@ -539,10 +645,15 @@ const HomeScreen = ({
   const [isAdFree, setIsAdFree] = useState(() => getAdsRemoved());
   const [iapBusy, setIapBusy] = useState(false);
   const [debugEnemyHp1, setDebugEnemyHp1Local] = useState(() => getDebugEnemyHp1());
+  const [debugToolsEnabled, setDebugToolsEnabledLocal] = useState(() => getDebugToolsEnabled());
+  const [rankingSeasonDebugPreview, setRankingSeasonDebugPreviewLocal] = useState(() => getRankingSeasonDebugPreviewEnabled());
+  const [hasAdminCodeAccess, setHasAdminCodeAccess] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
   const [codeBusy, setCodeBusy] = useState(false);
   const [adminSummary, setAdminSummary] = useState<AdminSummaryPayload | null>(null);
+  const [championConfirmBusy, setChampionConfirmBusy] = useState(false);
+  const [championConfirmMessage, setChampionConfirmMessage] = useState<string | null>(null);
   const [giftToast, setGiftToast] = useState<string | null>(null);
   const giftToastTimerRef = useRef<number | null>(null);
   const [myStatsLoading, setMyStatsLoading] = useState(false);
@@ -558,6 +669,81 @@ const HomeScreen = ({
     window.addEventListener('ads-removed-changed', onAdsRemoved);
     return () => window.removeEventListener('ads-removed-changed', onAdsRemoved);
   }, []);
+
+  useEffect(() => {
+    const onDebugToolsChanged = () => setDebugToolsEnabledLocal(getDebugToolsEnabled());
+    window.addEventListener(DEBUG_TOOLS_CHANGED_EVENT, onDebugToolsChanged);
+    return () => window.removeEventListener(DEBUG_TOOLS_CHANGED_EVENT, onDebugToolsChanged);
+  }, []);
+
+  useEffect(() => {
+    const onRankingSeasonPreviewChanged = () => setRankingSeasonDebugPreviewLocal(getRankingSeasonDebugPreviewEnabled());
+    window.addEventListener(RANKING_SEASON_DEBUG_PREVIEW_CHANGED_EVENT, onRankingSeasonPreviewChanged);
+    return () => window.removeEventListener(RANKING_SEASON_DEBUG_PREVIEW_CHANGED_EVENT, onRankingSeasonPreviewChanged);
+  }, []);
+
+  const toggleDebugTools = () => {
+    const next = !debugToolsEnabled;
+    setDebugToolsEnabled(next);
+    setDebugToolsEnabledLocal(next);
+  };
+
+  const toggleRankingSeasonDebugPreview = () => {
+    const next = !rankingSeasonDebugPreview;
+    setRankingSeasonDebugPreviewEnabled(next);
+    setRankingSeasonDebugPreviewLocal(next);
+  };
+
+  const canShowDevTools = ENABLE_DEV_TOOLS || debugToolsEnabled;
+
+  const handleAdminDevNavigate = (destination: DevDestination) => {
+    setAdminSummary(null);
+    onDevNavigate?.(destination);
+  };
+
+  const renderAdminDeveloperPanel = () => (
+    <div className={`settings-admin-dev-panel ${debugToolsEnabled ? 'is-on' : 'is-off'}`}>
+      <div className="settings-admin-dev-panel-head">
+        <span>開発者用メニュー</span>
+        <span>{debugToolsEnabled ? 'ON' : 'OFF'}</span>
+      </div>
+      {debugToolsEnabled ? (
+        <div className="settings-admin-dev-grid">
+          <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('courier_all_cards_run')}>
+            🏍️ 配達員全カードラン
+          </button>
+          <button type="button" className="btn-dev" onClick={toggleRankingSeasonDebugPreview}>
+            ランキング第2回プレビュー {rankingSeasonDebugPreview ? 'OFF' : 'ON'}
+          </button>
+          <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('debug_zukan_cards')}>
+            {t('settings.dev.debugZukanCards')}
+          </button>
+          <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('debug_zukan_enemies')}>
+            {t('settings.dev.debugZukanEnemies')}
+          </button>
+          <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('debug_zukan_stories')}>
+            {t('settings.dev.debugZukanStories')}
+          </button>
+          <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('battle_normal')}>
+            {t('settings.dev.normalBattle')}
+          </button>
+          <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('battle_elite')}>
+            {t('settings.dev.eliteBattle')}
+          </button>
+          <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('battle_boss_1')}>
+            {t('settings.dev.boss1')}
+          </button>
+          <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('battle_all_cards')}>
+            {t('settings.dev.allCardsBattle')}
+          </button>
+        </div>
+      ) : (
+        <p className="settings-admin-dev-panel-note">
+          デバッグモードをONにすると、ここに開発者用ボタンが表示されます。
+        </p>
+      )}
+    </div>
+  );
 
   useEffect(() => {
     return () => {
@@ -622,15 +808,18 @@ const HomeScreen = ({
   };
 
   const jobLabel = (jobId: string) => {
+    if (jobId === 'total') return '総合';
     if (jobId === 'carpenter') return t('job.carpenter.name');
     if (jobId === 'cook') return t('job.cook.name');
     if (jobId === 'unemployed') return t('job.unemployed.name');
+    if (jobId === 'courier') return t('job.courier.name');
     return jobId;
   };
 
   const handleVerifyCode = async () => {
     const trimmed = codeInput.trim();
     setCodeError(null);
+    setChampionConfirmMessage(null);
     if (!trimmed) {
       setCodeError(t('home.settings.codeInvalid'));
       return;
@@ -651,6 +840,7 @@ const HomeScreen = ({
         }, 3200);
         return;
       }
+      setHasAdminCodeAccess(true);
       const raw = await getAdminSummary(trimmed);
       if (raw === null || (typeof raw === 'object' && raw !== null && 'error' in raw)) {
         setCodeError(t('home.settings.summaryLoadError'));
@@ -663,6 +853,52 @@ const HomeScreen = ({
       setAdminSummary(raw);
     } finally {
       setCodeBusy(false);
+    }
+  };
+
+  const handleConfirmRankingChampion = async () => {
+    const trimmed = codeInput.trim();
+    if (!trimmed || championConfirmBusy) return;
+    const seasonLabel = adminSummary?.current_season?.label ?? '現在のシーズン';
+    if (!window.confirm(`${seasonLabel} の総合1位を優勝者として確定します。よろしいですか？`)) {
+      return;
+    }
+    setChampionConfirmBusy(true);
+    setChampionConfirmMessage(null);
+    try {
+      const raw = await confirmRankingChampion(trimmed);
+      if (!raw || typeof raw !== 'object') {
+        setChampionConfirmMessage('優勝者確定に失敗しました。');
+        return;
+      }
+      const body = raw as {
+        ok?: boolean;
+        already_confirmed?: boolean;
+        error?: string;
+        champion?: { nickname?: string; score?: number; champion_count?: number };
+      };
+      if (!body.ok) {
+        setChampionConfirmMessage(
+          body.error === 'no_ranking_rows'
+            ? '確定できるランキングデータがありません。'
+            : '優勝者確定に失敗しました。',
+        );
+        return;
+      }
+      const nickname = body.champion?.nickname ?? '優勝者';
+      const score = typeof body.champion?.score === 'number' ? body.champion.score.toLocaleString() : '-';
+      const count = body.champion?.champion_count ?? 1;
+      setChampionConfirmMessage(
+        body.already_confirmed
+          ? `確定済み: ${nickname} / ${score} pt / 覇者${count}`
+          : `確定しました: ${nickname} / ${score} pt / 覇者${count}`,
+      );
+      const summaryRaw = await getAdminSummary(trimmed);
+      if (isAdminSummary(summaryRaw)) {
+        setAdminSummary(summaryRaw);
+      }
+    } finally {
+      setChampionConfirmBusy(false);
     }
   };
 
@@ -759,9 +995,21 @@ const HomeScreen = ({
       return;
     }
     setRankingNicknameDraft('');
+    setRankingNicknameConsent(false);
     setRankingNicknameErr(null);
     setRankingNicknameModalOpen(true);
   }, [onOpenRanking]);
+
+  const handleSkipRankingTutorial = useCallback(() => {
+    snoozeRankingRenewalPrompt();
+    setShowRankingTutorialPrompt(false);
+  }, []);
+
+  const handleViewRankingFromTutorial = useCallback(() => {
+    markTutorialSeen('ranking');
+    setShowRankingTutorialPrompt(false);
+    handleOpenRanking();
+  }, [handleOpenRanking]);
 
   const handleRankingNicknameSubmit = useCallback(async () => {
     const len = nicknameCharLength(rankingNicknameDraft);
@@ -771,7 +1019,7 @@ const HomeScreen = ({
     }
     setRankingNicknameBusy(true);
     setRankingNicknameErr(null);
-    const res = await postRankingNickname(rankingNicknameDraft);
+    const res = await postRankingNickname(rankingNicknameDraft, rankingNicknameConsent);
     setRankingNicknameBusy(false);
     if (!res.ok) {
       const err = res.error;
@@ -784,15 +1032,15 @@ const HomeScreen = ({
     }
     setRankingNicknameModalOpen(false);
     onOpenRanking();
-  }, [onOpenRanking, rankingNicknameDraft, t]);
+  }, [onOpenRanking, rankingNicknameConsent, rankingNicknameDraft, t]);
 
   const homeButtons = useMemo(
     () =>
       [
         { id: 'start', label: t('home.gameStart'), className: 'btn-home-start', onClick: onStart },
-        { id: 'zukan', label: t('home.zukan'), className: 'btn-home-zukan', onClick: onOpenZukan },
-        { id: 'records', label: t('home.records'), className: 'btn-home-records', onClick: () => setShowRecords(true) },
         { id: 'ranking', label: `🏆 ${t('home.ranking')}`, className: 'btn-home-ranking', onClick: handleOpenRanking },
+        { id: 'records', label: t('home.records'), className: 'btn-home-records', onClick: () => setShowRecords(true) },
+        { id: 'zukan', label: t('home.zukan'), className: 'btn-home-zukan', onClick: onOpenZukan },
         {
           id: 'settings',
           label: t('home.settings'),
@@ -1127,6 +1375,22 @@ const HomeScreen = ({
             </div>
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
+                <p className="settings-item-title">ランキングリニューアル案内リセット</p>
+                <p className="settings-item-desc">ランキングリニューアル案内を次回起動時に再表示します。</p>
+              </div>
+              <button
+                type="button"
+                className="settings-btn-secondary"
+                onClick={() => {
+                  resetRankingTutorial();
+                  setShowTutorialResetModal(true);
+                }}
+              >
+                {t('home.settings.tutorialResetBtn')}
+              </button>
+            </div>
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
                 <p className="settings-item-title">{t('home.settings.dataResetTitle')}</p>
                 <p className="settings-item-desc">{t('home.settings.dataResetDesc')}</p>
               </div>
@@ -1144,6 +1408,7 @@ const HomeScreen = ({
                     DEBUG_ENEMY_HP1_KEY,
                     RANKING_DEVICE_ID_KEY,
                     RANKING_NICKNAME_KEY,
+                    ...getRankingNicknameStorageKeys(),
                     ...RANKING_SCORE_CACHE_STORAGE_KEYS,
                     'real-card-battle:save-data',
                     'jobless_battle_save',
@@ -1204,6 +1469,14 @@ const HomeScreen = ({
               </button>
             </div>
             {codeError ? <p className="settings-code-error">{codeError}</p> : null}
+            {hasAdminCodeAccess ? (
+              <>
+                <button type="button" className="settings-code-verify-btn settings-debug-toggle-btn" onClick={toggleDebugTools}>
+                  デバッグモード {debugToolsEnabled ? 'OFF' : 'ON'}
+                </button>
+                {renderAdminDeveloperPanel()}
+              </>
+            ) : null}
           </div>
         )}
       </div>
@@ -1320,73 +1593,100 @@ const HomeScreen = ({
         <p className="settings-legal-text">{t('home.settings.adRemoveLegal')}</p>
       </div>
 
-      {import.meta.env.DEV && (
+      {canShowDevTools && (
         <div className="dev-tools">
           <p className="dev-tools-title">{t('settings.devTools')}</p>
-          <div className="dev-tools-grid">
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_normal')}>
-              {t('settings.dev.normalBattle')}
+          <div className="dev-tools-grid dev-tools-grid--primary">
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('debug_zukan_cards')}>
+              {t('settings.dev.debugZukanCards')}
             </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_elite')}>
-              {t('settings.dev.eliteBattle')}
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('debug_zukan_enemies')}>
+              {t('settings.dev.debugZukanEnemies')}
             </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_1')}>
-              {t('settings.dev.boss1')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_2')}>
-              {t('settings.dev.boss2')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_3')}>
-              {t('settings.dev.boss3')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shop')}>
-              {t('settings.dev.pawnshop')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shrine')}>
-              {t('settings.dev.shrine')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('hotel')}>
-              {t('settings.dev.hotel')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('event')}>
-              {t('settings.dev.event')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('card_reward')}>
-              {t('settings.dev.cardReward')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('boss_reward')}>
-              {t('settings.dev.bossReward')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('story')}>
-              {t('settings.dev.story')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_all_cards')}>
-              {t('settings.dev.allCardsBattle')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_cook_all_x2')}>
-              {t('settings.dev.cookAllX2')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_expansion_x2')}>
-              {t('settings.dev.expansionBattle')}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => onDevAddExpansionCards?.()}>
-              {t('home.settings.devExpansionAdd')}
-            </button>
-            <button
-              type="button"
-              className="btn-dev"
-              onClick={() => {
-                const next = !debugEnemyHp1;
-                setDebugEnemyHp1(next);
-                setDebugEnemyHp1Local(next);
-              }}
-            >
-              {t('settings.dev.enemyHp1')} {debugEnemyHp1 ? 'ON' : 'OFF'}
-            </button>
-            <button type="button" className="btn-dev" onClick={() => unlockJob('cook')}>
-              {t('settings.dev.unlockCook')}
+            <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('debug_zukan_stories')}>
+              {t('settings.dev.debugZukanStories')}
             </button>
           </div>
+
+          <details className="dev-tools-section">
+            <summary className="dev-tools-summary">{t('settings.dev.groupBattle')}</summary>
+            <div className="dev-tools-grid">
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_normal')}>
+                {t('settings.dev.normalBattle')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_elite')}>
+                {t('settings.dev.eliteBattle')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_1')}>
+                {t('settings.dev.boss1')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_2')}>
+                {t('settings.dev.boss2')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_boss_3')}>
+                {t('settings.dev.boss3')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_all_cards')}>
+                {t('settings.dev.allCardsBattle')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_cook_all_x2')}>
+                {t('settings.dev.cookAllX2')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_expansion_x2')}>
+                {t('settings.dev.expansionBattle')}
+              </button>
+            </div>
+          </details>
+
+          <details className="dev-tools-section">
+            <summary className="dev-tools-summary">{t('settings.dev.groupFlow')}</summary>
+            <div className="dev-tools-grid">
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shop')}>
+                {t('settings.dev.pawnshop')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('shrine')}>
+                {t('settings.dev.shrine')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('hotel')}>
+                {t('settings.dev.hotel')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('event')}>
+                {t('settings.dev.event')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('card_reward')}>
+                {t('settings.dev.cardReward')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('boss_reward')}>
+                {t('settings.dev.bossReward')}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('story')}>
+                {t('settings.dev.story')}
+              </button>
+            </div>
+          </details>
+
+          <details className="dev-tools-section">
+            <summary className="dev-tools-summary">{t('settings.dev.groupFlags')}</summary>
+            <div className="dev-tools-grid">
+              <button type="button" className="btn-dev" onClick={() => onDevAddExpansionCards?.()}>
+                {t('home.settings.devExpansionAdd')}
+              </button>
+              <button
+                type="button"
+                className="btn-dev"
+                onClick={() => {
+                  const next = !debugEnemyHp1;
+                  setDebugEnemyHp1(next);
+                  setDebugEnemyHp1Local(next);
+                }}
+              >
+                {t('settings.dev.enemyHp1')} {debugEnemyHp1 ? 'ON' : 'OFF'}
+              </button>
+              <button type="button" className="btn-dev" onClick={() => unlockJob('cook')}>
+                {t('settings.dev.unlockCook')}
+              </button>
+            </div>
+          </details>
         </div>
       )}
     </div>
@@ -1469,6 +1769,47 @@ const HomeScreen = ({
                 </button>
               </div>
               <div className="settings-admin-modal-body">
+                <button type="button" className="settings-code-verify-btn settings-debug-toggle-btn" onClick={toggleDebugTools}>
+                  デバッグモード {debugToolsEnabled ? 'OFF' : 'ON'}
+                </button>
+                {renderAdminDeveloperPanel()}
+                <section className="settings-admin-ranking-period settings-admin-champion-box">
+                  <h4 className="settings-admin-subheading">総合優勝者</h4>
+                  <p className="settings-admin-ranking-empty">
+                    対象: {adminSummary.current_season?.label ?? '現在のシーズン'} /{' '}
+                    {adminSummary.current_season?.is_active ? '開催中' : '集計中'}
+                    {adminSummary.current_season
+                      ? `（終了: ${formatAdminDateTime(adminSummary.current_season.ends_at)}）`
+                      : ''}
+                  </p>
+                  <button
+                    type="button"
+                    className="settings-code-verify-btn settings-admin-confirm-champion-btn"
+                    onClick={handleConfirmRankingChampion}
+                    disabled={championConfirmBusy}
+                  >
+                    {championConfirmBusy ? '確定中...' : '優勝者確定'}
+                  </button>
+                  {championConfirmMessage ? (
+                    <p className="settings-admin-champion-message">{championConfirmMessage}</p>
+                  ) : null}
+                  {(adminSummary.champions ?? []).length > 0 ? (
+                    <ol className="settings-admin-ol settings-admin-ranking-ol">
+                      {(adminSummary.champions ?? []).map((row) => (
+                        <li key={`${row.season_id}-${row.device_id}`}>
+                          <span className="settings-admin-list-label">
+                            {row.season_label}: {row.nickname}
+                          </span>
+                          <span className="settings-admin-list-num">
+                            {row.score.toLocaleString()} pt / 覇者{row.champion_count}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="settings-admin-ranking-empty">確定済みの優勝者はいません。</p>
+                  )}
+                </section>
                 <dl className="settings-admin-dl">
                   <div>
                     <dt>{t('home.settings.totalPlayers')}</dt>
@@ -1561,6 +1902,30 @@ const HomeScreen = ({
                     </li>
                   ))}
                 </ol>
+                {(adminSummary.ranking_periods ?? []).map((period) => (
+                  <section key={period.id} className="settings-admin-ranking-period">
+                    <h4 className="settings-admin-subheading">ランキング: {period.label}</h4>
+                    {period.rankings.map((ranking) => (
+                      <details key={`${period.id}-${ranking.job_id}`} className="settings-admin-ranking-details">
+                        <summary>{jobLabel(ranking.job_id)} ({ranking.rows.length}件)</summary>
+                        {ranking.rows.length === 0 ? (
+                          <p className="settings-admin-ranking-empty">データなし</p>
+                        ) : (
+                          <ol className="settings-admin-ol settings-admin-ranking-ol">
+                            {ranking.rows.map((row) => (
+                              <li key={`${period.id}-${ranking.job_id}-${row.rank}-${row.nickname}`}>
+                                <span className="settings-admin-list-label">
+                                  #{row.rank} {row.nickname}
+                                </span>
+                                <span className="settings-admin-list-num">{row.score.toLocaleString()} pt</span>
+                              </li>
+                            ))}
+                          </ol>
+                        )}
+                      </details>
+                    ))}
+                  </section>
+                ))}
               </div>
             </div>
           </div>
@@ -1602,6 +1967,8 @@ const HomeScreen = ({
                   { id: 'all' as const, label: t('home.records.tabAll') },
                   { id: 'carpenter' as const, label: t('home.records.tabCarpenter') },
                   { id: 'cook' as const, label: t('home.records.tabCook') },
+                  { id: 'unemployed' as const, label: t('home.records.tabUnemployed') },
+                  { id: 'courier' as const, label: t('home.records.tabCourier') },
                   { id: 'common' as const, label: t('home.records.tabCommon') },
                 ] satisfies { id: AchievementJobTab; label: string }[]
               ).map((tab) => (
@@ -1783,7 +2150,7 @@ const HomeScreen = ({
                         const canGoPrev = selectedIndex > 0;
                         const canGoNext = selectedIndex < job.episodes.length - 1;
                         const canPlay = hasSeenStory(selectedEpisode.id) && selectedEpisode.scenes.length > 0;
-                        const isPlanned = selectedEpisode.planned === true;
+                        const isPlanned = Boolean(selectedEpisode.planned);
 
                         return (
                           <div key={job.jobKey} className="howto-story-job-block">
@@ -1866,6 +2233,8 @@ const HomeScreen = ({
                 <div className="credits-section">
                   <p className="credits-label">■ 使用ツール</p>
                   <p className="credits-value">開発支援 AI：Claude (Anthropic)</p>
+                  <p className="credits-value">開発支援 AI：ChatGPT (OpenAI)</p>
+                  <p className="credits-value">AI コーディング：Codex (OpenAI)</p>
                   <p className="credits-value">AI コーディング：Cursor</p>
                   <p className="credits-value">画像生成：Midjourney</p>
                   <p className="credits-value">BGM/SE 生成：Suno</p>
@@ -1904,6 +2273,40 @@ const HomeScreen = ({
           </div>
         </div>
       )}
+      {showRankingTutorialPrompt && (
+        <div
+          className="home-modal-overlay home-modal-overlay--ranking-tutorial"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ranking-tutorial-title"
+          onClick={handleSkipRankingTutorial}
+        >
+          <div className="home-modal-box ranking-tutorial-modal" onClick={(e) => e.stopPropagation()}>
+            <p className="ranking-tutorial-modal-kicker">ランキングリニューアル</p>
+            <h2 id="ranking-tutorial-title">ランキングが新しくなりました</h2>
+            <p className="ranking-tutorial-modal-desc">
+              ランキング上位を目指すと、あなたの名前がゲーム内に残る可能性があります。
+            </p>
+            <ol className="ranking-tutorial-modal-points" aria-label="ランキングの概要">
+              <li>ランキングは定期的にリセットされます。</li>
+              <li>総合ポイントで1位になったユーザー名は伝説入りします。</li>
+              <li>報酬として、総合ポイント1位のユーザー名をもとにしたカードがアプリ内に実装されます。</li>
+              <li>不適切なワード、人物名、著作物に関わる名前は、削除または調整される場合があります。</li>
+            </ol>
+            <p className="ranking-tutorial-modal-note">
+              「見る」を選ぶと、次にニックネーム入力へ進みます。
+            </p>
+            <div className="ranking-nickname-modal-actions">
+              <button type="button" className="home-modal-close" onClick={handleSkipRankingTutorial}>
+                今は見ない
+              </button>
+              <button type="button" className="ranking-nickname-modal-submit" onClick={handleViewRankingFromTutorial}>
+                ランキングを見る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {rankingNicknameModalOpen && (
         <div
           className="home-modal-overlay"
@@ -1914,6 +2317,7 @@ const HomeScreen = ({
           <div className="home-modal-box" onClick={(e) => e.stopPropagation()}>
             <h2>{t('home.ranking.modalTitle')}</h2>
             <p className="ranking-nickname-modal-desc">{t('home.ranking.modalDesc')}</p>
+            <p className="ranking-nickname-modal-desc">{t('home.ranking.cardNameNotice')}</p>
             <input
               type="text"
               className="ranking-nickname-modal-input"
@@ -1924,6 +2328,18 @@ const HomeScreen = ({
               placeholder={t('home.ranking.placeholder')}
               disabled={rankingNicknameBusy}
             />
+            <label className="ranking-nickname-consent">
+              <input
+                type="checkbox"
+                checked={rankingNicknameConsent}
+                disabled={rankingNicknameBusy}
+                onChange={(e) => setRankingNicknameConsent(e.target.checked)}
+              />
+              <span>
+                ランキングにこの名前とスコアを表示することに同意します。
+                <small>チェックしない場合、名前は保存されますがランキングには表示されません。熟練度XPは通常どおり獲得できます。</small>
+              </span>
+            </label>
             {rankingNicknameErr ? <p className="ranking-nickname-modal-error">{rankingNicknameErr}</p> : null}
             <p className="ranking-nickname-modal-notice" role="note">
               {t('home.ranking.notice')}
@@ -1955,16 +2371,8 @@ const HomeScreen = ({
           onComplete={handleHowtoStoryComplete}
           showStartButton={false}
           storyBundleId={playingStory}
-          jobId={playingStory.startsWith('cook') ? 'cook' : 'carpenter'}
-          storyBgmArea={
-            playingStory === 'carpenter_e1' || playingStory === 'cook_e1'
-              ? 2
-              : playingStory === 'carpenter_e2' || playingStory === 'cook_e2'
-                ? 3
-                : playingStory === 'carpenter_e3' || playingStory === 'cook_e3'
-                  ? 3
-                  : 1
-          }
+          jobId={getStoryJobId(playingStory)}
+          storyBgmArea={getStoryBgmArea(playingStory)}
         />
       )}
     </main>

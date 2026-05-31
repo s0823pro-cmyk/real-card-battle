@@ -50,6 +50,7 @@ export const clearJobUnlockStorage = (): void => {
   try {
     window.localStorage.removeItem(UNLOCKED_JOBS_KEY);
     window.localStorage.removeItem(seenKey('cook'));
+    window.localStorage.removeItem(seenKey('unemployed'));
   } catch {
     /* ignore */
   }

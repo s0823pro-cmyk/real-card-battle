@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
 import { useAudioContext } from '../../contexts/AudioContext';
 import type { JobId } from '../../types/game';
+import type { RankingScoreBreakdown } from '../../utils/rankingScore';
 import type { Achievement } from '../../utils/achievementSystem';
 import { BattleVictoryPanel } from '../Result/BattleVictoryPanel';
 
 interface Props {
   rewardGold: number;
   mentalRecovery: number;
+  rankingPoints: number;
+  rankingBreakdown?: RankingScoreBreakdown | null;
   totalGold: number;
   onContinue: () => void;
   /** ラン状態の battleVictorySeq（合計金の変更でタップ待ちがリセットされ続けないようにする） */
@@ -19,6 +22,8 @@ interface Props {
 export const BattleVictoryScreen = ({
   rewardGold,
   mentalRecovery,
+  rankingPoints,
+  rankingBreakdown,
   totalGold,
   onContinue,
   tapArmKey,
@@ -35,6 +40,8 @@ export const BattleVictoryScreen = ({
     <BattleVictoryPanel
       rewardGold={rewardGold}
       mentalRecovery={mentalRecovery}
+      rankingPoints={rankingPoints}
+      rankingBreakdown={rankingBreakdown}
       totalGold={totalGold}
       onContinue={onContinue}
       tapArmKey={tapArmKey}
