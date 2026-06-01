@@ -44,11 +44,15 @@ export const hasSeenStory = (jobId: string): boolean => {
     return true;
   }
   const storyKey = resolveStorySeenKey(jobId);
-  return window.localStorage.getItem(`${STORY_SEEN_PREFIX}${storyKey}`) === 'true';
+  return (
+    window.localStorage.getItem(`${STORY_SEEN_PREFIX}${storyKey}`) === 'true' ||
+    window.localStorage.getItem(`${STORY_SEEN_PREFIX}${jobId}`) === 'true'
+  );
 };
 
 export const markStorySeen = (jobId: string): void => {
-  window.localStorage.setItem(`${STORY_SEEN_PREFIX}${jobId}`, 'true');
+  const storyKey = resolveStorySeenKey(jobId);
+  window.localStorage.setItem(`${STORY_SEEN_PREFIX}${storyKey}`, 'true');
 };
 
 export const CARPENTER_STORY: StoryScene[] = [

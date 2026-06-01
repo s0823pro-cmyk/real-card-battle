@@ -6,3 +6,4 @@ cd "$ROOT_DIR"
 
 npm run build
 npx cap sync ios
+node scripts/patch-ios-local-plugins.cjs

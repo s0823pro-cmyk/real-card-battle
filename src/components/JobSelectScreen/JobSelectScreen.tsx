@@ -8,6 +8,7 @@ import cookSymbolImage from '../../assets/jobs/cook_symbol.png';
 import unemployedSymbolImage from '../../assets/jobs/unemployed_symbol.png';
 import jobSelectBackgroundImage from '../../assets/job_select_background.png';
 import { hasTutorialSeen, markTutorialSeen } from '../../utils/tutorialState';
+import { getJobMasteryLevelInfo, JOB_MASTERY_CHANGED_EVENT } from '../../utils/jobMasterySystem';
 import { hasSeenJobUnlock, isJobUnlocked, markJobUnlockSeen } from '../../utils/jobUnlockSystem';
 import { syncJobUnlocksFromConditions } from '../../utils/achievementSystem';
 import { TutorialOverlay } from '../Tutorial/TutorialOverlay';
@@ -153,6 +154,13 @@ const TAP_THRESHOLD = 8;
 const MELT_DURATION_MS = 1200;
 const HAND_X_OFFSET = 24;
 
+const JOB_UNLOCK_CONDITION_KEYS: Record<string, MessageKey> = {
+  carpenter: 'job.unlockCondition.carpenter',
+  cook: 'job.unlockCondition.cook',
+  unemployed: 'job.unlockCondition.unemployed',
+  courier: 'job.unlockCondition.courier',
+};
+
 interface HandLayoutItem {
   x: number;
   yOffset: number;
@@ -222,24 +230,47 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const [viewportHeight, setViewportHeight] = useState(900);
   const [showJobTutorial, setShowJobTutorial] = useState(false);
   const [showCookUnlockCelebration, setShowCookUnlockCelebration] = useState(false);
+  const [masteryRevision, setMasteryRevision] = useState(0);
+  const [showUnlockConditions, setShowUnlockConditions] = useState(false);
 
   const [cookUnlocked, setCookUnlocked] = useState(() => isJobUnlocked('cook'));
   const [unemployedUnlocked, setUnemployedUnlocked] = useState(() => isJobUnlocked('unemployed'));
+  const [courierUnlocked, setCourierUnlocked] = useState(() => isJobUnlocked('courier'));
 
   useEffect(() => {
     const check = () => {
       syncJobUnlocksFromConditions();
       setCookUnlocked(isJobUnlocked('cook'));
       setUnemployedUnlocked(isJobUnlocked('unemployed'));
+      setCourierUnlocked(isJobUnlocked('courier'));
     };
     check();
     window.addEventListener('focus', check);
     return () => window.removeEventListener('focus', check);
   }, []);
 
+  useEffect(() => {
+    const onMasteryChanged = () => setMasteryRevision((value) => value + 1);
+    window.addEventListener(JOB_MASTERY_CHANGED_EVENT, onMasteryChanged);
+    return () => window.removeEventListener(JOB_MASTERY_CHANGED_EVENT, onMasteryChanged);
+  }, []);
+
   const isCookCardLocked = (job: JobCard) => job.id === 'cook' && !cookUnlocked;
   const isUnemployedCardLocked = (job: JobCard) => job.id === 'unemployed' && !unemployedUnlocked;
-  const isJobCardLocked = (job: JobCard) => isCookCardLocked(job) || isUnemployedCardLocked(job);
+  const isCourierCardLocked = (job: JobCard) => job.id === 'courier' && !courierUnlocked;
+  const isJobCardLocked = (job: JobCard) =>
+    isCookCardLocked(job) || isUnemployedCardLocked(job) || isCourierCardLocked(job);
+  const getJobUnlockConditionText = (job: JobCard, locked: boolean): string => {
+    const conditionKey = JOB_UNLOCK_CONDITION_KEYS[job.id];
+    if (!conditionKey) return t('job.unlockCondition.unknown');
+
+    if (!locked) return t(conditionKey);
+    if (job.id === 'cook') return t(conditionKey);
+    if (job.id === 'unemployed' && cookUnlocked) return t(conditionKey);
+    if (job.id === 'courier' && unemployedUnlocked) return t(conditionKey);
+
+    return t('job.unlockCondition.lockedGeneric');
+  };
 
   const celebrationRanRef = useRef(false);
   const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -505,6 +536,11 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
 
   const expandedMentalCap =
     expandedJob?.selectableJobId != null ? getJobConfig(expandedJob.selectableJobId).maxMental : 10;
+  const expandedMasteryInfo =
+    expandedJob?.selectableJobId != null && !isJobCardLocked(expandedJob)
+      ? getJobMasteryLevelInfo(expandedJob.selectableJobId)
+      : null;
+  void masteryRevision;
 
   const jobSelectFullbleedStyle: CSSProperties = {
     backgroundImage: `url(${jobSelectBackgroundImage})`,
@@ -527,6 +563,13 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
 
       <button type="button" className="btn-job-back" onClick={onBack}>
         {t('common.back')}
+      </button>
+      <button
+        type="button"
+        className="btn-job-unlock-conditions"
+        onClick={() => setShowUnlockConditions(true)}
+      >
+        {t('job.unlockConditionsButton')}
       </button>
 
       {/* 拡大表示パネル（手札とは独立） */}
@@ -608,6 +651,20 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                   {expandedJob.mental}/{expandedMentalCap}
                 </span>
               </div>
+              {expandedMasteryInfo && (
+                <div className="job-detail-stat job-detail-stat--mastery">
+                  <span className="job-detail-stat-label">熟練度</span>
+                  <div className="job-detail-stat-bar job-detail-stat-bar--mastery">
+                    <div
+                      className="job-detail-stat-fill job-detail-stat-fill--mastery"
+                      style={{ width: `${Math.round(expandedMasteryInfo.progress * 100)}%` }}
+                    />
+                  </div>
+                  <span className="job-detail-stat-value">
+                    {expandedMasteryInfo.isMax ? 'MAX' : `Lv${expandedMasteryInfo.level}`}
+                  </span>
+                </div>
+              )}
             </div>
             <div
               className="job-detail-mechanic"
@@ -626,7 +683,6 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
           const item = handLayout[index];
           const isDragging = draggingIndex === index;
           const jobLocked = isJobCardLocked(job);
-          const lockHint = isCookCardLocked(job) ? t('job.cookLockHint') : t('job.unemployedLockHint');
 
           // ドラッグ中は「指の位置 - カード内オフセット」でカード左上を配置
           const cardW = item?.width ?? 88;
@@ -736,16 +792,61 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                     </span>
                   </div>
                 )}
-                {jobLocked && (
-                  <div className="job-hand-card-cook-lock-hint" role="status">
-                    {lockHint}
-                  </div>
-                )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {showUnlockConditions && (
+        <div
+          className="job-unlock-modal-backdrop"
+          role="presentation"
+          onClick={() => setShowUnlockConditions(false)}
+        >
+          <section
+            className="job-unlock-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="job-unlock-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="job-unlock-modal-header">
+              <div>
+                <p className="job-unlock-modal-kicker">{t('job.unlockConditionsKicker')}</p>
+                <h2 id="job-unlock-modal-title">{t('job.unlockConditionsTitle')}</h2>
+              </div>
+              <button
+                type="button"
+                className="job-unlock-modal-close"
+                onClick={() => setShowUnlockConditions(false)}
+              >
+                {t('common.close')}
+              </button>
+            </div>
+            <div className="job-unlock-condition-list">
+              {JOB_CARDS.map((job) => {
+                const locked = isJobCardLocked(job) || Boolean(job.comingSoon);
+                const conditionText = getJobUnlockConditionText(job, locked);
+                return (
+                  <div key={job.id} className="job-unlock-condition-row">
+                    <div className="job-unlock-condition-name">
+                      <span className="job-unlock-condition-icon" aria-hidden>
+                        {locked ? '🔒' : job.icon}
+                      </span>
+                      <span>{locked ? t('job.unknownName') : job.name}</span>
+                    </div>
+                    <p className="job-unlock-condition-text">
+                      {conditionText}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="job-unlock-condition-note">{t('job.unlockConditionsNote')}</p>
+          </section>
+        </div>
+      )}
 
       {isMelting && (
         <>

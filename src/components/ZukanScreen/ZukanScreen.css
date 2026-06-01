@@ -396,9 +396,9 @@
   left: 52px;
   right: 10px;
   max-width: none;
-  padding: 4px 8px;
-  font-size: 10px;
-  letter-spacing: -0.05em;
+  padding: 4px 6px;
+  font-size: 8px;
+  letter-spacing: -0.08em;
   text-overflow: clip;
 }
 
@@ -461,37 +461,39 @@
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 8px;
   width: 100%;
+  min-height: 32px;
   padding-bottom: 4px;
 }
 
 .zukan-detail-skin-bar {
-  grid-column: 1 / -1;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  gap: 6px;
-  width: 100%;
-  margin-top: -10px;
-  margin-bottom: -6px;
+  gap: 4px;
+  min-width: 0;
+  margin-right: auto;
   font-family: var(--font-display);
 }
 
 .zukan-detail-skin-label {
   color: #a7adb5;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .zukan-skin-toggle {
-  min-width: 30px;
+  min-width: 28px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
   color: #cbd1d7;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
-  padding: 5px 8px;
+  padding: 4px 7px;
+  flex-shrink: 0;
 }
 
 .zukan-skin-toggle--active {
@@ -500,10 +502,25 @@
   background: linear-gradient(145deg, #ffe08a, #f0b429);
 }
 
+.zukan-skin-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
 .zukan-detail-skin-note {
   color: #8f99a5;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 800;
+  line-height: 1.1;
+  min-width: 0;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zukan-detail-skin-bar--locked .zukan-detail-skin-note {
+  color: #f0b429;
 }
 
 .zukan-card-detail {

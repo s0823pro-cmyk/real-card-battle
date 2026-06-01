@@ -72,6 +72,10 @@ export const StoryScreen = ({
         if (area === 1) playBgm('unemployed_story_area1');
         else if (area === 2) playBgm('unemployed_story_area2');
         else playBgm('unemployed_story_area3');
+      } else if (jobId === 'courier') {
+        if (area === 1) playBgm('courier_story_area1');
+        else if (area === 2) playBgm('courier_story_area2');
+        else playBgm('courier_story_area3');
       } else {
         if (area === 1) playBgm('story_area1');
         else if (area === 2) playBgm('story_area2');

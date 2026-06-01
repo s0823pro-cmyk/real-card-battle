@@ -53,7 +53,27 @@ import {
 import { getAdsRemoved, PENDING_DEFEAT_INTERSTITIAL_KEY } from '../../utils/adsRemoved';
 import { DEBUG_ENEMY_HP1_KEY, getDebugEnemyHp1, setDebugEnemyHp1 } from '../../utils/debugEnemyHp1';
 import { DEBUG_TOOLS_CHANGED_EVENT, getDebugToolsEnabled, setDebugToolsEnabled } from '../../utils/debugTools';
-import { unlockJob } from '../../utils/jobUnlockSystem';
+import {
+  clearImagePreloadStatus,
+  getImagePreloadStatus,
+  preloadImageAssets,
+  type ImagePreloadProgress,
+} from '../../utils/imagePreload';
+import {
+  APPLE_ACCOUNT_CHANGED_EVENT,
+  getAppleAccountStatus,
+  linkAppleAccountForBackup,
+  markAppleAccountIntroSeen,
+  restoreAppleAccountBackup,
+  shouldShowAppleAccountIntro,
+} from '../../utils/appleAccount';
+import {
+  JOB_MASTERY_MAX_LEVEL,
+  getAllJobMasteryStorageKeys,
+  getTotalXpRequiredForMasteryLevel,
+  setJobMasteryXp,
+} from '../../utils/jobMasterySystem';
+import { clearJobUnlockStorage, unlockJob } from '../../utils/jobUnlockSystem';
 import {
   markTutorialSeen,
   resetRankingTutorial,
@@ -62,6 +82,11 @@ import {
   snoozeRankingRenewalPrompt,
 } from '../../utils/tutorialState';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
+import {
+  NAME_CHANGE_TICKET_CHANGED_EVENT,
+  consumeNameChangeTicket,
+  getNameChangeTicketCount,
+} from '../../utils/nameChangeTicket';
 import { confirmRankingChampion, getAdminSummary, getMyStats, verifyCode } from '../../utils/statsApi';
 import type { MyStatsResponse } from '../../utils/statsApi';
 import type { Card, JobId } from '../../types/game';
@@ -69,9 +94,12 @@ import {
   getRankingNicknameStorageKeys,
   getRankingSeasonDebugPreviewEnabled,
   getStoredRankingNickname,
+  isRankingDisplayConsentEnabled,
   nicknameCharLength,
   postRankingNickname,
   RANKING_DEVICE_ID_KEY,
+  RANKING_NICKNAME_MAX_LENGTH,
+  RANKING_NICKNAME_MIN_LENGTH,
   RANKING_NICKNAME_KEY,
   RANKING_SEASON_DEBUG_PREVIEW_CHANGED_EVENT,
   RANKING_SCORE_CACHE_STORAGE_KEYS,
@@ -96,6 +124,8 @@ import { GlossaryModal } from '../GlossaryModal/GlossaryModal';
 const ENABLE_DEV_TOOLS =
   import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true';
 
+const JOB_MASTERY_DEBUG_JOBS: readonly JobId[] = ['carpenter', 'cook', 'unemployed', 'courier'];
+
 interface HomeScreenProps {
   onStart: () => void;
   onOpenZukan: () => void;
@@ -105,6 +135,7 @@ interface HomeScreenProps {
   onDevNavigate?: (destination: DevDestination) => void;
   /** 開発のみ: 拡張カードを各2枚デッキに追加 */
   onDevAddExpansionCards?: () => void;
+  onDevChampionRewardPreview?: () => void;
 }
 
 type ModalType = 'howto' | 'credits' | null;
@@ -447,6 +478,7 @@ const HomeScreen = ({
   savedProgress,
   onDevNavigate,
   onDevAddExpansionCards,
+  onDevChampionRewardPreview,
 }: HomeScreenProps) => {
   const { t, locale, switchLocale, isLocaleLoading } = useLanguage();
   const [modal, setModal] = useState<ModalType>(null);
@@ -461,6 +493,10 @@ const HomeScreen = ({
   const [rankingNicknameConsent, setRankingNicknameConsent] = useState(false);
   const [rankingNicknameBusy, setRankingNicknameBusy] = useState(false);
   const [rankingNicknameErr, setRankingNicknameErr] = useState<string | null>(null);
+  const [rankingNameChangeOpen, setRankingNameChangeOpen] = useState(false);
+  const [rankingNameChangeDraft, setRankingNameChangeDraft] = useState('');
+  const [rankingNameChangeBusy, setRankingNameChangeBusy] = useState(false);
+  const [rankingNameChangeErr, setRankingNameChangeErr] = useState<string | null>(null);
   const [achievementRefreshKey, setAchievementRefreshKey] = useState(0);
   const [achievementJobTab, setAchievementJobTab] = useState<AchievementJobTab>('all');
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
@@ -643,10 +679,18 @@ const HomeScreen = ({
   const [seMuted, setSeMuted] = useState(() => isSeMuted());
   const [openSettingsSection, setOpenSettingsSection] = useState<string | null>(null);
   const [isAdFree, setIsAdFree] = useState(() => getAdsRemoved());
+  const [nameChangeTicketCount, setNameChangeTicketCount] = useState(() => getNameChangeTicketCount());
   const [iapBusy, setIapBusy] = useState(false);
   const [debugEnemyHp1, setDebugEnemyHp1Local] = useState(() => getDebugEnemyHp1());
   const [debugToolsEnabled, setDebugToolsEnabledLocal] = useState(() => getDebugToolsEnabled());
   const [rankingSeasonDebugPreview, setRankingSeasonDebugPreviewLocal] = useState(() => getRankingSeasonDebugPreviewEnabled());
+  const [imagePreloadStatus, setImagePreloadStatus] = useState(() => getImagePreloadStatus());
+  const [imagePreloadProgress, setImagePreloadProgress] = useState<ImagePreloadProgress | null>(null);
+  const [imagePreloadRunning, setImagePreloadRunning] = useState(false);
+  const [appleAccountStatus, setAppleAccountStatus] = useState(() => getAppleAccountStatus());
+  const [appleAccountBusy, setAppleAccountBusy] = useState(false);
+  const [showAppleAccountIntro, setShowAppleAccountIntro] = useState(false);
+  const [appleAccountMessage, setAppleAccountMessage] = useState<string | null>(null);
   const [hasAdminCodeAccess, setHasAdminCodeAccess] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
@@ -671,6 +715,12 @@ const HomeScreen = ({
   }, []);
 
   useEffect(() => {
+    const onTicketChanged = () => setNameChangeTicketCount(getNameChangeTicketCount());
+    window.addEventListener(NAME_CHANGE_TICKET_CHANGED_EVENT, onTicketChanged);
+    return () => window.removeEventListener(NAME_CHANGE_TICKET_CHANGED_EVENT, onTicketChanged);
+  }, []);
+
+  useEffect(() => {
     const onDebugToolsChanged = () => setDebugToolsEnabledLocal(getDebugToolsEnabled());
     window.addEventListener(DEBUG_TOOLS_CHANGED_EVENT, onDebugToolsChanged);
     return () => window.removeEventListener(DEBUG_TOOLS_CHANGED_EVENT, onDebugToolsChanged);
@@ -681,6 +731,23 @@ const HomeScreen = ({
     window.addEventListener(RANKING_SEASON_DEBUG_PREVIEW_CHANGED_EVENT, onRankingSeasonPreviewChanged);
     return () => window.removeEventListener(RANKING_SEASON_DEBUG_PREVIEW_CHANGED_EVENT, onRankingSeasonPreviewChanged);
   }, []);
+
+  useEffect(() => {
+    const onAppleAccountChanged = () => setAppleAccountStatus(getAppleAccountStatus());
+    window.addEventListener(APPLE_ACCOUNT_CHANGED_EVENT, onAppleAccountChanged);
+    window.addEventListener('storage', onAppleAccountChanged);
+    return () => {
+      window.removeEventListener(APPLE_ACCOUNT_CHANGED_EVENT, onAppleAccountChanged);
+      window.removeEventListener('storage', onAppleAccountChanged);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showSettings) return;
+    if (!shouldShowAppleAccountIntro()) return;
+    markAppleAccountIntroSeen();
+    setShowAppleAccountIntro(true);
+  }, [showSettings]);
 
   const toggleDebugTools = () => {
     const next = !debugToolsEnabled;
@@ -694,11 +761,84 @@ const HomeScreen = ({
     setRankingSeasonDebugPreviewLocal(next);
   };
 
+  const handleMaxJobMastery = () => {
+    const maxXp = getTotalXpRequiredForMasteryLevel(JOB_MASTERY_MAX_LEVEL);
+    JOB_MASTERY_DEBUG_JOBS.forEach((jobId) => setJobMasteryXp(jobId, maxXp));
+    setGiftToast('全職業の熟練度をMAXにしました。');
+    if (giftToastTimerRef.current != null) window.clearTimeout(giftToastTimerRef.current);
+    giftToastTimerRef.current = window.setTimeout(() => {
+      setGiftToast(null);
+      giftToastTimerRef.current = null;
+    }, 2400);
+  };
+
+  const handleImagePreload = async () => {
+    if (imagePreloadRunning) return;
+
+    setImagePreloadRunning(true);
+    setImagePreloadProgress({
+      loaded: 0,
+      total: getImagePreloadStatus().total,
+      failed: 0,
+      currentLabel: '',
+    });
+
+    try {
+      await preloadImageAssets((progress) => {
+        setImagePreloadProgress(progress);
+      });
+      setImagePreloadStatus(getImagePreloadStatus());
+    } finally {
+      setImagePreloadRunning(false);
+    }
+  };
+
   const canShowDevTools = ENABLE_DEV_TOOLS || debugToolsEnabled;
+
+  const imagePreloadTotal = imagePreloadProgress?.total ?? imagePreloadStatus.total;
+  const imagePreloadLoaded = imagePreloadProgress?.loaded ?? (imagePreloadStatus.done ? imagePreloadStatus.total : 0);
+  const imagePreloadFailed = imagePreloadProgress?.failed ?? 0;
+  const imagePreloadPercent =
+    imagePreloadTotal > 0 ? Math.min(100, Math.round((imagePreloadLoaded / imagePreloadTotal) * 100)) : 0;
+  const imagePreloadDesc = imagePreloadRunning
+    ? `${imagePreloadLoaded}/${imagePreloadTotal}件を読み込み中${
+        imagePreloadProgress?.currentLabel ? `（${imagePreloadProgress.currentLabel}）` : ''
+      }`
+    : imagePreloadStatus.done
+      ? `読み込み済み（${imagePreloadStatus.total}件）。図鑑やカード選択の画像表示が安定します。`
+      : imagePreloadFailed > 0
+        ? `未完了：${imagePreloadFailed}件の読み込みに失敗しました。再読み込みしてください。`
+        : 'カード・敵・背景画像を端末内キャッシュへ事前読み込みします。通信は発生しません。';
+
+  const appleAccountDesc = appleAccountStatus.linked
+    ? `連携済み${
+        appleAccountStatus.linkedAt
+          ? `（${new Date(appleAccountStatus.linkedAt).toLocaleDateString('ja-JP')}）`
+          : ''
+      }。端末紛失・アプリ削除時の復元用バックアップとして使えます。`
+    : 'データを取得する目的ではなく、端末紛失・アプリ削除・機種変更時の保険として使います。';
+
+  const showAppleAccountMessage = (message: string) => {
+    setAppleAccountMessage(message);
+    setGiftToast(message);
+    if (giftToastTimerRef.current != null) window.clearTimeout(giftToastTimerRef.current);
+    giftToastTimerRef.current = window.setTimeout(() => {
+      setGiftToast(null);
+      giftToastTimerRef.current = null;
+    }, 3200);
+  };
 
   const handleAdminDevNavigate = (destination: DevDestination) => {
     setAdminSummary(null);
     onDevNavigate?.(destination);
+  };
+
+  const handleChampionRewardPreview = () => {
+    setAdminSummary(null);
+    setShowSettings(false);
+    setShowStats(false);
+    setShowHomeGlossary(false);
+    onDevChampionRewardPreview?.();
   };
 
   const renderAdminDeveloperPanel = () => (
@@ -714,6 +854,12 @@ const HomeScreen = ({
           </button>
           <button type="button" className="btn-dev" onClick={toggleRankingSeasonDebugPreview}>
             ランキング第2回プレビュー {rankingSeasonDebugPreview ? 'OFF' : 'ON'}
+          </button>
+          <button type="button" className="btn-dev" onClick={handleMaxJobMastery}>
+            熟練度Lv MAX
+          </button>
+          <button type="button" className="btn-dev" onClick={handleChampionRewardPreview}>
+            {t('settings.dev.championRewardPreview')}
           </button>
           <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('debug_zukan_cards')}>
             {t('settings.dev.debugZukanCards')}
@@ -784,6 +930,15 @@ const HomeScreen = ({
     try {
       await purchaseProduct(productId);
       setIsAdFree(getAdsRemoved());
+      setNameChangeTicketCount(getNameChangeTicketCount());
+      if (productId === IAP_PRODUCTS.NAME_CHANGE_TICKET) {
+        setGiftToast('ネーム変更チケットを1枚入手しました。');
+        if (giftToastTimerRef.current != null) window.clearTimeout(giftToastTimerRef.current);
+        giftToastTimerRef.current = window.setTimeout(() => {
+          setGiftToast(null);
+          giftToastTimerRef.current = null;
+        }, 2400);
+      }
     } catch {
       window.alert(t('home.settings.iapPurchaseFail'));
     } finally {
@@ -804,6 +959,57 @@ const HomeScreen = ({
       window.alert(t('home.settings.iapRestoreFail'));
     } finally {
       setIapBusy(false);
+    }
+  };
+
+  const handleAppleAccountLink = async () => {
+    if (appleAccountBusy) return;
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'ios') {
+      window.alert('Apple Account連携はiOS実機で利用できます。');
+      return;
+    }
+    setAppleAccountBusy(true);
+    setAppleAccountMessage(null);
+    try {
+      const result = await linkAppleAccountForBackup();
+      if (!result.ok) {
+        const cancelled = result.error === 'apple_signin_cancelled' || result.error === 'canceled';
+        if (!cancelled) window.alert('Apple Account連携に失敗しました。通信状態を確認して再度お試しください。');
+        return;
+      }
+      setAppleAccountStatus(getAppleAccountStatus());
+      setShowAppleAccountIntro(false);
+      showAppleAccountMessage('Apple Account連携が完了しました。');
+    } finally {
+      setAppleAccountBusy(false);
+    }
+  };
+
+  const handleAppleAccountRestore = async () => {
+    if (appleAccountBusy) return;
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'ios') {
+      window.alert('Apple Account復元はiOS実機で利用できます。');
+      return;
+    }
+    const ok = window.confirm('Apple Accountに保存された復元用データをこの端末へ適用します。よろしいですか？');
+    if (!ok) return;
+    setAppleAccountBusy(true);
+    setAppleAccountMessage(null);
+    try {
+      const result = await restoreAppleAccountBackup();
+      if (!result.ok) {
+        if (result.error === 'apple_account_not_linked') {
+          window.alert('このApple Accountには復元用データがまだありません。先に連携してください。');
+        } else {
+          window.alert('Apple Account復元に失敗しました。通信状態を確認して再度お試しください。');
+        }
+        return;
+      }
+      setAppleAccountStatus(getAppleAccountStatus());
+      window.alert(result.restored ? '復元用データを適用しました。画面を更新します。' : '連携情報を確認しました。復元できる保存データはありませんでした。');
+      if (result.restored) window.location.reload();
+    } finally {
+      setAppleAccountBusy(false);
     }
   };
 
@@ -1013,7 +1219,7 @@ const HomeScreen = ({
 
   const handleRankingNicknameSubmit = useCallback(async () => {
     const len = nicknameCharLength(rankingNicknameDraft);
-    if (len < 2 || len > 12) {
+    if (len < RANKING_NICKNAME_MIN_LENGTH || len > RANKING_NICKNAME_MAX_LENGTH) {
       setRankingNicknameErr(t('home.ranking.errLength'));
       return;
     }
@@ -1033,6 +1239,73 @@ const HomeScreen = ({
     setRankingNicknameModalOpen(false);
     onOpenRanking();
   }, [onOpenRanking, rankingNicknameConsent, rankingNicknameDraft, t]);
+
+  const openRankingNameChange = useCallback(() => {
+    const current = getStoredRankingNickname();
+    if (!current) {
+      setRankingNicknameDraft('');
+      setRankingNicknameConsent(false);
+      setRankingNicknameErr(null);
+      setRankingNicknameModalOpen(true);
+      return;
+    }
+    if (getNameChangeTicketCount() <= 0) {
+      window.alert('ランキング名を変更するには、ネーム変更チケットが必要です。');
+      return;
+    }
+    setRankingNameChangeDraft(current);
+    setRankingNameChangeErr(null);
+    setRankingNameChangeOpen(true);
+  }, []);
+
+  const handleRankingNameChangeSubmit = useCallback(async () => {
+    const current = getStoredRankingNickname();
+    if (!current) {
+      setRankingNameChangeOpen(false);
+      return;
+    }
+    const len = nicknameCharLength(rankingNameChangeDraft);
+    if (len < RANKING_NICKNAME_MIN_LENGTH || len > RANKING_NICKNAME_MAX_LENGTH) {
+      setRankingNameChangeErr(t('home.ranking.errLength'));
+      return;
+    }
+    const nextNickname = rankingNameChangeDraft.trim();
+    if (nextNickname === current) {
+      setRankingNameChangeErr('現在と同じ名前です。');
+      return;
+    }
+    if (getNameChangeTicketCount() <= 0) {
+      setRankingNameChangeErr('ネーム変更チケットがありません。');
+      setNameChangeTicketCount(0);
+      return;
+    }
+
+    setRankingNameChangeBusy(true);
+    setRankingNameChangeErr(null);
+    const res = await postRankingNickname(nextNickname, isRankingDisplayConsentEnabled());
+    setRankingNameChangeBusy(false);
+    if (!res.ok) {
+      const err = res.error;
+      if (err === 'network') setRankingNameChangeErr(t('home.ranking.errNetwork'));
+      else if (err === 'nickname_not_allowed') setRankingNameChangeErr(t('home.ranking.errNickname'));
+      else if (err === 'nickname_taken') setRankingNameChangeErr(t('home.ranking.errNicknameTaken'));
+      else if (err === 'nickname_length') setRankingNameChangeErr(t('home.ranking.errLength'));
+      else setRankingNameChangeErr(t('home.ranking.errRegister'));
+      return;
+    }
+    if (!consumeNameChangeTicket()) {
+      setRankingNameChangeErr('ネーム変更チケットの消費に失敗しました。');
+      return;
+    }
+    setNameChangeTicketCount(getNameChangeTicketCount());
+    setRankingNameChangeOpen(false);
+    setGiftToast('ランキング名を変更しました。');
+    if (giftToastTimerRef.current != null) window.clearTimeout(giftToastTimerRef.current);
+    giftToastTimerRef.current = window.setTimeout(() => {
+      setGiftToast(null);
+      giftToastTimerRef.current = null;
+    }, 2400);
+  }, [rankingNameChangeDraft, t]);
 
   const homeButtons = useMemo(
     () =>
@@ -1266,6 +1539,10 @@ const HomeScreen = ({
 
   const renderSettingsContent = () => (
     <div className="settings-page-stack">
+      <button type="button" className="settings-btn-block" onClick={() => setShowStats(true)}>
+        <span className="settings-btn-block-title">{t('home.settings.myStatsSection')}</span>
+      </button>
+
       <div className="settings-accordion">
         <button
           type="button"
@@ -1313,10 +1590,6 @@ const HomeScreen = ({
         )}
       </div>
 
-      <button type="button" className="settings-btn-block" onClick={() => setShowStats(true)}>
-        <span className="settings-btn-block-title">{t('home.settings.myStatsSection')}</span>
-      </button>
-
       <div className="settings-accordion">
         <button
           type="button"
@@ -1357,6 +1630,86 @@ const HomeScreen = ({
                 ))}
               </div>
             </div>
+            <div className="settings-item settings-item--row settings-item--preload">
+              <div className="settings-item-info">
+                <p className="settings-item-title">画像データを事前読み込み</p>
+                <p className="settings-item-desc">{imagePreloadDesc}</p>
+                {(imagePreloadRunning || imagePreloadProgress || imagePreloadStatus.done) && (
+                  <div className="settings-preload-progress" aria-hidden>
+                    <div
+                      className="settings-preload-progress-bar"
+                      style={{ width: `${imagePreloadPercent}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className="settings-btn-secondary"
+                disabled={imagePreloadRunning}
+                onClick={() => void handleImagePreload()}
+              >
+                {imagePreloadRunning ? '読み込み中' : imagePreloadStatus.done ? '再読み込み' : '読み込み'}
+              </button>
+            </div>
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">Apple Account連携</p>
+                <p className="settings-item-desc">{appleAccountDesc}</p>
+                {appleAccountMessage ? <p className="settings-item-desc">{appleAccountMessage}</p> : null}
+              </div>
+              <div className="settings-item-actions">
+                <button
+                  type="button"
+                  className="settings-btn-secondary"
+                  disabled={appleAccountBusy}
+                  onClick={() => void handleAppleAccountLink()}
+                >
+                  {appleAccountBusy ? '処理中' : appleAccountStatus.linked ? '再連携' : '連携'}
+                </button>
+                <button
+                  type="button"
+                  className="settings-btn-secondary"
+                  disabled={appleAccountBusy}
+                  onClick={() => void handleAppleAccountRestore()}
+                >
+                  復元
+                </button>
+              </div>
+            </div>
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">ランキング名変更</p>
+                <p className="settings-item-desc">
+                  現在: {getStoredRankingNickname() ?? '未設定'} / ネーム変更チケット: {nameChangeTicketCount}枚
+                </p>
+              </div>
+              <button
+                type="button"
+                className="settings-btn-secondary"
+                disabled={rankingNameChangeBusy}
+                onClick={openRankingNameChange}
+              >
+                名前変更
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="settings-accordion">
+        <button
+          type="button"
+          className={`settings-accordion-header ${openSettingsSection === 'reset' ? 'is-open' : ''}`}
+          onClick={() => toggleSettingsSection('reset')}
+        >
+          <span>リセット</span>
+          <span className="settings-accordion-arrow">
+            {openSettingsSection === 'reset' ? '▲' : '▼'}
+          </span>
+        </button>
+        {openSettingsSection === 'reset' && (
+          <div className="settings-accordion-body">
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
                 <p className="settings-item-title">{t('home.settings.tutorialResetTitle')}</p>
@@ -1402,7 +1755,10 @@ const HomeScreen = ({
                   if (!firstOk) return;
                   const secondOk = window.confirm(t('home.settings.dataResetConfirm2'));
                   if (!secondOk) return;
-                  /** 課金・広告削除（real-card-battle:ads-removed）は意図的に除外 */
+                  /** 課金・広告削除・ネーム変更チケットは意図的に除外 */
+                  const dynamicKeysToDelete = Object.keys(localStorage).filter(
+                    (key) => key.startsWith('story_seen_') || key.startsWith('real-card-battle:champion-reward-seen:'),
+                  );
                   const keysToDelete = [
                     PENDING_DEFEAT_INTERSTITIAL_KEY,
                     DEBUG_ENEMY_HP1_KEY,
@@ -1410,21 +1766,20 @@ const HomeScreen = ({
                     RANKING_NICKNAME_KEY,
                     ...getRankingNicknameStorageKeys(),
                     ...RANKING_SCORE_CACHE_STORAGE_KEYS,
+                    ...getAllJobMasteryStorageKeys(),
+                    ...dynamicKeysToDelete,
                     'real-card-battle:save-data',
                     'jobless_battle_save',
                     'jobless_enemy_records',
                     'jobless_enemy_defeat_counts',
                     'real-card-battle:unlocked-card-names',
-                    'real-card-battle:unlocked-jobs',
-                    'real-card-battle:job-unlock-seen-cook',
+                    'real-card-battle:cook-achievements-reset-v1',
                     'real-card-battle:tutorial-seen',
-                    'story_seen_carpenter',
-                    'story_seen_carpenter_e1',
-                    'story_seen_carpenter_e2',
-                    'story_seen_carpenter_e3',
                   ];
                   keysToDelete.forEach((key) => localStorage.removeItem(key));
                   clearAchievements();
+                  clearJobUnlockStorage();
+                  clearImagePreloadStatus();
                   window.alert(t('home.settings.dataResetDone'));
                   window.location.reload();
                 }}
@@ -1506,7 +1861,7 @@ const HomeScreen = ({
                   disabled={iapBusy}
                   onClick={() => void handleIapPurchase(IAP_PRODUCTS.REMOVE_ADS)}
                 >
-                  ¥300
+                  ¥500
                 </button>
               </div>
             )}
@@ -1540,6 +1895,22 @@ const HomeScreen = ({
                 </button>
               </div>
             )}
+            <div className="settings-item settings-item--row">
+              <div className="settings-item-info">
+                <p className="settings-item-title">ネーム変更チケット</p>
+                <p className="settings-item-desc">
+                  ランキング開催期間中にランキング名を1回変更できます。所持: {nameChangeTicketCount}枚
+                </p>
+              </div>
+              <button
+                type="button"
+                className="settings-btn-purchase"
+                disabled={iapBusy}
+                onClick={() => void handleIapPurchase(IAP_PRODUCTS.NAME_CHANGE_TICKET)}
+              >
+                ¥150
+              </button>
+            </div>
             <div className="settings-item settings-item--row">
               <div className="settings-item-info">
                 <p className="settings-item-title">{t('home.settings.restoreTitle')}</p>
@@ -1685,6 +2056,12 @@ const HomeScreen = ({
               <button type="button" className="btn-dev" onClick={() => unlockJob('cook')}>
                 {t('settings.dev.unlockCook')}
               </button>
+              <button type="button" className="btn-dev" onClick={handleMaxJobMastery}>
+                熟練度Lv MAX
+              </button>
+              <button type="button" className="btn-dev" onClick={handleChampionRewardPreview}>
+                {t('settings.dev.championRewardPreview')}
+              </button>
             </div>
           </details>
         </div>
@@ -1747,6 +2124,45 @@ const HomeScreen = ({
           </div>
         )}
         {giftToast ? <div className="settings-gift-toast" role="status">{giftToast}</div> : null}
+        {showAppleAccountIntro ? (
+          <div
+            className="home-modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="apple-account-intro-title"
+            onClick={() => {
+              if (!appleAccountBusy) setShowAppleAccountIntro(false);
+            }}
+          >
+            <div className="home-modal-box" onClick={(e) => e.stopPropagation()}>
+              <h2 id="apple-account-intro-title">Apple Account連携</h2>
+              <p className="ranking-nickname-modal-desc">
+                データを取得する目的ではありません。端末紛失・アプリ削除・機種変更時に、ランキングID・熟練度・実績などを復元するための保険です。
+              </p>
+              <p className="ranking-nickname-modal-desc">
+                課金状態は従来どおりストアの購入復元で管理します。
+              </p>
+              <div className="ranking-nickname-modal-actions">
+                <button
+                  type="button"
+                  className="home-modal-close"
+                  disabled={appleAccountBusy}
+                  onClick={() => setShowAppleAccountIntro(false)}
+                >
+                  あとで
+                </button>
+                <button
+                  type="button"
+                  className="ranking-nickname-modal-submit"
+                  disabled={appleAccountBusy}
+                  onClick={() => void handleAppleAccountLink()}
+                >
+                  {appleAccountBusy ? '連携中…' : '連携する'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {adminSummary ? (
           <div
             className="settings-admin-modal-overlay"
@@ -2291,7 +2707,8 @@ const HomeScreen = ({
               <li>ランキングは定期的にリセットされます。</li>
               <li>総合ポイントで1位になったユーザー名は伝説入りします。</li>
               <li>報酬として、総合ポイント1位のユーザー名をもとにしたカードがアプリ内に実装されます。</li>
-              <li>不適切なワード、人物名、著作物に関わる名前は、削除または調整される場合があります。</li>
+              <li>新シーズンでも前回と同じ名前を使えます。</li>
+              <li>表示名やカード名は、読みやすさ・安全性・権利面の都合で少し調整される場合があります。</li>
             </ol>
             <p className="ranking-tutorial-modal-note">
               「見る」を選ぶと、次にニックネーム入力へ進みます。
@@ -2323,7 +2740,7 @@ const HomeScreen = ({
               className="ranking-nickname-modal-input"
               value={rankingNicknameDraft}
               onChange={(e) => setRankingNicknameDraft(e.target.value)}
-              maxLength={24}
+              maxLength={RANKING_NICKNAME_MAX_LENGTH}
               autoComplete="username"
               placeholder={t('home.ranking.placeholder')}
               disabled={rankingNicknameBusy}
@@ -2360,6 +2777,56 @@ const HomeScreen = ({
                 onClick={() => void handleRankingNicknameSubmit()}
               >
                 {rankingNicknameBusy ? t('home.ranking.submitting') : t('home.ranking.submit')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {rankingNameChangeOpen && (
+        <div
+          className="home-modal-overlay"
+          onClick={() => {
+            if (!rankingNameChangeBusy) setRankingNameChangeOpen(false);
+          }}
+        >
+          <div className="home-modal-box" onClick={(e) => e.stopPropagation()}>
+            <h2>ランキング名変更</h2>
+            <p className="ranking-nickname-modal-desc">
+              ネーム変更チケットを1枚消費して、現在のランキング開催期間中の名前を変更します。
+            </p>
+            <p className="ranking-nickname-modal-desc">
+              現在の名前: {getStoredRankingNickname() ?? '未設定'} / 所持チケット: {nameChangeTicketCount}枚
+            </p>
+            <input
+              type="text"
+              className="ranking-nickname-modal-input"
+              value={rankingNameChangeDraft}
+              onChange={(e) => setRankingNameChangeDraft(e.target.value)}
+              maxLength={RANKING_NICKNAME_MAX_LENGTH}
+              autoComplete="username"
+              placeholder={t('home.ranking.placeholder')}
+              disabled={rankingNameChangeBusy}
+            />
+            {rankingNameChangeErr ? <p className="ranking-nickname-modal-error">{rankingNameChangeErr}</p> : null}
+            <p className="ranking-nickname-modal-notice" role="note">
+              変更後の名前は現在シーズンのランキング表示へ反映されます。次のシーズンでは再登録できます。
+            </p>
+            <div className="ranking-nickname-modal-actions">
+              <button
+                type="button"
+                className="home-modal-close"
+                disabled={rankingNameChangeBusy}
+                onClick={() => setRankingNameChangeOpen(false)}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                className="ranking-nickname-modal-submit"
+                disabled={rankingNameChangeBusy || nameChangeTicketCount <= 0}
+                onClick={() => void handleRankingNameChangeSubmit()}
+              >
+                {rankingNameChangeBusy ? '変更中…' : 'チケットを使って変更'}
               </button>
             </div>
           </div>

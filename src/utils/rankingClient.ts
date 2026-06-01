@@ -22,6 +22,8 @@ export const RANKING_NICKNAME_KEY = 'real-card-battle:nickname';
 export const RANKING_DISPLAY_CONSENT_KEY = 'real-card-battle:ranking-display-consent';
 export const RANKING_SEASON_DEBUG_PREVIEW_KEY = 'real-card-battle:ranking-season-debug-preview';
 export const RANKING_SEASON_DEBUG_PREVIEW_CHANGED_EVENT = 'ranking-season-debug-preview-changed';
+export const RANKING_NICKNAME_MIN_LENGTH = 2;
+export const RANKING_NICKNAME_MAX_LENGTH = 10;
 
 export type RankingSeasonInfo = {
 	id: string;
@@ -32,6 +34,16 @@ export type RankingSeasonInfo = {
 	endAt: number;
 	tallyEndAt: number;
 	isActive: boolean;
+};
+
+export type ChampionReward = {
+	season_id: string;
+	season_label: string;
+	nickname: string;
+	score: number;
+	champion_count: number;
+	awarded_at: number;
+	reward_card_id: string;
 };
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -225,6 +237,39 @@ export function ensureRankingDeviceId(): string {
 		localStorage.setItem(RANKING_DEVICE_ID_KEY, id);
 	}
 	return id;
+}
+
+const CHAMPION_REWARD_SEEN_KEY_PREFIX = 'real-card-battle:champion-reward-seen';
+
+const getChampionRewardSeenKey = (seasonId: string): string =>
+	`${CHAMPION_REWARD_SEEN_KEY_PREFIX}:${seasonId}`;
+
+export function hasSeenChampionReward(seasonId: string): boolean {
+	if (typeof localStorage === 'undefined') return true;
+	return localStorage.getItem(getChampionRewardSeenKey(seasonId)) === '1';
+}
+
+export function markChampionRewardSeen(seasonId: string): void {
+	if (typeof localStorage === 'undefined') return;
+	localStorage.setItem(getChampionRewardSeenKey(seasonId), '1');
+}
+
+export async function fetchChampionRewards(): Promise<ChampionReward[]> {
+	const deviceId = ensureRankingDeviceId();
+	if (getRankingSeasonDebugPreviewEnabled()) return [];
+	try {
+		const res = await fetch(`${RANKING_BASE_URL}/champion-rewards?device_id=${encodeURIComponent(deviceId)}`);
+		if (!res.ok) return [];
+		const data = (await res.json()) as { ok?: boolean; rewards?: ChampionReward[] };
+		return data.ok === true && Array.isArray(data.rewards) ? data.rewards : [];
+	} catch {
+		return [];
+	}
+}
+
+export async function fetchFirstUnseenChampionReward(): Promise<ChampionReward | null> {
+	const rewards = await fetchChampionRewards();
+	return rewards.find((reward) => !hasSeenChampionReward(reward.season_id)) ?? null;
 }
 
 export function getStoredRankingNickname(): string | null {

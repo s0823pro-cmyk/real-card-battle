@@ -2,7 +2,12 @@ import type { Card, JobId } from '../types/game';
 
 export const JOB_MASTERY_CHANGED_EVENT = 'job-mastery-changed';
 export const JOB_MASTERY_MAX_LEVEL = 20;
-export const JOB_MASTERY_SKIN_UNLOCK_LEVEL = 5;
+export const JOB_MASTERY_SKIN_UNLOCK_LEVEL_BY_JOB: Record<JobId, number> = {
+  carpenter: 3,
+  cook: 6,
+  unemployed: 9,
+  courier: 12,
+};
 
 const XP_KEY_PREFIX = 'real-card-battle:job-mastery-xp:';
 const CARD_SKIN_KEY = 'real-card-battle:job-mastery-card-skins';
@@ -47,12 +52,27 @@ export interface MasteryBadgeView {
   className: string;
 }
 
+export type JobMasteryUnlockReward =
+  | {
+      kind: 'illustration2';
+      level: number;
+      label: string;
+      description: string;
+    }
+  | {
+      kind: 'badge';
+      level: number;
+      label: string;
+      description: string;
+      badge: MasteryBadgeView;
+    };
+
 const JOBS: readonly JobId[] = ['carpenter', 'cook', 'unemployed', 'courier'];
 
 const STARTER_BASE_CARD_IDS: Record<JobId, readonly string[]> = {
-  carpenter: ['hammer_1', 'saw_guard_1', 'build_scaffold', 'nail_strike', 'work_clothes'],
-  cook: ['knife_1', 'apron_1', 'onion', 'flambe', 'prep'],
-  unemployed: ['punch_1', 'cardboard_1', 'dogeza', 'kiai', 'yakekuso'],
+  carpenter: ['hammer', 'saw_guard', 'build_scaffold', 'nail_strike', 'work_clothes'],
+  cook: ['knife', 'apron', 'onion', 'flambe', 'prep'],
+  unemployed: ['punch', 'cardboard', 'dogeza', 'kiai', 'yakekuso'],
   courier: [
     'courier_quick_delivery',
     'courier_parcel_guard',
@@ -209,6 +229,42 @@ export const getMasteryBadgeView = (badgeId: MasteryBadgeId): MasteryBadgeView |
   };
 };
 
+export const getJobMasteryUnlockRewards = (
+  jobId: JobId,
+  beforeLevel: number,
+  afterLevel: number,
+): JobMasteryUnlockReward[] => {
+  const from = Math.max(1, Math.floor(beforeLevel));
+  const to = Math.max(from, Math.floor(afterLevel));
+  if (to <= from) return [];
+
+  const rewards: JobMasteryUnlockReward[] = [];
+  const illustration2Level = getStarterIllustration2UnlockLevel(jobId);
+  if (from < illustration2Level && to >= illustration2Level) {
+    rewards.push({
+      kind: 'illustration2',
+      level: illustration2Level,
+      label: '初期カード5枚 イラスト2',
+      description: '図鑑のカード詳細からデザインを切り替えできます。',
+    });
+  }
+
+  BADGE_TIERS.forEach((tier) => {
+    if (from >= tier.level || to < tier.level) return;
+    const badge = getMasteryBadgeView(`${jobId}:${tier.tier}` as MasteryBadgeId);
+    if (!badge) return;
+    rewards.push({
+      kind: 'badge',
+      level: tier.level,
+      label: `${tier.label}バッジ`,
+      description: 'ランキングのあなたのスコアから表示バッジに設定できます。',
+      badge,
+    });
+  });
+
+  return rewards.sort((a, b) => a.level - b.level);
+};
+
 export const getUnlockedMasteryBadges = (): MasteryBadgeView[] =>
   JOBS.flatMap((jobId) => {
     const { level } = getJobMasteryLevelInfo(jobId);
@@ -262,13 +318,17 @@ const writeCardSkinState = (state: Record<string, 'v2'>): void => {
   notifyChanged();
 };
 
-export const getMasteryCardBaseId = (card: Card): string => card.baseCardId ?? card.definitionId ?? card.id.replace(/_\d+$/, '');
+export const getMasteryCardBaseId = (card: Card): string =>
+  (card.baseCardId ?? card.definitionId ?? card.id).replace(/_\d+$/, '');
 
 export const isStarterIllustration2Eligible = (jobId: JobId, card: Card): boolean =>
   STARTER_BASE_CARD_IDS[jobId].includes(getMasteryCardBaseId(card));
 
+export const getStarterIllustration2UnlockLevel = (jobId: JobId): number =>
+  JOB_MASTERY_SKIN_UNLOCK_LEVEL_BY_JOB[jobId];
+
 export const canUseStarterIllustration2 = (jobId: JobId): boolean =>
-  getJobMasteryLevelInfo(jobId).level >= JOB_MASTERY_SKIN_UNLOCK_LEVEL;
+  getJobMasteryLevelInfo(jobId).level >= getStarterIllustration2UnlockLevel(jobId);
 
 const getCardSkinKey = (jobId: JobId, card: Card): string => `${jobId}:${getMasteryCardBaseId(card)}`;
 

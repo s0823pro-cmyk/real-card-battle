@@ -5,6 +5,11 @@ import apronGuardImage from '../../assets/cards/cook/apron_guard.png';
 import onionCutImage from '../../assets/cards/cook/onion_cut.png';
 import flambeImage from '../../assets/cards/cook/flambe.png';
 import prepWorkImage from '../../assets/cards/cook/prep_work.png';
+import knifeSkillMastery2Image from '../../assets/cards/cook/knife_skill_mastery2.jpg';
+import apronGuardMastery2Image from '../../assets/cards/cook/apron_guard_mastery2.jpg';
+import onionCutMastery2Image from '../../assets/cards/cook/onion_cut_mastery2.jpg';
+import flambeMastery2Image from '../../assets/cards/cook/flambe_mastery2.jpg';
+import prepWorkMastery2Image from '../../assets/cards/cook/prep_work_mastery2.jpg';
 import garlicThrowImage from '../../assets/cards/cook/garlic_throw.png';
 import ironPanImage from '../../assets/cards/cook/iron_pan.png';
 import cuttingBoardGuardImage from '../../assets/cards/cook/cutting_board_guard.png';
@@ -32,13 +37,13 @@ import {
 } from './cookExpansion';
 
 export const COOK_STARTER_DECK: Card[] = [
-  { id: 'knife_1', name: '包丁さばき', type: 'attack', timeCost: 2, description: '3ダメージ', damage: 3, icon: '🔪', sellValue: 5, imageUrl: knifeSkillImage },
-  { id: 'knife_2', name: '包丁さばき', type: 'attack', timeCost: 2, description: '3ダメージ', damage: 3, icon: '🔪', sellValue: 5, imageUrl: knifeSkillImage },
-  { id: 'knife_3', name: '包丁さばき', type: 'attack', timeCost: 2, description: '3ダメージ', damage: 3, icon: '🔪', sellValue: 5, imageUrl: knifeSkillImage },
-  { id: 'knife_4', name: '包丁さばき', type: 'attack', timeCost: 2, description: '3ダメージ', damage: 3, icon: '🔪', sellValue: 5, imageUrl: knifeSkillImage },
-  { id: 'apron_1', name: 'エプロン防御', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '👨‍🍳', sellValue: 5, imageUrl: apronGuardImage },
-  { id: 'apron_2', name: 'エプロン防御', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '👨‍🍳', sellValue: 5, imageUrl: apronGuardImage },
-  { id: 'apron_3', name: 'エプロン防御', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '👨‍🍳', sellValue: 5, imageUrl: apronGuardImage },
+  { id: 'knife_1', name: '包丁さばき', type: 'attack', timeCost: 2, description: '3ダメージ', damage: 3, icon: '🔪', sellValue: 5, imageUrl: knifeSkillImage, imageVariant2Url: knifeSkillMastery2Image },
+  { id: 'knife_2', name: '包丁さばき', type: 'attack', timeCost: 2, description: '3ダメージ', damage: 3, icon: '🔪', sellValue: 5, imageUrl: knifeSkillImage, imageVariant2Url: knifeSkillMastery2Image },
+  { id: 'knife_3', name: '包丁さばき', type: 'attack', timeCost: 2, description: '3ダメージ', damage: 3, icon: '🔪', sellValue: 5, imageUrl: knifeSkillImage, imageVariant2Url: knifeSkillMastery2Image },
+  { id: 'knife_4', name: '包丁さばき', type: 'attack', timeCost: 2, description: '3ダメージ', damage: 3, icon: '🔪', sellValue: 5, imageUrl: knifeSkillImage, imageVariant2Url: knifeSkillMastery2Image },
+  { id: 'apron_1', name: 'エプロン防御', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '👨‍🍳', sellValue: 5, imageUrl: apronGuardImage, imageVariant2Url: apronGuardMastery2Image },
+  { id: 'apron_2', name: 'エプロン防御', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '👨‍🍳', sellValue: 5, imageUrl: apronGuardImage, imageVariant2Url: apronGuardMastery2Image },
+  { id: 'apron_3', name: 'エプロン防御', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '👨‍🍳', sellValue: 5, imageUrl: apronGuardImage, imageVariant2Url: apronGuardMastery2Image },
   {
     id: 'onion',
     name: '玉ねぎを切る',
@@ -50,7 +55,7 @@ export const COOK_STARTER_DECK: Card[] = [
     sellValue: 5,
     tags: ['ingredient'],
     effects: [{ type: 'cooking_gauge', value: 1 }, { type: 'fullness_gauge', value: 1 }],
-    imageUrl: onionCutImage,
+    imageUrl: onionCutImage, imageVariant2Url: onionCutMastery2Image,
   },
   {
     id: 'flambe',
@@ -63,9 +68,9 @@ export const COOK_STARTER_DECK: Card[] = [
     sellValue: 8,
     tags: ['cooking_consume'],
     cookingMultiplier: 3,
-    imageUrl: flambeImage,
+    imageUrl: flambeImage, imageVariant2Url: flambeMastery2Image,
   },
-  { id: 'prep', name: '仕込み', type: 'skill', timeCost: 1, description: 'カード1枚ドロー、調理+1', icon: '📋', sellValue: 5, effects: [{ type: 'draw', value: 1 }, { type: 'cooking_gauge', value: 1 }], imageUrl: prepWorkImage },
+  { id: 'prep', name: '仕込み', type: 'skill', timeCost: 1, description: 'カード1枚ドロー、調理+1', icon: '📋', sellValue: 5, effects: [{ type: 'draw', value: 1 }, { type: 'cooking_gauge', value: 1 }], imageUrl: prepWorkImage, imageVariant2Url: prepWorkMastery2Image },
 ];
 
 export const COOK_COMMON_POOL: Card[] = [

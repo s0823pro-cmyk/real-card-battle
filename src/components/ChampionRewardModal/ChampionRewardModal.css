@@ -1,0 +1,155 @@
+.champion-reward-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--sat, 0px) + 16px) 16px calc(var(--sab, 0px) + 16px);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(251, 191, 36, 0.2), transparent 34%),
+    rgba(0, 0, 0, 0.86);
+}
+
+.champion-reward-modal {
+  width: min(390px, 100%);
+  max-height: calc(100dvh - var(--sat, 0px) - var(--sab, 0px) - 28px);
+  overflow-y: auto;
+  border: 1px solid rgba(251, 191, 36, 0.42);
+  border-radius: 22px;
+  padding: 20px 16px 18px;
+  background:
+    linear-gradient(180deg, rgba(39, 32, 12, 0.96), rgba(11, 15, 22, 0.98)),
+    #0b0f16;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.64), 0 0 34px rgba(251, 191, 36, 0.18);
+  text-align: center;
+  color: #f8fafc;
+}
+
+.champion-reward-kicker {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: #facc15;
+}
+
+.champion-reward-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+.champion-reward-desc {
+  margin: 10px 0 14px;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+.champion-reward-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.champion-reward-summary div {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.champion-reward-summary span,
+.champion-reward-item-label {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(226, 232, 240, 0.58);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.champion-reward-summary strong {
+  display: block;
+  overflow: hidden;
+  color: #fde68a;
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.champion-reward-items {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.champion-reward-badge-card {
+  border: 1px solid rgba(251, 191, 36, 0.36);
+  border-radius: 16px;
+  padding: 12px 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.champion-reward-badge-img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.34));
+}
+
+.champion-reward-badge-fallback {
+  display: block;
+  font-size: 3rem;
+}
+
+.champion-reward-badge-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #fde68a;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.champion-reward-card-wrap {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.champion-reward-card-wrap .hand-card {
+  cursor: default;
+}
+
+.champion-reward-close {
+  width: 100%;
+  margin-top: 16px;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 0;
+  background: linear-gradient(135deg, #f59e0b, #facc15);
+  color: #1a1203;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.champion-reward-close:active {
+  filter: brightness(0.86);
+}
+
+@media (max-width: 360px) {
+  .champion-reward-items {
+    grid-template-columns: 1fr;
+  }
+}

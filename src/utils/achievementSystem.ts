@@ -152,9 +152,19 @@ const maybeUnlockUnemployedJobFromConditions = (): void => {
   }
 };
 
+/** 配達員ジョブ：無職でエリア1ボス撃破、または累計50敗（隠し）で解放。既に解放済みなら何もしない */
+const maybeUnlockCourierJobFromConditions = (): void => {
+  if (isJobUnlocked('courier')) return;
+  const ids = getUnlockedAchievementIds();
+  if (ids.has('unemployed_area1_clear') || getTotalDefeatCountAcrossJobs() >= 50) {
+    unlockJob('courier');
+  }
+};
+
 export const syncJobUnlocksFromConditions = (): void => {
   maybeUnlockCookJobFromConditions();
   maybeUnlockUnemployedJobFromConditions();
+  maybeUnlockCourierJobFromConditions();
 };
 
 /**

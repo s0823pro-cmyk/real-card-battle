@@ -72,6 +72,13 @@ export const NEUTRAL_UPGRADES: Record<string, CardUpgrade> = {
     tags: ['legendary', 'aoe_debuff', 'exhaust'],
     badges: ['limited', 'exhaust'],
   },
+  'そんな大工いるか？〈一夜で築いた大型建築〉': {
+    name: 'そんな大工いるか？〈一夜で築いた大型建築〉+',
+    block: 20,
+    description: '20ブロック。使用後除外。',
+    tags: ['legendary', 'exhaust'],
+    badges: ['limited', 'exhaust'],
+  },
 
   ...NEUTRAL_EXPANSION_UPGRADES,
 };

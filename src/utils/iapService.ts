@@ -5,10 +5,12 @@
 import { Capacitor } from '@capacitor/core';
 import { NativePurchases, PURCHASE_TYPE, type Transaction } from '@capgo/native-purchases';
 import { setAdsRemoved } from './adsRemoved';
+import { addNameChangeTicket } from './nameChangeTicket';
 
 /** 商品 ID（Play Console / App Store Connect と一致させる） */
 export const IAP_PRODUCTS = {
   REMOVE_ADS: 'remove_ads',
+  NAME_CHANGE_TICKET: 'name_change_ticket',
   SUPPORTER_PACK: 'supporter_pack',
   BUNDLE_PACK: 'bundle_pack',
 } as const;
@@ -17,16 +19,40 @@ function grantsRemoveAds(productId: string): boolean {
   return productId === IAP_PRODUCTS.REMOVE_ADS || productId === IAP_PRODUCTS.BUNDLE_PACK;
 }
 
-function applyTransactionEntitlement(transaction: Transaction): void {
-  const productId = transaction.productIdentifier;
-  if (!productId) return;
+function isCompletedTransaction(transaction: Transaction): boolean {
   if (Capacitor.getPlatform() === 'android') {
     if (transaction.purchaseState !== undefined && transaction.purchaseState !== '1') {
-      return;
+      return false;
     }
   }
+  return true;
+}
+
+const nameChangeTicketTransactionKey = (transactionId: string): string =>
+  `real-card-battle:name-change-ticket-tx:${transactionId}`;
+
+function grantNameChangeTicketOnce(transaction: Transaction): void {
+  const transactionId = transaction.transactionId;
+  if (!transactionId) {
+    addNameChangeTicket(1);
+    return;
+  }
+  if (typeof localStorage !== 'undefined') {
+    const key = nameChangeTicketTransactionKey(transactionId);
+    if (localStorage.getItem(key) === '1') return;
+    localStorage.setItem(key, '1');
+  }
+  addNameChangeTicket(1);
+}
+
+function applyTransactionEntitlement(transaction: Transaction, options?: { grantConsumables?: boolean }): void {
+  const productId = transaction.productIdentifier;
+  if (!productId || !isCompletedTransaction(transaction)) return;
   if (grantsRemoveAds(productId)) {
     setAdsRemoved(true);
+  }
+  if (options?.grantConsumables && productId === IAP_PRODUCTS.NAME_CHANGE_TICKET) {
+    grantNameChangeTicketOnce(transaction);
   }
 }
 
@@ -48,7 +74,7 @@ export async function initIAP(): Promise<void> {
     if (Capacitor.getPlatform() === 'ios' && !iosTransactionListenerRegistered) {
       iosTransactionListenerRegistered = true;
       await NativePurchases.addListener('transactionUpdated', (transaction) => {
-        applyTransactionEntitlement(transaction);
+        applyTransactionEntitlement(transaction, { grantConsumables: true });
       });
     }
 
@@ -65,8 +91,9 @@ export async function purchaseProduct(productId: string): Promise<void> {
     const tx = await NativePurchases.purchaseProduct({
       productIdentifier: productId,
       productType: PURCHASE_TYPE.INAPP,
+      isConsumable: productId === IAP_PRODUCTS.NAME_CHANGE_TICKET,
     });
-    applyTransactionEntitlement(tx);
+    applyTransactionEntitlement(tx, { grantConsumables: true });
   } catch (e) {
     console.error('Purchase error:', e);
     throw e;

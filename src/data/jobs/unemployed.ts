@@ -5,6 +5,11 @@ import cardboardShieldImage from '../../assets/cards/unemployed/cardboard_shield
 import dogezaImage from '../../assets/cards/unemployed/dogeza_v3.png';
 import fightingSpiritImage from '../../assets/cards/unemployed/fighting_spirit_v3.png';
 import desperatePunchImage from '../../assets/cards/unemployed/desperate_punch_v3.png';
+import bareFistMastery2Image from '../../assets/cards/unemployed/bare_fist_mastery2.jpg';
+import cardboardShieldMastery2Image from '../../assets/cards/unemployed/cardboard_shield_mastery2.jpg';
+import dogezaMastery2Image from '../../assets/cards/unemployed/dogeza_mastery2.jpg';
+import fightingSpiritMastery2Image from '../../assets/cards/unemployed/fighting_spirit_mastery2.jpg';
+import desperatePunchMastery2Image from '../../assets/cards/unemployed/desperate_punch_mastery2.jpg';
 import emptyCanImage from '../../assets/cards/unemployed/empty_can_v3.png';
 import newspaperArmorImage from '../../assets/cards/unemployed/newspaper_armor_v3.png';
 import umbrellaStabImage from '../../assets/cards/unemployed/umbrella_stab_v3.png';
@@ -38,16 +43,16 @@ const UNEMPLOYED_ACHIEVEMENT_UNCOMMON_CARD_IDS = new Set(UNEMPLOYED_ACHIEVEMENT_
 const UNEMPLOYED_ACHIEVEMENT_RARE_CARD_IDS = new Set(UNEMPLOYED_ACHIEVEMENT_RARE_CARDS.map((c) => c.id));
 
 export const UNEMPLOYED_STARTER_DECK: Card[] = [
-  { id: 'punch_1', name: '素手で殴る', type: 'attack', timeCost: 2, description: '5ダメージ。自分に1ダメージ（HP50%以下で無効）', damage: 5, icon: '✊', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage_above_hp_ratio', value: 1, threshold: 0.5 }], imageUrl: bareFistImage },
-  { id: 'punch_2', name: '素手で殴る', type: 'attack', timeCost: 2, description: '5ダメージ。自分に1ダメージ（HP50%以下で無効）', damage: 5, icon: '✊', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage_above_hp_ratio', value: 1, threshold: 0.5 }], imageUrl: bareFistImage },
-  { id: 'punch_3', name: '素手で殴る', type: 'attack', timeCost: 2, description: '5ダメージ。自分に1ダメージ（HP50%以下で無効）', damage: 5, icon: '✊', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage_above_hp_ratio', value: 1, threshold: 0.5 }], imageUrl: bareFistImage },
-  { id: 'punch_4', name: '素手で殴る', type: 'attack', timeCost: 2, description: '5ダメージ。自分に1ダメージ（HP50%以下で無効）', damage: 5, icon: '✊', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage_above_hp_ratio', value: 1, threshold: 0.5 }], imageUrl: bareFistImage },
-  { id: 'cardboard_1', name: '段ボールの盾', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '📦', sellValue: 5, imageUrl: cardboardShieldImage },
-  { id: 'cardboard_2', name: '段ボールの盾', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '📦', sellValue: 5, imageUrl: cardboardShieldImage },
-  { id: 'cardboard_3', name: '段ボールの盾', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '📦', sellValue: 5, imageUrl: cardboardShieldImage },
-  { id: 'dogeza', name: '土下座', type: 'skill', timeCost: 1, description: '敵1体の攻撃力-3（2ターン）', icon: '🙇', sellValue: 5, effects: [{ type: 'debuff_enemy_atk', value: 3, duration: 2 }], imageUrl: dogezaImage },
-  { id: 'kiai', name: '気合い', type: 'skill', timeCost: 0, description: '自分にダメージ5、残り時間+2秒', icon: '💢', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage', value: 5 }, { type: 'time_boost', value: 2 }], imageUrl: fightingSpiritImage },
-  { id: 'yakekuso', name: 'ヤケクソパンチ', type: 'attack', timeCost: 4, description: '14ダメージ。手札にこのカード以外があると使用不可', damage: 14, icon: '💥', sellValue: 5, tags: ['solo_play_only'], imageUrl: desperatePunchImage },
+  { id: 'punch_1', name: '素手で殴る', type: 'attack', timeCost: 2, description: '5ダメージ。自分に1ダメージ（HP50%以下で無効）', damage: 5, icon: '✊', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage_above_hp_ratio', value: 1, threshold: 0.5 }], imageUrl: bareFistImage, imageVariant2Url: bareFistMastery2Image },
+  { id: 'punch_2', name: '素手で殴る', type: 'attack', timeCost: 2, description: '5ダメージ。自分に1ダメージ（HP50%以下で無効）', damage: 5, icon: '✊', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage_above_hp_ratio', value: 1, threshold: 0.5 }], imageUrl: bareFistImage, imageVariant2Url: bareFistMastery2Image },
+  { id: 'punch_3', name: '素手で殴る', type: 'attack', timeCost: 2, description: '5ダメージ。自分に1ダメージ（HP50%以下で無効）', damage: 5, icon: '✊', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage_above_hp_ratio', value: 1, threshold: 0.5 }], imageUrl: bareFistImage, imageVariant2Url: bareFistMastery2Image },
+  { id: 'punch_4', name: '素手で殴る', type: 'attack', timeCost: 2, description: '5ダメージ。自分に1ダメージ（HP50%以下で無効）', damage: 5, icon: '✊', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage_above_hp_ratio', value: 1, threshold: 0.5 }], imageUrl: bareFistImage, imageVariant2Url: bareFistMastery2Image },
+  { id: 'cardboard_1', name: '段ボールの盾', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '📦', sellValue: 5, imageUrl: cardboardShieldImage, imageVariant2Url: cardboardShieldMastery2Image },
+  { id: 'cardboard_2', name: '段ボールの盾', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '📦', sellValue: 5, imageUrl: cardboardShieldImage, imageVariant2Url: cardboardShieldMastery2Image },
+  { id: 'cardboard_3', name: '段ボールの盾', type: 'skill', timeCost: 2, description: '4ブロック', block: 4, icon: '📦', sellValue: 5, imageUrl: cardboardShieldImage, imageVariant2Url: cardboardShieldMastery2Image },
+  { id: 'dogeza', name: '土下座', type: 'skill', timeCost: 1, description: '敵1体の攻撃力-3（2ターン）', icon: '🙇', sellValue: 5, effects: [{ type: 'debuff_enemy_atk', value: 3, duration: 2 }], imageUrl: dogezaImage, imageVariant2Url: dogezaMastery2Image },
+  { id: 'kiai', name: '気合い', type: 'skill', timeCost: 0, description: '自分にダメージ5、残り時間+2秒', icon: '💢', sellValue: 5, badges: ['self_damage'], effects: [{ type: 'self_damage', value: 5 }, { type: 'time_boost', value: 2 }], imageUrl: fightingSpiritImage, imageVariant2Url: fightingSpiritMastery2Image },
+  { id: 'yakekuso', name: 'ヤケクソパンチ', type: 'attack', timeCost: 4, description: '14ダメージ。手札にこのカード以外があると使用不可', damage: 14, icon: '💥', sellValue: 5, tags: ['solo_play_only'], imageUrl: desperatePunchImage, imageVariant2Url: desperatePunchMastery2Image },
 ];
 
 export const UNEMPLOYED_COMMON_POOL_UNFILTERED: Card[] = [

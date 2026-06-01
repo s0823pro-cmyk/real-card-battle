@@ -32,7 +32,7 @@ import {
   COURIER_UNCOMMON_POOL_UNFILTERED,
 } from '../../data/jobs/courier';
 import { NEUTRAL_CARD_POOL } from '../../data/cards/neutralCards';
-import { DAR_REQUIEM_CARD, LEGENDARY_WINNERS } from '../../data/legendaryRewardCards';
+import { LEGENDARY_REWARD_CARDS, LEGENDARY_WINNERS } from '../../data/legendaryRewardCards';
 import {
   CARPENTER_STORY,
   CARPENTER_E1_STORY,
@@ -73,7 +73,9 @@ import {
 } from '../../utils/achievementSystem';
 import {
   canUseStarterIllustration2,
+  getJobMasteryLevelInfo,
   getSelectedCardIllustrationVariant,
+  getStarterIllustration2UnlockLevel,
   hasMasteryIllustration2Asset,
   isStarterIllustration2Eligible,
   JOB_MASTERY_CHANGED_EVENT,
@@ -176,7 +178,7 @@ const ZUKAN_CARD_POOLS = {
     ...withRarity(COURIER_RARE_POOL_ALL, 'rare'),
   ],
   neutral: withRarity(NEUTRAL_CARD_POOL, 'common'),
-  legendary: [DAR_REQUIEM_CARD],
+  legendary: LEGENDARY_REWARD_CARDS,
 };
 
 const ALL_CARDS: Record<JobTab, Card[]> = {
@@ -394,13 +396,17 @@ export const ZukanScreen = ({
     setSelectedIndex(index);
   };
   const selectedCardUnlocked = selectedUnlockName && selectedCard ? isCardUnlockedInCatalog(selectedCard, selectedUnlockName) : false;
-  const selectedCardCanUseIllustration2 =
+  const selectedCardSupportsIllustration2 =
     selectedCard != null &&
     activeTab !== 'neutral' &&
     activeTab !== 'legendary' &&
     selectedCardUnlocked &&
-    canUseStarterIllustration2(previewJobId) &&
     isStarterIllustration2Eligible(previewJobId, selectedCard);
+  const selectedCardIllustration2Unlocked = selectedCardSupportsIllustration2 && canUseStarterIllustration2(previewJobId);
+  const selectedCardCanUseIllustration2 = selectedCardSupportsIllustration2 && selectedCardIllustration2Unlocked;
+  const selectedCardIllustration2UnlockLevel = getStarterIllustration2UnlockLevel(previewJobId);
+  const selectedJobMasteryLevel = getJobMasteryLevelInfo(previewJobId).level;
+  const selectedCardHasIllustration2Asset = selectedCard ? hasMasteryIllustration2Asset(selectedCard) : false;
   const selectedCardIllustrationVariant =
     selectedCard && selectedCardCanUseIllustration2
       ? getSelectedCardIllustrationVariant(previewJobId, selectedCard)
@@ -699,7 +705,6 @@ export const ZukanScreen = ({
                     ? filteredCardsBase[index]?.name ?? card.name
                     : card.name;
                 const isUnlocked = isCardUnlockedInCatalog(card, unlockName);
-                const legendaryOwnerName = getLegendaryOwnerName(card);
                 const frameRarity = getFrameRarity(card);
                 const zukanRarityClass =
                   frameRarity === 'starter' ? 'zukan-card-item--common' : `zukan-card-item--${frameRarity}`;
@@ -753,11 +758,6 @@ export const ZukanScreen = ({
                         onMouseEnter={noop}
                         onMouseLeave={noop}
                       />
-                      {legendaryOwnerName && (
-                        <span className="zukan-legend-owner-badge">
-                          ユーザー名：{legendaryOwnerName}
-                        </span>
-                      )}
                     </div>
                     {!isUnlocked && (
                       <div className="zukan-locked-overlay">
@@ -779,45 +779,53 @@ export const ZukanScreen = ({
                 }}
               >
                 <div className="zukan-card-detail" onClick={(event) => event.stopPropagation()}>
-                  {showZukanUpgradeToggle && (
+                  {(showZukanUpgradeToggle || (selectedCard && selectedCardSupportsIllustration2)) && (
                     <div className="zukan-detail-upgrade-bar">
-                      <button
-                        type="button"
-                        className={`zukan-upgrade-toggle ${showUpgradePreview ? 'zukan-upgrade-toggle--active' : ''}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setShowUpgradePreview((v) => !v);
-                        }}
-                      >
-                        強化
-                      </button>
-                    </div>
-                  )}
-                  {selectedCard && selectedCardCanUseIllustration2 && (
-                    <div className="zukan-detail-skin-bar">
-                      <span className="zukan-detail-skin-label">熟練度イラスト</span>
-                      <button
-                        type="button"
-                        className={`zukan-skin-toggle ${selectedCardIllustrationVariant === 'v1' ? 'zukan-skin-toggle--active' : ''}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedCardIllustrationVariant(previewJobId, selectedCard, 'v1');
-                        }}
-                      >
-                        1
-                      </button>
-                      <button
-                        type="button"
-                        className={`zukan-skin-toggle ${selectedCardIllustrationVariant === 'v2' ? 'zukan-skin-toggle--active' : ''}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedCardIllustrationVariant(previewJobId, selectedCard, 'v2');
-                        }}
-                      >
-                        2
-                      </button>
-                      {!hasMasteryIllustration2Asset(selectedCard) && (
-                        <small className="zukan-detail-skin-note">画像2未登録</small>
+                      {selectedCard && selectedCardSupportsIllustration2 && (
+                        <div className={`zukan-detail-skin-bar ${selectedCardIllustration2Unlocked ? '' : 'zukan-detail-skin-bar--locked'}`}>
+                          <span className="zukan-detail-skin-label">イラスト</span>
+                          <button
+                            type="button"
+                            className={`zukan-skin-toggle ${selectedCardIllustrationVariant === 'v1' ? 'zukan-skin-toggle--active' : ''}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedCardIllustrationVariant(previewJobId, selectedCard, 'v1');
+                            }}
+                          >
+                            1
+                          </button>
+                          <button
+                            type="button"
+                            className={`zukan-skin-toggle ${selectedCardIllustrationVariant === 'v2' ? 'zukan-skin-toggle--active' : ''}`}
+                            disabled={!selectedCardIllustration2Unlocked || !selectedCardHasIllustration2Asset}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (!selectedCardIllustration2Unlocked || !selectedCardHasIllustration2Asset) return;
+                              setSelectedCardIllustrationVariant(previewJobId, selectedCard, 'v2');
+                            }}
+                          >
+                            {selectedCardIllustration2Unlocked ? '2' : '🔒2'}
+                          </button>
+                          <small className="zukan-detail-skin-note">
+                            {!selectedCardHasIllustration2Asset
+                              ? '画像2未登録'
+                              : selectedCardIllustration2Unlocked
+                                ? `Lv${selectedCardIllustration2UnlockLevel}解放済み`
+                                : `Lv${selectedCardIllustration2UnlockLevel}解放 / 現Lv${selectedJobMasteryLevel}`}
+                          </small>
+                        </div>
+                      )}
+                      {showZukanUpgradeToggle && (
+                        <button
+                          type="button"
+                          className={`zukan-upgrade-toggle ${showUpgradePreview ? 'zukan-upgrade-toggle--active' : ''}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setShowUpgradePreview((v) => !v);
+                          }}
+                        >
+                          強化
+                        </button>
                       )}
                     </div>
                   )}

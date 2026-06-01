@@ -120,6 +120,12 @@ export type BgmType =
   | 'unemployed_story_area1'
   | 'unemployed_story_area2'
   | 'unemployed_story_area3'
+  | 'courier_area1'
+  | 'courier_area2'
+  | 'courier_area3'
+  | 'courier_story_area1'
+  | 'courier_story_area2'
+  | 'courier_story_area3'
   | 'none';
 
 const SE_FILES: Record<SeType, string> = {
@@ -165,6 +171,12 @@ const BGM_FILES: Record<Exclude<BgmType, 'none'>, string> = {
   unemployed_story_area1: publicSoundUrl('bgm-unemployed-story-area1.mp3'),
   unemployed_story_area2: publicSoundUrl('bgm-unemployed-story-area2.mp3'),
   unemployed_story_area3: publicSoundUrl('bgm-unemployed-story-area3.mp3'),
+  courier_area1: publicSoundUrl('bgm-courier-area1.mp3'),
+  courier_area2: publicSoundUrl('bgm-courier-area2.mp3'),
+  courier_area3: publicSoundUrl('bgm-courier-area3.mp3'),
+  courier_story_area1: publicSoundUrl('bgm-courier-story-area1.mp3'),
+  courier_story_area2: publicSoundUrl('bgm-courier-story-area2.mp3'),
+  courier_story_area3: publicSoundUrl('bgm-courier-story-area3.mp3'),
 };
 
 const BGM_SRC_SET = new Set<string>(Object.values(BGM_FILES));
@@ -186,6 +198,9 @@ const LOOP_BGM: BgmType[] = [
   'unemployed_area1',
   'unemployed_area2',
   'unemployed_area3',
+  'courier_area1',
+  'courier_area2',
+  'courier_area3',
 ];
 
 /** BGM はアプリ全体で 1 つの HTMLAudioElement を共有（二重再生防止） */

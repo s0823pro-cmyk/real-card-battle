@@ -13,6 +13,7 @@ import { VictoryScreen } from './components/VictoryScreen/VictoryScreen';
 import { BossRewardScreen } from './components/BossRewardScreen/BossRewardScreen';
 import { ZukanScreen } from './components/ZukanScreen/ZukanScreen';
 import { RankingScreen } from './components/RankingScreen/RankingScreen';
+import { ChampionRewardModal } from './components/ChampionRewardModal/ChampionRewardModal';
 import RouletteOverlay from './components/RunMap/RouletteOverlay';
 import RunMapScreen from './components/RunMap/RunMapScreen';
 import EventScreen from './components/RunFlow/EventScreen';
@@ -70,15 +71,29 @@ import {
 import { ensureAdMobInitialized, removeBannerAd, showInterstitialIfAllowed } from './utils/adMobClient';
 import { initIAP } from './utils/iapService';
 import {
+  fetchFirstUnseenChampionReward,
   finalizeRankingRunEndAsync,
+  markChampionRewardSeen,
   reportRankingScore,
   resetCurrentRunRankingScore,
+  type ChampionReward,
 } from './utils/rankingClient';
 import { useLanguage } from './contexts/LanguageContext';
 import { applyStatusBarForAppState } from './utils/nativeStatusBar';
 
 type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 type ZukanDebugMode = null | { initialTab: 'cards' | 'stories' | 'enemies' };
+const DEV_CHAMPION_REWARD_SEASON_ID = 'dev-preview';
+
+const createDevChampionReward = (): ChampionReward => ({
+  season_id: DEV_CHAMPION_REWARD_SEASON_ID,
+  season_label: '第1回総合ランキング',
+  nickname: 'そんな大工いるか？',
+  score: 32550,
+  champion_count: 1,
+  awarded_at: Date.now(),
+  reward_card_id: 'legend_sonna_daiku_architecture',
+});
 
 function App() {
   const { t } = useLanguage();
@@ -150,8 +165,26 @@ function App() {
   const pendingAreaTransitionRef = useRef<(() => void) | null>(null);
   const [showBossReward, setShowBossReward] = useState(false);
   const [bossRewardArea, setBossRewardArea] = useState<number | null>(null);
+  const [championReward, setChampionReward] = useState<ChampionReward | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
   const transitionCleanupRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchFirstUnseenChampionReward().then((reward) => {
+      if (!cancelled && reward) setChampionReward(reward);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const closeChampionReward = () => {
+    if (championReward && championReward.season_id !== DEV_CHAMPION_REWARD_SEASON_ID) {
+      markChampionRewardSeen(championReward.season_id);
+    }
+    setChampionReward(null);
+  };
 
   /** iOS WKWebView: ユーザー操作前の Web Audio ロック解除（共有 AudioContext + サイレントバッファ） */
   useEffect(() => {
@@ -214,6 +247,10 @@ function App() {
         if (area === 1) playBgm('unemployed_area1');
         else if (area === 2) playBgm('unemployed_area2');
         else playBgm('unemployed_area3');
+      } else if (state.jobId === 'courier') {
+        if (area === 1) playBgm('courier_area1');
+        else if (area === 2) playBgm('courier_area2');
+        else playBgm('courier_area3');
       } else {
         if (area === 1) playBgm('area1');
         else if (area === 2) playBgm('area2');
@@ -390,6 +427,17 @@ function App() {
         setScreenTransition({ phase: 'idle', durationMs: 0 });
       }, fadeInMs);
     }, fadeOutMs);
+  };
+
+  const showDevChampionRewardPreview = () => {
+    setRestoredBattleState(null);
+    setShowBattleRestorePrompt(false);
+    setBattleSave(null);
+    setChampionReward(null);
+    runScreenTransition(() => {
+      resetRun();
+      window.setTimeout(() => setChampionReward(createDevChampionReward()), 0);
+    }, 350, 350);
   };
 
   const handleJobSelect = (jobId: JobId) => {
@@ -637,6 +685,7 @@ function App() {
             savedProgress={savedProgress}
             onDevNavigate={handleDevNavigate}
             onDevAddExpansionCards={addExpansionCardsTwiceToDeckDev}
+            onDevChampionRewardPreview={showDevChampionRewardPreview}
           />
         );
       case 'zukan':
@@ -949,6 +998,7 @@ function App() {
           </div>
         </div>
       )}
+      <ChampionRewardModal reward={championReward} onClose={closeChampionReward} />
       {pendingItemReplacement && (
         <div className="item-replace-overlay">
           <div className="item-replace-modal">

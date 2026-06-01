@@ -4,6 +4,11 @@ import nailDriveImage from '../assets/cards/carpenter/nail_drive.png';
 import sawGuardImage from '../assets/cards/carpenter/saw_guard.png';
 import scaffoldBuildImage from '../assets/cards/carpenter/scaffold_build.png';
 import workClothesImage from '../assets/cards/carpenter/work_clothes.png';
+import hammerStrikeMastery2Image from '../assets/cards/carpenter/hammer_strike_mastery2.jpg';
+import nailDriveMastery2Image from '../assets/cards/carpenter/nail_drive_mastery2.jpg';
+import sawGuardMastery2Image from '../assets/cards/carpenter/saw_guard_mastery2.jpg';
+import scaffoldBuildMastery2Image from '../assets/cards/carpenter/scaffold_build_mastery2.jpg';
+import workClothesMastery2Image from '../assets/cards/carpenter/work_clothes_mastery2.jpg';
 import driedLumberImage from '../assets/cards/carpenter/dried_lumber.png';
 import sharpenedSawImage from '../assets/cards/carpenter/sharpened_saw.png';
 import reinforcedWallImage from '../assets/cards/carpenter/reinforced_wall.png';
@@ -11,7 +16,7 @@ import anxietyImage from '../assets/cards/enemy/anxiety.png';
 import curseImage from '../assets/cards/enemy/curse.png';
 
 export const CARPENTER_STARTER_DECK: Card[] = [
-  { id: 'hammer_1', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨', imageUrl: hammerStrikeImage },
+  { id: 'hammer_1', name: '金槌で殴る', type: 'attack', timeCost: 2, description: '6ダメージ', damage: 6, sellValue: 5, icon: '🔨', imageUrl: hammerStrikeImage, imageVariant2Url: hammerStrikeMastery2Image },
   {
     id: 'hammer_2',
     baseCardId: 'hammer_1',
@@ -22,7 +27,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     damage: 6,
     sellValue: 5,
     icon: '🔨',
-    imageUrl: hammerStrikeImage,
+    imageUrl: hammerStrikeImage, imageVariant2Url: hammerStrikeMastery2Image,
   },
   {
     id: 'hammer_3',
@@ -34,7 +39,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     damage: 6,
     sellValue: 5,
     icon: '🔨',
-    imageUrl: hammerStrikeImage,
+    imageUrl: hammerStrikeImage, imageVariant2Url: hammerStrikeMastery2Image,
   },
   {
     id: 'hammer_4',
@@ -46,9 +51,9 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     damage: 6,
     sellValue: 5,
     icon: '🔨',
-    imageUrl: hammerStrikeImage,
+    imageUrl: hammerStrikeImage, imageVariant2Url: hammerStrikeMastery2Image,
   },
-  { id: 'saw_guard_1', name: 'ノコギリガード', type: 'skill', timeCost: 2, description: '5ブロック', block: 5, sellValue: 5, icon: '🪚', imageUrl: sawGuardImage },
+  { id: 'saw_guard_1', name: 'ノコギリガード', type: 'skill', timeCost: 2, description: '5ブロック', block: 5, sellValue: 5, icon: '🪚', imageUrl: sawGuardImage, imageVariant2Url: sawGuardMastery2Image },
   {
     id: 'saw_guard_2',
     baseCardId: 'saw_guard_1',
@@ -59,7 +64,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     block: 5,
     sellValue: 5,
     icon: '🪚',
-    imageUrl: sawGuardImage,
+    imageUrl: sawGuardImage, imageVariant2Url: sawGuardMastery2Image,
   },
   {
     id: 'saw_guard_3',
@@ -71,7 +76,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     block: 5,
     sellValue: 5,
     icon: '🪚',
-    imageUrl: sawGuardImage,
+    imageUrl: sawGuardImage, imageVariant2Url: sawGuardMastery2Image,
   },
   {
     id: 'build_scaffold',
@@ -85,7 +90,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     badges: ['setup'],
     sellValue: 5,
     icon: '🏗️',
-    imageUrl: scaffoldBuildImage,
+    imageUrl: scaffoldBuildImage, imageVariant2Url: scaffoldBuildMastery2Image,
   },
   {
     id: 'nail_strike',
@@ -98,7 +103,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     tags: ['scaffold_bonus'],
     sellValue: 5,
     icon: '🔩',
-    imageUrl: nailDriveImage,
+    imageUrl: nailDriveImage, imageVariant2Url: nailDriveMastery2Image,
   },
   {
     id: 'work_clothes',
@@ -109,7 +114,7 @@ export const CARPENTER_STARTER_DECK: Card[] = [
     block: 2,
     sellValue: 8,
     icon: '🦺',
-    imageUrl: workClothesImage,
+    imageUrl: workClothesImage, imageVariant2Url: workClothesMastery2Image,
   },
 ];
 

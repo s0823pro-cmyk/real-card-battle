@@ -5,6 +5,11 @@ import courierParcelGuardImage from '../../assets/cards/courier/courier_parcel_g
 import courierEnergyDrinkImage from '../../assets/cards/courier/courier_energy_drink_v2.jpg';
 import courierShortcutImage from '../../assets/cards/courier/courier_shortcut_v2.jpg';
 import courierBreathGuardImage from '../../assets/cards/courier/courier_breath_guard_v2.jpg';
+import courierQuickDeliveryMastery2Image from '../../assets/cards/courier/courier_quick_delivery_mastery2.jpg';
+import courierParcelGuardMastery2Image from '../../assets/cards/courier/courier_parcel_guard_mastery2.jpg';
+import courierEnergyDrinkMastery2Image from '../../assets/cards/courier/courier_energy_drink_mastery2.jpg';
+import courierShortcutMastery2Image from '../../assets/cards/courier/courier_shortcut_mastery2.jpg';
+import courierBreathGuardMastery2Image from '../../assets/cards/courier/courier_breath_guard_mastery2.jpg';
 import courierDropoffPunchImage from '../../assets/cards/courier/courier_dropoff_punch_v1.jpg';
 import courierDoorbellComboImage from '../../assets/cards/courier/courier_doorbell_combo_v1.jpg';
 import courierParcelThrowImage from '../../assets/cards/courier/courier_parcel_throw_v1.jpg';
@@ -80,7 +85,7 @@ export const COURIER_STARTER_DECK: Card[] = [
     description: '4ダメージ',
     icon: '📦',
     sellValue: 3,
-    imageUrl: courierQuickDeliveryImage,
+    imageUrl: courierQuickDeliveryImage, imageVariant2Url: courierQuickDeliveryMastery2Image,
   },
   {
     id: 'courier_parcel_guard',
@@ -92,7 +97,7 @@ export const COURIER_STARTER_DECK: Card[] = [
     description: '4ブロック',
     icon: '📦',
     sellValue: 3,
-    imageUrl: courierParcelGuardImage,
+    imageUrl: courierParcelGuardImage, imageVariant2Url: courierParcelGuardMastery2Image,
   },
   {
     id: 'courier_energy_drink',
@@ -106,7 +111,7 @@ export const COURIER_STARTER_DECK: Card[] = [
     battleUseLimit: 2,
     icon: '🥤',
     sellValue: 4,
-    imageUrl: courierEnergyDrinkImage,
+    imageUrl: courierEnergyDrinkImage, imageVariant2Url: courierEnergyDrinkMastery2Image,
   },
   {
     id: 'courier_shortcut',
@@ -118,7 +123,7 @@ export const COURIER_STARTER_DECK: Card[] = [
     description: '7ダメージ',
     icon: '🏃',
     sellValue: 4,
-    imageUrl: courierShortcutImage,
+    imageUrl: courierShortcutImage, imageVariant2Url: courierShortcutMastery2Image,
   },
   {
     id: 'courier_breath_guard',
@@ -132,7 +137,7 @@ export const COURIER_STARTER_DECK: Card[] = [
     usableWhileExhausted: true,
     icon: '🛵',
     sellValue: 4,
-    imageUrl: courierBreathGuardImage,
+    imageUrl: courierBreathGuardImage, imageVariant2Url: courierBreathGuardMastery2Image,
   },
 ];
 

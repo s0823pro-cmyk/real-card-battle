@@ -2,18 +2,18 @@ import type { JobId } from '../types/game';
 import mapBgArea1 from '../assets/map_bg_area1.png';
 import mapBgArea2 from '../assets/map_bg_area2.png';
 import mapBgArea3 from '../assets/map_bg_area3.png';
-import mapBgCarpenterArea1 from '../assets/map_bg_carpenter_area1.png';
-import mapBgCarpenterArea2 from '../assets/map_bg_carpenter_area2.png';
-import mapBgCarpenterArea3 from '../assets/map_bg_carpenter_area3.png';
-import mapBgCookArea1 from '../assets/map_bg_cook_area1_v2.png';
-import mapBgCookArea2 from '../assets/map_bg_cook_area2_v2.png';
-import mapBgCookArea3 from '../assets/map_bg_cook_area3_v2.png';
-import mapBgUnemployedArea1 from '../assets/map_bg_unemployed_area1.png';
-import mapBgUnemployedArea2 from '../assets/map_bg_unemployed_area2.png';
-import mapBgUnemployedArea3 from '../assets/map_bg_unemployed_area3.png';
-import mapBgCourierArea1 from '../assets/map_bg_courier_area1.png';
-import mapBgCourierArea2 from '../assets/map_bg_courier_area2.png';
-import mapBgCourierArea3 from '../assets/map_bg_courier_area3.png';
+import mapBgCarpenterArea1 from '../assets/map_bg_carpenter_area1.jpg';
+import mapBgCarpenterArea2 from '../assets/map_bg_carpenter_area2.jpg';
+import mapBgCarpenterArea3 from '../assets/map_bg_carpenter_area3.jpg';
+import mapBgCookArea1 from '../assets/map_bg_cook_area1_v2.jpg';
+import mapBgCookArea2 from '../assets/map_bg_cook_area2_v2.jpg';
+import mapBgCookArea3 from '../assets/map_bg_cook_area3_v2.jpg';
+import mapBgUnemployedArea1 from '../assets/map_bg_unemployed_area1.jpg';
+import mapBgUnemployedArea2 from '../assets/map_bg_unemployed_area2.jpg';
+import mapBgUnemployedArea3 from '../assets/map_bg_unemployed_area3.jpg';
+import mapBgCourierArea1 from '../assets/map_bg_courier_area1.jpg';
+import mapBgCourierArea2 from '../assets/map_bg_courier_area2.jpg';
+import mapBgCourierArea3 from '../assets/map_bg_courier_area3.jpg';
 
 export const MAP_BACKGROUNDS: Record<number, string> = {
   1: mapBgArea1,
@@ -27,7 +27,7 @@ export const CARPENTER_MAP_BACKGROUNDS: Record<number, string> = {
   3: mapBgCarpenterArea3,
 };
 
-/** 料理人用マップ背景（`src/assets/map_bg_cook_area*.png`） */
+/** 料理人用マップ背景（`src/assets/map_bg_cook_area*.jpg`） */
 export const COOK_MAP_BACKGROUNDS: Record<number, string> = {
   1: mapBgCookArea1,
   2: mapBgCookArea2,

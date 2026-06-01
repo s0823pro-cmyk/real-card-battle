@@ -67,6 +67,14 @@ const CardComponent = ({
 
   const displayCardName = useMemo(() => translatedCardName(card, t), [card, t]);
   const translatedBaseDescription = useMemo(() => translatedCardDescription(card, t), [card, t]);
+  const displayCardNameParts = useMemo(() => {
+    const match = displayCardName.match(/^(.+?)〈(.+?)〉(\+)?$/);
+    if (!match) return null;
+    return {
+      main: match[1].trim(),
+      subtitle: `〈${match[2].trim()}〉${match[3] ?? ''}`,
+    };
+  }, [displayCardName]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -94,8 +102,22 @@ const CardComponent = ({
         ? Number.parseFloat(minSizeRaw)
         : 6;
 
-      nameEl.style.whiteSpace = 'nowrap';
       nameEl.style.fontSize = '11px';
+
+      if (displayCardNameParts) {
+        nameEl.style.whiteSpace = 'normal';
+        const lineEls = Array.from(
+          nameEl.querySelectorAll<HTMLElement>('.card-name-main, .card-name-subtitle'),
+        );
+        let size = 11;
+        while (lineEls.some((lineEl) => lineEl.scrollWidth > availableWidth) && size > minSize) {
+          size -= 0.5;
+          nameEl.style.fontSize = `${size}px`;
+        }
+        return;
+      }
+
+      nameEl.style.whiteSpace = 'nowrap';
 
       let size = 11;
       while (nameEl.scrollWidth > availableWidth && size > minSize) {
@@ -103,7 +125,7 @@ const CardComponent = ({
         nameEl.style.fontSize = `${size}px`;
       }
     });
-  }, [displayCardName]);
+  }, [displayCardName, displayCardNameParts]);
 
   const JOB_COLORS = {
     carpenter: '#c0392b',
@@ -350,8 +372,15 @@ const CardComponent = ({
                 )}
               </div>
               <div className="card-name-cluster__center">
-                <span ref={nameRef} className="card-name">
-                  {displayCardName}
+                <span ref={nameRef} className={`card-name ${displayCardNameParts ? 'card-name--split' : ''}`}>
+                  {displayCardNameParts ? (
+                    <>
+                      <span className="card-name-main">{displayCardNameParts.main}</span>
+                      <span className="card-name-subtitle">{displayCardNameParts.subtitle}</span>
+                    </>
+                  ) : (
+                    displayCardName
+                  )}
                 </span>
               </div>
               <div className="card-name-cluster__side card-name-cluster__side--right" aria-hidden />

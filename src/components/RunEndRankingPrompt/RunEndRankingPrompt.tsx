@@ -6,6 +6,8 @@ import {
   getUnsubmittedRankingScore,
   nicknameCharLength,
   postRankingNickname,
+  RANKING_NICKNAME_MAX_LENGTH,
+  RANKING_NICKNAME_MIN_LENGTH,
 } from '../../utils/rankingClient';
 import './RunEndRankingPrompt.css';
 
@@ -26,7 +28,7 @@ export const RunEndRankingPrompt = ({ jobId, onOpenRanking }: RunEndRankingPromp
 
   const handleSubmit = useCallback(async () => {
     const len = nicknameCharLength(draft);
-    if (len < 2 || len > 12) {
+    if (len < RANKING_NICKNAME_MIN_LENGTH || len > RANKING_NICKNAME_MAX_LENGTH) {
       setError(t('home.ranking.errLength'));
       return;
     }
@@ -98,7 +100,7 @@ export const RunEndRankingPrompt = ({ jobId, onOpenRanking }: RunEndRankingPromp
               className="run-end-ranking-modal-input"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              maxLength={24}
+              maxLength={RANKING_NICKNAME_MAX_LENGTH}
               autoComplete="username"
               placeholder={t('home.ranking.placeholder')}
               disabled={busy}

@@ -9,9 +9,14 @@ import worker from "../src/index";
 
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
 const ACTIVE_RANKING_TEST_NOW = String(Date.UTC(2026, 5, 1, 15, 0, 0));
+const TEST_ADMIN_CODE = "TEST_ADMIN_CODE";
+const LEGACY_ADMIN_CODE = "JOBLESS_ADMIN_2024";
 
 function setActiveRankingTestNow(): void {
 	(env as unknown as Record<string, unknown>).RANKING_TEST_NOW = ACTIVE_RANKING_TEST_NOW;
+	(env as unknown as Record<string, unknown>).ADMIN_CODE = TEST_ADMIN_CODE;
+	(env as unknown as Record<string, unknown>).APPLE_TEST_IDENTITY_TOKEN = "test.apple.identity.token";
+	(env as unknown as Record<string, unknown>).APPLE_TEST_SUB = "apple-user-test-1";
 }
 
 async function ensureSchema(): Promise<void> {
@@ -49,6 +54,34 @@ async function ensureSchema(): Promise<void> {
 	} catch {
 		// 既に追加済みなら何もしない
 	}
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS ranking_names (
+      season_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      nickname TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (season_id, device_id)
+    )`,
+	).run();
+	await env.DB.prepare(
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_ranking_names_season_nickname
+      ON ranking_names (season_id, nickname)`,
+	).run();
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS ranking_scores (
+      season_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      job_id TEXT NOT NULL,
+      score INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (season_id, device_id, job_id)
+    )`,
+	).run();
+	await env.DB.prepare(
+		`CREATE INDEX IF NOT EXISTS idx_ranking_scores_season_job_score
+      ON ranking_scores (season_id, job_id, score DESC, updated_at ASC)`,
+	).run();
 	await env.DB.prepare(
 		`CREATE TABLE IF NOT EXISTS player_stats (
       device_id TEXT NOT NULL,
@@ -124,11 +157,28 @@ async function ensureSchema(): Promise<void> {
     )`,
 	).run();
 	await env.DB.prepare(
-		`INSERT OR IGNORE INTO codes (code, type, payload, created_at)
-     VALUES ('JOBLESS_ADMIN_2024', 'admin', NULL, 0)`,
+		`CREATE TABLE IF NOT EXISTS apple_account_links (
+      apple_user_id TEXT PRIMARY KEY,
+      device_id TEXT NOT NULL,
+      linked_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
+	).run();
+	await env.DB.prepare(
+		`CREATE INDEX IF NOT EXISTS idx_apple_account_links_device_id
+      ON apple_account_links (device_id)`,
+	).run();
+	await env.DB.prepare(
+		`CREATE TABLE IF NOT EXISTS apple_account_backups (
+      apple_user_id TEXT PRIMARY KEY,
+      backup_json TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
 	).run();
 	await env.DB.prepare(`DELETE FROM ranking_champions`).run();
 	await env.DB.prepare(`DELETE FROM player_champion_badges`).run();
+	await env.DB.prepare(`DELETE FROM apple_account_links`).run();
+	await env.DB.prepare(`DELETE FROM apple_account_backups`).run();
 }
 
 describe("ranking worker", () => {
@@ -208,6 +258,72 @@ describe("ranking worker", () => {
 		};
 		expect(body.ranking.length).toBeGreaterThanOrEqual(1);
 		expect(body.ranking[0]).toMatchObject({ rank: 1, nickname: "プレイヤー", selected_badge: null, score: 20 });
+	});
+
+	it("keeps ranking nickname and score separated by season", async () => {
+		const device = "season-device-1";
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, nickname: "初代名" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await res.json()).toMatchObject({ ok: true });
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/score", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, job_id: "carpenter", points: 100 }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await res.json()).toEqual({ ok: true, score: 100 });
+
+		(env as unknown as Record<string, unknown>).RANKING_TEST_NOW = String(Date.UTC(2026, 5, 16, 15, 0, 0));
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, nickname: "二代目名" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await res.json()).toMatchObject({ ok: true });
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/score", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: device, job_id: "carpenter", points: 200 }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await res.json()).toEqual({ ok: true, score: 200 });
+
+		res = await worker.fetch(new IncomingRequest("http://example.com/ranking/carpenter"), env, ctx);
+		await waitOnExecutionContext(ctx);
+		let rankingBody = (await res.json()) as { ranking: { nickname: string; score: number }[] };
+		expect(rankingBody.ranking).toContainEqual(expect.objectContaining({ nickname: "二代目名", score: 200 }));
+		expect(rankingBody.ranking).not.toContainEqual(expect.objectContaining({ nickname: "初代名", score: 100 }));
+
+		setActiveRankingTestNow();
+		res = await worker.fetch(new IncomingRequest("http://example.com/ranking/carpenter"), env, ctx);
+		await waitOnExecutionContext(ctx);
+		rankingBody = (await res.json()) as { ranking: { nickname: string; score: number }[] };
+		expect(rankingBody.ranking).toContainEqual(expect.objectContaining({ nickname: "初代名", score: 100 }));
+		expect(rankingBody.ranking).not.toContainEqual(expect.objectContaining({ nickname: "二代目名", score: 200 }));
 	});
 
 	it("POST /badge saves selected mastery badge for ranking rows", async () => {
@@ -297,7 +413,7 @@ describe("ranking worker", () => {
 			new IncomingRequest("http://example.com/admin/confirm-champion", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ code: "JOBLESS_ADMIN_2024" }),
+				body: JSON.stringify({ code: TEST_ADMIN_CODE }),
 			}),
 			env,
 			ctx,
@@ -319,7 +435,7 @@ describe("ranking worker", () => {
 			new IncomingRequest("http://example.com/admin/confirm-champion", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ code: "JOBLESS_ADMIN_2024" }),
+				body: JSON.stringify({ code: TEST_ADMIN_CODE }),
 			}),
 			env,
 			ctx,
@@ -341,6 +457,35 @@ describe("ranking worker", () => {
 			nickname: "覇者太郎",
 			champion_count: 1,
 		});
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/champion-rewards?device_id=champion-device-1"),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		const rewardBody = (await res.json()) as {
+			ok: boolean;
+			rewards: { nickname: string; champion_count: number; reward_card_id: string }[];
+		};
+		expect(rewardBody).toMatchObject({
+			ok: true,
+			rewards: [
+				{
+					nickname: "覇者太郎",
+					champion_count: 1,
+					reward_card_id: "legend_sonna_daiku_architecture",
+				},
+			],
+		});
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/champion-rewards?device_id=champion-device-2"),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await res.json()).toMatchObject({ ok: true, rewards: [] });
 	});
 
 	it("POST /nickname rejects duplicate nickname for another device", async () => {
@@ -364,6 +509,35 @@ describe("ranking worker", () => {
 		await waitOnExecutionContext(ctx);
 		expect(res.status).toBe(400);
 		expect(await res.json()).toEqual({ ok: false, error: "nickname_taken" });
+	});
+
+	it("POST /nickname accepts up to 10 characters and rejects 11 characters", async () => {
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: "dev-10chars", nickname: "１２３４５６７８９０" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toMatchObject({ ok: true });
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/nickname", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ device_id: "dev-11chars", nickname: "１２３４５６７８９０１" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ ok: false, error: "nickname_length" });
 	});
 
 	it("POST /nickname rejects change to nickname held by another device", async () => {
@@ -483,6 +657,10 @@ describe("ranking worker", () => {
 			.bind(device)
 			.first<{ score: number }>();
 		expect(row).toBeNull();
+		const rankingRow = await env.DB.prepare(`SELECT score FROM ranking_scores WHERE device_id = ?`)
+			.bind(device)
+			.first<{ score: number }>();
+		expect(rankingRow).toBeNull();
 	});
 
 	it("SELF.fetch integration smoke", async () => {
@@ -642,11 +820,61 @@ describe("ranking worker", () => {
 		expect(res.status).toBe(400);
 	});
 
+	it("POST /apple/link stores backup and POST /apple/restore returns it", async () => {
+		const ctx = createExecutionContext();
+		const backup = {
+			version: 1,
+			createdAt: 123,
+			storage: {
+				"real-card-battle:device-id": "apple-device-1",
+				"real-card-battle:unlocked-jobs": JSON.stringify(["cook"]),
+			},
+		};
+		let res = await worker.fetch(
+			new IncomingRequest("http://example.com/apple/link", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					device_id: "apple-device-1",
+					identity_token: "test.apple.identity.token",
+					backup,
+				}),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toMatchObject({ ok: true, device_id: "apple-device-1" });
+		const linkRow = await env.DB.prepare(`SELECT apple_user_id FROM apple_account_links WHERE device_id = ?`)
+			.bind("apple-device-1")
+			.first<{ apple_user_id: string }>();
+		expect(linkRow?.apple_user_id).toMatch(/^apple_sha256:/);
+		expect(linkRow?.apple_user_id).not.toBe("apple-user-test-1");
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/apple/restore", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ identity_token: "test.apple.identity.token" }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toMatchObject({
+			ok: true,
+			device_id: "apple-device-1",
+			backup,
+		});
+	});
+
 	it("POST /code and GET /admin/summary with admin code", async () => {
 		const postCode = new IncomingRequest("http://example.com/code", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ code: "JOBLESS_ADMIN_2024" }),
+			body: JSON.stringify({ code: TEST_ADMIN_CODE }),
 		});
 		const ctx = createExecutionContext();
 		let res = await worker.fetch(postCode, env, ctx);
@@ -657,7 +885,7 @@ describe("ranking worker", () => {
 		expect(codeBody.type).toBe("admin");
 
 		const summaryReq = new IncomingRequest(
-			"http://example.com/admin/summary?code=" + encodeURIComponent("JOBLESS_ADMIN_2024"),
+			"http://example.com/admin/summary?code=" + encodeURIComponent(TEST_ADMIN_CODE),
 		);
 		res = await worker.fetch(summaryReq, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -685,5 +913,31 @@ describe("ranking worker", () => {
 		expect(Array.isArray(sum.top_combos)).toBe(true);
 		expect(Array.isArray(sum.ranking_periods)).toBe(true);
 		expect(sum.ranking_periods?.[0]?.rankings.some((r) => r.job_id === "total")).toBe(true);
+	});
+
+	it("POST /code accepts legacy admin code for developer access", async () => {
+		const ctx = createExecutionContext();
+		let res = await worker.fetch(
+			new IncomingRequest("http://example.com/code", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ code: LEGACY_ADMIN_CODE }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toMatchObject({ ok: true, type: "admin" });
+
+		res = await worker.fetch(
+			new IncomingRequest(
+				"http://example.com/admin/summary?code=" + encodeURIComponent(LEGACY_ADMIN_CODE),
+			),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
 	});
 });

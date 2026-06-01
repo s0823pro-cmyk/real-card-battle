@@ -31,6 +31,3 @@ CREATE TABLE IF NOT EXISTS codes (
   payload TEXT,
   created_at INTEGER NOT NULL
 );
-
-INSERT OR IGNORE INTO codes (code, type, payload, created_at)
-VALUES ('JOBLESS_ADMIN_2024', 'admin', NULL, 0);

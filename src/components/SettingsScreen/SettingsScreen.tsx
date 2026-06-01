@@ -229,7 +229,7 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
                     disabled={iapBusy}
                     onClick={() => void handleIapPurchase(IAP_PRODUCTS.REMOVE_ADS)}
                   >
-                    ¥300
+                    ¥500
                   </button>
                 </div>
               )}

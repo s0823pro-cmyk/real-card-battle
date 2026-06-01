@@ -11,7 +11,11 @@ import {
   getLocalRankingScore,
   getStoredRankingNickname,
   isRankingDisplayConsentEnabled,
+  nicknameCharLength,
   postRankingBadge,
+  postRankingNickname,
+  RANKING_NICKNAME_MAX_LENGTH,
+  RANKING_NICKNAME_MIN_LENGTH,
   type RankingRow,
 } from '../../utils/rankingClient';
 import {
@@ -27,12 +31,25 @@ import {
 import { RANKING_SCORE_GUIDE } from '../../utils/rankingScore';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
 import CardComponent from '../Hand/CardComponent';
-import { DAR_REQUIEM_CARD, LEGENDARY_WINNERS, type LegendaryWinner } from '../../data/legendaryRewardCards';
+import {
+  DAR_REQUIEM_CARD,
+  LEGENDARY_REWARD_CARDS,
+  LEGENDARY_WINNERS,
+  type LegendaryWinner,
+} from '../../data/legendaryRewardCards';
+import { getMasteryBadgeImage, getRankingChampionBadgeImage } from '../../data/badgeImages';
+import {
+  NAME_CHANGE_TICKET_CHANGED_EVENT,
+  consumeNameChangeTicket,
+  getNameChangeTicketCount,
+} from '../../utils/nameChangeTicket';
 import '../Hand/Hand.css';
 import './RankingScreen.css';
 
 type RankingTabJobId = Extract<JobId, 'carpenter' | 'cook' | 'unemployed' | 'courier'>;
 type RankingTabId = 'total' | RankingTabJobId;
+
+const RANKING_DISPLAY_LIMIT = 10;
 
 const JOB_TABS: {
   id: RankingTabId;
@@ -143,12 +160,13 @@ function getChampionBadgeLabel(count?: number | null): string | null {
 }
 
 function getLegendaryWinnerCard(winner: LegendaryWinner): Card {
+  const template = LEGENDARY_REWARD_CARDS.find((card) => card.name === winner.card.name) ?? DAR_REQUIEM_CARD;
   return {
-    ...DAR_REQUIEM_CARD,
+    ...template,
     name: winner.card.name,
     description: winner.card.description,
-    imageUrl: winner.card.imageUrl ?? DAR_REQUIEM_CARD.imageUrl,
-    badges: winner.card.badges ?? DAR_REQUIEM_CARD.badges,
+    imageUrl: winner.card.imageUrl ?? template.imageUrl,
+    badges: winner.card.badges ?? template.badges,
   };
 }
 
@@ -167,18 +185,31 @@ function getPreviewValues(card: Card): EffectiveCardValues {
 function ChampionBadgePill({ count }: { count?: number | null }) {
   const label = getChampionBadgeLabel(count);
   if (!label) return null;
+  const imageUrl = getRankingChampionBadgeImage(count);
   return (
-    <span className={`ranking-champion-badge ${count && count >= 5 ? 'ranking-champion-badge--max' : ''}`} title={`総合優勝 ${count}回`}>
-      {label}
+    <span
+      className={`ranking-champion-badge ${count && count >= 5 ? 'ranking-champion-badge--max' : ''}`}
+      title={`総合優勝 ${count}回`}
+      aria-label={`総合優勝 ${count}回`}
+    >
+      {imageUrl ? (
+        <img className="ranking-champion-badge__icon" src={imageUrl} alt="" aria-hidden="true" />
+      ) : (
+        <span aria-hidden>🏆</span>
+      )}
     </span>
   );
 }
 
 function MasteryBadgePill({ badge }: { badge: MasteryBadgeView }) {
+  const imageUrl = getMasteryBadgeImage(badge.jobId, badge.tier);
   return (
-    <span className={badge.className} title={`${badge.label} Lv${badge.level}`}>
-      <span aria-hidden>{badge.icon}</span>
-      <span>{badge.label}</span>
+    <span className={badge.className} title={`${badge.label} Lv${badge.level}`} aria-label={`${badge.label} Lv${badge.level}`}>
+      {imageUrl ? (
+        <img className="mastery-badge__icon" src={imageUrl} alt="" aria-hidden="true" />
+      ) : (
+        <span aria-hidden>{badge.icon}</span>
+      )}
     </span>
   );
 }
@@ -195,6 +226,11 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
   const [selectedLegend, setSelectedLegend] = useState<LegendaryWinner | null>(null);
   const [legendTopThreeOpen, setLegendTopThreeOpen] = useState(false);
   const [badgePickerOpen, setBadgePickerOpen] = useState(false);
+  const [nameChangeOpen, setNameChangeOpen] = useState(false);
+  const [nameChangeDraft, setNameChangeDraft] = useState('');
+  const [nameChangeBusy, setNameChangeBusy] = useState(false);
+  const [nameChangeError, setNameChangeError] = useState<string | null>(null);
+  const [nameChangeTicketCount, setNameChangeTicketCount] = useState(() => getNameChangeTicketCount());
   const [masteryRevision, setMasteryRevision] = useState(0);
   const [rankingConsentRevision, setRankingConsentRevision] = useState(0);
 
@@ -206,6 +242,12 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
     const onMasteryChanged = () => setMasteryRevision((v) => v + 1);
     window.addEventListener(JOB_MASTERY_CHANGED_EVENT, onMasteryChanged);
     return () => window.removeEventListener(JOB_MASTERY_CHANGED_EVENT, onMasteryChanged);
+  }, []);
+
+  useEffect(() => {
+    const onTicketChanged = () => setNameChangeTicketCount(getNameChangeTicketCount());
+    window.addEventListener(NAME_CHANGE_TICKET_CHANGED_EVENT, onTicketChanged);
+    return () => window.removeEventListener(NAME_CHANGE_TICKET_CHANGED_EVENT, onTicketChanged);
   }, []);
 
   const load = useCallback(async (jid: RankingTabId) => {
@@ -247,7 +289,7 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
   const activeJob = JOB_TABS.find((tab) => tab.id === jobId) ?? JOB_TABS[0];
   const seasonInfo = getCurrentRankingSeasonInfo();
   const topRows = rows.slice(0, 3);
-  const displayRows = rows.slice(0, 10);
+  const displayRows = rows.slice(0, RANKING_DISPLAY_LIMIT);
   const leaderScore = rows[0]?.score ?? 0;
   const activeTabLabel = getTabLabel(activeJob, t);
   const rankLabel = jobId === 'total' ? '総合順位' : '職業順位';
@@ -272,6 +314,58 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
     void postRankingBadge(getSelectedMasteryBadgeId());
     setRankingConsentRevision((v) => v + 1);
   }, []);
+
+  const openNameChangeModal = useCallback(() => {
+    const current = getStoredRankingNickname();
+    if (!current || nameChangeTicketCount <= 0) return;
+    setNameChangeDraft(current);
+    setNameChangeError(null);
+    setNameChangeOpen(true);
+  }, [nameChangeTicketCount]);
+
+  const submitNameChange = useCallback(async () => {
+    const current = getStoredRankingNickname();
+    if (!current) {
+      setNameChangeOpen(false);
+      return;
+    }
+    const len = nicknameCharLength(nameChangeDraft);
+    if (len < RANKING_NICKNAME_MIN_LENGTH || len > RANKING_NICKNAME_MAX_LENGTH) {
+      setNameChangeError(t('home.ranking.errLength'));
+      return;
+    }
+    const nextNickname = nameChangeDraft.trim();
+    if (nextNickname === current) {
+      setNameChangeError('現在と同じ名前です。');
+      return;
+    }
+    if (getNameChangeTicketCount() <= 0) {
+      setNameChangeError('ネーム変更チケットがありません。');
+      setNameChangeTicketCount(0);
+      return;
+    }
+    setNameChangeBusy(true);
+    setNameChangeError(null);
+    const result = await postRankingNickname(nextNickname, isRankingDisplayConsentEnabled());
+    setNameChangeBusy(false);
+    if (!result.ok) {
+      const err = result.error;
+      if (err === 'network') setNameChangeError(t('home.ranking.errNetwork'));
+      else if (err === 'nickname_not_allowed') setNameChangeError(t('home.ranking.errNickname'));
+      else if (err === 'nickname_taken') setNameChangeError(t('home.ranking.errNicknameTaken'));
+      else if (err === 'nickname_length') setNameChangeError(t('home.ranking.errLength'));
+      else setNameChangeError(t('home.ranking.errRegister'));
+      return;
+    }
+    if (!consumeNameChangeTicket()) {
+      setNameChangeError('ネーム変更チケットの消費に失敗しました。');
+      return;
+    }
+    setNameChangeTicketCount(getNameChangeTicketCount());
+    setNameChangeOpen(false);
+    setRankingConsentRevision((v) => v + 1);
+    void load(jobId);
+  }, [jobId, load, nameChangeDraft, t]);
 
   const getRowMasteryBadgeView = useCallback(
     (row: RankingRow): MasteryBadgeView | null => {
@@ -399,7 +493,7 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
         ))}
       </div>
       <p className="ranking-guide-note">
-        新シーズンではランキング名がリセットされます。不適切な名前、人物名、著作物に関わる名前は、表示名やカード名が調整される場合があります。
+        新シーズンではランキング名がリセットされます。前回と同じ名前も使用できます。表示名やカード名は、読みやすさ・安全性・権利面の都合で少し調整される場合があります。
       </p>
     </>
   );
@@ -522,17 +616,20 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
 
           {!loading && !error && topRows.length > 0 && (
             <section className="ranking-podium" aria-label="上位3名">
-              {topRows.map((row) => (
-                <article key={`podium-${jobId}-${row.rank}-${row.nickname}`} className={`ranking-podium-card ranking-podium-card--${row.rank}`}>
-                  <span className="ranking-podium-rank">#{row.rank}</span>
-                  <strong className="ranking-podium-name">
-                    <span>{row.nickname}</span>
-                    <ChampionBadgePill count={row.champion_count} />
-                    {getRowMasteryBadgeView(row) && <MasteryBadgePill badge={getRowMasteryBadgeView(row)!} />}
-                  </strong>
-                  <span className="ranking-podium-score">{formatScore(row.score)} {t('ranking.pt')}</span>
-                </article>
-              ))}
+              {topRows.map((row) => {
+                const rowMasteryBadge = getRowMasteryBadgeView(row);
+                return (
+                  <article key={`podium-${jobId}-${row.rank}-${row.nickname}`} className={`ranking-podium-card ranking-podium-card--${row.rank}`}>
+                    <span className="ranking-podium-rank">#{row.rank}</span>
+                    <strong className="ranking-podium-name">
+                      <ChampionBadgePill count={row.champion_count} />
+                      {rowMasteryBadge && <MasteryBadgePill badge={rowMasteryBadge} />}
+                      <span className="ranking-name-text">{row.nickname}</span>
+                    </strong>
+                    <span className="ranking-podium-score">{formatScore(row.score)} {t('ranking.pt')}</span>
+                  </article>
+                );
+              })}
             </section>
           )}
 
@@ -544,20 +641,23 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
             <p className="ranking-status">{t('ranking.empty')}</p>
           ) : (
             <div className="ranking-list">
-              {displayRows.map((row, i) => (
-                <div
-                  key={`${jobId}-${i}-${row.rank}`}
-                  className={`ranking-row ${getRankClass(row.rank)} ${row.nickname === getStoredRankingNickname() ? 'ranking-row--me' : ''}`}
-                >
-                  <span className="ranking-rank">#{row.rank}</span>
-                  <span className="ranking-nickname">
-                    <span>{row.nickname}</span>
-                    <ChampionBadgePill count={row.champion_count} />
-                    {getRowMasteryBadgeView(row) && <MasteryBadgePill badge={getRowMasteryBadgeView(row)!} />}
-                  </span>
-                  <span className="ranking-score">{formatScore(row.score)}</span>
-                </div>
-              ))}
+              {displayRows.map((row, i) => {
+                const rowMasteryBadge = getRowMasteryBadgeView(row);
+                return (
+                  <div
+                    key={`${jobId}-${i}-${row.rank}`}
+                    className={`ranking-row ${getRankClass(row.rank)} ${row.nickname === getStoredRankingNickname() ? 'ranking-row--me' : ''}`}
+                  >
+                    <span className="ranking-rank">#{row.rank}</span>
+                    <span className="ranking-nickname">
+                      <ChampionBadgePill count={row.champion_count} />
+                      {rowMasteryBadge && <MasteryBadgePill badge={rowMasteryBadge} />}
+                      <span className="ranking-name-text">{row.nickname}</span>
+                    </span>
+                    <span className="ranking-score">{formatScore(row.score)}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -566,8 +666,8 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
           <p className="ranking-footer-label">{t('ranking.yourScore')}</p>
           <button type="button" className="ranking-footer-profile-btn" onClick={() => setBadgePickerOpen(true)}>
             <span className="ranking-footer-nick">
-              <span>{myNickname}</span>
               {selectedMasteryBadgeView && <MasteryBadgePill badge={selectedMasteryBadgeView} />}
+              <span className="ranking-name-text">{myNickname}</span>
             </span>
             <span className="ranking-footer-score">
               {formatScore(myScore)} {t('ranking.pt')}
@@ -610,6 +710,21 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
                     </button>
                   )}
                 </section>
+                <section className="ranking-participation-panel ranking-name-change-panel">
+                  <div>
+                    <strong>ランキング名変更</strong>
+                    <p>
+                      現在: {getStoredRankingNickname() ?? '未設定'} / ネーム変更チケット: {nameChangeTicketCount}枚
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!getStoredRankingNickname() || nameChangeTicketCount <= 0 || nameChangeBusy}
+                    onClick={openNameChangeModal}
+                  >
+                    {nameChangeTicketCount > 0 ? 'チケットで変更' : 'チケットなし'}
+                  </button>
+                </section>
                 <button
                   type="button"
                   className={`ranking-badge-choice ${selectedMasteryBadge == null ? 'ranking-badge-choice--active' : ''}`}
@@ -618,27 +733,69 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
                   <span className="ranking-badge-choice-main">表示しない</span>
                   <small>ランキングの名前横にバッジを出しません。</small>
                 </button>
-                {unlockedMasteryBadges.length === 0 ? (
-                  <p className="ranking-badge-empty">
-                    まだ解放済みの熟練度バッジがありません。各ジョブLv10で「上級者」が解放されます。
-                  </p>
-                ) : (
-                  unlockedMasteryBadges.map((badge) => (
-                    <button
-                      key={badge.id}
-                      type="button"
-                      className={`ranking-badge-choice ${selectedMasteryBadge === badge.id ? 'ranking-badge-choice--active' : ''}`}
-                      onClick={() => selectMasteryBadge(badge.id)}
-                    >
+                {unlockedMasteryBadges.map((badge) => (
+                  <button
+                    key={badge.id}
+                    type="button"
+                    className={`ranking-badge-choice ${selectedMasteryBadge === badge.id ? 'ranking-badge-choice--active' : ''}`}
+                    onClick={() => selectMasteryBadge(badge.id)}
+                  >
+                    <span className="ranking-badge-choice-title">
                       <MasteryBadgePill badge={badge} />
-                      <small>Lv{badge.level}で解放</small>
-                    </button>
-                  ))
-                )}
+                      <span className="ranking-badge-choice-main">{badge.label}</span>
+                    </span>
+                  </button>
+                ))}
               </div>
               <p className="ranking-guide-note">
                 バッジはランキングサーバーにも保存され、他の端末から見ても名前横に表示されます。
               </p>
+            </section>
+          </div>
+        )}
+
+        {nameChangeOpen && (
+          <div className="ranking-guide-overlay" onClick={() => {
+            if (!nameChangeBusy) setNameChangeOpen(false);
+          }}>
+            <section className="ranking-guide-modal" onClick={(e) => e.stopPropagation()} aria-label="ランキング名変更">
+              <div className="ranking-guide-header">
+                <div>
+                  <p className="ranking-kicker">NAME CHANGE</p>
+                  <h2>ランキング名変更</h2>
+                </div>
+                <button
+                  type="button"
+                  className="ranking-guide-close"
+                  disabled={nameChangeBusy}
+                  onClick={() => setNameChangeOpen(false)}
+                >
+                  {t('common.close')}
+                </button>
+              </div>
+              <div className="ranking-badge-picker-body">
+                <p className="ranking-guide-note">
+                  ネーム変更チケットを1枚消費して、現在のランキング開催期間中の名前を変更します。
+                </p>
+                <input
+                  type="text"
+                  className="ranking-name-change-input"
+                  value={nameChangeDraft}
+                  onChange={(e) => setNameChangeDraft(e.target.value)}
+                  maxLength={RANKING_NICKNAME_MAX_LENGTH}
+                  disabled={nameChangeBusy}
+                  placeholder="例: カード職人"
+                />
+                {nameChangeError ? <p className="ranking-name-change-error">{nameChangeError}</p> : null}
+                <button
+                  type="button"
+                  className="ranking-name-change-submit"
+                  disabled={nameChangeBusy || nameChangeTicketCount <= 0}
+                  onClick={() => void submitNameChange()}
+                >
+                  {nameChangeBusy ? '変更中…' : 'チケットを使って変更'}
+                </button>
+              </div>
             </section>
           </div>
         )}

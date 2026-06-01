@@ -77,6 +77,8 @@ function nicknameCharLength(s: string): number {
 	return [...s].length;
 }
 
+const NICKNAME_MIN_LENGTH = 2;
+const NICKNAME_MAX_LENGTH = 10;
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FIRST_RANKING_TALLY_START_AT = Date.UTC(2026, 4, 31) - JST_OFFSET_MS;
@@ -86,6 +88,8 @@ const RANKING_TALLY_DAYS = 2;
 const RANKING_CYCLE_DAYS = RANKING_ACTIVE_DAYS + RANKING_TALLY_DAYS;
 const PRE_SEASON_COMPAT_ID = "2026-05";
 const TEST_NOW_ENV_KEY = "RANKING_TEST_NOW";
+const ADMIN_CODE_ENV_KEY = "ADMIN_CODE";
+const LEGACY_ADMIN_CODE = "JOBLESS_ADMIN_2024";
 
 type RankingSeasonState = {
 	id: string;
@@ -171,6 +175,17 @@ function seasonInSql(column: string, ids: readonly string[]): string {
 	return `${column} IN (${ids.map(() => "?").join(", ")})`;
 }
 
+function rankingNameJoinSql(nameAlias: string, scoreAlias: string, readableSeasonIds: readonly string[]): string {
+	if (readableSeasonIds.length > 1) {
+		return `${nameAlias}.device_id = ${scoreAlias}.device_id AND ${seasonInSql(`${nameAlias}.season_id`, readableSeasonIds)}`;
+	}
+	return `${nameAlias}.device_id = ${scoreAlias}.device_id AND ${nameAlias}.season_id = ${scoreAlias}.season_id`;
+}
+
+function rankingNameJoinParams(readableSeasonIds: readonly string[]): string[] {
+	return readableSeasonIds.length > 1 ? [...readableSeasonIds] : [];
+}
+
 function isNonEmptyDeviceId(id: unknown): id is string {
 	return typeof id === "string" && id.trim().length > 0 && id.length <= 512;
 }
@@ -226,6 +241,185 @@ function parseTopCards(v: unknown): string[] {
 	return out;
 }
 
+
+const APPLE_ISSUER = "https://appleid.apple.com";
+const APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
+const APPLE_BUNDLE_ID = "com.s0823pro.realcardbattle";
+const MAX_APPLE_BACKUP_JSON_BYTES = 100_000;
+
+type AppleJwtHeader = {
+	alg?: string;
+	kid?: string;
+};
+
+type AppleJwtPayload = {
+	iss?: string;
+	aud?: string | string[];
+	exp?: number;
+	sub?: string;
+};
+
+type AppleJwk = JsonWebKey & {
+	kid?: string;
+};
+
+type AppleJwkSet = {
+	keys?: AppleJwk[];
+};
+
+function base64UrlToBytes(input: string): Uint8Array {
+	const base64 = input.replace(/-/g, "+").replace(/_/g, "/");
+	const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+	const binary = atob(padded);
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+	return bytes;
+}
+
+function parseJwtPart<T>(part: string): T | null {
+	try {
+		const text = new TextDecoder().decode(base64UrlToBytes(part));
+		return JSON.parse(text) as T;
+	} catch {
+		return null;
+	}
+}
+
+function readStringEnv(env: Env, key: string): string | null {
+	const raw = (env as unknown as Record<string, unknown>)[key];
+	return typeof raw === "string" && raw.length > 0 ? raw : null;
+}
+
+async function sha256Hex(input: string): Promise<string> {
+	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+	return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function appleAccountStorageKey(appleUserId: string): Promise<string> {
+	return `apple_sha256:${await sha256Hex(`${APPLE_BUNDLE_ID}:${appleUserId}`)}`;
+}
+
+async function verifyAppleIdentityToken(env: Env, token: unknown): Promise<string | null> {
+	try {
+		if (typeof token !== "string" || token.length < 20 || token.length > 4096) return null;
+
+		const testToken = readStringEnv(env, "APPLE_TEST_IDENTITY_TOKEN");
+		const testSub = readStringEnv(env, "APPLE_TEST_SUB");
+		if (testToken && testSub && token === testToken) return testSub;
+
+		const parts = token.split(".");
+		if (parts.length !== 3) return null;
+		const [headerPart, payloadPart, signaturePart] = parts;
+		const header = parseJwtPart<AppleJwtHeader>(headerPart);
+		const payload = parseJwtPart<AppleJwtPayload>(payloadPart);
+		if (!header || !payload || header.alg !== "RS256" || !header.kid) return null;
+		if (payload.iss !== APPLE_ISSUER || typeof payload.sub !== "string") return null;
+		const audOk = Array.isArray(payload.aud)
+			? payload.aud.includes(APPLE_BUNDLE_ID)
+			: payload.aud === APPLE_BUNDLE_ID;
+		if (!audOk) return null;
+		if (typeof payload.exp !== "number" || payload.exp <= Math.floor(Date.now() / 1000)) return null;
+
+		const jwksRes = await fetch(APPLE_JWKS_URL);
+		if (!jwksRes.ok) return null;
+		const jwks = (await jwksRes.json()) as AppleJwkSet;
+		const jwk = jwks.keys?.find((key) => key.kid === header.kid);
+		if (!jwk) return null;
+		const cryptoKey = await crypto.subtle.importKey(
+			"jwk",
+			jwk,
+			{ name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+			false,
+			["verify"],
+		);
+		const data = new TextEncoder().encode(`${headerPart}.${payloadPart}`);
+		const signature = base64UrlToBytes(signaturePart);
+		const verified = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", cryptoKey, signature, data);
+		return verified ? payload.sub : null;
+	} catch {
+		return null;
+	}
+}
+
+function normalizeAppleBackup(backup: unknown): string | null {
+	if (!backup || typeof backup !== "object") return null;
+	const jsonText = JSON.stringify(backup);
+	if (new TextEncoder().encode(jsonText).length > MAX_APPLE_BACKUP_JSON_BYTES) return null;
+	return jsonText;
+}
+
+async function handlePostAppleLink(request: Request, env: Env): Promise<Response> {
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ ok: false, error: "invalid_json" }, 400);
+	}
+	if (!body || typeof body !== "object") return json({ ok: false, error: "invalid_body" }, 400);
+	const { device_id, identity_token, backup } = body as Record<string, unknown>;
+	if (!isNonEmptyDeviceId(device_id)) return json({ ok: false, error: "invalid_device_id" }, 400);
+	const appleUserId = await verifyAppleIdentityToken(env, identity_token);
+	if (!appleUserId) return json({ ok: false, error: "invalid_apple_token" }, 401);
+	const appleStorageKey = await appleAccountStorageKey(appleUserId);
+	const backupJson = normalizeAppleBackup(backup);
+	if (!backupJson) return json({ ok: false, error: "invalid_backup" }, 400);
+	const now = getRankingNow(env);
+
+	await env.DB.batch([
+		env.DB.prepare(
+			`INSERT INTO apple_account_links (apple_user_id, device_id, linked_at, updated_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(apple_user_id) DO UPDATE SET
+           device_id = excluded.device_id,
+           updated_at = excluded.updated_at`,
+		).bind(appleStorageKey, device_id, now, now),
+		env.DB.prepare(
+			`INSERT INTO apple_account_backups (apple_user_id, backup_json, updated_at)
+         VALUES (?, ?, ?)
+         ON CONFLICT(apple_user_id) DO UPDATE SET
+           backup_json = excluded.backup_json,
+           updated_at = excluded.updated_at`,
+		).bind(appleStorageKey, backupJson, now),
+	]);
+
+	return json({ ok: true, device_id, updated_at: now });
+}
+
+async function handlePostAppleRestore(request: Request, env: Env): Promise<Response> {
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ ok: false, error: "invalid_json" }, 400);
+	}
+	if (!body || typeof body !== "object") return json({ ok: false, error: "invalid_body" }, 400);
+	const { identity_token } = body as Record<string, unknown>;
+	const appleUserId = await verifyAppleIdentityToken(env, identity_token);
+	if (!appleUserId) return json({ ok: false, error: "invalid_apple_token" }, 401);
+	const appleStorageKey = await appleAccountStorageKey(appleUserId);
+
+	const row = await env.DB.prepare(
+		`SELECT l.device_id AS device_id, b.backup_json AS backup_json, b.updated_at AS updated_at
+       FROM apple_account_links l
+       LEFT JOIN apple_account_backups b ON b.apple_user_id = l.apple_user_id
+       WHERE l.apple_user_id = ?
+       LIMIT 1`,
+	)
+		.bind(appleStorageKey)
+		.first<{ device_id: string; backup_json: string | null; updated_at: number | null }>();
+
+	if (!row) return json({ ok: false, error: "apple_account_not_linked" }, 404);
+	let backup: unknown = null;
+	if (row.backup_json) {
+		try {
+			backup = JSON.parse(row.backup_json) as unknown;
+		} catch {
+			backup = null;
+		}
+	}
+	return json({ ok: true, device_id: row.device_id, backup, updated_at: row.updated_at ?? null });
+}
+
 function sortedPairComboKey(a: string, b: string): string {
 	return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
@@ -263,6 +457,12 @@ export default {
 			if (path === "/badge" && method === "POST") {
 				return await handlePostBadge(request, env);
 			}
+			if (path === "/apple/link" && method === "POST") {
+				return await handlePostAppleLink(request, env);
+			}
+			if (path === "/apple/restore" && method === "POST") {
+				return await handlePostAppleRestore(request, env);
+			}
 			if (path === "/stats" && method === "POST") {
 				return await handlePostStats(request, env);
 			}
@@ -277,6 +477,9 @@ export default {
 			}
 			if (path === "/admin/confirm-champion" && method === "POST") {
 				return await handlePostAdminConfirmChampion(request, env);
+			}
+			if (path === "/champion-rewards" && method === "GET") {
+				return await handleGetChampionRewards(request, env);
 			}
 			if (path === "/my-stats" && method === "GET") {
 				return await handleGetMyStats(request, env);
@@ -320,7 +523,7 @@ async function handlePostNickname(request: Request, env: Env): Promise<Response>
 	}
 	const trimmed = nickname.trim();
 	const len = nicknameCharLength(trimmed);
-	if (len < 2 || len > 12) {
+	if (len < NICKNAME_MIN_LENGTH || len > NICKNAME_MAX_LENGTH) {
 		return json({ ok: false, error: "nickname_length" }, 400);
 	}
 	if (containsNgWord(trimmed)) {
@@ -330,13 +533,19 @@ async function handlePostNickname(request: Request, env: Env): Promise<Response>
 	const now = getRankingNow(env);
 	const season = getCurrentRankingSeason(now);
 	const readableSeasonIds = getReadableRankingSeasonIds(now);
-	const myRow = await env.DB.prepare(`SELECT nickname, nickname_season_id FROM players WHERE device_id = ? LIMIT 1`)
-		.bind(device_id)
-		.first<{ nickname: string; nickname_season_id: string }>();
-	const keepingSameNickname = myRow?.nickname === trimmed && readableSeasonIds.includes(myRow.nickname_season_id);
+	const myRow = await env.DB.prepare(
+		`SELECT nickname FROM ranking_names
+     WHERE device_id = ? AND ${seasonInSql("season_id", readableSeasonIds)}
+     LIMIT 1`,
+	)
+		.bind(device_id, ...readableSeasonIds)
+		.first<{ nickname: string }>();
+	const keepingSameNickname = myRow?.nickname === trimmed;
 	if (!keepingSameNickname) {
 		const taken = await env.DB.prepare(
-			`SELECT 1 AS x FROM players WHERE nickname = ? AND ${seasonInSql("nickname_season_id", readableSeasonIds)} AND device_id != ? LIMIT 1`,
+			`SELECT 1 AS x FROM ranking_names
+       WHERE nickname = ? AND ${seasonInSql("season_id", readableSeasonIds)} AND device_id != ?
+       LIMIT 1`,
 		)
 			.bind(trimmed, ...readableSeasonIds, device_id)
 			.first<{ x: number }>();
@@ -355,6 +564,16 @@ async function handlePostNickname(request: Request, env: Env): Promise<Response>
 		.bind(device_id, trimmed, season.id, now)
 		.run();
 
+	await env.DB.prepare(
+		`INSERT INTO ranking_names (season_id, device_id, nickname, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(season_id, device_id) DO UPDATE SET
+       nickname = excluded.nickname,
+       updated_at = excluded.updated_at`,
+	)
+		.bind(season.id, device_id, trimmed, now, now)
+		.run();
+
 	return json({ ok: true, season_id: season.id });
 }
 
@@ -364,22 +583,23 @@ async function handleGetRanking(env: Env, jobId: string): Promise<Response> {
 	}
 
 	const readableSeasonIds = getReadableRankingSeasonIds(getRankingNow(env));
+	const nameJoinParams = rankingNameJoinParams(readableSeasonIds);
 	const { results } = await env.DB.prepare(
 		`SELECT
-       p.nickname AS nickname,
+       rn.nickname AS nickname,
        p.selected_badge AS selected_badge,
        COALESCE(cb.champion_count, 0) AS champion_count,
        s.score AS score
-     FROM scores s
-     INNER JOIN players p ON p.device_id = s.device_id
+     FROM ranking_scores s
+     INNER JOIN ranking_names rn ON ${rankingNameJoinSql("rn", "s", readableSeasonIds)}
+     LEFT JOIN players p ON p.device_id = s.device_id
      LEFT JOIN player_champion_badges cb ON cb.device_id = s.device_id
      WHERE s.job_id = ?
        AND ${seasonInSql("s.season_id", readableSeasonIds)}
-       AND ${seasonInSql("p.nickname_season_id", readableSeasonIds)}
      ORDER BY s.score DESC, s.updated_at ASC
      LIMIT 100`,
 	)
-		.bind(jobId, ...readableSeasonIds, ...readableSeasonIds)
+		.bind(...nameJoinParams, jobId, ...readableSeasonIds)
 		.all<{ nickname: string; selected_badge: string | null; champion_count: number | null; score: number }>();
 
 	const ranking = (results ?? []).map((row, i) => ({
@@ -395,23 +615,24 @@ async function handleGetRanking(env: Env, jobId: string): Promise<Response> {
 
 async function handleGetTotalRanking(env: Env): Promise<Response> {
 	const readableSeasonIds = getReadableRankingSeasonIds(getRankingNow(env));
+	const nameJoinParams = rankingNameJoinParams(readableSeasonIds);
 	const { results } = await env.DB.prepare(
 		`SELECT
-       p.nickname AS nickname,
+       rn.nickname AS nickname,
        p.selected_badge AS selected_badge,
        COALESCE(cb.champion_count, 0) AS champion_count,
        SUM(s.score) AS score,
        MAX(s.updated_at) AS updated_at
-     FROM scores s
-     INNER JOIN players p ON p.device_id = s.device_id
+     FROM ranking_scores s
+     INNER JOIN ranking_names rn ON ${rankingNameJoinSql("rn", "s", readableSeasonIds)}
+     LEFT JOIN players p ON p.device_id = s.device_id
      LEFT JOIN player_champion_badges cb ON cb.device_id = s.device_id
      WHERE s.job_id IN ('carpenter', 'cook', 'unemployed', 'courier')
        AND ${seasonInSql("s.season_id", readableSeasonIds)}
-       AND ${seasonInSql("p.nickname_season_id", readableSeasonIds)}
-     GROUP BY s.device_id, p.nickname, p.selected_badge, cb.champion_count
+     GROUP BY s.device_id, rn.nickname, p.selected_badge, cb.champion_count
      ORDER BY score DESC, updated_at ASC
      LIMIT 100`,
-	).bind(...readableSeasonIds, ...readableSeasonIds).all<{ nickname: string; selected_badge: string | null; champion_count: number | null; score: number; updated_at: number }>();
+	).bind(...nameJoinParams, ...readableSeasonIds).all<{ nickname: string; selected_badge: string | null; champion_count: number | null; score: number; updated_at: number }>();
 
 	const ranking = (results ?? []).map((row, i) => ({
 		rank: i + 1,
@@ -433,11 +654,6 @@ function buildUpdatedAtFilter(startAt?: number, endAt?: number): string {
 	return " AND s.updated_at >= ? AND s.updated_at < ?";
 }
 
-function bindPeriodParams(stmt: D1PreparedStatement, startAt?: number, endAt?: number): D1PreparedStatement {
-	if (startAt == null || endAt == null) return stmt;
-	return stmt.bind(startAt, endAt);
-}
-
 async function getAdminJobRanking(
 	env: Env,
 	jobId: RankingJobId,
@@ -445,14 +661,18 @@ async function getAdminJobRanking(
 	endAt?: number,
 ): Promise<AdminRankingRow[]> {
 	const filter = buildUpdatedAtFilter(startAt, endAt);
+	const readableSeasonIds = getReadableRankingSeasonIds(getRankingNow(env));
+	const nameJoinParams = rankingNameJoinParams(readableSeasonIds);
 	const stmt = env.DB.prepare(
-		`SELECT p.nickname AS nickname, s.score AS score, s.updated_at AS updated_at
-     FROM scores s
-     INNER JOIN players p ON p.device_id = s.device_id
+		`SELECT rn.nickname AS nickname, s.score AS score, s.updated_at AS updated_at
+     FROM ranking_scores s
+     INNER JOIN ranking_names rn ON ${rankingNameJoinSql("rn", "s", readableSeasonIds)}
      WHERE s.job_id = ?${filter}
      ORDER BY s.score DESC, s.updated_at ASC`,
 	);
-	const bound = startAt == null || endAt == null ? stmt.bind(jobId) : stmt.bind(jobId, startAt, endAt);
+	const bound = startAt == null || endAt == null
+		? stmt.bind(...nameJoinParams, jobId)
+		: stmt.bind(...nameJoinParams, jobId, startAt, endAt);
 	const { results } = await bound.all<{ nickname: string; score: number; updated_at: number }>();
 	return rankAdminRows(
 		(results ?? []).map((row) => ({
@@ -466,15 +686,20 @@ async function getAdminJobRanking(
 
 async function getAdminTotalRanking(env: Env, startAt?: number, endAt?: number): Promise<AdminRankingRow[]> {
 	const filter = buildUpdatedAtFilter(startAt, endAt);
+	const readableSeasonIds = getReadableRankingSeasonIds(getRankingNow(env));
+	const nameJoinParams = rankingNameJoinParams(readableSeasonIds);
 	const stmt = env.DB.prepare(
-		`SELECT p.nickname AS nickname, SUM(s.score) AS score, MAX(s.updated_at) AS updated_at
-     FROM scores s
-     INNER JOIN players p ON p.device_id = s.device_id
+		`SELECT rn.nickname AS nickname, SUM(s.score) AS score, MAX(s.updated_at) AS updated_at
+     FROM ranking_scores s
+     INNER JOIN ranking_names rn ON ${rankingNameJoinSql("rn", "s", readableSeasonIds)}
      WHERE s.job_id IN ('carpenter', 'cook', 'unemployed', 'courier')${filter}
-     GROUP BY s.device_id, p.nickname
+     GROUP BY s.season_id, s.device_id, rn.nickname
      ORDER BY score DESC, updated_at ASC`,
 	);
-	const { results } = await bindPeriodParams(stmt, startAt, endAt).all<{
+	const bound = startAt == null || endAt == null
+		? stmt.bind(...nameJoinParams)
+		: stmt.bind(...nameJoinParams, startAt, endAt);
+	const { results } = await bound.all<{
 		nickname: string;
 		score: number;
 		updated_at: number;
@@ -525,6 +750,44 @@ async function getChampionRecords(env: Env): Promise<ChampionRecord[]> {
 	}));
 }
 
+async function handleGetChampionRewards(request: Request, env: Env): Promise<Response> {
+	const url = new URL(request.url);
+	const deviceId = url.searchParams.get("device_id")?.trim() ?? "";
+	if (!isNonEmptyDeviceId(deviceId)) {
+		return json({ ok: false, error: "invalid_device_id" }, 400);
+	}
+
+	const { results } = await env.DB.prepare(
+		`SELECT
+       rc.season_id AS season_id,
+       rc.season_label AS season_label,
+       rc.nickname AS nickname,
+       rc.score AS score,
+       COALESCE(cb.champion_count, 0) AS champion_count,
+       rc.awarded_at AS awarded_at
+     FROM ranking_champions rc
+     LEFT JOIN player_champion_badges cb ON cb.device_id = rc.device_id
+     WHERE rc.device_id = ?
+     ORDER BY rc.awarded_at DESC
+     LIMIT 10`,
+	)
+		.bind(deviceId)
+		.all<Omit<ChampionRecord, "device_id">>();
+
+	return json({
+		ok: true,
+		rewards: (results ?? []).map((row) => ({
+			season_id: row.season_id,
+			season_label: row.season_label,
+			nickname: row.nickname,
+			score: row.score,
+			champion_count: row.champion_count ?? 0,
+			awarded_at: row.awarded_at,
+			reward_card_id: "legend_sonna_daiku_architecture",
+		})),
+	});
+}
+
 async function handlePostAdminConfirmChampion(request: Request, env: Env): Promise<Response> {
 	let body: unknown;
 	try {
@@ -543,6 +806,7 @@ async function handlePostAdminConfirmChampion(request: Request, env: Env): Promi
 	const now = getRankingNow(env);
 	const season = getCurrentRankingSeason(now);
 	const readableSeasonIds = getReadableRankingSeasonIds(now);
+	const nameJoinParams = rankingNameJoinParams(readableSeasonIds);
 
 	const existing = await env.DB.prepare(
 		`SELECT
@@ -567,19 +831,18 @@ async function handlePostAdminConfirmChampion(request: Request, env: Env): Promi
 	const winner = await env.DB.prepare(
 		`SELECT
        s.device_id AS device_id,
-       p.nickname AS nickname,
+       rn.nickname AS nickname,
        SUM(s.score) AS score,
        MAX(s.updated_at) AS updated_at
-     FROM scores s
-     INNER JOIN players p ON p.device_id = s.device_id
+     FROM ranking_scores s
+     INNER JOIN ranking_names rn ON ${rankingNameJoinSql("rn", "s", readableSeasonIds)}
      WHERE s.job_id IN ('carpenter', 'cook', 'unemployed', 'courier')
        AND ${seasonInSql("s.season_id", readableSeasonIds)}
-       AND ${seasonInSql("p.nickname_season_id", readableSeasonIds)}
-     GROUP BY s.device_id, p.nickname
+     GROUP BY s.device_id, rn.nickname
      ORDER BY score DESC, updated_at ASC
      LIMIT 1`,
 	)
-		.bind(...readableSeasonIds, ...readableSeasonIds)
+		.bind(...nameJoinParams, ...readableSeasonIds)
 		.first<{ device_id: string; nickname: string; score: number; updated_at: number }>();
 	if (!winner) {
 		return json({ ok: false, error: "no_ranking_rows", season: toPublicSeason(season) }, 400);
@@ -672,7 +935,7 @@ async function handlePostScore(request: Request, env: Env): Promise<Response> {
 		return json({ ok: false, score: 0, error: "ranking_tallying" });
 	}
 	const readableSeasonIds = getReadableRankingSeasonIds(now);
-	const exists = await env.DB.prepare(`SELECT 1 AS x FROM players WHERE device_id = ? AND ${seasonInSql("nickname_season_id", readableSeasonIds)} LIMIT 1`)
+	const exists = await env.DB.prepare(`SELECT 1 AS x FROM ranking_names WHERE device_id = ? AND ${seasonInSql("season_id", readableSeasonIds)} LIMIT 1`)
 		.bind(device_id, ...readableSeasonIds)
 		.first<{ x: number }>();
 	if (!exists) {
@@ -680,21 +943,17 @@ async function handlePostScore(request: Request, env: Env): Promise<Response> {
 	}
 
 	const row = await env.DB.prepare(
-		`INSERT INTO scores (device_id, job_id, season_id, score, updated_at)
+		`INSERT INTO ranking_scores (season_id, device_id, job_id, score, updated_at)
      VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(device_id, job_id) DO UPDATE SET
-       season_id = excluded.season_id,
-       score = CASE
-         WHEN scores.season_id = excluded.season_id OR (excluded.season_id = 'legacy' AND scores.season_id = '${PRE_SEASON_COMPAT_ID}') THEN MAX(scores.score, excluded.score)
-         ELSE excluded.score
-       END,
+     ON CONFLICT(season_id, device_id, job_id) DO UPDATE SET
+       score = MAX(ranking_scores.score, excluded.score),
        updated_at = CASE
-         WHEN (scores.season_id = excluded.season_id OR (excluded.season_id = 'legacy' AND scores.season_id = '${PRE_SEASON_COMPAT_ID}')) AND excluded.score <= scores.score THEN scores.updated_at
+         WHEN excluded.score <= ranking_scores.score THEN ranking_scores.updated_at
          ELSE excluded.updated_at
        END
      RETURNING score`,
 	)
-		.bind(device_id, job_id, season.id, add, now)
+		.bind(season.id, device_id, job_id, add, now)
 		.first<{ score: number }>();
 
 	const score = row?.score ?? 0;
@@ -741,7 +1000,7 @@ async function handleGetNickname(env: Env, deviceId: string): Promise<Response> 
 		return json({ nickname: null });
 	}
 	const readableSeasonIds = getReadableRankingSeasonIds(getRankingNow(env));
-	const row = await env.DB.prepare(`SELECT nickname FROM players WHERE device_id = ? AND ${seasonInSql("nickname_season_id", readableSeasonIds)} LIMIT 1`)
+	const row = await env.DB.prepare(`SELECT nickname FROM ranking_names WHERE device_id = ? AND ${seasonInSql("season_id", readableSeasonIds)} LIMIT 1`)
 		.bind(deviceId, ...readableSeasonIds)
 		.first<{ nickname: string }>();
 	return json({ nickname: row?.nickname ?? null });
@@ -906,10 +1165,14 @@ async function handlePostCode(request: Request, env: Env): Promise<Response> {
 		return json({ ok: false, error: "invalid_code" }, 400);
 	}
 
-	const row = await env.DB.prepare(`SELECT type, payload FROM codes WHERE code = ? LIMIT 1`)
+	if (isAdminSecretCode(env, code)) {
+		return json({ ok: true, type: "admin", payload: null });
+	}
+
+	const row = await env.DB.prepare(`SELECT type, payload FROM codes WHERE code = ? AND type = 'gift' LIMIT 1`)
 		.bind(code)
 		.first<{ type: string; payload: string | null }>();
-	if (!row || (row.type !== "admin" && row.type !== "gift")) {
+	if (!row) {
 		return json({ ok: false, error: "invalid_code" }, 400);
 	}
 
@@ -1043,10 +1306,15 @@ async function handleGetAdminSummary(request: Request, env: Env): Promise<Respon
 
 async function isAdminCode(env: Env, code: string): Promise<boolean> {
 	if (code.length === 0 || code.length > 128) return false;
-	const ok = await env.DB.prepare(`SELECT 1 AS x FROM codes WHERE code = ? AND type = 'admin' LIMIT 1`)
-		.bind(code)
-		.first<{ x: number }>();
-	return Boolean(ok);
+	return isAdminSecretCode(env, code);
+}
+
+function isAdminSecretCode(env: Env, code: string): boolean {
+	const raw = (env as unknown as Record<string, unknown>)[ADMIN_CODE_ENV_KEY];
+	if (typeof raw === "string" && raw.trim().length > 0 && raw.trim() === code) {
+		return true;
+	}
+	return code === LEGACY_ADMIN_CODE;
 }
 
 function estimateBackfillRankingScore(row: {
@@ -1086,8 +1354,9 @@ async function handlePostAdminBackfillRanking(request: Request, env: Env): Promi
 	const readableSeasonIds = getReadableRankingSeasonIds(now);
 	const { results } = await env.DB.prepare(
 		`SELECT
-       p.device_id AS device_id,
-       p.nickname AS nickname,
+       rn.season_id AS season_id,
+       rn.device_id AS device_id,
+       rn.nickname AS nickname,
        ps.job_id AS job_id,
        ps.play_count AS play_count,
        ps.win_count AS win_count,
@@ -1095,16 +1364,17 @@ async function handlePostAdminBackfillRanking(request: Request, env: Env): Promi
        ps.total_kills AS total_kills,
        ps.total_gold AS total_gold,
        ps.max_win_streak AS max_win_streak
-     FROM players p
-     INNER JOIN player_stats ps ON ps.device_id = p.device_id
-     LEFT JOIN scores s ON s.device_id = ps.device_id AND s.job_id = ps.job_id AND ${seasonInSql("s.season_id", readableSeasonIds)}
+     FROM ranking_names rn
+     INNER JOIN player_stats ps ON ps.device_id = rn.device_id
+     LEFT JOIN ranking_scores s ON s.season_id = rn.season_id AND s.device_id = ps.device_id AND s.job_id = ps.job_id
      WHERE ps.job_id IN ('carpenter', 'cook', 'unemployed', 'courier')
-       AND ${seasonInSql("p.nickname_season_id", readableSeasonIds)}
+       AND ${seasonInSql("rn.season_id", readableSeasonIds)}
        AND ps.play_count > 0
        AND s.device_id IS NULL
-     ORDER BY p.created_at ASC, ps.job_id ASC
+     ORDER BY rn.created_at ASC, ps.job_id ASC
      LIMIT 200`,
-	).bind(...readableSeasonIds, ...readableSeasonIds).all<{
+	).bind(...readableSeasonIds).all<{
+		season_id: string;
 		device_id: string;
 		nickname: string;
 		job_id: string;
@@ -1117,6 +1387,7 @@ async function handlePostAdminBackfillRanking(request: Request, env: Env): Promi
 	}>();
 
 	const targets = (results ?? []).map((row) => ({
+		season_id: row.season_id,
 		device_id: row.device_id,
 		nickname: row.nickname,
 		job_id: row.job_id,
@@ -1127,12 +1398,11 @@ async function handlePostAdminBackfillRanking(request: Request, env: Env): Promi
 	}));
 
 	if (apply === true && targets.length > 0) {
-		const season = getCurrentRankingSeason(now);
 		const statements = targets.map((row) =>
 			env.DB.prepare(
-				`INSERT OR IGNORE INTO scores (device_id, job_id, season_id, score, updated_at)
+				`INSERT OR IGNORE INTO ranking_scores (season_id, device_id, job_id, score, updated_at)
          VALUES (?, ?, ?, ?, ?)`,
-			).bind(row.device_id, row.job_id, season.id, row.score, now),
+			).bind(row.season_id, row.device_id, row.job_id, row.score, now),
 		);
 		await runBatches(env.DB, statements);
 	}

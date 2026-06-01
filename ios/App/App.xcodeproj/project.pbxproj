@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1B2C3D4E5F6010000000001 /* AppleAccountPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6010000000002 /* AppleAccountPlugin.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -18,6 +19,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A1B2C3D4E5F6010000000002 /* AppleAccountPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleAccountPlugin.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6010000000003 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -64,6 +67,8 @@
 			children = (
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
+				A1B2C3D4E5F6010000000002 /* AppleAccountPlugin.swift */,
+				A1B2C3D4E5F6010000000003 /* App.entitlements */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -157,6 +162,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				A1B2C3D4E5F6010000000001 /* AppleAccountPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,6 +315,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CURRENT_PROJECT_VERSION = 3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -316,7 +323,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.1;
+				MARKETING_VERSION = 5.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.s0823pro.realcardbattle;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -331,6 +338,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CURRENT_PROJECT_VERSION = 3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -338,7 +346,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.1;
+				MARKETING_VERSION = 5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.s0823pro.realcardbattle;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
