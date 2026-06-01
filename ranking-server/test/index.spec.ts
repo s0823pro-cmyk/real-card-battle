@@ -419,6 +419,19 @@ describe("ranking worker", () => {
 			ctx,
 		);
 		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(403);
+		expect(await res.json()).toMatchObject({ ok: false, error: "desktop_only" });
+
+		res = await worker.fetch(
+			new IncomingRequest("http://example.com/admin/confirm-champion", {
+				method: "POST",
+				headers: { "Content-Type": "application/json", "X-Jobless-Admin-Client": "desktop" },
+				body: JSON.stringify({ code: TEST_ADMIN_CODE }),
+			}),
+			env,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
 		expect(res.status).toBe(200);
 		const confirmed = (await res.json()) as {
 			ok: boolean;
@@ -434,7 +447,7 @@ describe("ranking worker", () => {
 		res = await worker.fetch(
 			new IncomingRequest("http://example.com/admin/confirm-champion", {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: { "Content-Type": "application/json", "X-Jobless-Admin-Client": "desktop" },
 				body: JSON.stringify({ code: TEST_ADMIN_CODE }),
 			}),
 			env,
@@ -893,6 +906,10 @@ describe("ranking worker", () => {
 		const sum = (await res.json()) as {
 			total_players: number;
 			total_plays: number;
+			apple_linked_players: number;
+			current_ranking_names: number;
+			current_ranking_participants: number;
+			selected_badge_players: number;
 			job_stats: unknown[];
 			top_cards: unknown[];
 			top_enemies: unknown[];
@@ -907,6 +924,10 @@ describe("ranking worker", () => {
 			}>;
 		};
 		expect(typeof sum.total_players).toBe("number");
+		expect(typeof sum.apple_linked_players).toBe("number");
+		expect(typeof sum.current_ranking_names).toBe("number");
+		expect(typeof sum.current_ranking_participants).toBe("number");
+		expect(typeof sum.selected_badge_players).toBe("number");
 		expect(Array.isArray(sum.job_stats)).toBe(true);
 		expect(typeof sum.avg_play_time_seconds).toBe("number");
 		expect(Array.isArray(sum.area_stats)).toBe(true);

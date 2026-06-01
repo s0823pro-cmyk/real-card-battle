@@ -6,7 +6,7 @@ const ALLOWED_JOB_IDS = new Set<string>(RANKING_JOB_IDS);
 const CORS_HEADERS: Record<string, string> = {
 	"Access-Control-Allow-Origin": "*",
 	"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-	"Access-Control-Allow-Headers": "Content-Type",
+	"Access-Control-Allow-Headers": "Content-Type, X-Jobless-Admin-Client",
 };
 
 const BATCH_SIZE = 80;
@@ -90,6 +90,7 @@ const PRE_SEASON_COMPAT_ID = "2026-05";
 const TEST_NOW_ENV_KEY = "RANKING_TEST_NOW";
 const ADMIN_CODE_ENV_KEY = "ADMIN_CODE";
 const LEGACY_ADMIN_CODE = "JOBLESS_ADMIN_2024";
+const ADMIN_DESKTOP_CLIENT_HEADER = "x-jobless-admin-client";
 
 type RankingSeasonState = {
 	id: string;
@@ -188,6 +189,29 @@ function rankingNameJoinParams(readableSeasonIds: readonly string[]): string[] {
 
 function isNonEmptyDeviceId(id: unknown): id is string {
 	return typeof id === "string" && id.trim().length > 0 && id.length <= 512;
+}
+
+function isDesktopAdminClient(request: Request): boolean {
+	if (request.headers.get(ADMIN_DESKTOP_CLIENT_HEADER) !== "desktop") return false;
+	const ua = request.headers.get("User-Agent") ?? "";
+	if (/\b(Mobile|Android|iPhone|iPad|iPod|Windows Phone)\b/i.test(ua)) return false;
+	const uaMobile = request.headers.get("sec-ch-ua-mobile");
+	if (uaMobile === "?1") return false;
+	return true;
+}
+
+async function countAdminMetric(env: Env, sql: string, ...bindings: unknown[]): Promise<number> {
+	try {
+		const stmt = env.DB.prepare(sql);
+		const row = bindings.length > 0
+			? await stmt.bind(...bindings).first<{ n: number }>()
+			: await stmt.first<{ n: number }>();
+		const n = row?.n ?? 0;
+		return Number.isFinite(n) ? n : 0;
+	} catch (e) {
+		console.warn("admin metric count failed", e);
+		return 0;
+	}
 }
 
 async function runBatches(db: D1Database, statements: D1PreparedStatement[]): Promise<void> {
@@ -802,6 +826,9 @@ async function handlePostAdminConfirmChampion(request: Request, env: Env): Promi
 	if (typeof code !== "string" || !(await isAdminCode(env, code.trim()))) {
 		return json({ ok: false, error: "unauthorized" }, 401);
 	}
+	if (!isDesktopAdminClient(request)) {
+		return json({ ok: false, error: "desktop_only" }, 403);
+	}
 
 	const now = getRankingNow(env);
 	const season = getCurrentRankingSeason(now);
@@ -1268,15 +1295,59 @@ async function handleGetAdminSummary(request: Request, env: Env): Promise<Respon
 	).all<{ combo_key: string; use_count: number }>();
 
 	const now = getRankingNow(env);
+	const readableSeasonIds = getReadableRankingSeasonIds(now);
 	const ranking_periods = await getAdminRankingPeriods(env);
 	const currentSeason = getCurrentRankingSeason(now);
 	const champions = await getChampionRecords(env);
+	const appleLinkedPlayers = await countAdminMetric(
+		env,
+		`SELECT COUNT(DISTINCT device_id) AS n FROM apple_account_links`,
+	);
+	const appleBackupCount = await countAdminMetric(env, `SELECT COUNT(*) AS n FROM apple_account_backups`);
+	const currentRankingNames = await countAdminMetric(
+		env,
+		`SELECT COUNT(*) AS n FROM ranking_names WHERE ${seasonInSql("season_id", readableSeasonIds)}`,
+		...readableSeasonIds,
+	);
+	const currentRankingParticipants = await countAdminMetric(
+		env,
+		`SELECT COUNT(DISTINCT device_id) AS n FROM ranking_scores WHERE ${seasonInSql("season_id", readableSeasonIds)}`,
+		...readableSeasonIds,
+	);
+	const currentRankingScoreRows = await countAdminMetric(
+		env,
+		`SELECT COUNT(*) AS n FROM ranking_scores WHERE ${seasonInSql("season_id", readableSeasonIds)}`,
+		...readableSeasonIds,
+	);
+	const selectedBadgePlayers = await countAdminMetric(
+		env,
+		`SELECT COUNT(*) AS n FROM players WHERE selected_badge IS NOT NULL AND selected_badge != ''`,
+	);
+	const championBadgeHolders = await countAdminMetric(
+		env,
+		`SELECT COUNT(*) AS n FROM player_champion_badges WHERE champion_count > 0`,
+	);
+	const confirmedChampionCount = await countAdminMetric(env, `SELECT COUNT(*) AS n FROM ranking_champions`);
+	const totalCardUses = await countAdminMetric(env, `SELECT COALESCE(SUM(use_count), 0) AS n FROM card_usage`);
+	const totalEnemyKills = await countAdminMetric(env, `SELECT COALESCE(SUM(kill_count), 0) AS n FROM enemy_kills`);
+	const totalComboUses = await countAdminMetric(env, `SELECT COALESCE(SUM(use_count), 0) AS n FROM card_combos`);
 
 	return json({
 		total_players: totalPlayers,
 		total_plays: sumPlays,
 		total_victories: aggRow?.total_victories ?? 0,
 		total_defeats: aggRow?.total_defeats ?? 0,
+		apple_linked_players: appleLinkedPlayers,
+		apple_backup_count: appleBackupCount,
+		current_ranking_names: currentRankingNames,
+		current_ranking_participants: currentRankingParticipants,
+		current_ranking_score_rows: currentRankingScoreRows,
+		selected_badge_players: selectedBadgePlayers,
+		champion_badge_holders: championBadgeHolders,
+		confirmed_champions: confirmedChampionCount,
+		total_card_uses: totalCardUses,
+		total_enemy_kills: totalEnemyKills,
+		total_combo_uses: totalComboUses,
 		job_stats: (jobRows ?? []).map((r) => ({
 			job_id: r.job_id,
 			play_count: r.play_count,

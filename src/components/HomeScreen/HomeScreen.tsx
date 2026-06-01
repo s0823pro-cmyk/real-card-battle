@@ -87,7 +87,7 @@ import {
   consumeNameChangeTicket,
   getNameChangeTicketCount,
 } from '../../utils/nameChangeTicket';
-import { confirmRankingChampion, getAdminSummary, getMyStats, verifyCode } from '../../utils/statsApi';
+import { canUseDesktopAdminActions, confirmRankingChampion, getAdminSummary, getMyStats, verifyCode } from '../../utils/statsApi';
 import type { MyStatsResponse } from '../../utils/statsApi';
 import type { Card, JobId } from '../../types/game';
 import {
@@ -144,6 +144,7 @@ type StoryJobKey = 'carpenter' | 'cook' | 'unemployed' | 'courier';
 
 /** 実績一覧の職業タブ（「全て」＋職業・共通） */
 type AchievementJobTab = 'all' | JobId | 'common';
+const DEBUG_TOOLS_PIN = '0823';
 
 const achievementRewardModalJobId = (a: Achievement | null): JobId => {
   const j = a?.jobId;
@@ -156,6 +157,17 @@ type AdminSummaryPayload = {
   total_plays: number;
   total_victories: number;
   total_defeats: number;
+  apple_linked_players?: number;
+  apple_backup_count?: number;
+  current_ranking_names?: number;
+  current_ranking_participants?: number;
+  current_ranking_score_rows?: number;
+  selected_badge_players?: number;
+  champion_badge_holders?: number;
+  confirmed_champions?: number;
+  total_card_uses?: number;
+  total_enemy_kills?: number;
+  total_combo_uses?: number;
   job_stats: Array<{ job_id: string; play_count: number; win_count: number; defeat_count: number }>;
   top_cards: Array<{ card_id: string; total_use_count: number }>;
   top_enemies: Array<{ enemy_id: string; total_kill_count: number }>;
@@ -698,6 +710,7 @@ const HomeScreen = ({
   const [adminSummary, setAdminSummary] = useState<AdminSummaryPayload | null>(null);
   const [championConfirmBusy, setChampionConfirmBusy] = useState(false);
   const [championConfirmMessage, setChampionConfirmMessage] = useState<string | null>(null);
+  const [desktopAdminActionsAllowed, setDesktopAdminActionsAllowed] = useState(() => canUseDesktopAdminActions());
   const [giftToast, setGiftToast] = useState<string | null>(null);
   const giftToastTimerRef = useRef<number | null>(null);
   const [myStatsLoading, setMyStatsLoading] = useState(false);
@@ -718,6 +731,13 @@ const HomeScreen = ({
     const onTicketChanged = () => setNameChangeTicketCount(getNameChangeTicketCount());
     window.addEventListener(NAME_CHANGE_TICKET_CHANGED_EVENT, onTicketChanged);
     return () => window.removeEventListener(NAME_CHANGE_TICKET_CHANGED_EVENT, onTicketChanged);
+  }, []);
+
+  useEffect(() => {
+    const updateDesktopAdminActions = () => setDesktopAdminActionsAllowed(canUseDesktopAdminActions());
+    updateDesktopAdminActions();
+    window.addEventListener('resize', updateDesktopAdminActions);
+    return () => window.removeEventListener('resize', updateDesktopAdminActions);
   }, []);
 
   useEffect(() => {
@@ -751,6 +771,13 @@ const HomeScreen = ({
 
   const toggleDebugTools = () => {
     const next = !debugToolsEnabled;
+    if (next) {
+      const pin = window.prompt('デバッグモードをONにするには4桁のPINコードを入力してください。');
+      if (pin !== DEBUG_TOOLS_PIN) {
+        window.alert('PINコードが違います。');
+        return;
+      }
+    }
     setDebugToolsEnabled(next);
     setDebugToolsEnabledLocal(next);
   };
@@ -1065,6 +1092,10 @@ const HomeScreen = ({
   const handleConfirmRankingChampion = async () => {
     const trimmed = codeInput.trim();
     if (!trimmed || championConfirmBusy) return;
+    if (!desktopAdminActionsAllowed) {
+      setChampionConfirmMessage('優勝者確定はPCブラウザからのみ実行できます。');
+      return;
+    }
     const seasonLabel = adminSummary?.current_season?.label ?? '現在のシーズン';
     if (!window.confirm(`${seasonLabel} の総合1位を優勝者として確定します。よろしいですか？`)) {
       return;
@@ -1084,11 +1115,13 @@ const HomeScreen = ({
         champion?: { nickname?: string; score?: number; champion_count?: number };
       };
       if (!body.ok) {
-        setChampionConfirmMessage(
+        const message =
           body.error === 'no_ranking_rows'
             ? '確定できるランキングデータがありません。'
-            : '優勝者確定に失敗しました。',
-        );
+            : body.error === 'desktop_only'
+              ? '優勝者確定はPCブラウザからのみ実行できます。'
+              : '優勝者確定に失敗しました。';
+        setChampionConfirmMessage(message);
         return;
       }
       const nickname = body.champion?.nickname ?? '優勝者';
@@ -2202,10 +2235,16 @@ const HomeScreen = ({
                     type="button"
                     className="settings-code-verify-btn settings-admin-confirm-champion-btn"
                     onClick={handleConfirmRankingChampion}
-                    disabled={championConfirmBusy}
+                    disabled={championConfirmBusy || !desktopAdminActionsAllowed}
+                    title={desktopAdminActionsAllowed ? undefined : 'PCブラウザからのみ実行できます'}
                   >
                     {championConfirmBusy ? '確定中...' : '優勝者確定'}
                   </button>
+                  {!desktopAdminActionsAllowed ? (
+                    <p className="settings-admin-ranking-empty">
+                      ※誤操作防止のため、優勝者確定はPCブラウザのみ実行できます。
+                    </p>
+                  ) : null}
                   {championConfirmMessage ? (
                     <p className="settings-admin-champion-message">{championConfirmMessage}</p>
                   ) : null}
@@ -2255,6 +2294,50 @@ const HomeScreen = ({
                         sec: (adminSummary.avg_play_time_seconds ?? 0) % 60,
                       })}
                     </dd>
+                  </div>
+                  <div>
+                    <dt>Apple連携者数</dt>
+                    <dd>{adminSummary.apple_linked_players ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>Appleバックアップ数</dt>
+                    <dd>{adminSummary.apple_backup_count ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>今期ランキング名登録</dt>
+                    <dd>{adminSummary.current_ranking_names ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>今期ランキング参加者</dt>
+                    <dd>{adminSummary.current_ranking_participants ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>今期スコア行数</dt>
+                    <dd>{adminSummary.current_ranking_score_rows ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>表示バッジ設定者</dt>
+                    <dd>{adminSummary.selected_badge_players ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>覇者バッジ所持者</dt>
+                    <dd>{adminSummary.champion_badge_holders ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>確定済み優勝者</dt>
+                    <dd>{adminSummary.confirmed_champions ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>カード使用総数</dt>
+                    <dd>{adminSummary.total_card_uses ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>敵撃破総数</dt>
+                    <dd>{adminSummary.total_enemy_kills ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt>コンボ記録総数</dt>
+                    <dd>{adminSummary.total_combo_uses ?? 0}</dd>
                   </div>
                 </dl>
                 <h4 className="settings-admin-subheading">{t('home.settings.adminAreaClearTitle')}</h4>

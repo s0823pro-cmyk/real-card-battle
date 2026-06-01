@@ -1,6 +1,7 @@
 import { ensureRankingDeviceId } from './rankingClient';
 
 const RANKING_API = 'https://jobless-ranking.word2cardapi0823.workers.dev';
+const ADMIN_DESKTOP_CLIENT_HEADER = 'X-Jobless-Admin-Client';
 
 export type MyStatsResponse = {
 	total_plays: number;
@@ -12,6 +13,14 @@ export type MyStatsResponse = {
 	top_cards: Array<{ card_id: string; use_count: number }>;
 	top_enemies: Array<{ enemy_id: string; kill_count: number }>;
 };
+
+export function canUseDesktopAdminActions(): boolean {
+	if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+	const ua = navigator.userAgent;
+	if (/\b(Mobile|Android|iPhone|iPad|iPod|Windows Phone)\b/i.test(ua)) return false;
+	const hasDesktopPointer = window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false;
+	return hasDesktopPointer && window.innerWidth >= 900;
+}
 
 function parseMyStats(data: unknown): MyStatsResponse | null {
 	if (!data || typeof data !== 'object' || data === null) return null;
@@ -122,10 +131,13 @@ export async function getAdminSummary(code: string): Promise<unknown> {
 }
 
 export async function confirmRankingChampion(code: string): Promise<unknown> {
+	if (!canUseDesktopAdminActions()) {
+		return { ok: false, error: 'desktop_only' };
+	}
 	try {
 		const res = await fetch(`${RANKING_API}/admin/confirm-champion`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: { 'Content-Type': 'application/json', [ADMIN_DESKTOP_CLIENT_HEADER]: 'desktop' },
 			body: JSON.stringify({ code }),
 		});
 		return await res.json();
