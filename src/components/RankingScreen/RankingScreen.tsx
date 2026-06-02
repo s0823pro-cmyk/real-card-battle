@@ -676,23 +676,28 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
         </div>
 
         <footer className="ranking-footer">
-          <p className="ranking-footer-label">{t('ranking.yourScore')}</p>
-          <button type="button" className="ranking-footer-profile-btn" onClick={() => setBadgePickerOpen(true)}>
-            <span className="ranking-footer-nick">
-              {selectedMasteryBadgeView && <MasteryBadgePill badge={selectedMasteryBadgeView} />}
-              <span className="ranking-name-text">{myNickname}</span>
-            </span>
-            <span className="ranking-footer-score">
+          <div className="ranking-footer-summary" aria-label={t('ranking.yourScore')}>
+            <div className="ranking-footer-profile">
+              <p className="ranking-footer-label">{t('ranking.yourScore')}</p>
+              <span className="ranking-footer-nick">
+                {selectedMasteryBadgeView && <MasteryBadgePill badge={selectedMasteryBadgeView} />}
+                <span className="ranking-name-text">{myNickname}</span>
+              </span>
+              {!loading && !error && rows.length > 0 && (
+                <span className="ranking-footer-rank">
+                  {myRankInList != null
+                    ? t('ranking.rankLine', { rank: myRankInList })
+                    : t('ranking.outOfRank')}
+                </span>
+              )}
+            </div>
+            <strong className="ranking-footer-score">
               {formatScore(myScore)} {t('ranking.pt')}
-            </span>
-          </button>
-          {!loading && !error && rows.length > 0 && (
-            <p className="ranking-footer-rank">
-              {myRankInList != null
-                ? t('ranking.rankLine', { rank: myRankInList })
-                : t('ranking.outOfRank')}
-            </p>
-          )}
+            </strong>
+            <button type="button" className="ranking-footer-badge-btn" onClick={() => setBadgePickerOpen(true)}>
+              バッジ設定
+            </button>
+          </div>
         </footer>
 
         {badgePickerOpen && (
@@ -713,7 +718,7 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
                     <strong>{rankingDisplayConsentEnabled ? 'ランキング反映中' : 'ランキング未反映'}</strong>
                     <p>
                       {rankingDisplayConsentEnabled
-                        ? 'この端末の次回以降のランスコアは、自己ベスト更新時にランキングへ反映されます。'
+                        ? '自己ベスト更新時にランキングへ反映されます。'
                         : '現在、名前とスコアはランキングに表示されません。熟練度XPは通常どおり獲得できます。'}
                     </p>
                   </div>
@@ -727,7 +732,7 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
                   <div>
                     <strong>ランキング名変更</strong>
                     <p>
-                      現在: {getStoredRankingNickname() ?? '未設定'} / ネーム変更チケット: {nameChangeTicketCount}枚
+                      現在: {getStoredRankingNickname() ?? '未設定'} / チケット: {nameChangeTicketCount}枚
                     </p>
                   </div>
                   <button
@@ -771,7 +776,7 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
           <div className="ranking-guide-overlay" onClick={() => {
             if (!nameChangeBusy) setNameChangeOpen(false);
           }}>
-            <section className="ranking-guide-modal" onClick={(e) => e.stopPropagation()} aria-label="ランキング名変更">
+            <section className="ranking-guide-modal ranking-guide-modal--compact" onClick={(e) => e.stopPropagation()} aria-label="ランキング名変更">
               <div className="ranking-guide-header">
                 <div>
                   <p className="ranking-kicker">NAME CHANGE</p>
@@ -787,9 +792,7 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
                 </button>
               </div>
               <div className="ranking-badge-picker-body">
-                <p className="ranking-guide-note">
-                  ネーム変更チケットを1枚消費して、現在のランキング開催期間中の名前を変更します。
-                </p>
+                <p className="ranking-guide-note">チケット1枚を消費してランキング名を変更します。</p>
                 <input
                   type="text"
                   className="ranking-name-change-input"

@@ -502,16 +502,30 @@
 
 .ranking-footer {
   flex-shrink: 0;
-  padding: 10px 22px max(12px, calc(8px + var(--sab, 0px)));
+  padding: 7px 12px max(8px, calc(5px + var(--sab, 0px)));
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(8, 10, 12, 0.96);
 }
 
+.ranking-footer-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+}
+
+.ranking-footer-profile {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
 .ranking-footer-label {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 9px;
   color: #8f99a5;
-  margin: 0 0 4px;
+  margin: 0;
   font-weight: 900;
 }
 
@@ -544,16 +558,24 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  color: #e6edf3;
+  font-family: var(--font-display);
+  font-size: 13px;
   font-weight: 800;
 }
 
 .ranking-footer-score {
   flex-shrink: 0;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-size: 13px;
   font-weight: 900;
   color: #e7c77c;
   font-variant-numeric: tabular-nums;
@@ -561,9 +583,27 @@
 }
 
 .ranking-footer-rank {
-  font-size: 11px;
+  font-size: 10px;
   color: #8f99a5;
-  margin: 6px 0 0;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ranking-footer-badge-btn {
+  min-width: 74px;
+  height: 32px;
+  border: 1px solid rgba(214, 174, 91, 0.42);
+  border-radius: 7px;
+  background: rgba(214, 174, 91, 0.14);
+  color: #e7c77c;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .ranking-badge-picker-body {
@@ -1200,8 +1240,27 @@
   }
 
   .ranking-footer {
-    padding-left: 18px;
-    padding-right: 18px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .ranking-footer-summary {
+    gap: 6px;
+  }
+
+  .ranking-footer-score {
+    max-width: 92px;
+    font-size: 12px;
+  }
+
+  .ranking-footer-badge-btn {
+    min-width: 66px;
+    height: 30px;
+    font-size: 10px;
+  }
+
+  .ranking-footer-nick {
+    font-size: 12px;
   }
 }
 
@@ -1245,47 +1304,76 @@
 
 .ranking-participation-panel {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
   border: 1px solid rgba(240, 180, 41, 0.34);
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgba(240, 180, 41, 0.09);
   color: #d6dde3;
   font-family: var(--font-ui);
 }
 
 .ranking-participation-panel--enabled {
+  display: flex;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 999px;
   border-color: rgba(74, 222, 128, 0.32);
   background: rgba(74, 222, 128, 0.08);
 }
 
+.ranking-participation-panel--enabled > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .ranking-participation-panel strong {
   display: block;
-  margin: 0 0 4px;
+  margin: 0 0 2px;
   color: #f2f4f6;
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
+  white-space: nowrap;
+}
+
+.ranking-participation-panel--enabled strong {
+  margin: 0;
+  color: #7ee3a0;
 }
 
 .ranking-participation-panel p {
   margin: 0;
   color: #9aa4af;
-  font-size: 11px;
-  line-height: 1.55;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.ranking-participation-panel--enabled p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .ranking-participation-panel button {
-  width: 100%;
+  width: auto;
+  min-width: 86px;
   border: 1px solid rgba(240, 180, 41, 0.65);
-  border-radius: 8px;
+  border-radius: 7px;
   background: #f0b429;
   color: #0d1117;
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 900;
-  padding: 10px;
+  padding: 8px 9px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .ranking-participation-panel button:disabled {
@@ -1298,16 +1386,41 @@
   background: rgba(96, 165, 250, 0.08);
 }
 
+.ranking-name-change-panel p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranking-guide-modal--compact {
+  max-height: 56%;
+  padding: 12px 14px max(12px, calc(10px + var(--sab, 0px)));
+}
+
+.ranking-guide-modal--compact .ranking-guide-header {
+  margin-bottom: 8px;
+}
+
+.ranking-guide-modal--compact .ranking-guide-header h2 {
+  font-size: 17px;
+}
+
+.ranking-guide-modal--compact .ranking-guide-note {
+  margin-top: 0;
+  font-size: 10px;
+}
+
 .ranking-name-change-input {
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgba(0, 0, 0, 0.28);
   color: #f2f4f6;
   font-family: var(--font-ui);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
-  padding: 12px;
+  padding: 10px;
   outline: none;
 }
 
@@ -1326,13 +1439,13 @@
 .ranking-name-change-submit {
   width: 100%;
   border: 1px solid rgba(240, 180, 41, 0.72);
-  border-radius: 10px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #f0b429, #ffe49c);
   color: #0d1117;
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 900;
-  padding: 12px;
+  padding: 10px;
 }
 
 .ranking-name-change-submit:disabled {
