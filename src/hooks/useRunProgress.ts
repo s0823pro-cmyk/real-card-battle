@@ -122,7 +122,6 @@ import {
   recordShrineVisitForAchievements,
   recordShopCardBuyForAchievements,
 } from '../utils/achievementSystem';
-import { maybePromptAppStoreReviewOnRunDefeat } from '../utils/appStoreReviewPrompt';
 import {
   awardCurrentRunMasteryXp,
   ensureRankingDeviceId,
@@ -1846,7 +1845,6 @@ export const useRunProgress = () => {
       dispatch({ type: 'set_deck', deck: cleanedDeck });
       dispatch({ type: 'set_items', items: result.items });
       dispatch({ type: 'set_battle_setup', setup: null, tileType: preservedLastTileType });
-      maybePromptAppStoreReviewOnRunDefeat();
       dispatch({
         type: 'set_screen_with_achievements',
         screen: 'game_over',

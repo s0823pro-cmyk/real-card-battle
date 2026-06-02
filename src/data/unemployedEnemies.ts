@@ -375,7 +375,7 @@ const pickFrom = <T>(items: T[]): T => items[Math.floor(Math.random() * items.le
 
 const pickEncounter = (pool: EnemyTemplateLike[]): EnemyTemplateLike[] => {
   const r = Math.random();
-  if (r < 0.04) {
+  if (r < 0.05) {
     return pickFrom([
       [0, 1, 2],
       [1, 2, 3],
@@ -384,7 +384,7 @@ const pickEncounter = (pool: EnemyTemplateLike[]): EnemyTemplateLike[] => {
       [0, 1, 4],
     ]).map((i) => pool[i]);
   }
-  if (r < 0.39) {
+  if (r < 0.4) {
     return pickFrom([
       [0, 1],
       [1, 2],

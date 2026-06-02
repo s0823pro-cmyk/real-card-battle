@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { getAdsRemoved } from '../../utils/adsRemoved';
 import { getDebugEnemyHp1, setDebugEnemyHp1 } from '../../utils/debugEnemyHp1';
 import { DEBUG_TOOLS_CHANGED_EVENT, getDebugToolsEnabled } from '../../utils/debugTools';
-import { unlockJob } from '../../utils/jobUnlockSystem';
+import { isJobUnlocked, unlockJob } from '../../utils/jobUnlockSystem';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -16,6 +16,9 @@ const TERMS_URL = 'https://s0823pro-cmyk.github.io/real-card-battle/terms.html';
 const PRIVACY_URL = 'https://s0823pro-cmyk.github.io/real-card-battle/privacy.html';
 const ENABLE_DEV_TOOLS =
   import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true';
+
+const isHiddenLockedJobId = (jobId: string): boolean =>
+  (jobId === 'cook' || jobId === 'unemployed' || jobId === 'courier') && !isJobUnlocked(jobId);
 
 const openUrl = async (url: string) => {
   if (Capacitor.isNativePlatform()) {
@@ -302,7 +305,9 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
             <p className="dev-tools-title">{t('settings.devTools')}</p>
             <div className="dev-tools-grid">
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('courier_all_cards_run')}>
-                🏍️ 配達員全カードラン
+                {isHiddenLockedJobId('courier')
+                  ? `🏍️ ${t('job.unknownName')}全カードラン`
+                  : `🏍️ ${t('settings.dev.courierAllCardsRun')}`}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_normal')}>
                 {t('settings.dev.normalBattle')}
@@ -353,7 +358,7 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
                 {t('settings.dev.allCardsBattle')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_cook_all_x2')}>
-                {t('settings.dev.cookAllX2')}
+                {isHiddenLockedJobId('cook') ? `${t('job.unknownName')}全カード×2戦闘` : t('settings.dev.cookAllX2')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate('battle_expansion_x2')}>
                 {t('settings.dev.expansionBattle')}

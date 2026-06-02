@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import './GlossaryModal.css';
 import { ICONS } from '../../assets/icons';
+import type { JobId } from '../../types/game';
+import { isJobUnlocked } from '../../utils/jobUnlockSystem';
 
 type GlossaryEntry =
   | { type: 'heading'; term: string }
-  | { type: 'item'; term: string; desc: string };
+  | { type: 'item'; term: string; desc: string; jobId?: JobId; getDesc?: () => string };
 
 const BADGE_ICONS: Record<string, string> = {
   '脆弱（アイコン表示）': ICONS.badgeVulnerable,
@@ -12,6 +14,24 @@ const BADGE_ICONS: Record<string, string> = {
   '炎上（アイコン表示）': ICONS.badgeBurn,
   '攻撃デバフ（アイコン表示）': ICONS.badgeAttackDown,
   '強化（敵のバフ表示）': ICONS.badgeStrength,
+};
+
+const canRevealGlossaryJob = (jobId?: JobId): boolean =>
+  !jobId || jobId === 'carpenter' || isJobUnlocked(jobId);
+
+const getMentalDescription = (): string => {
+  const visibleLimits = ['大工7/上限9'];
+  if (isJobUnlocked('cook')) visibleLimits.push('料理人6/上限8');
+  if (isJobUnlocked('unemployed')) visibleLimits.push('無職10/上限10');
+  if (isJobUnlocked('courier')) visibleLimits.push('配達員7/上限24');
+
+  const lowMentalNote = isJobUnlocked('unemployed')
+    ? '0になるとハングリー系の追加効果や、ドロー時の「不安」混入などに注意。'
+    : '0になると一部効果や、ドロー時の「不安」混入などに注意。';
+
+  return `タイムバーの長さに効くステータス。職業ごとに初期値・上限が異なる（例：${visibleLimits.join(
+    '、',
+  )}）。戦闘に勝つと+1回復し、職業上限まで成長する。敵のメンタル攻撃や一部イベントで減る。${lowMentalNote}`;
 };
 
 const GLOSSARY_ITEMS: GlossaryEntry[] = [
@@ -25,6 +45,7 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
     type: 'item',
     term: 'メンタル',
     desc: 'タイムバーの長さに効くステータス。職業ごとに初期値・上限が異なる（例：大工7/上限9、料理人6/上限8、無職10/上限10、配達員7/上限24）。戦闘に勝つと+1回復し、職業上限まで成長する。敵のメンタル攻撃や一部イベントで減る。0になるとハングリー系の追加効果や、ドロー時の「不安」混入などに注意。',
+    getDesc: getMentalDescription,
   },
   {
     type: 'item',
@@ -104,31 +125,37 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
     type: 'item',
     term: '【自傷】',
     desc: 'HPを支払う効果を持つマーク。効果で指定されたダメージを自分に与えたうえでカードを使用する。通常はコストを払った後にHPが1以上残る必要があり、払えないときは使えない。無職は専用仕様として自傷ではHP0にならず、HP1では自傷ダメージを受けずに使用できる。',
+    jobId: 'unemployed',
   },
   {
     type: 'item',
     term: '【不動】',
     desc: '配達員専用。過労ダウン中にしか使用できないカードに付くマーク。通常時は使えないが、過労ダウン中は固定3.5秒で使用できる。',
+    jobId: 'courier',
   },
   {
     type: 'item',
     term: '【不屈】',
     desc: '配達員専用。通常時も使用でき、過労ダウン中でも使用できるカードに付くマーク。過労ダウン中は固定3.5秒で使用できる。',
+    jobId: 'courier',
   },
   {
     type: 'item',
     term: '【スタミナ】',
     desc: '配達員専用。スタミナを回復・消費・参照するカードに付くマーク。スタミナ回復カードは1ターンに2枚まで使用でき、基本的に【消耗】として戦闘中2回使用後に除外される。',
+    jobId: 'courier',
   },
   {
     type: 'item',
     term: '【食材】',
     desc: '使用すると満腹ゲージが+1される（1ターンに1回まで）。満腹ゲージ5到達で、1回目はHP5回復、2回目はブロック10、3回目以降は3ダメージ。',
+    jobId: 'cook',
   },
   {
     type: 'item',
     term: '【調理】',
     desc: '使用すると調理ゲージが増加する。調理ゲージはフランベ等の攻撃カードで消費してダメージに変換。',
+    jobId: 'cook',
   },
 
   { type: 'heading', term: '温存・段取り' },
@@ -163,21 +190,25 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
     type: 'item',
     term: '調理ゲージ（料理人）',
     desc: '料理人のリソース。【食材】系で上がり、【調理】アタックは「ゲージ×倍率」が加算される。一括消費カードでゲージを使い切るものもある。戦闘終了でリセット。',
+    jobId: 'cook',
   },
   {
     type: 'item',
     term: 'スタミナ（配達員）',
     desc: '配達員のリソース。最大10で、自分のターン開始時に1減る。スタミナが減るほど全カードのコストが+0.5秒ずつ重くなる。スタミナ回復カードは1ターンに2枚まで。',
+    jobId: 'courier',
   },
   {
     type: 'item',
     term: '過労ダウン（配達員）',
     desc: '配達員のスタミナが0になると発生する状態。4ターンの間、アタックと通常スキルは使えない。ブロックカード・【不屈】・【不動】カードは固定3.5秒で使用できる。復帰時はスタミナ6から再開する。',
+    jobId: 'courier',
   },
   {
     type: 'item',
     term: 'ハングリー精神（無職）',
     desc: 'HPが減ると攻撃が強くなる仕組み。HP50%以下でダメージ+3（ハングリー）、30%以下でさらに強化（覚醒）など、状態に応じてボーナスやコスト減が変わる。',
+    jobId: 'unemployed',
   },
 
   { type: 'heading', term: '戦闘画面のステータスバッジ' },
@@ -242,6 +273,11 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   },
   {
     type: 'item',
+    term: '敵数の出現確率',
+    desc: '通常戦の敵数は全職業共通で、1体60%・2体35%・3体5%。強敵とエリアボスは常に1体。',
+  },
+  {
+    type: 'item',
     term: '💀 強敵',
     desc: 'エリート級。報酬が良いが敵が強い。お守りが手に入ることもある。',
   },
@@ -290,12 +326,30 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   {
     type: 'item',
     term: 'レアリティ',
-    desc: 'カードの希少度の目安。コモン（灰）・アンコモン（青）・レア（金）。報酬の出現率はカード取得ロジックに従う。',
+    desc: 'カードの希少度の目安。コモン（灰）・アンコモン（青）・レア（金）・レジェンド。通常カード報酬の各候補1枚ごとの出現率は、コモン77%・アンコモン20%・レア2%・レジェンド1%。レジェンドは優勝者報酬カード。強敵/ボス報酬やショップは別抽選。',
+  },
+  {
+    type: 'item',
+    term: '通常カード報酬のレジェンド確率',
+    desc: '通常カード報酬は3択で表示されるため、1回の報酬画面に少なくとも1枚レジェンドが出る確率は約2.97%。',
   },
 ];
 
 
 const normalizeGlossaryQuery = (value: string): string => value.trim().toLowerCase();
+
+const getVisibleGlossaryItems = (): GlossaryEntry[] => {
+  const visibleItems: GlossaryEntry[] = [];
+  for (const item of GLOSSARY_ITEMS) {
+    if (item.type === 'heading') {
+      visibleItems.push(item);
+      continue;
+    }
+    if (!canRevealGlossaryJob(item.jobId)) continue;
+    visibleItems.push({ ...item, desc: item.getDesc ? item.getDesc() : item.desc });
+  }
+  return visibleItems;
+};
 
 const itemMatchesQuery = (item: GlossaryEntry, query: string): boolean => {
   if (query === '') return true;
@@ -340,7 +394,7 @@ interface Props {
 export const GlossaryModal = ({ onClose }: Props) => {
   const [searchText, setSearchText] = useState('');
   const searchQuery = normalizeGlossaryQuery(searchText);
-  const filteredItems = useMemo(() => filterGlossaryItems(GLOSSARY_ITEMS, searchQuery), [searchQuery]);
+  const filteredItems = useMemo(() => filterGlossaryItems(getVisibleGlossaryItems(), searchQuery), [searchQuery]);
 
   return (
   <div className="glossary-overlay" onClick={onClose}>

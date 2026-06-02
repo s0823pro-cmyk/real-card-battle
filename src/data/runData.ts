@@ -877,7 +877,15 @@ export const pickRandomRareCard = (jobId: JobId = 'carpenter'): Card => {
   return cloneRewardCard(pickRandom(pool));
 };
 
-const getNeutralPoolForPick = (rarity: 'uncommon' | 'rare'): Card[] => {
+const pickRandomLegendaryRewardCard = (jobId: JobId): Card => {
+  if (LEGENDARY_REWARD_CARDS.length === 0) return pickRandomRareCard(jobId);
+  return cloneRewardCard(pickRandom(LEGENDARY_REWARD_CARDS));
+};
+
+const getNeutralPoolForPick = (
+  rarity: 'uncommon' | 'rare',
+  options?: { includeLegendary?: boolean },
+): Card[] => {
   const unlocked = getUnlockedCardIds();
   const neutralPool = NEUTRAL_CARD_POOL.filter(
     (c) =>
@@ -885,13 +893,17 @@ const getNeutralPoolForPick = (rarity: 'uncommon' | 'rare'): Card[] => {
       (!ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id) || unlocked.has(c.id)),
   );
   if (rarity !== 'rare') return neutralPool;
-  return [...neutralPool, ...LEGENDARY_REWARD_CARDS];
+  return options?.includeLegendary === false ? neutralPool : [...neutralPool, ...LEGENDARY_REWARD_CARDS];
 };
 
 /** 実績ロック等で中立プールが空でも、ジョブ枠にフォールバック（エリート／ボス報酬で onBattleEnd が落ちないようにする） */
-const pickRandomNeutralByRarity = (rarity: 'common' | 'uncommon' | 'rare', jobId: JobId): Card => {
+const pickRandomNeutralByRarity = (
+  rarity: 'common' | 'uncommon' | 'rare',
+  jobId: JobId,
+  options?: { includeLegendary?: boolean },
+): Card => {
   if (rarity === 'rare') {
-    const pool = getNeutralPoolForPick('rare');
+    const pool = getNeutralPoolForPick('rare', options);
     if (pool.length > 0) return cloneRewardCard(pickRandom(pool));
     return pickRandomRareCard(jobId);
   }
@@ -949,10 +961,13 @@ const pickFallbackRareRewardExpanding = (jobId: JobId, seen: Set<string>): Card 
 export const generateCardRewardChoices = (jobId: JobId = 'carpenter', count = 3): Card[] => {
   const pickOne = (): Card => {
     const roll = Math.random();
+    if (roll < 0.01) {
+      return pickRandomLegendaryRewardCard(jobId);
+    }
     const rarity: 'common' | 'uncommon' | 'rare' = roll < 0.03 ? 'rare' : roll < 0.23 ? 'uncommon' : 'common';
     const useNeutral = Math.random() < 0.3;
     if (useNeutral) {
-      return pickRandomNeutralByRarity(rarity, jobId);
+      return pickRandomNeutralByRarity(rarity, jobId, { includeLegendary: false });
     }
     if (rarity === 'rare') {
       return pickRandomRareCard(jobId);
@@ -1130,7 +1145,7 @@ export const generateShopItems = (count: number): RunItem[] => {
 /** 3体は出現率を抑え、1体のときは中央大表示用レイアウトと組み合わせる */
 export const pickArea1EncounterTemplateIds = (): string[] => {
   const r = Math.random();
-  if (r < 0.04) {
+  if (r < 0.05) {
     const triples = [
       ['wildCat', 'wildCat', 'wildCat'],
       ['wildCat', 'bicycle', 'claimer'],
@@ -1138,7 +1153,7 @@ export const pickArea1EncounterTemplateIds = (): string[] => {
     ];
     return triples[Math.floor(Math.random() * triples.length)];
   }
-  if (r < 0.39) {
+  if (r < 0.4) {
     const doubles = [
       ['wildCat', 'wildCat'],
       ['claimer', 'drunk'],
@@ -1287,11 +1302,11 @@ const AREA2_TRIPLE_INDEX_PATTERNS: number[][] = [
 
 export const pickArea2Encounter = (): EnemyTemplateLike[] => {
   const r = Math.random();
-  if (r < 0.04) {
+  if (r < 0.05) {
     const pick = AREA2_TRIPLE_INDEX_PATTERNS[Math.floor(Math.random() * AREA2_TRIPLE_INDEX_PATTERNS.length)];
     return pick.map((i) => AREA2_NORMAL_ENEMIES[i]);
   }
-  if (r < 0.39) {
+  if (r < 0.4) {
     const doubles = [
       [0, 1],
       [2, 3],
@@ -1434,11 +1449,11 @@ const AREA3_TRIPLE_INDEX_PATTERNS: number[][] = [
 
 export const pickArea3Encounter = (): EnemyTemplateLike[] => {
   const r = Math.random();
-  if (r < 0.04) {
+  if (r < 0.05) {
     const pick = AREA3_TRIPLE_INDEX_PATTERNS[Math.floor(Math.random() * AREA3_TRIPLE_INDEX_PATTERNS.length)];
     return pick.map((i) => AREA3_NORMAL_ENEMIES[i]);
   }
-  if (r < 0.39) {
+  if (r < 0.4) {
     const doubles = [
       [0, 1],
       [2, 3],

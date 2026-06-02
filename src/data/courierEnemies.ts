@@ -29,7 +29,7 @@ const pickOne = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.le
 const pickEncounter = (pool: EnemyTemplateLike[]): EnemyTemplateLike[] => {
   const roll = Math.random();
   if (roll < 0.05) return [pickOne(pool), pickOne(pool), pickOne(pool)];
-  if (roll < 0.42) return [pickOne(pool), pickOne(pool)];
+  if (roll < 0.4) return [pickOne(pool), pickOne(pool)];
   return [pickOne(pool)];
 };
 

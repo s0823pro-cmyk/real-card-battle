@@ -154,7 +154,7 @@ export const createRandomEncounter = (): Enemy[] => {
   const oneEnemyEncounters = BATTLE_ENCOUNTERS.filter((encounter) => encounter.length === 1);
   const twoEnemyEncounters = BATTLE_ENCOUNTERS.filter((encounter) => encounter.length === 2);
   const threeEnemyEncounters = BATTLE_ENCOUNTERS.filter((encounter) => encounter.length === 3);
-  const pool = r < 0.04 ? threeEnemyEncounters : r < 0.39 ? twoEnemyEncounters : oneEnemyEncounters;
+  const pool = r < 0.05 ? threeEnemyEncounters : r < 0.4 ? twoEnemyEncounters : oneEnemyEncounters;
   const pick = pool[Math.floor(Math.random() * pool.length)] ?? ['claimer'];
   return createEncounterFromTemplateIds(pick);
 };

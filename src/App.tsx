@@ -80,6 +80,10 @@ import {
 } from './utils/rankingClient';
 import { useLanguage } from './contexts/LanguageContext';
 import { applyStatusBarForAppState } from './utils/nativeStatusBar';
+import {
+  maybePromptAppStoreReviewOnAreaBossClear,
+  maybePromptAppStoreReviewOnRunClear,
+} from './utils/appStoreReviewPrompt';
 
 type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 type ZukanDebugMode = null | { initialTab: 'cards' | 'stories' | 'enemies' };
@@ -542,6 +546,14 @@ function App() {
         reportRankingScore('courier', 500);
         await finalizeRankingRunEndAsync('courier');
       }
+      if (
+        storyId === 'carpenter_e3' ||
+        storyId === 'cook_e3' ||
+        storyId === 'unemployed_e3' ||
+        storyId === 'courier_e3'
+      ) {
+        maybePromptAppStoreReviewOnRunClear();
+      }
       const transition = pendingAreaTransitionRef.current;
       pendingAreaTransitionRef.current = null;
       transition?.();
@@ -626,10 +638,12 @@ function App() {
   };
 
   const handleBossRewardComplete = (reward: BossReward, selectedCard?: Card) => {
+    const clearedArea = bossRewardArea ?? state.currentArea;
     const updatedPlayer = applyBossReward(reward.type, selectedCard);
     setShowBossReward(false);
     setBossRewardArea(null);
     advanceAfterAreaBoss(updatedPlayer);
+    maybePromptAppStoreReviewOnAreaBossClear(clearedArea);
   };
 
   const handleDevNavigate = (destination: DevDestination) => {

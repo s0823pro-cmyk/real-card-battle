@@ -33,10 +33,25 @@ export const RANKING_SCORE_CATEGORY_LABELS: Record<RankingScoreCategoryId, strin
   clear: 'クリア評価',
 };
 
+export const RANKING_SCORE_CATEGORY_ORDER: readonly RankingScoreCategoryId[] = [
+  'progress',
+  'victory',
+  'combat',
+  'job',
+  'risk',
+  'clear',
+] as const;
+
 const DEFAULT_DETAIL: RankingScoreDetailInput = {
   category: 'combat',
   label: '戦闘中ボーナス',
 };
+
+const NORMAL_BATTLE_DEFEAT_POINTS = {
+  single: 30,
+  double: 100,
+  multi: 180,
+} as const;
 
 export const RANKING_SCORE_GUIDE: ReadonlyArray<{
   title: string;
@@ -54,7 +69,10 @@ export const RANKING_SCORE_GUIDE: ReadonlyArray<{
   {
     title: '勝利・撃破',
     rows: [
-      ['通常戦: 1体 / 2体 / 3体以上撃破', '+30 / +50 / +120'],
+      [
+        '通常戦: 1体 / 2体 / 3体以上撃破',
+        `+${NORMAL_BATTLE_DEFEAT_POINTS.single} / +${NORMAL_BATTLE_DEFEAT_POINTS.double} / +${NORMAL_BATTLE_DEFEAT_POINTS.multi}`,
+      ],
       ['エリート撃破', '+120'],
       ['ボス撃破', '+220'],
     ],
@@ -145,7 +163,9 @@ export function appendRankingScoreDetails(
     current.points += detail.points;
     categories.set(detail.category, current);
   }
-  const nextCategories = Array.from(categories.values()).filter((category) => category.points > 0);
+  const nextCategories = RANKING_SCORE_CATEGORY_ORDER
+    .map((id) => categories.get(id))
+    .filter((category): category is RankingScoreCategory => Boolean(category && category.points > 0));
   return {
     total: nextCategories.reduce((sum, category) => sum + category.points, 0),
     categories: nextCategories,
@@ -193,7 +213,15 @@ export function calculateBattleVictoryRankingDetails(input: {
     add(220, 'victory', 'ボス撃破');
   } else {
     const count = Math.max(1, input.defeatedEnemyCount);
-    add(count >= 3 ? 120 : count === 2 ? 50 : 30, 'victory', `通常戦勝利: ${count >= 3 ? '3体以上' : `${count}体`}撃破`);
+    add(
+      count >= 3
+        ? NORMAL_BATTLE_DEFEAT_POINTS.multi
+        : count === 2
+          ? NORMAL_BATTLE_DEFEAT_POINTS.double
+          : NORMAL_BATTLE_DEFEAT_POINTS.single,
+      'victory',
+      `通常戦勝利: ${count >= 3 ? '3体以上' : `${count}体`}撃破`,
+    );
   }
 
   if (input.hpDamageTaken === 0) add(50, 'combat', 'HPダメージ0で勝利');

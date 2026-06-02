@@ -71,6 +71,7 @@ import {
   getUnlockedCardIds,
   isAchievementRewardCardVisibleInCatalog,
 } from '../../utils/achievementSystem';
+import { isJobUnlocked } from '../../utils/jobUnlockSystem';
 import {
   canUseStarterIllustration2,
   getJobMasteryLevelInfo,
@@ -142,6 +143,21 @@ const JOB_TABS: { id: JobTab; labelKey?: MessageKey; label?: string; icon: strin
 
 const getJobTabLabel = (tab: (typeof JOB_TABS)[number], t: ReturnType<typeof useLanguage>['t']): string =>
   tab.label ?? (tab.labelKey ? t(tab.labelKey) : tab.id);
+
+const getMaskedStoryName = (
+  storyId: string,
+  jobId: JobId,
+  t: ReturnType<typeof useLanguage>['t'],
+  revealJobName: boolean,
+): string => {
+  const storyName = t(`zukan.story.${storyId}` as MessageKey);
+  if (revealJobName) return storyName;
+
+  const jobName = t(`job.${jobId}.name` as MessageKey);
+  return storyName.startsWith(jobName)
+    ? `${t('job.unknownName')}${storyName.slice(jobName.length)}`
+    : t('job.unknownName');
+};
 
 const getLegendaryOwnerName = (card: Card): string | null => {
   if (!card.tags?.includes('legendary')) return null;
@@ -296,6 +312,10 @@ export const ZukanScreen = ({
   const [masteryRevision, setMasteryRevision] = useState(0);
   const suppressOverlayCloseRef = useRef(false);
   const enemySkillsOpen = selectedEnemy ? enemySkillsEnemyId === selectedEnemy.id : false;
+  const canRevealJobName = useCallback(
+    (jobId: JobId) => debugUnlockAll || jobId === 'carpenter' || isJobUnlocked(jobId),
+    [debugUnlockAll],
+  );
 
   const handleStoryComplete = useCallback(() => {
     setPlayingStory(null);
@@ -514,7 +534,7 @@ export const ZukanScreen = ({
                 >
                   <span className="zukan-story-icon">{entry.icon}</span>
                   <span className="zukan-story-name">
-                    {t(`zukan.story.${entry.storyId}` as MessageKey)}
+                    {getMaskedStoryName(entry.storyId, entry.jobId, t, canRevealJobName(entry.jobId))}
                   </span>
                   {!unlocked && <span className="zukan-story-lock">🔒</span>}
                 </button>
@@ -612,7 +632,10 @@ export const ZukanScreen = ({
 	                    setShowUpgradePreview(false);
 	                  }}
                 >
-                  {tab.icon} {getJobTabLabel(tab, t)}
+                  {tab.icon}{' '}
+                  {tab.id === 'neutral' || tab.id === 'legendary' || canRevealJobName(tab.id)
+                    ? getJobTabLabel(tab, t)
+                    : t('job.unknownName')}
                 </button>
               ))}
             </div>

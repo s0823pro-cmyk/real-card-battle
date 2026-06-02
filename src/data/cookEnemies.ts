@@ -377,7 +377,7 @@ export const COOK_AREA3_BOSS: EnemyTemplateLike = {
 
 export const pickCookArea1Encounter = (): EnemyTemplateLike[] => {
   const r = Math.random();
-  if (r < 0.04) {
+  if (r < 0.05) {
     const triples = [
       [0, 1, 2],
       [1, 2, 3],
@@ -386,7 +386,7 @@ export const pickCookArea1Encounter = (): EnemyTemplateLike[] => {
     const pick = triples[Math.floor(Math.random() * triples.length)];
     return pick.map((i) => COOK_AREA1_NORMAL_ENEMIES[i]);
   }
-  if (r < 0.39) {
+  if (r < 0.4) {
     const doubles = [
       [0, 1],
       [1, 2],
@@ -406,7 +406,7 @@ export const pickCookArea1Elite = (): EnemyTemplateLike =>
 
 export const pickCookArea2Encounter = (): EnemyTemplateLike[] => {
   const r = Math.random();
-  if (r < 0.04) {
+  if (r < 0.05) {
     const triples = [
       [0, 1, 2],
       [1, 2, 3],
@@ -417,7 +417,7 @@ export const pickCookArea2Encounter = (): EnemyTemplateLike[] => {
     const pick = triples[Math.floor(Math.random() * triples.length)];
     return pick.map((i) => COOK_AREA2_NORMAL_ENEMIES[i]);
   }
-  if (r < 0.39) {
+  if (r < 0.4) {
     const doubles = [
       [0, 1],
       [2, 3],
@@ -435,7 +435,7 @@ export const pickCookArea2Elite = (): EnemyTemplateLike =>
 
 export const pickCookArea3Encounter = (): EnemyTemplateLike[] => {
   const r = Math.random();
-  if (r < 0.04) {
+  if (r < 0.05) {
     const triples = [
       [0, 1, 2],
       [1, 2, 3],
@@ -446,7 +446,7 @@ export const pickCookArea3Encounter = (): EnemyTemplateLike[] => {
     const pick = triples[Math.floor(Math.random() * triples.length)];
     return pick.map((i) => COOK_AREA3_NORMAL_ENEMIES[i]);
   }
-  if (r < 0.39) {
+  if (r < 0.4) {
     const doubles = [
       [0, 1],
       [2, 3],

@@ -30,6 +30,7 @@ import {
 } from '../../utils/jobMasterySystem';
 import { RANKING_SCORE_GUIDE } from '../../utils/rankingScore';
 import type { EffectiveCardValues } from '../../utils/cardPreview';
+import { isJobUnlocked } from '../../utils/jobUnlockSystem';
 import CardComponent from '../Hand/CardComponent';
 import {
   DAR_REQUIEM_CARD,
@@ -110,6 +111,15 @@ function getRankClass(rank: number): string {
 function getTabLabel(tab: (typeof JOB_TABS)[number], t: (key: MessageKey) => string): string {
   if (tab.label) return tab.label;
   return tab.labelKey ? t(tab.labelKey) : tab.id;
+}
+
+function canRevealRankingJobName(tabId: RankingTabId): boolean {
+  return tabId === 'total' || tabId === 'carpenter' || isJobUnlocked(tabId);
+}
+
+function getRankingTabLabel(tab: (typeof JOB_TABS)[number], t: (key: MessageKey) => string): string {
+  if (canRevealRankingJobName(tab.id)) return getTabLabel(tab, t);
+  return t('job.unknownName');
 }
 
 function getLocalTabScore(tabId: RankingTabId): number {
@@ -291,7 +301,8 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
   const topRows = rows.slice(0, 3);
   const displayRows = rows.slice(0, RANKING_DISPLAY_LIMIT);
   const leaderScore = rows[0]?.score ?? 0;
-  const activeTabLabel = getTabLabel(activeJob, t);
+  const activeJobNameRevealed = canRevealRankingJobName(activeJob.id);
+  const activeTabLabel = getRankingTabLabel(activeJob, t);
   const rankLabel = jobId === 'total' ? '総合順位' : '職業順位';
   const selectedMasteryBadge = getSelectedMasteryBadgeId();
   const selectedMasteryBadgeView = selectedMasteryBadge ? getMasteryBadgeView(selectedMasteryBadge) : null;
@@ -569,7 +580,7 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
               onClick={() => setJobId(tab.id)}
             >
               <span className="ranking-job-tab-icon" aria-hidden>{tab.icon}</span>
-              <span className="ranking-job-tab-text">{getTabLabel(tab, t)}</span>
+              <span className="ranking-job-tab-text">{getRankingTabLabel(tab, t)}</span>
             </button>
           ))}
         </div>
@@ -578,7 +589,7 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
           <section className="ranking-command-card">
             <div className="ranking-command-top">
               <div>
-                <p className="ranking-command-label">{activeJob.alias}</p>
+                <p className="ranking-command-label">{activeJobNameRevealed ? activeJob.alias : 'LOCKED'}</p>
                 <h2 className="ranking-command-title">
                   <span aria-hidden>{activeJob.icon}</span>
                   {activeTabLabel}
@@ -589,9 +600,11 @@ export function RankingScreen({ onClose }: RankingScreenProps) {
                 <small>{myRankInList != null ? rankLabel : '圏外'}</small>
               </div>
             </div>
-            <p className="ranking-command-motto">{activeJob.motto}</p>
+            <p className="ranking-command-motto">
+              {activeJobNameRevealed ? activeJob.motto : '未解放の職業ランキングです。'}
+            </p>
             <p className="ranking-season-period">{seasonInfo.label} / {seasonInfo.statusLabel}: {seasonInfo.endLabel}</p>
-            {masteryInfo && (
+            {masteryInfo && activeJobNameRevealed && (
               <div className="ranking-mastery-strip" aria-label="ジョブ熟練度">
                 <div className="ranking-mastery-head">
                   <span>熟練度 Lv{masteryInfo.level}</span>

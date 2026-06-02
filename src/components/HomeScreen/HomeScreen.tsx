@@ -73,7 +73,7 @@ import {
   getTotalXpRequiredForMasteryLevel,
   setJobMasteryXp,
 } from '../../utils/jobMasterySystem';
-import { clearJobUnlockStorage, unlockJob } from '../../utils/jobUnlockSystem';
+import { clearJobUnlockStorage, isJobUnlocked, unlockJob } from '../../utils/jobUnlockSystem';
 import {
   markTutorialSeen,
   resetRankingTutorial,
@@ -151,6 +151,9 @@ const achievementRewardModalJobId = (a: Achievement | null): JobId => {
   if (j === 'cook' || j === 'unemployed' || j === 'courier' || j === 'carpenter') return j;
   return 'carpenter';
 };
+
+const isHiddenLockedJobId = (jobId?: string): boolean =>
+  (jobId === 'cook' || jobId === 'unemployed' || jobId === 'courier') && !isJobUnlocked(jobId);
 
 type AdminSummaryPayload = {
   total_players: number;
@@ -639,6 +642,16 @@ const HomeScreen = ({
     { id: 'timebar', term: 'タイムバー', description: 'ターン中に使える時間。時間が切れると行動終了です。' },
     { id: 'reserve-bonus', term: '温存ボーナス', description: '温存した特定カードに次ターン強化効果が付与されます。' },
     { id: 'status', term: '状態異常', description: '敵味方に付く持続効果。弱体や有利効果を含みます。' },
+    {
+      id: 'enemy-count-rate',
+      term: '敵数の出現確率',
+      description: '通常戦は全職業共通で、1体60%・2体35%・3体5%。強敵とエリアボスは常に1体です。',
+    },
+    {
+      id: 'card-reward-rarity-rate',
+      term: 'カード報酬レアリティ確率',
+      description: '通常カード報酬の各候補1枚ごとの出現率は、コモン77%・アンコモン20%・レア2%・レジェンド1%。レジェンドは優勝者報酬カードです。',
+    },
   ] as const;
 
   const getStoryScenes = (episodeId: StoryEpisodeId): StoryScene[] => {
@@ -877,7 +890,9 @@ const HomeScreen = ({
       {debugToolsEnabled ? (
         <div className="settings-admin-dev-grid">
           <button type="button" className="btn-dev" onClick={() => handleAdminDevNavigate('courier_all_cards_run')}>
-            🏍️ 配達員全カードラン
+            {isHiddenLockedJobId('courier')
+              ? `🏍️ ${t('job.unknownName')}全カードラン`
+              : `🏍️ ${t('settings.dev.courierAllCardsRun')}`}
           </button>
           <button type="button" className="btn-dev" onClick={toggleRankingSeasonDebugPreview}>
             ランキング第2回プレビュー {rankingSeasonDebugPreview ? 'OFF' : 'ON'}
@@ -1042,6 +1057,7 @@ const HomeScreen = ({
 
   const jobLabel = (jobId: string) => {
     if (jobId === 'total') return '総合';
+    if (isHiddenLockedJobId(jobId)) return t('job.unknownName');
     if (jobId === 'carpenter') return t('job.carpenter.name');
     if (jobId === 'cook') return t('job.cook.name');
     if (jobId === 'unemployed') return t('job.unemployed.name');
@@ -2034,7 +2050,7 @@ const HomeScreen = ({
                 {t('settings.dev.allCardsBattle')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_cook_all_x2')}>
-                {t('settings.dev.cookAllX2')}
+                {isHiddenLockedJobId('cook') ? `${t('job.unknownName')}全カード×2戦闘` : t('settings.dev.cookAllX2')}
               </button>
               <button type="button" className="btn-dev" onClick={() => onDevNavigate?.('battle_expansion_x2')}>
                 {t('settings.dev.expansionBattle')}
@@ -2480,33 +2496,42 @@ const HomeScreen = ({
                     setSelectedAchievement(null);
                   }}
                 >
-                  {tab.label}
+                  {isHiddenLockedJobId(tab.id) ? t('job.unknownName') : tab.label}
                 </button>
               ))}
             </div>
             <div className="achievement-list">
               {filteredAchievements.map((a) => {
                 const isUnlocked = unlockedIds.has(a.id);
+                const canRevealAchievement = !isHiddenLockedJobId(a.jobId);
+                const canOpenAchievement = isUnlocked && canRevealAchievement;
                 return (
                   <button
                     key={a.id}
                     type="button"
-                    className={`achievement-item ${isUnlocked ? 'achievement-item--unlocked' : ''}`}
-                    disabled={!isUnlocked}
-                    onClick={() => (isUnlocked ? setSelectedAchievement(a) : undefined)}
+                    className={`achievement-item ${canOpenAchievement ? 'achievement-item--unlocked' : ''}`}
+                    disabled={!canOpenAchievement}
+                    onClick={() => (canOpenAchievement ? setSelectedAchievement(a) : undefined)}
                   >
-                    <span className="achievement-icon">{isUnlocked ? a.icon : '🔒'}</span>
+                    <span className="achievement-icon">{canOpenAchievement ? a.icon : '🔒'}</span>
                     <div className="achievement-info">
-                      <p className="achievement-name">{t(achievementNameKey(a.id), undefined, a.name)}</p>
+                      <p className="achievement-name">
+                        {canRevealAchievement ? t(achievementNameKey(a.id), undefined, a.name) : t('job.unknownName')}
+                      </p>
                       <p className="achievement-desc">
-                        {t(achievementDescKey(a.id), undefined, a.description)}
-                        {getCumulativeAchievementProgressSuffix(a.id) ?? ''}
+                        {canRevealAchievement
+                          ? `${t(achievementDescKey(a.id), undefined, a.description)}${
+                              getCumulativeAchievementProgressSuffix(a.id) ?? ''
+                            }`
+                          : '未解放の職業実績です。'}
                       </p>
                       <p className="achievement-tier">{t(`achievement.tier.${a.tier}` as MessageKey)}</p>
                       <p className="achievement-reward">
-                        {isUnlocked
+                        {canOpenAchievement
                           ? t('home.records.rewardKnown')
-                          : t('home.records.rewardUnknown')}
+                          : canRevealAchievement
+                            ? t('home.records.rewardUnknown')
+                            : '報酬: ？？？（職業解放後に表示）'}
                       </p>
                     </div>
                   </button>
@@ -2648,7 +2673,12 @@ const HomeScreen = ({
                         const selectedEpisode = job.episodes[selectedIndex];
                         const canGoPrev = selectedIndex > 0;
                         const canGoNext = selectedIndex < job.episodes.length - 1;
-                        const canPlay = hasSeenStory(selectedEpisode.id) && selectedEpisode.scenes.length > 0;
+                        const canRevealStoryJob = !isHiddenLockedJobId(job.jobKey);
+                        const storyJobName = canRevealStoryJob
+                          ? t(job.jobNameKey as MessageKey)
+                          : t('job.unknownName');
+                        const canPlay =
+                          canRevealStoryJob && hasSeenStory(selectedEpisode.id) && selectedEpisode.scenes.length > 0;
                         const isPlanned = Boolean(selectedEpisode.planned);
 
                         return (
@@ -2659,13 +2689,13 @@ const HomeScreen = ({
                                 className="howto-story-arrow-btn"
                                 onClick={() => moveStorySelection(job.jobKey, -1, job.episodes.length)}
                                 disabled={!canGoPrev}
-                                aria-label={t('home.story.ariaPrev', { job: t(job.jobNameKey) })}
+                                aria-label={t('home.story.ariaPrev', { job: storyJobName })}
                               >
                                 ←
                               </button>
                               <div className="howto-story-nav-center">
                                 <p className="howto-story-swipe-hint">
-                                  {t('home.story.chapterHint', { job: t(job.jobNameKey) })}
+                                  {t('home.story.chapterHint', { job: storyJobName })}
                                 </p>
                                 <p className="howto-story-chapter-indicator">
                                   {selectedIndex + 1} / {job.episodes.length}
@@ -2676,7 +2706,7 @@ const HomeScreen = ({
                                 className="howto-story-arrow-btn"
                                 onClick={() => moveStorySelection(job.jobKey, 1, job.episodes.length)}
                                 disabled={!canGoNext}
-                                aria-label={t('home.story.ariaNext', { job: t(job.jobNameKey) })}
+                                aria-label={t('home.story.ariaNext', { job: storyJobName })}
                               >
                                 →
                               </button>
@@ -2694,7 +2724,7 @@ const HomeScreen = ({
                             >
                               <span className="story-list-icon">{job.icon}</span>
                               <div className="story-list-info">
-                                <p className="story-list-name">{t(job.jobNameKey as MessageKey)}</p>
+                                <p className="story-list-name">{storyJobName}</p>
                                 <p className="story-list-sub">
                                   {t(selectedEpisode.chapterKey as MessageKey)}
                                   {canPlay
