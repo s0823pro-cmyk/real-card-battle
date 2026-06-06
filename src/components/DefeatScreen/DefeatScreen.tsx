@@ -6,6 +6,8 @@ import { achievementNameKey } from '../../i18n/entityKeys';
 import type { JobId } from '../../types/game';
 import type { Achievement } from '../../utils/achievementSystem';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
+import { MasteryXpGainPanel } from '../MasteryXpGainPanel/MasteryXpGainPanel';
+import { RunEndRankingPrompt } from '../RunEndRankingPrompt/RunEndRankingPrompt';
 import './DefeatScreen.css';
 
 interface DefeatScreenProps {
@@ -15,6 +17,7 @@ interface DefeatScreenProps {
   totalFloors: number;
   defeatedBy: string;
   newAchievements?: Achievement[];
+  onOpenRanking: () => void;
   onHome: () => void;
   onRetry: () => void;
 }
@@ -35,6 +38,7 @@ export const DefeatScreen = ({
   totalFloors,
   defeatedBy,
   newAchievements = [],
+  onOpenRanking,
   onHome,
   onRetry,
 }: DefeatScreenProps) => {
@@ -112,6 +116,10 @@ export const DefeatScreen = ({
             </div>
           </div>
         )}
+
+        <MasteryXpGainPanel jobId={jobId} />
+
+        <RunEndRankingPrompt jobId={jobId} onOpenRanking={onOpenRanking} />
 
         <div className="defeat-buttons">
           <button type="button" className="btn-defeat-retry" onClick={onRetry}>

@@ -9,6 +9,7 @@ import unemployedSymbolImage from '../../assets/jobs/unemployed_symbol.png';
 import jobSelectBackgroundImage from '../../assets/job_select_background.png';
 import { hasTutorialSeen, markTutorialSeen } from '../../utils/tutorialState';
 import { hasSeenJobUnlock, isJobUnlocked, markJobUnlockSeen } from '../../utils/jobUnlockSystem';
+import { syncJobUnlocksFromConditions } from '../../utils/achievementSystem';
 import { TutorialOverlay } from '../Tutorial/TutorialOverlay';
 import { useLanguage } from '../../contexts/LanguageContext';
 import './JobSelectScreen.css';
@@ -134,7 +135,16 @@ const JOB_CARD_DEFS: Omit<JobCard, 'name' | 'mechanic' | 'catchphrase'>[] = [
     hp: 70,
     timeBar: 12.0,
     mental: 10,
-    comingSoon: true,
+  },
+  {
+    id: 'courier',
+    selectableJobId: 'courier',
+    icon: '🏍️',
+    imageUrl: '',
+    color: '#22c55e',
+    hp: 75,
+    timeBar: 12.0,
+    mental: 7,
   },
 ];
 
@@ -199,13 +209,12 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const dragStartPos = useRef({ x: 0, y: 0 });
   // ポインターダウン時のカード内オフセット（カード左上からの相対位置）
   const pointerOffsetInCard = useRef({ x: 0, y: 0 });
+  const [dragStartRenderPos, setDragStartRenderPos] = useState({ x: 0, y: 0 });
+  const [pointerOffsetRender, setPointerOffsetRender] = useState({ x: 0, y: 0 });
   // ドラッグ中の移動量（上方向が負）— 再レンダリング用 state
   const [dragDelta, setDragDelta] = useState({ x: 0, y: 0 });
   // 最新値を同期参照するための ref（PointerUp 時に使う）
   const dragDeltaRef = useRef({ x: 0, y: 0 });
-  // タップ判定用：ポインタダウン時刻
-  const pointerDownTime = useRef(0);
-
   const [isMelting, setIsMelting] = useState(false);
   const [meltColor, setMeltColor] = useState('#ffffff');
   const [imageLoadFailed, setImageLoadFailed] = useState<Set<string>>(() => new Set());
@@ -215,15 +224,22 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const [showCookUnlockCelebration, setShowCookUnlockCelebration] = useState(false);
 
   const [cookUnlocked, setCookUnlocked] = useState(() => isJobUnlocked('cook'));
+  const [unemployedUnlocked, setUnemployedUnlocked] = useState(() => isJobUnlocked('unemployed'));
 
   useEffect(() => {
-    const check = () => setCookUnlocked(isJobUnlocked('cook'));
+    const check = () => {
+      syncJobUnlocksFromConditions();
+      setCookUnlocked(isJobUnlocked('cook'));
+      setUnemployedUnlocked(isJobUnlocked('unemployed'));
+    };
     check();
     window.addEventListener('focus', check);
     return () => window.removeEventListener('focus', check);
   }, []);
 
   const isCookCardLocked = (job: JobCard) => job.id === 'cook' && !cookUnlocked;
+  const isUnemployedCardLocked = (job: JobCard) => job.id === 'unemployed' && !unemployedUnlocked;
+  const isJobCardLocked = (job: JobCard) => isCookCardLocked(job) || isUnemployedCardLocked(job);
 
   const celebrationRanRef = useRef(false);
   const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -342,7 +358,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   // ---- melt trigger ----
   const triggerMeltEffect = (job: JobCard, originX: number, originY: number) => {
     if (!job.selectableJobId) return;
-    if (isCookCardLocked(job)) return;
+    if (isJobCardLocked(job)) return;
     setMeltColor('#ffffff');
     setIsMelting(true);
     startMeltParticles(job, originX, originY);
@@ -374,21 +390,22 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   const handlePointerDown = (e: React.PointerEvent, index: number) => {
     if (isMelting) return;
     const job = JOB_CARDS[index];
-    if (job.comingSoon || isCookCardLocked(job)) {
+    if (job.comingSoon || isJobCardLocked(job)) {
       e.preventDefault();
       return;
     }
     e.currentTarget.setPointerCapture(e.pointerId);
     dragStartPos.current = { x: e.clientX, y: e.clientY };
+    setDragStartRenderPos({ x: e.clientX, y: e.clientY });
     dragDeltaRef.current = { x: 0, y: 0 };
     setDragDelta({ x: 0, y: 0 });
-    pointerDownTime.current = Date.now();
     // カード要素内での掴んだ位置を記録
     const rect = e.currentTarget.getBoundingClientRect();
     pointerOffsetInCard.current = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     };
+    setPointerOffsetRender(pointerOffsetInCard.current);
     setDraggingIndex(index);
   };
 
@@ -478,7 +495,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
   // ドラッグ中カードの溶解進捗（0〜1）: 画面中央→上部20%の範囲
   const dragProgress = (() => {
     if (draggingIndex === null) return 0;
-    const currentY = dragStartPos.current.y + dragDelta.y;
+    const currentY = dragStartRenderPos.y + dragDelta.y;
     const expandY = viewportHeight * 0.65;
     const meltY = viewportHeight * 0.2;
     if (currentY >= expandY) return 0;
@@ -515,7 +532,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
       {/* 拡大表示パネル（手札とは独立） */}
       {expandedJob &&
         !expandedJob.comingSoon &&
-        !(expandedJob.id === 'cook' && !cookUnlocked) && (
+        !isJobCardLocked(expandedJob) && (
         <div className="job-detail-area">
           <div
             className="job-detail-card"
@@ -608,17 +625,18 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
         {JOB_CARDS.map((job, index) => {
           const item = handLayout[index];
           const isDragging = draggingIndex === index;
-          const cookLocked = isCookCardLocked(job);
+          const jobLocked = isJobCardLocked(job);
+          const lockHint = isCookCardLocked(job) ? t('job.cookLockHint') : t('job.unemployedLockHint');
 
           // ドラッグ中は「指の位置 - カード内オフセット」でカード左上を配置
           const cardW = item?.width ?? 88;
           const cardH = item?.height ?? 136;
           const draggingLeft = isDragging
-            ? dragStartPos.current.x + dragDelta.x - pointerOffsetInCard.current.x
+            ? dragStartRenderPos.x + dragDelta.x - pointerOffsetRender.x
             : null;
           // bottom は画面下端からの距離に変換（position:fixed の手札エリアに合わせる）
           const draggingTop = isDragging
-            ? dragStartPos.current.y + dragDelta.y - pointerOffsetInCard.current.y
+            ? dragStartRenderPos.y + dragDelta.y - pointerOffsetRender.y
             : null;
 
           const wrapperStyle = (
@@ -652,7 +670,7 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
           return (
             <div
               key={job.id}
-              className={`job-hand-card-wrapper${job.comingSoon ? ' job-hand-card-wrapper--coming-soon' : ''}${cookLocked ? ' job-hand-card-wrapper--job-locked' : ''}${isDragging ? ' job-hand-card-wrapper--dragging' : ''}`}
+              className={`job-hand-card-wrapper${job.comingSoon ? ' job-hand-card-wrapper--coming-soon' : ''}${jobLocked ? ' job-hand-card-wrapper--job-locked' : ''}${isDragging ? ' job-hand-card-wrapper--dragging' : ''}`}
               style={wrapperStyle as CSSProperties}
               onPointerDown={(e) => handlePointerDown(e, index)}
               onPointerMove={(e) => handlePointerMove(e, index)}
@@ -683,11 +701,11 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                 <div className="job-hand-card-topline" style={{ background: job.color }} />
                 <div className="job-hand-card-name-area">
                   <span className="job-hand-card-name">
-                    {cookLocked || job.comingSoon ? t('job.unknownName') : job.name}
+                    {jobLocked || job.comingSoon ? t('job.unknownName') : job.name}
                   </span>
                 </div>
                 <div className="job-hand-card-symbol">
-                  {cookLocked ? (
+                  {jobLocked ? (
                     <span className="job-hand-card-emoji job-hand-card-emoji--lock" aria-hidden>
                       🔒
                     </span>
@@ -718,9 +736,9 @@ const JobSelectScreen = ({ onSelect, onBack }: JobSelectScreenProps) => {
                     </span>
                   </div>
                 )}
-                {cookLocked && (
+                {jobLocked && (
                   <div className="job-hand-card-cook-lock-hint" role="status">
-                    {t('job.cookLockHint')}
+                    {lockHint}
                   </div>
                 )}
               </div>

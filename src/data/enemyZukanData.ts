@@ -46,6 +46,28 @@ import cursedTreeImage from '../assets/enemies/cursed_tree.png';
 import worldTreeGuardianImage from '../assets/enemies/world_tree_guardian.png';
 import ancientGhostImage from '../assets/enemies/ancient_ghost.png';
 import worldTreeWardenImage from '../assets/enemies/world_tree_warden.png';
+import {
+  UNEMPLOYED_AREA1_BOSS,
+  UNEMPLOYED_AREA1_ELITES,
+  UNEMPLOYED_AREA1_NORMAL_ENEMIES,
+  UNEMPLOYED_AREA2_BOSS,
+  UNEMPLOYED_AREA2_ELITES,
+  UNEMPLOYED_AREA2_NORMAL_ENEMIES,
+  UNEMPLOYED_AREA3_BOSS,
+  UNEMPLOYED_AREA3_ELITES,
+  UNEMPLOYED_AREA3_NORMAL_ENEMIES,
+} from './unemployedEnemies';
+import {
+  COURIER_AREA1_BOSS,
+  COURIER_AREA1_ELITES,
+  COURIER_AREA1_NORMAL_ENEMIES,
+  COURIER_AREA2_BOSS,
+  COURIER_AREA2_ELITES,
+  COURIER_AREA2_NORMAL_ENEMIES,
+  COURIER_AREA3_BOSS,
+  COURIER_AREA3_ELITES,
+  COURIER_AREA3_NORMAL_ENEMIES,
+} from './courierEnemies';
 
 export interface EnemyZukanEntry {
   id: string;
@@ -57,6 +79,90 @@ export interface EnemyZukanEntry {
   hp: number;
   description: string;
 }
+
+const UNEMPLOYED_ENEMY_DESCRIPTIONS: Record<string, string> = {
+  exhausted_job_seeker: '何度も落ちた履歴書を抱えた求職者。攻撃は弱いが、折れた心だけはなかなか倒れない。',
+  street_job_tout: '曖昧な好条件を並べる街頭勧誘員。言葉巧みに登録料を迫ってくる。',
+  stern_interviewer: '無言の圧で経歴の空白を突く面接官。表情を読ませないまま心を削る。',
+  collarless_dog: '街を生き抜く首輪のない犬。敵意より警戒心が強く、簡単には引き下がらない。',
+  empty_wallet_drifter: '空の財布を握りしめた放浪者。失うものがないぶん、しぶとく踏みとどまる。',
+  pressure_interviewer: '採用する気もないのに詰問だけは一人前の面接官。無職ルート最初の壁。',
+  probation_supervisor: '試用期間という言葉で人を縛る監督者。評価待ちの不安を武器にする。',
+  hollow_recruiter: '白紙の求人で人を集める支配者。約束だけを積み上げて、誰も救わない。',
+  unpaid_overtime_worker: '帰れない夜を重ねた労働者の影。攻撃は重くないが、疲労を積み上げてくる。',
+  black_contract_broker: '不利な条項を小さな文字に隠す仲介人。契約の形で呪いを押しつける。',
+  payday_mirage_clerk: '給料日をちらつかせて期待だけを先延ばしにする係員。財布に直接響く相手。',
+  quota_enforcer: '数字だけを積み上げる取締役。硬く粘り、戦いを長引かせる。',
+  timecard_ghost_worker: '打刻だけが残った幽社員。働いた時間の重さで相手を縛る。',
+  black_company_manager: '根性論で部署を動かす管理者。低い攻撃を、圧と弱体でじわじわ通してくる。',
+  contract_collector: '契約と違約金を回収する男。金と呪いを同時に奪いにくる。',
+  payday_puppeteer: '給料日を糸で操る支配者。生活費を握り、自由を削るエリア2のボス。',
+  empty_drifter_shell: '名前も役割も薄れた抜け殻。空白に身を隠し、倒れるまで時間がかかる。',
+  regret_root_vagrant: '後悔の根をまとった放浪者。世界樹に近づくほど、過去が形を持ち始める。',
+  nameless_stone_pilgrim: '肩書きを削られた石の巡礼者。硬い沈黙で進路を塞ぐ。',
+  hunger_echo_hound: '空腹の反響から生まれた犬。現実の犬よりも世界樹の気配を帯びている。',
+  margin_lantern_keeper: '余白の灯を守る人物。帰り道を照らすようで、足元をぼかす。',
+  void_hr_officer: '空白を審査する人事官。存在理由そのものを問い、手札に迷いを残す。',
+  world_tree_interviewer: '世界樹の根が面接官の形を取ったもの。答えよりも、耐える時間を試してくる。',
+  warden_of_blank: '空白を守る最後の番人。何者でもない者だけが、その問いを越えられる。',
+};
+
+const unemployedEntry = (
+  enemy: (typeof UNEMPLOYED_AREA1_NORMAL_ENEMIES)[number],
+  area: number,
+  type: EnemyZukanEntry['type'],
+): EnemyZukanEntry => ({
+  id: enemy.templateId,
+  name: enemy.name,
+  icon: enemy.icon,
+  imageUrl: enemy.imageUrl ?? '',
+  area,
+  type,
+  hp: enemy.maxHp,
+  description: UNEMPLOYED_ENEMY_DESCRIPTIONS[enemy.templateId] ?? '無職ルートに立ちはだかる敵。',
+});
+
+const COURIER_ENEMY_DESCRIPTIONS: Record<string, string> = {
+  wrong_address_resident: '住所違いで怒る住人。配達員の焦りを増やしてくる。',
+  parcel_thief: '置き配を狙う泥棒。荷物と小銭を同時に狙う。',
+  barking_house_dog: '玄関先で吠える番犬。攻撃は軽いが集中力を削る。',
+  traffic_cone_line: '工事現場のコーン列。ルートを塞ぎ、戦いを長引かせる。',
+  impatient_customer: '通知を連打する客。焦りを攻撃力に変える。',
+  tower_mansion_guard: '高層マンションの警備員。入館手続きで配達を止める。',
+  rush_hour_crossing: '帰宅ラッシュの交差点。人波と信号が最大の敵。',
+  last_minute_tower_customer: '時間指定ギリギリで待つ客。評価を盾に圧をかけるエリア1ボス。',
+  redelivery_stack: '積み上がった再配達。片付けても片付けても増える。',
+  rainy_slope: '雨で滑る坂道。体力と判断力を奪う。',
+  broken_navigation: '壊れたナビ。最短ルートを逆方向へ導く。',
+  overtime_dispatcher: '追加依頼を投げ続ける配車係。ノルマを増やしてくる。',
+  locked_apartment: 'オートロックの迷宮。入口も部屋番号もわかりにくい。',
+  complaint_center_agent: 'クレーム窓口担当。謝罪要求でメンタルを削る。',
+  delivery_area_chief: '配達エリア長。評価表とノルマで圧をかける。',
+  redelivery_king: '不在票の玉座に座る再配達の王。受け取る気配がないエリア2ボス。',
+  root_covered_road: '世界樹の根に覆われた道路。配達ルートを歪ませる。',
+  lost_delivery_spirit: '未配達の後悔から生まれた霊。宛先を探してさまよう。',
+  silent_recipient: '判子を出さない無言の受取人。沈黙で足を止める。',
+  time_limit_shadow: '締切そのものの影。ターンが進むほど焦りを増す。',
+  world_tree_mailbox: '世界樹に生えたポスト。宛先不明の手紙を返す。',
+  legendary_late_package: '長く届かなかった伝説の荷物。重さと遅延で立ちはだかる。',
+  root_route_manager: '根のルート管理者。最短距離を捻じ曲げる。',
+  world_tree_final_recipient: '世界樹の根元で待つ最後の受取人。配達員ルートの最終ボス。',
+};
+
+const courierEntry = (
+  enemy: (typeof COURIER_AREA1_NORMAL_ENEMIES)[number],
+  area: number,
+  type: EnemyZukanEntry['type'],
+): EnemyZukanEntry => ({
+  id: enemy.templateId,
+  name: enemy.name,
+  icon: enemy.icon,
+  imageUrl: enemy.imageUrl ?? '',
+  area,
+  type,
+  hp: enemy.maxHp,
+  description: COURIER_ENEMY_DESCRIPTIONS[enemy.templateId] ?? '配達員ルートに立ちはだかる敵。',
+});
 
 export const ENEMY_ZUKAN_DATA: EnemyZukanEntry[] = [
   { id: 'claimer', name: 'クレーマー', icon: '😡', imageUrl: claimerImage, area: 1, type: 'normal', hp: 30, description: 'どんな些細なことでも文句をつけてくる厄介な存在。実は自分でも何に怒っているか分かっていない。' },
@@ -108,4 +214,24 @@ export const ENEMY_ZUKAN_DATA: EnemyZukanEntry[] = [
   { id: 'avatar_of_hunger', name: '飢餓の化身', icon: '💀', imageUrl: avatarOfHungerImage, area: 3, type: 'elite', hp: 130, description: '世界の飢えが形を持った存在。見るだけで力が奪われる。' },
   { id: 'fallen_gourmet', name: '堕ちた美食家', icon: '🍷', imageUrl: fallenGourmetImage, area: 3, type: 'elite', hp: 120, description: 'かつての名シェフの成れの果て。狂気に飲まれた。' },
   { id: 'hunger_king_of_world_tree', name: '世界樹の飢餓王', icon: '🌲', imageUrl: hungerKingOfWorldTreeImage, area: 3, type: 'boss', hp: 350, description: '世界の飢えそのもの。すべてを喰い尽くす終焉の王。' },
+  // ===== 無職用 =====
+  ...UNEMPLOYED_AREA1_NORMAL_ENEMIES.map((enemy) => unemployedEntry(enemy, 1, 'normal')),
+  ...UNEMPLOYED_AREA1_ELITES.map((enemy) => unemployedEntry(enemy, 1, 'elite')),
+  unemployedEntry(UNEMPLOYED_AREA1_BOSS, 1, 'boss'),
+  ...UNEMPLOYED_AREA2_NORMAL_ENEMIES.map((enemy) => unemployedEntry(enemy, 2, 'normal')),
+  ...UNEMPLOYED_AREA2_ELITES.map((enemy) => unemployedEntry(enemy, 2, 'elite')),
+  unemployedEntry(UNEMPLOYED_AREA2_BOSS, 2, 'boss'),
+  ...UNEMPLOYED_AREA3_NORMAL_ENEMIES.map((enemy) => unemployedEntry(enemy, 3, 'normal')),
+  ...UNEMPLOYED_AREA3_ELITES.map((enemy) => unemployedEntry(enemy, 3, 'elite')),
+  unemployedEntry(UNEMPLOYED_AREA3_BOSS, 3, 'boss'),
+  // ===== 配達員用 =====
+  ...COURIER_AREA1_NORMAL_ENEMIES.map((enemy) => courierEntry(enemy, 1, 'normal')),
+  ...COURIER_AREA1_ELITES.map((enemy) => courierEntry(enemy, 1, 'elite')),
+  courierEntry(COURIER_AREA1_BOSS, 1, 'boss'),
+  ...COURIER_AREA2_NORMAL_ENEMIES.map((enemy) => courierEntry(enemy, 2, 'normal')),
+  ...COURIER_AREA2_ELITES.map((enemy) => courierEntry(enemy, 2, 'elite')),
+  courierEntry(COURIER_AREA2_BOSS, 2, 'boss'),
+  ...COURIER_AREA3_NORMAL_ENEMIES.map((enemy) => courierEntry(enemy, 3, 'normal')),
+  ...COURIER_AREA3_ELITES.map((enemy) => courierEntry(enemy, 3, 'elite')),
+  courierEntry(COURIER_AREA3_BOSS, 3, 'boss'),
 ];

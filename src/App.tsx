@@ -40,6 +40,18 @@ import {
   markStorySeen,
 } from './data/stories/carpenterStory';
 import { COOK_STORY, COOK_E1_STORY, COOK_E2_STORY, COOK_E3_STORY } from './data/stories/cookStory';
+import {
+  UNEMPLOYED_STORY,
+  UNEMPLOYED_E1_STORY,
+  UNEMPLOYED_E2_STORY,
+  UNEMPLOYED_E3_STORY,
+} from './data/stories/unemployedStory';
+import {
+  COURIER_STORY,
+  COURIER_E1_STORY,
+  COURIER_E2_STORY,
+  COURIER_E3_STORY,
+} from './data/stories/courierStory';
 import type { BossReward } from './data/bossRewards';
 import type { StoryScene } from './data/stories/carpenterStory';
 import { loadBattleState, clearBattleState, restoreGameState } from './utils/battleSave';
@@ -57,11 +69,17 @@ import {
 } from './utils/adsRemoved';
 import { ensureAdMobInitialized, removeBannerAd, showInterstitialIfAllowed } from './utils/adMobClient';
 import { initIAP } from './utils/iapService';
-import { finalizeRankingRunEnd, reportRankingScore, resetCurrentRunRankingScore } from './utils/rankingClient';
+import {
+  finalizeRankingRunEnd,
+  finalizeRankingRunEndAsync,
+  reportRankingScore,
+  resetCurrentRunRankingScore,
+} from './utils/rankingClient';
 import { useLanguage } from './contexts/LanguageContext';
 import { applyStatusBarForAppState } from './utils/nativeStatusBar';
 
 type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
+type ZukanDebugMode = null | { initialTab: 'cards' | 'stories' };
 
 function App() {
   const { t } = useLanguage();
@@ -129,6 +147,7 @@ function App() {
   const [pendingJobId, setPendingJobId] = useState<JobId | null>(null);
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
   const [currentStoryScenes, setCurrentStoryScenes] = useState<StoryScene[] | null>(null);
+  const [zukanDebugMode, setZukanDebugMode] = useState<ZukanDebugMode>(null);
   const pendingAreaTransitionRef = useRef<(() => void) | null>(null);
   const [showBossReward, setShowBossReward] = useState(false);
   const [bossRewardArea, setBossRewardArea] = useState<number | null>(null);
@@ -191,6 +210,10 @@ function App() {
         if (area === 1) playBgm('cook_area1');
         else if (area === 2) playBgm('cook_area2');
         else playBgm('cook_area3');
+      } else if (state.jobId === 'unemployed') {
+        if (area === 1) playBgm('unemployed_area1');
+        else if (area === 2) playBgm('unemployed_area2');
+        else playBgm('unemployed_area3');
       } else {
         if (area === 1) playBgm('area1');
         else if (area === 2) playBgm('area2');
@@ -328,6 +351,15 @@ function App() {
     })();
   };
 
+  const openRankingAfterRunEnd = () => {
+    void (async () => {
+      await finalizeRankingRunEndAsync(state.jobId);
+      clearAllSaveData();
+      resetRun();
+      openRankingFromHome();
+    })();
+  };
+
   /** ホーム「ゲームスタート」— 保留中の敗北広告があれば先に表示 */
   const handleStartFromHomeWithPendingAd = () => {
     void (async () => {
@@ -372,13 +404,31 @@ function App() {
         setShowStory(true);
         return;
       }
+      if (jobId === 'unemployed' && !hasSeenStory('unemployed_opening')) {
+        setPendingJobId(jobId);
+        setShowStory(true);
+        return;
+      }
+      if (jobId === 'courier' && !hasSeenStory('courier_opening')) {
+        setPendingJobId(jobId);
+        setShowStory(true);
+        return;
+      }
       startRunFromJobSelect(jobId);
     }, 400, 500);
   };
 
   const handleStoryComplete = () => {
     const nextJobId = pendingJobId ?? 'carpenter';
-    markStorySeen(nextJobId === 'cook' ? 'cook' : 'carpenter');
+    markStorySeen(
+      nextJobId === 'cook'
+        ? 'cook'
+        : nextJobId === 'unemployed'
+          ? 'unemployed_opening'
+          : nextJobId === 'courier'
+            ? 'courier_opening'
+          : 'carpenter',
+    );
     setShowStory(false);
     setPendingJobId(null);
     startRunFromJobSelect(nextJobId);
@@ -386,7 +436,14 @@ function App() {
 
   const showAreaStory = (area: 1 | 2 | 3, onDone: () => void) => {
     const jid = state.jobId;
-    const storyId = jid === 'cook' ? `cook_e${area}` : `carpenter_e${area}`;
+    const storyId =
+      jid === 'cook'
+        ? `cook_e${area}`
+        : jid === 'unemployed'
+          ? `unemployed_e${area}`
+          : jid === 'courier'
+            ? `courier_e${area}`
+            : `carpenter_e${area}`;
     const scenes =
       jid === 'cook'
         ? area === 1
@@ -394,6 +451,18 @@ function App() {
           : area === 2
             ? COOK_E2_STORY
             : COOK_E3_STORY
+        : jid === 'unemployed'
+          ? area === 1
+            ? UNEMPLOYED_E1_STORY
+            : area === 2
+              ? UNEMPLOYED_E2_STORY
+              : UNEMPLOYED_E3_STORY
+          : jid === 'courier'
+            ? area === 1
+              ? COURIER_E1_STORY
+              : area === 2
+                ? COURIER_E2_STORY
+                : COURIER_E3_STORY
         : area === 1
           ? CARPENTER_E1_STORY
           : area === 2
@@ -417,6 +486,12 @@ function App() {
     } else if (storyId === 'cook_e3') {
       reportRankingScore('cook', 500);
       finalizeRankingRunEnd('cook');
+    } else if (storyId === 'unemployed_e3') {
+      reportRankingScore('unemployed', 500);
+      finalizeRankingRunEnd('unemployed');
+    } else if (storyId === 'courier_e3') {
+      reportRankingScore('courier', 500);
+      finalizeRankingRunEnd('courier');
     }
     const transition = pendingAreaTransitionRef.current;
     pendingAreaTransitionRef.current = null;
@@ -435,8 +510,19 @@ function App() {
     };
 
     // エリアクリア報酬はストーリー視聴後（大工・料理人 e1/e2 初回のみストーリー→報酬の順）
-    if ((state.jobId === 'carpenter' || state.jobId === 'cook') && area >= 1 && area <= 2) {
-      const storyId = state.jobId === 'cook' ? `cook_e${area}` : `carpenter_e${area}`;
+    if (
+      (state.jobId === 'carpenter' || state.jobId === 'cook' || state.jobId === 'unemployed' || state.jobId === 'courier') &&
+      area >= 1 &&
+      area <= 2
+    ) {
+      const storyId =
+        state.jobId === 'cook'
+          ? `cook_e${area}`
+          : state.jobId === 'unemployed'
+            ? `unemployed_e${area}`
+            : state.jobId === 'courier'
+              ? `courier_e${area}`
+              : `carpenter_e${area}`;
       if (!hasSeenStory(storyId)) {
         showAreaStory(area as 1 | 2, openBossReward);
         return;
@@ -451,7 +537,12 @@ function App() {
     // ランクリア（onBattleEnd が実際に nextScreen: victory を積んだ）ときだけ e3 ストーリー。App の currentArea だけではエリア1・2ボス後に誤被せしうる
     if (pendingArea3RunVictoryStoryRef.current) {
       pendingArea3RunVictoryStoryRef.current = false;
-      if (state.jobId === 'carpenter' || state.jobId === 'cook') {
+      if (
+        state.jobId === 'carpenter' ||
+        state.jobId === 'cook' ||
+        state.jobId === 'unemployed' ||
+        state.jobId === 'courier'
+      ) {
         showAreaStory(3, () => {});
       }
     }
@@ -506,6 +597,11 @@ function App() {
       showAreaStory(1, () => {});
       return;
     }
+    if (destination === 'debug_zukan_cards' || destination === 'debug_zukan_stories') {
+      setZukanDebugMode({ initialTab: destination === 'debug_zukan_stories' ? 'stories' : 'cards' });
+      runScreenTransition(openZukanFromHome, 350, 350);
+      return;
+    }
     startDevNavigation(destination);
   };
 
@@ -519,7 +615,10 @@ function App() {
         return (
           <HomeScreen
             onStart={handleStartFromHomeWithPendingAd}
-            onOpenZukan={() => runScreenTransition(openZukanFromHome, 1000, 1000)}
+            onOpenZukan={() => {
+              setZukanDebugMode(null);
+              runScreenTransition(openZukanFromHome, 1000, 1000);
+            }}
             onOpenRanking={() => runScreenTransition(openRankingFromHome, 1000, 1000)}
             onContinue={(saved) => {
               clearAllSaveData();
@@ -534,9 +633,14 @@ function App() {
       case 'zukan':
         return (
           <ZukanScreen
-            onClose={() => runScreenTransition(backToHomeFromZukan, 350, 350)}
+            onClose={() => {
+              setZukanDebugMode(null);
+              runScreenTransition(backToHomeFromZukan, 350, 350);
+            }}
             unlockedCardNames={state.unlockedCardNames}
             onUnlockAll={unlockAllCardsForDebug}
+            initialTab={zukanDebugMode?.initialTab}
+            debugUnlockAll={Boolean(zukanDebugMode)}
           />
         );
       case 'ranking':
@@ -628,6 +732,8 @@ function App() {
             key={`bv-${state.battleVictorySeq}`}
             rewardGold={state.lastVictoryRewardGold}
             mentalRecovery={state.lastVictoryMentalRecovery}
+            rankingPoints={state.lastVictoryRankingPoints}
+            rankingBreakdown={state.lastVictoryRankingBreakdown}
             totalGold={state.player.gold}
             tapArmKey={state.battleVictorySeq}
             jobId={state.jobId}
@@ -673,8 +779,13 @@ function App() {
             newAchievements={state.lastBattleNewAchievements}
             adsRemoved={getAdsRemoved()}
             suppressNativeBanner={
-              showStory && (currentStoryId === 'carpenter_e3' || currentStoryId === 'cook_e3')
+              showStory &&
+              (currentStoryId === 'carpenter_e3' ||
+                currentStoryId === 'cook_e3' ||
+                currentStoryId === 'unemployed_e3' ||
+                currentStoryId === 'courier_e3')
             }
+            onOpenRanking={openRankingAfterRunEnd}
             onHome={goHomeWithInterstitial}
           />
         );
@@ -687,6 +798,7 @@ function App() {
             totalFloors={totalFloors}
             defeatedBy={state.lastDefeatedBy}
             newAchievements={state.lastBattleNewAchievements}
+            onOpenRanking={openRankingAfterRunEnd}
             onHome={defeatHomeWithInterstitial}
             onRetry={defeatRetryWithInterstitial}
           />
@@ -744,11 +856,27 @@ function App() {
       )}
       {showStory && state.currentScreen === 'job_select' && !currentStoryId && (
         <StoryScreen
-          scenes={pendingJobId === 'cook' ? COOK_STORY : CARPENTER_STORY}
+          scenes={
+            pendingJobId === 'cook'
+                ? COOK_STORY
+                : pendingJobId === 'unemployed'
+                  ? UNEMPLOYED_STORY
+                  : pendingJobId === 'courier'
+                    ? COURIER_STORY
+                  : CARPENTER_STORY
+          }
           onComplete={handleStoryComplete}
           currentArea={state.currentArea}
           jobId={pendingJobId ?? state.jobId}
-          storyBundleId={pendingJobId === 'cook' ? 'cook_opening' : 'carpenter_opening'}
+          storyBundleId={
+            pendingJobId === 'cook'
+              ? 'cook_opening'
+              : pendingJobId === 'unemployed'
+                ? 'unemployed_opening'
+                : pendingJobId === 'courier'
+                  ? 'courier_opening'
+                : 'carpenter_opening'
+          }
         />
       )}
       {showStory && currentStoryId && currentStoryScenes && (
@@ -758,9 +886,15 @@ function App() {
           showStartButton={false}
           storyBundleId={currentStoryId}
           storyBgmArea={
-            currentStoryId === 'carpenter_e1' || currentStoryId === 'cook_e1'
+            currentStoryId === 'carpenter_e1' ||
+            currentStoryId === 'cook_e1' ||
+            currentStoryId === 'unemployed_e1' ||
+            currentStoryId === 'courier_e1'
               ? 2
-              : currentStoryId === 'carpenter_e2' || currentStoryId === 'cook_e2'
+              : currentStoryId === 'carpenter_e2' ||
+                  currentStoryId === 'cook_e2' ||
+                  currentStoryId === 'unemployed_e2' ||
+                  currentStoryId === 'courier_e2'
                 ? 3
                 : 3
           }

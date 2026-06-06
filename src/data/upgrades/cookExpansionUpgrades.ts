@@ -32,7 +32,7 @@ export const COOK_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   },
   トマト: {
     name: 'トマト+',
-    description: '満腹+1。ドロー1。使い捨て',
+    description: '満腹+1。ドロー1。消耗',
     effects: [{ type: 'fullness_gauge', value: 1 }, { type: 'draw', value: 1 }],
   },
   魚: {
@@ -83,7 +83,7 @@ export const COOK_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   味見: {
     name: '味見+',
     timeCost: 0.5,
-    description: '所要時間0.5秒。調理ゲージ+2。使い捨て',
+    description: '所要時間0.5秒。調理ゲージ+2。消耗',
     effects: [{ type: 'cooking_gauge', value: 2 }],
   },
   エプロン: {
@@ -131,7 +131,7 @@ export const COOK_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   賄い: {
     name: '賄い+',
     timeCost: 1,
-    description: '所要時間1秒。ドロー3。使い捨て',
+    description: '所要時間1秒。ドロー3。消耗',
     effects: [{ type: 'draw', value: 3 }],
   },
   包丁投げ: {
@@ -200,8 +200,8 @@ export const COOK_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
     description: 'ブロック16。自分が火傷状態なら火傷を回復',
     effects: [{ type: 'clear_player_burn', value: 1 }],
   },
-  まな板ガード2: {
-    name: 'まな板ガード2+',
+  厚手のまな板ガード: {
+    name: '厚手のまな板ガード+',
     block: 10,
     description: 'ブロック10。調理ゲージ+1',
     effects: [{ type: 'cooking_gauge', value: 1 }],

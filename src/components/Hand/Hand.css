@@ -212,6 +212,10 @@
   border: 1.5px solid #f0b429;
 }
 
+.card-frame--no-animation.card-frame--legend {
+  border: 1.5px solid #4a5568;
+}
+
 .card-frame--no-animation.card-frame--common,
 .card-frame--no-animation.card-frame--starter {
   border: 1.5px solid #4a5568;
@@ -525,10 +529,19 @@
   min-height: 0;
 }
 
-/* タイプ行の【準備】【調理】【食材】：上下パディングをタイプバッジと同率で詰める */
+/* タイプ行のサブバッジ：上下パディングをタイプバッジと同率で詰める */
 .card-type-cluster__side .card-badge--setup,
 .card-type-cluster__side .card-badge--cooking,
-.card-type-cluster__side .card-badge--ingredient {
+.card-type-cluster__side .card-badge--ingredient,
+.card-type-cluster__side .card-badge--stamina,
+.card-type-cluster__side .card-badge--unyielding,
+.card-type-cluster__side .card-badge--immovable,
+.card-type-cluster__side .card-badge--exhaust,
+.card-type-cluster__side .card-badge--vanish,
+.card-type-cluster__side .card-badge--limited,
+.card-type-cluster__side .card-badge--reserve,
+.card-type-cluster__side .card-badge--oikomi,
+.card-type-cluster__side .card-badge--self_damage {
   padding: calc(3px * 0.6) 3px !important;
   line-height: 1 !important;
 }
@@ -540,10 +553,14 @@
 }
 
 .card-badge--exhaust,
+.card-badge--vanish,
+.card-badge--limited,
 .card-badge--setup,
 .card-badge--self_damage,
 .card-badge--reserve,
-.card-badge--oikomi {
+.card-badge--oikomi,
+.card-badge--immovable,
+.card-badge--unyielding {
   font-family: var(--font-display);
   font-size: 5.6px !important;
   font-weight: 500 !important;
@@ -557,6 +574,24 @@
   display: inline-flex;
   align-items: center;
   height: 100%;
+}
+
+.card-badge--immovable {
+  background: rgba(99, 102, 241, 0.42);
+  border: 1px solid rgba(129, 140, 248, 0.7);
+  color: #eef2ff;
+}
+
+.card-badge--unyielding {
+  background: rgba(14, 165, 233, 0.38);
+  border: 1px solid rgba(56, 189, 248, 0.7);
+  color: #e0f7ff;
+}
+
+.card-badge--limited {
+  background: rgba(168, 85, 247, 0.38);
+  border: 1px solid rgba(196, 181, 253, 0.7);
+  color: #f5f0ff;
 }
 
 .card-badge--ingredient {
@@ -586,6 +621,22 @@
   background: rgba(243, 156, 18, 0.4);
   border: 1px solid rgba(243, 156, 18, 0.7);
   color: #fff8e8;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+
+.card-badge--stamina {
+  font-family: var(--font-display);
+  font-size: 5.6px !important;
+  font-weight: 600 !important;
+  padding: 0 3px !important;
+  border-radius: 2px !important;
+  letter-spacing: 0.05em !important;
+  line-height: inherit !important;
+  background: rgba(34, 197, 94, 0.38);
+  border: 1px solid rgba(34, 197, 94, 0.7);
+  color: #eafff2;
   display: inline-flex;
   align-items: center;
   height: 100%;
@@ -660,6 +711,29 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
+.card-frame--legend {
+  border-color: #4a5568;
+  box-shadow:
+    0 0 10px rgba(191, 90, 242, 0.55),
+    0 0 22px rgba(255, 214, 10, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.card-frame--legend::before {
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    #ff2d55 0%,
+    #ff9f0a 16%,
+    #ffd60a 32%,
+    #32d74b 48%,
+    #64d2ff 64%,
+    #0a84ff 80%,
+    #bf5af2 100%
+  );
+  box-shadow: 0 0 12px rgba(191, 90, 242, 0.75);
+}
+
 .card-frame--common,
 .card-frame--starter {
   border-color: #4a5568;
@@ -700,6 +774,116 @@
 .card-frame--rare .card-particles::after {
   left: 68%;
   animation-delay: 1.2s;
+}
+
+/* 伝説カード専用：上部ライン＋カード全面の虹色発光 */
+.card-frame--legend:not(.card-frame--no-animation) {
+  border-color: #4a5568;
+  box-shadow:
+    0 0 12px rgba(255, 45, 85, 0.42),
+    0 0 22px rgba(255, 214, 10, 0.24),
+    0 0 34px rgba(100, 210, 255, 0.24),
+    inset 0 0 14px rgba(255, 255, 255, 0.14);
+  animation: legend-rainbow-glow 3.6s ease-in-out infinite;
+}
+
+.card-frame--legend:not(.card-frame--no-animation)::before {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 45, 85, 0.95) 12%,
+    rgba(255, 159, 10, 0.98) 25%,
+    rgba(255, 214, 10, 1) 38%,
+    rgba(50, 215, 75, 0.98) 51%,
+    rgba(100, 210, 255, 1) 64%,
+    rgba(10, 132, 255, 0.98) 77%,
+    rgba(191, 90, 242, 0.95) 90%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  box-shadow:
+    0 0 7px rgba(255, 214, 10, 0.58),
+    0 0 12px rgba(100, 210, 255, 0.42),
+    0 0 16px rgba(191, 90, 242, 0.36);
+  animation: legend-rainbow-line 9s linear infinite;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.card-frame--legend:not(.card-frame--no-animation)::after {
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 45, 85, 0.28) 0%,
+      rgba(255, 159, 10, 0.2) 18%,
+      rgba(255, 214, 10, 0.18) 32%,
+      rgba(50, 215, 75, 0.18) 48%,
+      rgba(100, 210, 255, 0.26) 64%,
+      rgba(10, 132, 255, 0.22) 78%,
+      rgba(191, 90, 242, 0.26) 100%
+    ),
+    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 78%, rgba(255, 255, 255, 0.12), transparent 30%);
+  background-size: 160% 160%, 100% 100%, 100% 100%;
+  opacity: 0.9;
+  animation: legend-rainbow-surface 4.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.card-frame--legend:not(.card-frame--no-animation) .card-particles::before,
+.card-frame--legend:not(.card-frame--no-animation) .card-particles::after {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow:
+    0 0 5px rgba(255, 214, 10, 0.85),
+    0 0 9px rgba(100, 210, 255, 0.75),
+    0 0 13px rgba(191, 90, 242, 0.7);
+}
+
+@keyframes legend-rainbow-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 10px rgba(255, 45, 85, 0.42),
+      0 0 20px rgba(255, 159, 10, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+  33% {
+    box-shadow:
+      0 0 11px rgba(50, 215, 75, 0.38),
+      0 0 22px rgba(100, 210, 255, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  66% {
+    box-shadow:
+      0 0 11px rgba(10, 132, 255, 0.4),
+      0 0 24px rgba(191, 90, 242, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+}
+
+@keyframes legend-rainbow-line {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 220% 50%; }
+}
+
+@keyframes legend-rainbow-surface {
+  0%, 100% {
+    background-position: 0% 50%, 50% 50%, 50% 50%;
+    opacity: 0.82;
+  }
+  50% {
+    background-position: 100% 50%, 50% 50%, 50% 50%;
+    opacity: 0.95;
+  }
 }
 
 /* 温存ボーナス：枠はレアリティそのまま。イラスト上にオーバーレイしないよう、枠外の box-shadow のみ点滅 */

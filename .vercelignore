@@ -1,0 +1,14 @@
+node_modules
+ios
+android
+build
+dist
+releases
+resources
+tmp
+ranking-server
+*.xlsx
+*.ps1
+*.jks
+keystore
+docs/generated-assets

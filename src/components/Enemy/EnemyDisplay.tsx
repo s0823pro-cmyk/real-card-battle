@@ -11,6 +11,7 @@ interface Props {
   enemies: Enemy[];
   intents: Record<string, EnemyIntent>;
   hitEnemyId: string | null;
+  animatedHpByEnemy?: Record<string, number> | null;
   /** ドラッグ中の予測ダメージ／残りHP（全体攻撃時は全敵分） */
   previewByEnemy?: Record<string, { damage: number; previewHp: number }> | null;
   /** ドラッグ中のデバフ付与後の行動予測用（敵ステータス仮想） */
@@ -31,6 +32,7 @@ const EnemyDisplay = ({
   enemies,
   intents,
   hitEnemyId,
+  animatedHpByEnemy = null,
   previewByEnemy = null,
   intentPreviewEnemyById = null,
   intentAttackDamageImmunity = false,
@@ -46,6 +48,10 @@ const EnemyDisplay = ({
     enemy.statusEffects
       .filter((status) => status.type === type)
       .reduce((total, status) => total + status.value, 0);
+  const getStatusDuration = (enemy: Enemy, type: Enemy['statusEffects'][number]['type']): number =>
+    enemy.statusEffects
+      .filter((status) => status.type === type)
+      .reduce((max, status) => Math.max(max, status.duration), 0);
 
   const layoutClass =
     enemies.length >= 3 ? 'enemy-list--3' : enemies.length === 2 ? 'enemy-list--2' : 'enemy-list--1';
@@ -55,9 +61,11 @@ const EnemyDisplay = ({
       {enemies.map((enemy) => {
         const displayEnemyName = translatedEnemyName(enemy, t);
         const previewInfo = previewByEnemy?.[enemy.id];
+        const animatedHp = animatedHpByEnemy?.[enemy.id];
+        const displayHp = animatedHp ?? enemy.currentHp;
         const previewDamage = previewInfo?.damage ?? 0;
         const previewHp = previewInfo?.previewHp ?? 0;
-        const hpPercent = Math.max(0, (enemy.currentHp / enemy.maxHp) * 100);
+        const hpPercent = Math.max(0, (displayHp / enemy.maxHp) * 100);
         const hpClass = hpPercent < 33 ? 'low' : hpPercent < 66 ? 'mid' : 'high';
         const isPreviewTarget = Boolean(previewInfo && previewDamage > 0);
         const previewPercent = isPreviewTarget ? Math.max(0, (previewHp / enemy.maxHp) * 100) : hpPercent;
@@ -65,10 +73,11 @@ const EnemyDisplay = ({
         const intent = intents[enemy.id];
         const strengthUp = getStatusValue(enemy, 'strength_up');
         const attackDown = getStatusValue(enemy, 'attack_down');
+        const attackDownTurns = getStatusDuration(enemy, 'attack_down');
         const burn = getStatusValue(enemy, 'burn');
         const poison = getStatusValue(enemy, 'poison');
-        const weak = getStatusValue(enemy, 'weak');
-        const vulnerable = getStatusValue(enemy, 'vulnerable');
+        const weakTurns = getStatusDuration(enemy, 'weak');
+        const vulnerableTurns = getStatusDuration(enemy, 'vulnerable');
         const targetedClass = previewInfo
           ? previewDamage > 0
             ? 'enemy-card--targeted enemy-card--targeted-damage'
@@ -117,7 +126,7 @@ const EnemyDisplay = ({
                           : 'enemy-hp-num-single'
                     }
                   >
-                    {isPreviewTarget ? previewHp + enemy.block : enemy.currentHp + enemy.block}
+                    {isPreviewTarget ? previewHp + enemy.block : displayHp + enemy.block}
                   </span>
                 </span>
               </div>
@@ -157,19 +166,19 @@ const EnemyDisplay = ({
                   <img src={ICONS.buff} alt="Buff" className="status-icon" />+{strengthUp}
                 </span>
               )}
-              {vulnerable > 0 && (
-                <Tooltip label="脆弱" description={`受けるダメージ+50%。残り${vulnerable}ターン`}>
+              {vulnerableTurns > 0 && (
+                <Tooltip label="脆弱" description={`受けるダメージ+50%。残り${vulnerableTurns}ターン`}>
                   <span className="status-badge status-badge--vulnerable">
                     <img src={ICONS.badgeVulnerable} alt="" className="debuff-icon" />
-                    {vulnerable}
+                    {vulnerableTurns}
                   </span>
                 </Tooltip>
               )}
-              {weak > 0 && (
-                <Tooltip label="弱体" description={`与えるダメージが25％減少。残り${weak}ターン`}>
+              {weakTurns > 0 && (
+                <Tooltip label="弱体" description={`与えるダメージが25％減少。残り${weakTurns}ターン`}>
                   <span className="status-badge status-badge--weak">
                     <img src={ICONS.badgeWeak} alt="" className="debuff-icon" />
-                    {weak}
+                    {weakTurns}
                   </span>
                 </Tooltip>
               )}
@@ -196,10 +205,10 @@ const EnemyDisplay = ({
                 </Tooltip>
               )}
               {attackDown > 0 && (
-                <Tooltip label="攻撃デバフ" description={`攻撃力-${attackDown}（このターンのみ）`}>
+                <Tooltip label="攻撃デバフ" description={`攻撃力-${attackDown}。残り${attackDownTurns}ターン`}>
                   <span className="status-badge status-badge--debuff">
                     <img src={ICONS.badgeAttackDown} alt="" className="debuff-icon" />
-                    {attackDown}
+                    -{attackDown} {attackDownTurns}T
                   </span>
                 </Tooltip>
               )}

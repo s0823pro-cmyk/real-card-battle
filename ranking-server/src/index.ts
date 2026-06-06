@@ -1,6 +1,7 @@
 import { containsNgWord } from "./ngWords";
 
-const ALLOWED_JOB_IDS = new Set(["carpenter", "cook", "unemployed"]);
+const RANKING_JOB_IDS = ["carpenter", "cook", "unemployed", "courier"] as const;
+const ALLOWED_JOB_IDS = new Set<string>(RANKING_JOB_IDS);
 
 const CORS_HEADERS: Record<string, string> = {
 	"Access-Control-Allow-Origin": "*",
@@ -12,6 +13,51 @@ const BATCH_SIZE = 80;
 const MAX_ID_MAP_ENTRIES = 500;
 const MAX_ID_LEN = 128;
 const MAX_SCORE_POINTS = 10_000_000;
+
+type RankingJobId = (typeof RANKING_JOB_IDS)[number];
+type AdminRankingJobId = RankingJobId | "total";
+type AdminRankingRow = {
+	rank: number;
+	nickname: string;
+	score: number;
+	updated_at: number;
+};
+type ChampionRecord = {
+	season_id: string;
+	season_label: string;
+	device_id: string;
+	nickname: string;
+	score: number;
+	champion_count: number;
+	awarded_at: number;
+};
+type AdminRankingGroup = {
+	job_id: AdminRankingJobId;
+	rows: AdminRankingRow[];
+};
+type RankingPeriod = {
+	id: string;
+	label: string;
+	starts_at?: number;
+	ends_at?: number;
+	rankings: AdminRankingGroup[];
+};
+type PublicRankingSeasonState = {
+	id: string;
+	label: string;
+	starts_at: number;
+	ends_at: number;
+	tally_ends_at: number;
+	is_active: boolean;
+};
+
+const ALLOWED_BADGE_IDS = new Set<string>(
+	RANKING_JOB_IDS.flatMap((jobId) => [
+		`${jobId}:advanced`,
+		`${jobId}:expert`,
+		`${jobId}:sage`,
+	]),
+);
 
 function json(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), {
@@ -29,6 +75,89 @@ function empty(status: number): Response {
 
 function nicknameCharLength(s: string): number {
 	return [...s].length;
+}
+
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const FIRST_RANKING_TALLY_START_AT = Date.UTC(2026, 4, 31) - JST_OFFSET_MS;
+const RANKING_CYCLE_START_AT = Date.UTC(2026, 5, 1) - JST_OFFSET_MS;
+const RANKING_ACTIVE_DAYS = 13;
+const RANKING_TALLY_DAYS = 2;
+const RANKING_CYCLE_DAYS = RANKING_ACTIVE_DAYS + RANKING_TALLY_DAYS;
+const PRE_SEASON_COMPAT_ID = "2026-05";
+
+type RankingSeasonState = {
+	id: string;
+	label: string;
+	startAt: number;
+	endAt: number;
+	tallyEndAt: number;
+	isActive: boolean;
+};
+
+function formatSeasonId(startAt: number): string {
+	const d = new Date(startAt + JST_OFFSET_MS);
+	const year = d.getUTCFullYear();
+	const month = d.getUTCMonth() + 1;
+	const day = d.getUTCDate();
+	return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function getCurrentRankingSeason(now = Date.now()): RankingSeasonState {
+	if (now < FIRST_RANKING_TALLY_START_AT) {
+		return {
+			id: "legacy",
+			label: "第1回総合ランキング",
+			startAt: 0,
+			endAt: FIRST_RANKING_TALLY_START_AT,
+			tallyEndAt: RANKING_CYCLE_START_AT,
+			isActive: true,
+		};
+	}
+	if (now < RANKING_CYCLE_START_AT) {
+		return {
+			id: "legacy",
+			label: "第1回総合ランキング",
+			startAt: 0,
+			endAt: FIRST_RANKING_TALLY_START_AT,
+			tallyEndAt: RANKING_CYCLE_START_AT,
+			isActive: false,
+		};
+	}
+	const elapsedCycles = Math.floor((now - RANKING_CYCLE_START_AT) / (RANKING_CYCLE_DAYS * DAY_MS));
+	const seasonStartAt = RANKING_CYCLE_START_AT + elapsedCycles * RANKING_CYCLE_DAYS * DAY_MS;
+	const endAt = seasonStartAt + RANKING_ACTIVE_DAYS * DAY_MS;
+	const tallyEndAt = seasonStartAt + RANKING_CYCLE_DAYS * DAY_MS;
+	const seasonNumber = 2 + elapsedCycles;
+	return {
+		id: formatSeasonId(seasonStartAt),
+		label: `第${seasonNumber}回総合ランキング`,
+		startAt: seasonStartAt,
+		endAt,
+		tallyEndAt,
+		isActive: now < endAt,
+	};
+}
+
+function getReadableRankingSeasonIds(now = Date.now()): string[] {
+	const season = getCurrentRankingSeason(now);
+	if (season.id === "legacy") return ["legacy", PRE_SEASON_COMPAT_ID];
+	return [season.id];
+}
+
+function toPublicSeason(season: RankingSeasonState): PublicRankingSeasonState {
+	return {
+		id: season.id,
+		label: season.label,
+		starts_at: season.startAt,
+		ends_at: season.endAt,
+		tally_ends_at: season.tallyEndAt,
+		is_active: season.isActive,
+	};
+}
+
+function seasonInSql(column: string, ids: readonly string[]): string {
+	return `${column} IN (${ids.map(() => "?").join(", ")})`;
 }
 
 function isNonEmptyDeviceId(id: unknown): id is string {
@@ -120,6 +249,9 @@ export default {
 			if (path === "/score" && method === "POST") {
 				return await handlePostScore(request, env);
 			}
+			if (path === "/badge" && method === "POST") {
+				return await handlePostBadge(request, env);
+			}
 			if (path === "/stats" && method === "POST") {
 				return await handlePostStats(request, env);
 			}
@@ -129,8 +261,17 @@ export default {
 			if (path === "/admin/summary" && method === "GET") {
 				return await handleGetAdminSummary(request, env);
 			}
+			if (path === "/admin/backfill-ranking" && method === "POST") {
+				return await handlePostAdminBackfillRanking(request, env);
+			}
+			if (path === "/admin/confirm-champion" && method === "POST") {
+				return await handlePostAdminConfirmChampion(request, env);
+			}
 			if (path === "/my-stats" && method === "GET") {
 				return await handleGetMyStats(request, env);
+			}
+			if (path === "/ranking/total" && method === "GET") {
+				return await handleGetTotalRanking(env);
 			}
 			if (path.startsWith("/ranking/") && method === "GET") {
 				const jobId = decodeURIComponent(path.slice("/ranking/".length));
@@ -175,15 +316,17 @@ async function handlePostNickname(request: Request, env: Env): Promise<Response>
 		return json({ ok: false, error: "nickname_not_allowed" }, 400);
 	}
 
-	const myRow = await env.DB.prepare(`SELECT nickname FROM players WHERE device_id = ? LIMIT 1`)
+	const season = getCurrentRankingSeason();
+	const readableSeasonIds = getReadableRankingSeasonIds();
+	const myRow = await env.DB.prepare(`SELECT nickname, nickname_season_id FROM players WHERE device_id = ? LIMIT 1`)
 		.bind(device_id)
-		.first<{ nickname: string }>();
-	const keepingSameNickname = myRow?.nickname === trimmed;
+		.first<{ nickname: string; nickname_season_id: string }>();
+	const keepingSameNickname = myRow?.nickname === trimmed && readableSeasonIds.includes(myRow.nickname_season_id);
 	if (!keepingSameNickname) {
 		const taken = await env.DB.prepare(
-			`SELECT 1 AS x FROM players WHERE nickname = ? AND device_id != ? LIMIT 1`,
+			`SELECT 1 AS x FROM players WHERE nickname = ? AND ${seasonInSql("nickname_season_id", readableSeasonIds)} AND device_id != ? LIMIT 1`,
 		)
-			.bind(trimmed, device_id)
+			.bind(trimmed, ...readableSeasonIds, device_id)
 			.first<{ x: number }>();
 		if (taken) {
 			return json({ ok: false, error: "nickname_taken" }, 400);
@@ -192,14 +335,16 @@ async function handlePostNickname(request: Request, env: Env): Promise<Response>
 
 	const now = Date.now();
 	await env.DB.prepare(
-		`INSERT INTO players (device_id, nickname, created_at)
-     VALUES (?, ?, ?)
-     ON CONFLICT(device_id) DO UPDATE SET nickname = excluded.nickname`,
+		`INSERT INTO players (device_id, nickname, nickname_season_id, created_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(device_id) DO UPDATE SET
+       nickname = excluded.nickname,
+       nickname_season_id = excluded.nickname_season_id`,
 	)
-		.bind(device_id, trimmed, now)
+		.bind(device_id, trimmed, season.id, now)
 		.run();
 
-	return json({ ok: true });
+	return json({ ok: true, season_id: season.id });
 }
 
 async function handleGetRanking(env: Env, jobId: string): Promise<Response> {
@@ -207,24 +352,282 @@ async function handleGetRanking(env: Env, jobId: string): Promise<Response> {
 		return json({ error: "invalid_job_id" }, 400);
 	}
 
+	const readableSeasonIds = getReadableRankingSeasonIds();
 	const { results } = await env.DB.prepare(
-		`SELECT p.nickname AS nickname, s.score AS score
+		`SELECT
+       p.nickname AS nickname,
+       p.selected_badge AS selected_badge,
+       COALESCE(cb.champion_count, 0) AS champion_count,
+       s.score AS score
      FROM scores s
      INNER JOIN players p ON p.device_id = s.device_id
+     LEFT JOIN player_champion_badges cb ON cb.device_id = s.device_id
      WHERE s.job_id = ?
+       AND ${seasonInSql("s.season_id", readableSeasonIds)}
+       AND ${seasonInSql("p.nickname_season_id", readableSeasonIds)}
      ORDER BY s.score DESC, s.updated_at ASC
      LIMIT 100`,
 	)
-		.bind(jobId)
-		.all<{ nickname: string; score: number }>();
+		.bind(jobId, ...readableSeasonIds, ...readableSeasonIds)
+		.all<{ nickname: string; selected_badge: string | null; champion_count: number | null; score: number }>();
 
 	const ranking = (results ?? []).map((row, i) => ({
 		rank: i + 1,
 		nickname: row.nickname,
+		selected_badge: row.selected_badge ?? null,
+		champion_count: row.champion_count ?? 0,
 		score: row.score,
 	}));
 
 	return json({ ranking });
+}
+
+async function handleGetTotalRanking(env: Env): Promise<Response> {
+	const readableSeasonIds = getReadableRankingSeasonIds();
+	const { results } = await env.DB.prepare(
+		`SELECT
+       p.nickname AS nickname,
+       p.selected_badge AS selected_badge,
+       COALESCE(cb.champion_count, 0) AS champion_count,
+       SUM(s.score) AS score,
+       MAX(s.updated_at) AS updated_at
+     FROM scores s
+     INNER JOIN players p ON p.device_id = s.device_id
+     LEFT JOIN player_champion_badges cb ON cb.device_id = s.device_id
+     WHERE s.job_id IN ('carpenter', 'cook', 'unemployed', 'courier')
+       AND ${seasonInSql("s.season_id", readableSeasonIds)}
+       AND ${seasonInSql("p.nickname_season_id", readableSeasonIds)}
+     GROUP BY s.device_id, p.nickname, p.selected_badge, cb.champion_count
+     ORDER BY score DESC, updated_at ASC
+     LIMIT 100`,
+	).bind(...readableSeasonIds, ...readableSeasonIds).all<{ nickname: string; selected_badge: string | null; champion_count: number | null; score: number; updated_at: number }>();
+
+	const ranking = (results ?? []).map((row, i) => ({
+		rank: i + 1,
+		nickname: row.nickname,
+		selected_badge: row.selected_badge ?? null,
+		champion_count: row.champion_count ?? 0,
+		score: row.score,
+	}));
+
+	return json({ ranking });
+}
+
+function rankAdminRows(rows: AdminRankingRow[]): AdminRankingRow[] {
+	return rows.map((row, i) => ({ ...row, rank: i + 1 }));
+}
+
+function buildUpdatedAtFilter(startAt?: number, endAt?: number): string {
+	if (startAt == null || endAt == null) return "";
+	return " AND s.updated_at >= ? AND s.updated_at < ?";
+}
+
+function bindPeriodParams(stmt: D1PreparedStatement, startAt?: number, endAt?: number): D1PreparedStatement {
+	if (startAt == null || endAt == null) return stmt;
+	return stmt.bind(startAt, endAt);
+}
+
+async function getAdminJobRanking(
+	env: Env,
+	jobId: RankingJobId,
+	startAt?: number,
+	endAt?: number,
+): Promise<AdminRankingRow[]> {
+	const filter = buildUpdatedAtFilter(startAt, endAt);
+	const stmt = env.DB.prepare(
+		`SELECT p.nickname AS nickname, s.score AS score, s.updated_at AS updated_at
+     FROM scores s
+     INNER JOIN players p ON p.device_id = s.device_id
+     WHERE s.job_id = ?${filter}
+     ORDER BY s.score DESC, s.updated_at ASC`,
+	);
+	const bound = startAt == null || endAt == null ? stmt.bind(jobId) : stmt.bind(jobId, startAt, endAt);
+	const { results } = await bound.all<{ nickname: string; score: number; updated_at: number }>();
+	return rankAdminRows(
+		(results ?? []).map((row) => ({
+			rank: 0,
+			nickname: row.nickname,
+			score: row.score,
+			updated_at: row.updated_at,
+		})),
+	);
+}
+
+async function getAdminTotalRanking(env: Env, startAt?: number, endAt?: number): Promise<AdminRankingRow[]> {
+	const filter = buildUpdatedAtFilter(startAt, endAt);
+	const stmt = env.DB.prepare(
+		`SELECT p.nickname AS nickname, SUM(s.score) AS score, MAX(s.updated_at) AS updated_at
+     FROM scores s
+     INNER JOIN players p ON p.device_id = s.device_id
+     WHERE s.job_id IN ('carpenter', 'cook', 'unemployed', 'courier')${filter}
+     GROUP BY s.device_id, p.nickname
+     ORDER BY score DESC, updated_at ASC`,
+	);
+	const { results } = await bindPeriodParams(stmt, startAt, endAt).all<{
+		nickname: string;
+		score: number;
+		updated_at: number;
+	}>();
+	return rankAdminRows(
+		(results ?? []).map((row) => ({
+			rank: 0,
+			nickname: row.nickname,
+			score: row.score,
+			updated_at: row.updated_at,
+		})),
+	);
+}
+
+async function getAdminRankingGroups(env: Env, startAt?: number, endAt?: number): Promise<AdminRankingGroup[]> {
+	const rankings: AdminRankingGroup[] = [
+		{ job_id: "total", rows: await getAdminTotalRanking(env, startAt, endAt) },
+	];
+	for (const jobId of RANKING_JOB_IDS) {
+		rankings.push({ job_id: jobId, rows: await getAdminJobRanking(env, jobId, startAt, endAt) });
+	}
+	return rankings;
+}
+
+async function getChampionRecords(env: Env): Promise<ChampionRecord[]> {
+	const { results } = await env.DB.prepare(
+		`SELECT
+       rc.season_id AS season_id,
+       rc.season_label AS season_label,
+       rc.device_id AS device_id,
+       rc.nickname AS nickname,
+       rc.score AS score,
+       COALESCE(cb.champion_count, 0) AS champion_count,
+       rc.awarded_at AS awarded_at
+     FROM ranking_champions rc
+     LEFT JOIN player_champion_badges cb ON cb.device_id = rc.device_id
+     ORDER BY rc.awarded_at DESC
+     LIMIT 50`,
+	).all<ChampionRecord>();
+	return (results ?? []).map((row) => ({
+		season_id: row.season_id,
+		season_label: row.season_label,
+		device_id: row.device_id,
+		nickname: row.nickname,
+		score: row.score,
+		champion_count: row.champion_count ?? 0,
+		awarded_at: row.awarded_at,
+	}));
+}
+
+async function handlePostAdminConfirmChampion(request: Request, env: Env): Promise<Response> {
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ ok: false, error: "invalid_json" }, 400);
+	}
+	if (!body || typeof body !== "object") {
+		return json({ ok: false, error: "invalid_body" }, 400);
+	}
+	const { code } = body as Record<string, unknown>;
+	if (typeof code !== "string" || !(await isAdminCode(env, code.trim()))) {
+		return json({ ok: false, error: "unauthorized" }, 401);
+	}
+
+	const now = Date.now();
+	const season = getCurrentRankingSeason(now);
+	const readableSeasonIds = getReadableRankingSeasonIds(now);
+
+	const existing = await env.DB.prepare(
+		`SELECT
+       rc.season_id AS season_id,
+       rc.season_label AS season_label,
+       rc.device_id AS device_id,
+       rc.nickname AS nickname,
+       rc.score AS score,
+       COALESCE(cb.champion_count, 0) AS champion_count,
+       rc.awarded_at AS awarded_at
+     FROM ranking_champions rc
+     LEFT JOIN player_champion_badges cb ON cb.device_id = rc.device_id
+     WHERE rc.season_id = ?
+     LIMIT 1`,
+	)
+		.bind(season.id)
+		.first<ChampionRecord>();
+	if (existing) {
+		return json({ ok: true, already_confirmed: true, season: toPublicSeason(season), champion: existing });
+	}
+
+	const winner = await env.DB.prepare(
+		`SELECT
+       s.device_id AS device_id,
+       p.nickname AS nickname,
+       SUM(s.score) AS score,
+       MAX(s.updated_at) AS updated_at
+     FROM scores s
+     INNER JOIN players p ON p.device_id = s.device_id
+     WHERE s.job_id IN ('carpenter', 'cook', 'unemployed', 'courier')
+       AND ${seasonInSql("s.season_id", readableSeasonIds)}
+       AND ${seasonInSql("p.nickname_season_id", readableSeasonIds)}
+     GROUP BY s.device_id, p.nickname
+     ORDER BY score DESC, updated_at ASC
+     LIMIT 1`,
+	)
+		.bind(...readableSeasonIds, ...readableSeasonIds)
+		.first<{ device_id: string; nickname: string; score: number; updated_at: number }>();
+	if (!winner) {
+		return json({ ok: false, error: "no_ranking_rows", season: toPublicSeason(season) }, 400);
+	}
+
+	await env.DB.batch([
+		env.DB.prepare(
+			`INSERT INTO ranking_champions
+       (season_id, season_label, starts_at, ends_at, device_id, nickname, score, awarded_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		).bind(season.id, season.label, season.startAt, season.endAt, winner.device_id, winner.nickname, winner.score, now),
+		env.DB.prepare(
+			`INSERT INTO player_champion_badges (device_id, champion_count, updated_at)
+       VALUES (?, 1, ?)
+       ON CONFLICT(device_id) DO UPDATE SET
+         champion_count = champion_count + 1,
+         updated_at = excluded.updated_at`,
+		).bind(winner.device_id, now),
+	]);
+
+	const championCountRow = await env.DB.prepare(
+		`SELECT champion_count FROM player_champion_badges WHERE device_id = ? LIMIT 1`,
+	)
+		.bind(winner.device_id)
+		.first<{ champion_count: number }>();
+
+	const champion: ChampionRecord = {
+		season_id: season.id,
+		season_label: season.label,
+		device_id: winner.device_id,
+		nickname: winner.nickname,
+		score: winner.score,
+		champion_count: championCountRow?.champion_count ?? 1,
+		awarded_at: now,
+	};
+	return json({ ok: true, already_confirmed: false, season: toPublicSeason(season), champion });
+}
+
+function getCurrentJstMonthPeriod(now = Date.now()): { startAt: number; endAt: number; label: string } {
+	const season = getCurrentRankingSeason(now);
+	return { startAt: season.startAt, endAt: season.endAt, label: season.label };
+}
+
+async function getAdminRankingPeriods(env: Env): Promise<RankingPeriod[]> {
+	const currentMonth = getCurrentJstMonthPeriod();
+	return [
+		{
+			id: "all_time",
+			label: "全期間",
+			rankings: await getAdminRankingGroups(env),
+		},
+		{
+			id: "current_month",
+			label: currentMonth.label,
+			starts_at: currentMonth.startAt,
+			ends_at: currentMonth.endAt,
+			rankings: await getAdminRankingGroups(env, currentMonth.startAt, currentMonth.endAt),
+		},
+	];
 }
 
 async function handlePostScore(request: Request, env: Env): Promise<Response> {
@@ -252,8 +655,13 @@ async function handlePostScore(request: Request, env: Env): Promise<Response> {
 		return json({ ok: false, score: 0 }, 400);
 	}
 
-	const exists = await env.DB.prepare(`SELECT 1 AS x FROM players WHERE device_id = ? LIMIT 1`)
-		.bind(device_id)
+	const season = getCurrentRankingSeason();
+	if (!season.isActive) {
+		return json({ ok: false, score: 0, error: "ranking_tallying" });
+	}
+	const readableSeasonIds = getReadableRankingSeasonIds();
+	const exists = await env.DB.prepare(`SELECT 1 AS x FROM players WHERE device_id = ? AND ${seasonInSql("nickname_season_id", readableSeasonIds)} LIMIT 1`)
+		.bind(device_id, ...readableSeasonIds)
 		.first<{ x: number }>();
 	if (!exists) {
 		return json({ ok: false, score: 0 });
@@ -261,29 +669,69 @@ async function handlePostScore(request: Request, env: Env): Promise<Response> {
 
 	const now = Date.now();
 	const row = await env.DB.prepare(
-		`INSERT INTO scores (device_id, job_id, score, updated_at)
-     VALUES (?, ?, ?, ?)
+		`INSERT INTO scores (device_id, job_id, season_id, score, updated_at)
+     VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(device_id, job_id) DO UPDATE SET
-       score = MAX(scores.score, excluded.score),
+       season_id = excluded.season_id,
+       score = CASE
+         WHEN scores.season_id = excluded.season_id OR (excluded.season_id = 'legacy' AND scores.season_id = '${PRE_SEASON_COMPAT_ID}') THEN MAX(scores.score, excluded.score)
+         ELSE excluded.score
+       END,
        updated_at = CASE
-         WHEN excluded.score > scores.score THEN excluded.updated_at
-         ELSE scores.updated_at
+         WHEN (scores.season_id = excluded.season_id OR (excluded.season_id = 'legacy' AND scores.season_id = '${PRE_SEASON_COMPAT_ID}')) AND excluded.score <= scores.score THEN scores.updated_at
+         ELSE excluded.updated_at
        END
      RETURNING score`,
 	)
-		.bind(device_id, job_id, add, now)
+		.bind(device_id, job_id, season.id, add, now)
 		.first<{ score: number }>();
 
 	const score = row?.score ?? 0;
 	return json({ ok: true, score });
 }
 
+async function handlePostBadge(request: Request, env: Env): Promise<Response> {
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ ok: false, error: "invalid_json" }, 400);
+	}
+	if (!body || typeof body !== "object") {
+		return json({ ok: false, error: "invalid_body" }, 400);
+	}
+	const { device_id, selected_badge } = body as Record<string, unknown>;
+	if (!isNonEmptyDeviceId(device_id)) {
+		return json({ ok: false, error: "invalid_device_id" }, 400);
+	}
+	if (selected_badge !== null && selected_badge !== undefined) {
+		if (typeof selected_badge !== "string" || !ALLOWED_BADGE_IDS.has(selected_badge)) {
+			return json({ ok: false, error: "invalid_badge" }, 400);
+		}
+	}
+
+	const exists = await env.DB.prepare(`SELECT 1 AS x FROM players WHERE device_id = ? LIMIT 1`)
+		.bind(device_id)
+		.first<{ x: number }>();
+	if (!exists) {
+		return json({ ok: false, error: "unknown_device" }, 404);
+	}
+
+	const value = typeof selected_badge === "string" ? selected_badge : null;
+	await env.DB.prepare(`UPDATE players SET selected_badge = ? WHERE device_id = ?`)
+		.bind(value, device_id)
+		.run();
+
+	return json({ ok: true, selected_badge: value });
+}
+
 async function handleGetNickname(env: Env, deviceId: string): Promise<Response> {
 	if (!deviceId || deviceId.length > 512) {
 		return json({ nickname: null });
 	}
-	const row = await env.DB.prepare(`SELECT nickname FROM players WHERE device_id = ? LIMIT 1`)
-		.bind(deviceId)
+	const readableSeasonIds = getReadableRankingSeasonIds();
+	const row = await env.DB.prepare(`SELECT nickname FROM players WHERE device_id = ? AND ${seasonInSql("nickname_season_id", readableSeasonIds)} LIMIT 1`)
+		.bind(deviceId, ...readableSeasonIds)
 		.first<{ nickname: string }>();
 	return json({ nickname: row?.nickname ?? null });
 }
@@ -469,14 +917,7 @@ async function handlePostCode(request: Request, env: Env): Promise<Response> {
 async function handleGetAdminSummary(request: Request, env: Env): Promise<Response> {
 	const url = new URL(request.url);
 	const code = url.searchParams.get("code")?.trim() ?? "";
-	if (code.length === 0 || code.length > 128) {
-		return json({ error: "unauthorized" }, 401);
-	}
-
-	const ok = await env.DB.prepare(`SELECT 1 AS x FROM codes WHERE code = ? AND type = 'admin' LIMIT 1`)
-		.bind(code)
-		.first<{ x: number }>();
-	if (!ok) {
+	if (!(await isAdminCode(env, code))) {
 		return json({ error: "unauthorized" }, 401);
 	}
 
@@ -552,6 +993,10 @@ async function handleGetAdminSummary(request: Request, env: Env): Promise<Respon
      LIMIT 10`,
 	).all<{ combo_key: string; use_count: number }>();
 
+	const ranking_periods = await getAdminRankingPeriods(env);
+	const currentSeason = getCurrentRankingSeason();
+	const champions = await getChampionRecords(env);
+
 	return json({
 		total_players: totalPlayers,
 		total_plays: sumPlays,
@@ -578,6 +1023,113 @@ async function handleGetAdminSummary(request: Request, env: Env): Promise<Respon
 			combo_key: r.combo_key,
 			use_count: r.use_count,
 		})),
+		current_season: toPublicSeason(currentSeason),
+		champions,
+		ranking_periods,
+	});
+}
+
+async function isAdminCode(env: Env, code: string): Promise<boolean> {
+	if (code.length === 0 || code.length > 128) return false;
+	const ok = await env.DB.prepare(`SELECT 1 AS x FROM codes WHERE code = ? AND type = 'admin' LIMIT 1`)
+		.bind(code)
+		.first<{ x: number }>();
+	return Boolean(ok);
+}
+
+function estimateBackfillRankingScore(row: {
+	play_count: number;
+	win_count: number;
+	defeat_count: number;
+	total_kills: number;
+	total_gold: number;
+	max_win_streak: number;
+}): number {
+	const plays = Math.max(1, Math.trunc(row.play_count));
+	const avgKills = row.total_kills / plays;
+	const avgGold = row.total_gold / plays;
+	const clearBonus = row.win_count > 0 ? 500 : 0;
+	const defeatBonus = row.defeat_count > 0 && row.win_count === 0 ? 80 : 0;
+	const streakBonus = Math.min(500, Math.max(0, row.max_win_streak) * 50);
+	const score = clearBonus + defeatBonus + avgKills * 60 + avgGold * 2 + streakBonus;
+	return Math.max(10, Math.min(MAX_SCORE_POINTS, Math.round(score)));
+}
+
+async function handlePostAdminBackfillRanking(request: Request, env: Env): Promise<Response> {
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ ok: false, error: "invalid_json" }, 400);
+	}
+	if (!body || typeof body !== "object") {
+		return json({ ok: false, error: "invalid_body" }, 400);
+	}
+	const { code, apply } = body as Record<string, unknown>;
+	if (typeof code !== "string" || !(await isAdminCode(env, code.trim()))) {
+		return json({ error: "unauthorized" }, 401);
+	}
+
+	const readableSeasonIds = getReadableRankingSeasonIds();
+	const { results } = await env.DB.prepare(
+		`SELECT
+       p.device_id AS device_id,
+       p.nickname AS nickname,
+       ps.job_id AS job_id,
+       ps.play_count AS play_count,
+       ps.win_count AS win_count,
+       ps.defeat_count AS defeat_count,
+       ps.total_kills AS total_kills,
+       ps.total_gold AS total_gold,
+       ps.max_win_streak AS max_win_streak
+     FROM players p
+     INNER JOIN player_stats ps ON ps.device_id = p.device_id
+     LEFT JOIN scores s ON s.device_id = ps.device_id AND s.job_id = ps.job_id AND ${seasonInSql("s.season_id", readableSeasonIds)}
+     WHERE ps.job_id IN ('carpenter', 'cook', 'unemployed', 'courier')
+       AND ${seasonInSql("p.nickname_season_id", readableSeasonIds)}
+       AND ps.play_count > 0
+       AND s.device_id IS NULL
+     ORDER BY p.created_at ASC, ps.job_id ASC
+     LIMIT 200`,
+	).bind(...readableSeasonIds, ...readableSeasonIds).all<{
+		device_id: string;
+		nickname: string;
+		job_id: string;
+		play_count: number;
+		win_count: number;
+		defeat_count: number;
+		total_kills: number;
+		total_gold: number;
+		max_win_streak: number;
+	}>();
+
+	const now = Date.now();
+	const targets = (results ?? []).map((row) => ({
+		device_id: row.device_id,
+		nickname: row.nickname,
+		job_id: row.job_id,
+		score: estimateBackfillRankingScore(row),
+		play_count: row.play_count,
+		win_count: row.win_count,
+		defeat_count: row.defeat_count,
+	}));
+
+	if (apply === true && targets.length > 0) {
+		const season = getCurrentRankingSeason();
+		const statements = targets.map((row) =>
+			env.DB.prepare(
+				`INSERT OR IGNORE INTO scores (device_id, job_id, season_id, score, updated_at)
+         VALUES (?, ?, ?, ?, ?)`,
+			).bind(row.device_id, row.job_id, season.id, row.score, now),
+		);
+		await runBatches(env.DB, statements);
+	}
+
+	return json({
+		ok: true,
+		applied: apply === true,
+		count: targets.length,
+		targets: targets.map(({ device_id: _deviceId, ...row }) => row),
 	});
 }
 
@@ -614,13 +1166,13 @@ async function handleGetMyStats(request: Request, env: Env): Promise<Response> {
 	const { results: jobRows } = await env.DB.prepare(
 		`SELECT job_id, play_count, win_count
      FROM player_stats
-     WHERE device_id = ? AND job_id IN ('carpenter', 'cook')`,
+     WHERE device_id = ? AND job_id IN ('carpenter', 'cook', 'unemployed', 'courier')`,
 	)
 		.bind(deviceId)
 		.all<{ job_id: string; play_count: number; win_count: number }>();
 
 	const jobMap = new Map((jobRows ?? []).map((r) => [r.job_id, r]));
-	const job_stats = (["carpenter", "cook"] as const).map((job_id) => {
+	const job_stats = (["carpenter", "cook", "unemployed", "courier"] as const).map((job_id) => {
 		const r = jobMap.get(job_id);
 		return {
 			job_id,

@@ -84,6 +84,10 @@ export const EventGainModalScreen = ({
       if (area === 1) playBgm('cook_area1');
       else if (area === 2) playBgm('cook_area2');
       else playBgm('cook_area3');
+    } else if (jobId === 'unemployed') {
+      if (area === 1) playBgm('unemployed_area1');
+      else if (area === 2) playBgm('unemployed_area2');
+      else playBgm('unemployed_area3');
     } else {
       if (area === 1) playBgm('area1');
       else if (area === 2) playBgm('area2');
@@ -135,6 +139,10 @@ export const EventCardGainPreviewScreen = ({
       if (area === 1) playBgm('cook_area1');
       else if (area === 2) playBgm('cook_area2');
       else playBgm('cook_area3');
+    } else if (jobId === 'unemployed') {
+      if (area === 1) playBgm('unemployed_area1');
+      else if (area === 2) playBgm('unemployed_area2');
+      else playBgm('unemployed_area3');
     } else {
       if (area === 1) playBgm('area1');
       else if (area === 2) playBgm('area2');

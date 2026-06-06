@@ -5,7 +5,7 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
   '素手で殴る': {
     name: '素手で殴る+',
     damage: 8,
-    description: '8ダメージ',
+    description: '8ダメージ。自分に1ダメージ（HP50%以下で無効）',
   },
   '段ボールの盾': {
     name: '段ボールの盾+',
@@ -19,6 +19,7 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
   },
   '気合い': {
     name: '気合い+',
+    timeCost: 0,
     description: '自分にダメージ3、タイムバー+3秒',
     effects: [
       { type: 'self_damage', value: 3 },
@@ -48,9 +49,10 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
   },
   '傘で突く': {
     name: '傘で突く+',
+    timeCost: 3.5,
     damage: 9,
     block: 4,
-    description: '9ダメージ、4ブロック',
+    description: '9ダメージ、4ブロック（所要時間3.5秒）',
   },
   'ハローワークへ行く': {
     name: 'ハローワークへ行く+',
@@ -63,7 +65,7 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
   '自販機キック': {
     name: '自販機キック+',
     damage: 6,
-    description: '6ダメージ、50%で+15G',
+    description: '6ダメージ、50%で+15G。2回使用後除外',
   },
   '居直り': {
     name: '居直り+',
@@ -72,6 +74,55 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
       { type: 'damage_immunity_this_turn', value: 1 },
       { type: 'next_turn_block_half', value: 1 },
     ],
+  },
+  'アルミ缶ラッシュ': {
+    name: 'アルミ缶ラッシュ+',
+    damage: 3,
+    description: '3ダメージ×3回',
+  },
+  '古新聞の壁': {
+    name: '古新聞の壁+',
+    timeCost: 3.5,
+    block: 10,
+    description: '10ブロック、カード1枚ドロー（所要時間3.5秒）',
+  },
+  '雨傘カウンター': {
+    name: '雨傘カウンター+',
+    timeCost: 3.5,
+    damage: 7,
+    block: 7,
+    description: '7ダメージ、7ブロック（所要時間3.5秒）',
+  },
+  '求人票チェック': {
+    name: '求人票チェック+',
+    description: 'カード3枚ドロー、次ターンタイムバー-1秒',
+    effects: [
+      { type: 'draw', value: 3 },
+      { type: 'next_turn_time_penalty', value: 1 },
+    ],
+  },
+  'ポケットティッシュ': {
+    name: 'ポケットティッシュ+',
+    block: 4,
+    description: '4ブロック、カード1枚ドロー。消耗',
+  },
+  '空腹ダッシュ': {
+    name: '空腹ダッシュ+',
+    damage: 11,
+    description: '自分に4ダメージ、11ダメージ',
+    effects: [{ type: 'self_damage', value: 4 }],
+  },
+  '段ボール補修': {
+    name: '段ボール補修+',
+    block: 6,
+    description: '6ブロック。次のブロック付きカードのブロック2倍。消耗',
+    badges: ['exhaust'],
+  },
+  '逆ギレ': {
+    name: '逆ギレ+',
+    damage: 13,
+    description: '13ダメージ。敵に脆弱2ターン',
+    effects: [{ type: 'vulnerable', value: 1, duration: 2 }],
   },
 
   // アンコモン
@@ -121,25 +172,65 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
   },
   '開き直り': {
     name: '開き直り+',
-    description: 'HP60%以下の時、全カード+3ダメージ追加',
+    description: 'HP60%以下の時、全アタック+3ダメージ追加',
     effects: [{ type: 'low_hp_damage_boost', value: 3, threshold: 0.6 }],
+  },
+  '公園の仮眠': {
+    name: '公園の仮眠+',
+    timeCost: 5,
+    description: 'HP1回復、次ターンタイムバー-1秒。2回使用後除外（所要時間5秒）',
+    effects: [
+      { type: 'heal', value: 1 },
+      { type: 'next_turn_time_penalty', value: 1 },
+    ],
+  },
+  'その場しのぎ': {
+    name: 'その場しのぎ+',
+    block: 16,
+    description: '16ブロック、次ターンまでブロックが消えない',
+  },
+  '背水の集中': {
+    name: '背水の集中+',
+    description: '自分に3ダメージ。次の攻撃・スキルの数値1.5倍',
+    effects: [
+      { type: 'self_damage', value: 3 },
+      { type: 'concentration_next', value: 1 },
+    ],
+  },
+  '空腹の遠吠え': {
+    name: '空腹の遠吠え+',
+    description: 'HP70%以下の時、全アタック+2ダメージ',
+    effects: [{ type: 'low_hp_damage_boost', value: 2, threshold: 0.7 }],
+  },
+  '履歴書連打': {
+    name: '履歴書連打+',
+    damage: 5,
+    description: '5ダメージ×2回、カード1枚ドロー',
+  },
+  '全部受け入れる': {
+    name: '全部受け入れる+',
+    description: '敵に弱体3ターン、自分にメンタル+2',
+    effects: [
+      { type: 'weak', value: 1, duration: 3 },
+      { type: 'mental_boost', value: 2 },
+    ],
   },
 
   // レア
   '一発逆転ギャンブル': {
     name: '一発逆転ギャンブル+',
     timeCost: 1,
-    description: '50%で敵に35ダメージ、50%で自分に8ダメージ（所要時間1秒）',
+    description: '敵1体。50%で35ダメージ、50%で自分に8ダメージ（所要時間1秒）',
   },
   '七転び八起き': {
     name: '七転び八起き+',
     timeCost: 3,
-    description: '戦闘不能時HP10で1回復活（所要時間3秒）',
+    description: '戦闘不能時HP10で1回復活。【消滅】（所要時間3秒）',
   },
   'デスウィッシュ': {
     name: 'デスウィッシュ+',
     timeCost: 2,
-    description: 'HP回復を全て無効化。毎ターン全カード+6ダメージ（所要時間2秒）',
+    description: 'HP回復を全て無効化。毎ターン全アタック+6ダメージ（所要時間2秒）',
   },
   '崖っぷちの底力': {
     name: '崖っぷちの底力+',
@@ -150,5 +241,38 @@ export const UNEMPLOYED_UPGRADES: Record<string, CardUpgrade> = {
     name: 'リベンジ+',
     timeCost: 1,
     description: '前ターンに受けたダメージ×1.3の攻撃。覚醒中：1.8倍（所要時間1秒）',
+  },
+  '底なしの空腹': {
+    name: '底なしの空腹+',
+    timeCost: 1,
+    description: '減っているHP分のダメージ。カード1枚ドロー。消耗（所要時間1秒）',
+    effects: [{ type: 'draw', value: 1 }],
+  },
+  '失うものはない': {
+    name: '失うものはない+',
+    timeCost: 2,
+    description: '全アタック+3ダメージ（所要時間2秒）',
+    effects: [{ type: 'attack_damage_all_attacks', value: 3 }],
+  },
+  '社会の荒波': {
+    name: '社会の荒波+',
+    timeCost: 1,
+    description: 'このターン受けるダメージを0にする。次ターンタイムバー-1秒（所要時間1秒）',
+    effects: [
+      { type: 'damage_immunity_this_turn', value: 1 },
+      { type: 'next_turn_time_penalty', value: 1 },
+    ],
+  },
+  '明日から本気モード': {
+    name: '明日から本気モード+',
+    timeCost: 3,
+    description: '毎ターンカード2枚追加ドロー（所要時間3秒）',
+    effects: [{ type: 'draw_per_turn', value: 2 }],
+  },
+  '最後の応募': {
+    name: '最後の応募+',
+    timeCost: 2,
+    damage: 24,
+    description: 'HP50%以下で使用可能。24ダメージ、カード2枚ドロー（所要時間2秒）',
   },
 };

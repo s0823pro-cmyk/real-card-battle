@@ -57,14 +57,6 @@ export function applyPendingDebuffPreviewToEnemy(enemy: Enemy, card: Card): Enem
   let statusEffects = enemy.statusEffects.map((s) => ({ ...s }));
   for (const effect of card.effects ?? []) {
     if (
-      (effect.type === 'burn' || effect.type === 'enemy_poison') &&
-      card.tags?.includes('aoe_debuff')
-    ) {
-      const st: 'burn' | 'poison' = effect.type === 'burn' ? 'burn' : 'poison';
-      statusEffects = upsertStatusClone(statusEffects, st, effect.value, effect.value);
-      continue;
-    }
-    if (
       effect.type === 'vulnerable' ||
       effect.type === 'debuff_enemy' ||
       effect.type === 'debuff_enemy_atk' ||

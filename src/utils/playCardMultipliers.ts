@@ -20,7 +20,7 @@ export function applyConcentrationMultiplierToCard(card: Card, player: PlayerSta
     block: card.block !== undefined ? scale(card.block) : card.block,
     hitCount: card.hitCount !== undefined ? scale(card.hitCount) : card.hitCount,
     effects: (card.effects ?? []).map((effect) => {
-      if (effect.type === 'concentration_next') return effect;
+      if (effect.type === 'concentration_next' || effect.type === 'next_card_effect_boost') return effect;
       if (typeof effect.value !== 'number') return effect;
       return { ...effect, value: scale(effect.value) };
     }),
@@ -81,6 +81,7 @@ export const applyMultiplierAndBoostToCard = (
         : enhancedCard.block,
     effects: (enhancedCard.effects ?? []).map((effect) => {
       const baseValue = effect.value ?? 0;
+      if (effect.type === 'next_card_effect_boost') return effect;
       if (effect.type === 'next_attack_boost') {
         return {
           ...effect,

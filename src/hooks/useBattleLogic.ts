@@ -4,6 +4,7 @@ import type { Card, Enemy, PlayerState, ToolSlot } from '../types/game';
 import { applyDamageToEnemy, calculateEffectiveDamage, getDandoriBonus } from '../utils/damage';
 import { getHungryState } from '../utils/hungrySystem';
 import { isCardIdVariantOf } from '../utils/cardIds';
+import { consumeCourierStamina, recoverCourierStamina } from '../utils/courierSystem';
 
 export interface CardResolveResult {
   player: PlayerState;
@@ -21,9 +22,10 @@ export interface CardResolveResult {
   isDandoriActive: boolean;
   goldGained: number;
   lighterBurnApplied: boolean;
+  enemyStatusAppliedCount: number;
   attackBuff: { value: number; charges: number } | null;
   /** multi_hit 時：各ヒットの敵IDと実ダメージ（演出用） */
-  multiHitJabs?: { enemyId: string; damage: number }[];
+  multiHitJabs?: { enemyId: string; damage: number; hpAfter: number }[];
   /** 闇鍋：結果表示・演出用 */
   mysteryPotOutcome?: 'aoe' | 'single' | 'self_damage' | 'cooking' | 'poison';
   mysteryPotLabel?: string;
@@ -75,6 +77,14 @@ const applyFullnessMilestone = (
   return { player: nextPlayer, effect: { type: 'damage', value: damageAmount } };
 };
 
+const applySelfDamageToPlayer = (player: PlayerState, damage: number): PlayerState => {
+  const minimumHp = player.jobId === 'unemployed' && player.currentHp > 0 ? 1 : 0;
+  return {
+    ...player,
+    currentHp: Math.max(minimumHp, player.currentHp - damage),
+  };
+};
+
 /** 装備1枠分のターン開始時相当の効果（プレイ直後にも適用する） */
 export const applyOneToolSlotToPlayer = (
   player: PlayerState,
@@ -83,27 +93,32 @@ export const applyOneToolSlotToPlayer = (
 ): PlayerState => {
   const nextPlayer = { ...player };
   const hungryState = getHungryState(nextPlayer);
+  const applyBlockMultiplier = (block: number): number =>
+    (nextPlayer.blockGainMultiplierThisTurn ?? 1) < 1
+      ? Math.floor(block * (nextPlayer.blockGainMultiplierThisTurn ?? 1))
+      : block;
   if (isCardIdVariantOf(tool.card.id, 'cardboard_house')) {
+    const hasAwakeningEffect = tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened');
     if (nextPlayer.canBlock) {
-      const hasAwakeningEffect = tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened');
       if (!hasAwakeningEffect) {
-        nextPlayer.block += hungryState === 'awakened' ? 8 : 3;
+        nextPlayer.block += applyBlockMultiplier(hungryState === 'awakened' ? 8 : 3);
       }
     }
-    if (!tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened')) {
+    if (!hasAwakeningEffect) {
       return nextPlayer;
     }
   }
-  if (!options?.omitStaticCardBlock && tool.card.block && nextPlayer.canBlock) {
-    nextPlayer.block += tool.card.block;
+  const hasAwakenedBlockPerTurn = tool.card.effects?.some((e) => e.type === 'block_per_turn_awakened');
+  if (!hasAwakenedBlockPerTurn && !options?.omitStaticCardBlock && tool.card.block && nextPlayer.canBlock) {
+    nextPlayer.block += applyBlockMultiplier(tool.card.block);
   }
   for (const effect of tool.card.effects ?? []) {
     if (effect.type === 'block_per_turn' && nextPlayer.canBlock) {
-      nextPlayer.block += effect.value;
+      nextPlayer.block += applyBlockMultiplier(effect.value);
     }
     if (effect.type === 'block_per_turn_awakened' && nextPlayer.canBlock) {
       const blockAmount = hungryState === 'awakened' ? effect.value : (effect.normalValue ?? effect.value);
-      nextPlayer.block += blockAmount;
+      nextPlayer.block += applyBlockMultiplier(blockAmount);
     }
   }
   return nextPlayer;
@@ -199,8 +214,9 @@ export const useBattleLogic = () => {
     let equippedTool: Card | null = null;
     let goldGained = 0;
     let lighterBurnApplied = false;
+    let enemyStatusAppliedCount = 0;
     let attackBuff: { value: number; charges: number } | null = null;
-    let multiHitJabs: { enemyId: string; damage: number }[] | undefined;
+    let multiHitJabs: { enemyId: string; damage: number; hpAfter: number }[] | undefined;
 
     if (card.id === 'mystery_pot' || card.id.startsWith('mystery_pot_')) {
       const upgraded = Boolean(card.upgraded);
@@ -259,7 +275,7 @@ export const useBattleLogic = () => {
         mysteryPotOutcome = 'self_damage';
         mysteryPotPopupTarget = 'player';
         mysteryPotLabel = `🫕 自分に${selfDmg}ダメージ`;
-        np.currentHp = Math.max(0, np.currentHp - selfDmg);
+        np = applySelfDamageToPlayer(np, selfDmg);
       } else if (roll === 3) {
         mysteryPotOutcome = 'cooking';
         mysteryPotPopupTarget = 'player';
@@ -291,6 +307,7 @@ export const useBattleLogic = () => {
         isDandoriActive: false,
         goldGained: 0,
         lighterBurnApplied: false,
+        enemyStatusAppliedCount: 0,
         attackBuff: null,
         multiHitJabs: undefined,
         mysteryPotOutcome,
@@ -325,7 +342,7 @@ export const useBattleLogic = () => {
           damage += dealt;
           targetEnemyId = randomEnemy.id;
           if (dealt > 0) {
-            multiHitJabs.push({ enemyId: randomEnemy.id, damage: dealt });
+            multiHitJabs.push({ enemyId: randomEnemy.id, damage: dealt, hpAfter: randomEnemy.currentHp });
           }
         }
       } else if (card.tags?.includes('aoe')) {
@@ -337,6 +354,7 @@ export const useBattleLogic = () => {
           for (const enemy of nextEnemies) {
             if (enemy.currentHp > 0) {
               upsertEnemyStatus(enemy, 'burn', 3, 3);
+              enemyStatusAppliedCount += 1;
             }
           }
         }
@@ -356,6 +374,9 @@ export const useBattleLogic = () => {
       if (card.type === 'attack' && nextPlayer.nextAttackDamageBoost > 0) {
         nextPlayer.nextAttackDamageBoost = 0;
       }
+      if (card.type === 'attack' && nextPlayer.nextAttackDamageBoostThisTurn > 0) {
+        nextPlayer.nextAttackDamageBoostThisTurn = 0;
+      }
     }
 
     if (card.block && nextPlayer.canBlock) {
@@ -370,8 +391,12 @@ export const useBattleLogic = () => {
       const boostedBlock = isDandoriActive
         ? Math.floor(blockFromCard * bonus.damageMultiplier)
         : blockFromCard;
-      nextPlayer.block += boostedBlock;
-      blockGained += boostedBlock;
+      const finalBlock =
+        (nextPlayer.blockGainMultiplierThisTurn ?? 1) < 1
+          ? Math.floor(boostedBlock * (nextPlayer.blockGainMultiplierThisTurn ?? 1))
+          : boostedBlock;
+      nextPlayer.block += finalBlock;
+      blockGained += finalBlock;
     }
 
     for (const effect of card.effects ?? []) {
@@ -389,6 +414,12 @@ export const useBattleLogic = () => {
         nextPlayer.fullnessGainedThisTurn = true;
         fullnessGaugeGained += 1;
       }
+      if (effect.type === 'stamina_recover') {
+        nextPlayer = recoverCourierStamina(nextPlayer, effect.value);
+      }
+      if (effect.type === 'stamina_consume') {
+        nextPlayer = consumeCourierStamina(nextPlayer, effect.value);
+      }
       if (effect.type === 'heal') {
         if (!nextPlayer.deathWishActive) {
           const boostedHeal = isDandoriActive ? Math.floor(effect.value * bonus.damageMultiplier) : effect.value;
@@ -396,7 +427,14 @@ export const useBattleLogic = () => {
         }
       }
       if (effect.type === 'self_damage') {
-        nextPlayer.currentHp = Math.max(0, nextPlayer.currentHp - effect.value);
+        nextPlayer = applySelfDamageToPlayer(nextPlayer, effect.value);
+      }
+      if (effect.type === 'self_damage_above_hp_ratio') {
+        const threshold = effect.threshold ?? 0.5;
+        const ratio = nextPlayer.currentHp / Math.max(1, nextPlayer.maxHp);
+        if (ratio > threshold) {
+          nextPlayer = applySelfDamageToPlayer(nextPlayer, effect.value);
+        }
       }
       if (effect.type === 'clear_player_poison') {
         if (nextPlayer.statusEffects.some((s) => s.type === 'poison')) {
@@ -414,21 +452,40 @@ export const useBattleLogic = () => {
           };
         }
       }
+      if (effect.type === 'clear_player_weak') {
+        if (nextPlayer.statusEffects.some((s) => s.type === 'weak')) {
+          nextPlayer = {
+            ...nextPlayer,
+            statusEffects: nextPlayer.statusEffects.filter((s) => s.type !== 'weak'),
+          };
+        }
+      }
       if (effect.type === 'next_attack_time_reduce') {
         nextPlayer.nextAttackTimeReduce += effect.value;
       }
       if (effect.type === 'next_attack_damage_boost') {
         nextPlayer.nextAttackDamageBoost += effect.value;
       }
+      if (effect.type === 'next_attack_damage_boost_this_turn') {
+        nextPlayer.nextAttackDamageBoostThisTurn += effect.value;
+      }
       if (effect.type === 'block_persist') {
         const turns = effect.value ?? 1;
         nextPlayer.blockPersistTurns = Math.max(nextPlayer.blockPersistTurns ?? 0, turns);
+        if (isCardIdVariantOf(card.id, 'reinforced_concrete')) {
+          nextPlayer.persistedBlock = undefined;
+        } else {
+          nextPlayer.persistedBlock = Math.max(nextPlayer.persistedBlock ?? 0, blockGained);
+        }
       }
       if (effect.type === 'damage_immunity_this_turn') {
         nextPlayer.damageImmunityThisTurn = true;
       }
       if (effect.type === 'next_turn_no_block') {
         nextPlayer.nextTurnNoBlock = true;
+      }
+      if (effect.type === 'next_turn_block_half') {
+        nextPlayer.nextTurnBlockMultiplier = Math.min(nextPlayer.nextTurnBlockMultiplier ?? 1, 0.5);
       }
       if (effect.type === 'next_turn_time_penalty') {
         nextPlayer.nextTurnTimePenalty += effect.value;
@@ -439,6 +496,10 @@ export const useBattleLogic = () => {
       }
       if (effect.type === 'low_hp_damage_boost') {
         nextPlayer.lowHpDamageBoost = Math.max(nextPlayer.lowHpDamageBoost, effect.value);
+        nextPlayer.lowHpDamageBoostThreshold = Math.max(
+          nextPlayer.lowHpDamageBoostThreshold ?? 0,
+          effect.threshold ?? 0.5,
+        );
       }
       if (effect.type === 'attack_damage_all_attacks') {
         nextPlayer.attackDamageBonusAllAttacks =
@@ -460,17 +521,8 @@ export const useBattleLogic = () => {
       if (effect.type === 'concentration_next') {
         nextPlayer.concentrationActive = true;
       }
-      if (
-        (effect.type === 'burn' || effect.type === 'enemy_poison') &&
-        card.tags?.includes('aoe_debuff')
-      ) {
-        const st: 'burn' | 'poison' = effect.type === 'burn' ? 'burn' : 'poison';
-        for (const enemy of nextEnemies) {
-          if (enemy.currentHp > 0) {
-            upsertEnemyStatus(enemy, st, effect.value, effect.value);
-          }
-        }
-        continue;
+      if (effect.type === 'next_card_effect_boost') {
+        nextPlayer.nextCardEffectBoost = Math.max(nextPlayer.nextCardEffectBoost ?? 0, effect.value);
       }
       if (
         effect.type === 'vulnerable' ||
@@ -480,32 +532,42 @@ export const useBattleLogic = () => {
         effect.type === 'burn' ||
         effect.type === 'enemy_poison'
       ) {
-        const targetIndex = preferredTargetEnemyId
-          ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
-          : getAliveEnemyIndex(nextEnemies);
-        if (targetIndex >= 0) {
-          const statusType =
-            effect.type === 'vulnerable'
-              ? 'vulnerable'
-              : effect.type === 'burn'
-                ? 'burn'
-                : effect.type === 'enemy_poison'
-                  ? 'poison'
-                  : effect.type === 'debuff_enemy_atk'
-                    ? 'attack_down'
-                    : 'weak';
-          const statusDuration =
-            effect.type === 'burn' || effect.type === 'enemy_poison'
-              ? effect.value
-              : effect.type === 'vulnerable' || effect.type === 'weak'
-                ? effect.duration ?? effect.value
-                : effect.duration ?? 1;
-          upsertEnemyStatus(nextEnemies[targetIndex], statusType, effect.value, statusDuration);
+        const statusType =
+          effect.type === 'vulnerable'
+            ? 'vulnerable'
+            : effect.type === 'burn'
+              ? 'burn'
+              : effect.type === 'enemy_poison'
+                ? 'poison'
+                : effect.type === 'debuff_enemy_atk'
+                  ? 'attack_down'
+                  : 'weak';
+        const statusDuration =
+          effect.type === 'burn' || effect.type === 'enemy_poison'
+            ? effect.value
+            : effect.type === 'vulnerable' || effect.type === 'weak'
+              ? effect.duration ?? effect.value
+              : effect.duration ?? 1;
+        if (card.tags?.includes('aoe_debuff')) {
+          for (const enemy of nextEnemies) {
+            if (enemy.currentHp > 0) {
+              upsertEnemyStatus(enemy, statusType, effect.value, statusDuration);
+              enemyStatusAppliedCount += 1;
+            }
+          }
+        } else {
+          const targetIndex = preferredTargetEnemyId
+            ? nextEnemies.findIndex((enemy) => enemy.id === preferredTargetEnemyId && enemy.currentHp > 0)
+            : getAliveEnemyIndex(nextEnemies);
+          if (targetIndex >= 0) {
+            upsertEnemyStatus(nextEnemies[targetIndex], statusType, effect.value, statusDuration);
+            enemyStatusAppliedCount += 1;
+          }
         }
       }
     }
 
-    if (card.id === 'gamble') {
+    if (isCardIdVariantOf(card.id, 'gamble')) {
       const isWin = Math.random() < 0.5;
       const winDamage = card.upgraded ? 35 : 25;
       const lossDamage = card.upgraded ? 8 : 10;
@@ -534,6 +596,7 @@ export const useBattleLogic = () => {
       for (const enemy of nextEnemies) {
         if (enemy.currentHp > 0) {
           upsertEnemyStatus(enemy, 'burn', enemyBurn, enemyBurn);
+          enemyStatusAppliedCount += 1;
         }
       }
       const pb = [...nextPlayer.statusEffects];
@@ -573,10 +636,11 @@ export const useBattleLogic = () => {
       }
     }
 
-    if (card.id === 'vending_kick') {
+    if (isCardIdVariantOf(card.id, 'vending_kick')) {
       if (Math.random() < 0.5) {
-        nextPlayer.gold += 10;
-        goldGained = 10;
+        const gold = card.upgraded ? 15 : 10;
+        nextPlayer.gold += gold;
+        goldGained = gold;
       }
     }
 
@@ -591,6 +655,7 @@ export const useBattleLogic = () => {
           if (aliveIdx >= 0) {
             upsertEnemyStatus(nextEnemies[aliveIdx], 'burn', burnValue, 1);
             lighterBurnApplied = true;
+            enemyStatusAppliedCount += 1;
           }
         }
       }
@@ -615,6 +680,7 @@ export const useBattleLogic = () => {
       isDandoriActive,
       goldGained,
       lighterBurnApplied,
+      enemyStatusAppliedCount,
       attackBuff,
       multiHitJabs,
     };

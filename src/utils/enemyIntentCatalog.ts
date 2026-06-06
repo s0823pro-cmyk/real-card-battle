@@ -21,6 +21,28 @@ import {
   COOK_AREA3_ELITES,
   COOK_AREA3_NORMAL_ENEMIES,
 } from '../data/cookEnemies';
+import {
+  UNEMPLOYED_AREA1_BOSS,
+  UNEMPLOYED_AREA1_ELITES,
+  UNEMPLOYED_AREA1_NORMAL_ENEMIES,
+  UNEMPLOYED_AREA2_BOSS,
+  UNEMPLOYED_AREA2_ELITES,
+  UNEMPLOYED_AREA2_NORMAL_ENEMIES,
+  UNEMPLOYED_AREA3_BOSS,
+  UNEMPLOYED_AREA3_ELITES,
+  UNEMPLOYED_AREA3_NORMAL_ENEMIES,
+} from '../data/unemployedEnemies';
+import {
+  COURIER_AREA1_BOSS,
+  COURIER_AREA1_ELITES,
+  COURIER_AREA1_NORMAL_ENEMIES,
+  COURIER_AREA2_BOSS,
+  COURIER_AREA2_ELITES,
+  COURIER_AREA2_NORMAL_ENEMIES,
+  COURIER_AREA3_BOSS,
+  COURIER_AREA3_ELITES,
+  COURIER_AREA3_NORMAL_ENEMIES,
+} from '../data/courierEnemies';
 import { getEnemyAttackValue } from './damage';
 
 const CATALOG: Record<string, EnemyIntent[]> = {};
@@ -47,6 +69,26 @@ CATALOG[COOK_AREA2_BOSS.templateId] = COOK_AREA2_BOSS.intents;
 for (const entry of COOK_AREA3_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
 for (const entry of COOK_AREA3_ELITES) CATALOG[entry.templateId] = entry.intents;
 CATALOG[COOK_AREA3_BOSS.templateId] = COOK_AREA3_BOSS.intents;
+
+for (const entry of UNEMPLOYED_AREA1_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
+for (const entry of UNEMPLOYED_AREA1_ELITES) CATALOG[entry.templateId] = entry.intents;
+CATALOG[UNEMPLOYED_AREA1_BOSS.templateId] = UNEMPLOYED_AREA1_BOSS.intents;
+for (const entry of UNEMPLOYED_AREA2_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
+for (const entry of UNEMPLOYED_AREA2_ELITES) CATALOG[entry.templateId] = entry.intents;
+CATALOG[UNEMPLOYED_AREA2_BOSS.templateId] = UNEMPLOYED_AREA2_BOSS.intents;
+for (const entry of UNEMPLOYED_AREA3_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
+for (const entry of UNEMPLOYED_AREA3_ELITES) CATALOG[entry.templateId] = entry.intents;
+CATALOG[UNEMPLOYED_AREA3_BOSS.templateId] = UNEMPLOYED_AREA3_BOSS.intents;
+
+for (const entry of COURIER_AREA1_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
+for (const entry of COURIER_AREA1_ELITES) CATALOG[entry.templateId] = entry.intents;
+CATALOG[COURIER_AREA1_BOSS.templateId] = COURIER_AREA1_BOSS.intents;
+for (const entry of COURIER_AREA2_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
+for (const entry of COURIER_AREA2_ELITES) CATALOG[entry.templateId] = entry.intents;
+CATALOG[COURIER_AREA2_BOSS.templateId] = COURIER_AREA2_BOSS.intents;
+for (const entry of COURIER_AREA3_NORMAL_ENEMIES) CATALOG[entry.templateId] = entry.intents;
+for (const entry of COURIER_AREA3_ELITES) CATALOG[entry.templateId] = entry.intents;
+CATALOG[COURIER_AREA3_BOSS.templateId] = COURIER_AREA3_BOSS.intents;
 
 export function getEnemyIntentsForZukan(templateId: string): EnemyIntent[] {
   return CATALOG[templateId] ?? [];

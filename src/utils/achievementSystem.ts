@@ -1,8 +1,8 @@
-import { ACHIEVEMENTS, ACHIEVEMENT_LOCKED_CARD_IDS } from '../data/achievementDefinitions';
+import { ACHIEVEMENTS } from '../data/achievementDefinitions';
 import type { Achievement } from './achievementTypes';
 import type { JobId } from '../types/game';
 import type { BattleResult } from '../types/run';
-import type { JobAchievementCounters } from './achievementCounters';
+import type { AchievementTrackedJobId, JobAchievementCounters } from './achievementCounters';
 import {
   clearAchievementCounters,
   getDefeatCountForJob,
@@ -100,13 +100,10 @@ export const getUnlockedCardIds = (): Set<string> => {
 
 /**
  * 図鑑など「全カード定義を列挙する」UI用。
- * いずれかの実績の rewardCardIds に含まれる ID は、当該実績が解除され
- * `getUnlockedCardIds()` に載るまで一覧に出さない（ショップ／抽選は `getCardPoolsByJob` 側で従来どおり除外）。
+ * 実績報酬カードも未解除時点で枠だけ表示する。
+ * 未入手カードの詳細表示や検索対象化は ZukanScreen 側の unlock 判定で制御する。
  */
-export const isAchievementRewardCardVisibleInCatalog = (cardId: string): boolean => {
-  if (!ACHIEVEMENT_LOCKED_CARD_IDS.has(cardId)) return true;
-  return getUnlockedCardIds().has(cardId);
-};
+export const isAchievementRewardCardVisibleInCatalog = (_cardId: string): boolean => true;
 
 /** 実績経由のお守り解放は廃止（常に空） */
 export const getUnlockedOmamoriIds = (): Set<string> => new Set();
@@ -146,6 +143,20 @@ const maybeUnlockCookJobFromConditions = (): void => {
   }
 };
 
+/** 無職ジョブ：料理人でエリア1ボス撃破、または累計35敗（隠し）で解放。既に解放済みなら何もしない */
+const maybeUnlockUnemployedJobFromConditions = (): void => {
+  if (isJobUnlocked('unemployed')) return;
+  const ids = getUnlockedAchievementIds();
+  if (ids.has('cook_area1_clear') || getTotalDefeatCountAcrossJobs() >= 35) {
+    unlockJob('unemployed');
+  }
+};
+
+export const syncJobUnlocksFromConditions = (): void => {
+  maybeUnlockCookJobFromConditions();
+  maybeUnlockUnemployedJobFromConditions();
+};
+
 /**
  * 実績の jobId と現在プレイ中の職業が一致するか。
  * `common` または未指定はどの職業でも達成可能。
@@ -164,8 +175,12 @@ const filterAchievementIdsByJob = (ids: string[], currentJobId: JobId): string[]
     return a ? isAchievementEligibleForJob(a.jobId, currentJobId) : false;
   });
 
-const achievementJobKey = (a: Achievement | undefined): 'carpenter' | 'cook' =>
-  a?.jobId === 'cook' ? 'cook' : 'carpenter';
+const achievementJobKey = (a: Achievement | undefined): AchievementTrackedJobId => {
+  if (a?.jobId === 'cook' || a?.jobId === 'unemployed' || a?.jobId === 'carpenter' || a?.jobId === 'courier') {
+    return a.jobId;
+  }
+  return 'carpenter';
+};
 
 /**
  * 実績一覧で「累積条件」の現在値を表示する対象。
@@ -198,6 +213,30 @@ const CUMULATIVE_ACHIEVEMENT_DISPLAY: Record<
   cook_win_25: { kind: 'counter', key: 'battleWins', unit: 'times' },
   cook_elite_wins_5: { kind: 'counter', key: 'eliteWins', unit: 'times' },
   cook_defeat_3: { kind: 'defeat' },
+  // 無職用累積系
+  unemployed_dice_25: { kind: 'counter', key: 'diceRolls', unit: 'times' },
+  unemployed_shrine_5: { kind: 'counter', key: 'shrineVisits', unit: 'times' },
+  unemployed_shop_cards_8: { kind: 'counter', key: 'shopCardBuys', unit: 'times' },
+  unemployed_gold_500: { kind: 'counter', key: 'lifetimeGoldEarned', unit: 'gold' },
+  unemployed_gold_2000: { kind: 'counter', key: 'lifetimeGoldEarned', unit: 'gold' },
+  unemployed_events_10: { kind: 'counter', key: 'eventsResolved', unit: 'times' },
+  unemployed_hotel_5: { kind: 'counter', key: 'hotelVisits', unit: 'times' },
+  unemployed_win_10: { kind: 'counter', key: 'battleWins', unit: 'times' },
+  unemployed_win_25: { kind: 'counter', key: 'battleWins', unit: 'times' },
+  unemployed_elite_wins_5: { kind: 'counter', key: 'eliteWins', unit: 'times' },
+  unemployed_defeat_3: { kind: 'defeat' },
+  // 配達員用累積系
+  courier_dice_25: { kind: 'counter', key: 'diceRolls', unit: 'times' },
+  courier_shrine_5: { kind: 'counter', key: 'shrineVisits', unit: 'times' },
+  courier_shop_cards_8: { kind: 'counter', key: 'shopCardBuys', unit: 'times' },
+  courier_gold_500: { kind: 'counter', key: 'lifetimeGoldEarned', unit: 'gold' },
+  courier_gold_2000: { kind: 'counter', key: 'lifetimeGoldEarned', unit: 'gold' },
+  courier_events_10: { kind: 'counter', key: 'eventsResolved', unit: 'times' },
+  courier_hotel_5: { kind: 'counter', key: 'hotelVisits', unit: 'times' },
+  courier_win_10: { kind: 'counter', key: 'battleWins', unit: 'times' },
+  courier_win_25: { kind: 'counter', key: 'battleWins', unit: 'times' },
+  courier_elite_wins_5: { kind: 'counter', key: 'eliteWins', unit: 'times' },
+  courier_defeat_3: { kind: 'defeat' },
 };
 
 /** 累積型実績の説明文に付ける接尾辞（例: （現在3回））。対象外は null */
@@ -224,7 +263,12 @@ export const getCumulativeAchievementProgressSuffix = (achievementId: string): s
 
 /** 累計カウンタのみで判定する実績。現在プレイ中の職業のカウンタのみ参照 */
 export const evaluateAchievementProgress = (currentJobId: JobId): Achievement[] => {
-  if (currentJobId !== 'carpenter' && currentJobId !== 'cook') {
+  if (
+    currentJobId !== 'carpenter' &&
+    currentJobId !== 'cook' &&
+    currentJobId !== 'unemployed' &&
+    currentJobId !== 'courier'
+  ) {
     return [];
   }
   const achievementIds: string[] = [];
@@ -242,7 +286,7 @@ export const evaluateAchievementProgress = (currentJobId: JobId): Achievement[] 
     pushIf(achievementIds, c.battleWins >= 10 && !already.has('win_10'), 'win_10');
     pushIf(achievementIds, c.battleWins >= 25 && !already.has('win_25'), 'win_25');
     pushIf(achievementIds, c.eliteWins >= 5 && !already.has('elite_wins_5'), 'elite_wins_5');
-  } else {
+  } else if (currentJobId === 'cook') {
     pushIf(achievementIds, c.shrineVisits >= 5 && !already.has('cook_shrine_5'), 'cook_shrine_5');
     pushIf(achievementIds, c.lifetimeGoldEarned >= 500 && !already.has('cook_gold_500'), 'cook_gold_500');
     pushIf(achievementIds, c.lifetimeGoldEarned >= 2000 && !already.has('cook_gold_2000'), 'cook_gold_2000');
@@ -251,6 +295,28 @@ export const evaluateAchievementProgress = (currentJobId: JobId): Achievement[] 
     pushIf(achievementIds, c.battleWins >= 10 && !already.has('cook_win_10'), 'cook_win_10');
     pushIf(achievementIds, c.battleWins >= 25 && !already.has('cook_win_25'), 'cook_win_25');
     pushIf(achievementIds, c.eliteWins >= 5 && !already.has('cook_elite_wins_5'), 'cook_elite_wins_5');
+  } else if (currentJobId === 'unemployed') {
+    pushIf(achievementIds, c.diceRolls >= 25 && !already.has('unemployed_dice_25'), 'unemployed_dice_25');
+    pushIf(achievementIds, c.shrineVisits >= 5 && !already.has('unemployed_shrine_5'), 'unemployed_shrine_5');
+    pushIf(achievementIds, c.shopCardBuys >= 8 && !already.has('unemployed_shop_cards_8'), 'unemployed_shop_cards_8');
+    pushIf(achievementIds, c.lifetimeGoldEarned >= 500 && !already.has('unemployed_gold_500'), 'unemployed_gold_500');
+    pushIf(achievementIds, c.lifetimeGoldEarned >= 2000 && !already.has('unemployed_gold_2000'), 'unemployed_gold_2000');
+    pushIf(achievementIds, c.eventsResolved >= 10 && !already.has('unemployed_events_10'), 'unemployed_events_10');
+    pushIf(achievementIds, c.hotelVisits >= 5 && !already.has('unemployed_hotel_5'), 'unemployed_hotel_5');
+    pushIf(achievementIds, c.battleWins >= 10 && !already.has('unemployed_win_10'), 'unemployed_win_10');
+    pushIf(achievementIds, c.battleWins >= 25 && !already.has('unemployed_win_25'), 'unemployed_win_25');
+    pushIf(achievementIds, c.eliteWins >= 5 && !already.has('unemployed_elite_wins_5'), 'unemployed_elite_wins_5');
+  } else if (currentJobId === 'courier') {
+    pushIf(achievementIds, c.diceRolls >= 25 && !already.has('courier_dice_25'), 'courier_dice_25');
+    pushIf(achievementIds, c.shrineVisits >= 5 && !already.has('courier_shrine_5'), 'courier_shrine_5');
+    pushIf(achievementIds, c.shopCardBuys >= 8 && !already.has('courier_shop_cards_8'), 'courier_shop_cards_8');
+    pushIf(achievementIds, c.lifetimeGoldEarned >= 500 && !already.has('courier_gold_500'), 'courier_gold_500');
+    pushIf(achievementIds, c.lifetimeGoldEarned >= 2000 && !already.has('courier_gold_2000'), 'courier_gold_2000');
+    pushIf(achievementIds, c.eventsResolved >= 10 && !already.has('courier_events_10'), 'courier_events_10');
+    pushIf(achievementIds, c.hotelVisits >= 5 && !already.has('courier_hotel_5'), 'courier_hotel_5');
+    pushIf(achievementIds, c.battleWins >= 10 && !already.has('courier_win_10'), 'courier_win_10');
+    pushIf(achievementIds, c.battleWins >= 25 && !already.has('courier_win_25'), 'courier_win_25');
+    pushIf(achievementIds, c.eliteWins >= 5 && !already.has('courier_elite_wins_5'), 'courier_elite_wins_5');
   }
   return unlockAchievements(filterAchievementIdsByJob([...new Set(achievementIds)], currentJobId));
 };
@@ -293,10 +359,17 @@ export const evaluateAchievementsAfterBattle = (
   currentArea: number,
 ): Achievement[] => {
   const currentJobId = result.player.jobId;
+  if (
+    currentJobId !== 'carpenter' &&
+    currentJobId !== 'cook' &&
+    currentJobId !== 'unemployed' &&
+    currentJobId !== 'courier'
+  ) {
+    return [];
+  }
   const achievementIds: string[] = [];
   const already = getUnlockedAchievementIds();
-  const c =
-    currentJobId === 'cook' ? loadAchievementCountersForJob('cook') : loadAchievementCountersForJob('carpenter');
+  const c = loadAchievementCountersForJob(currentJobId);
 
   if (result.outcome === 'victory') {
     if (currentJobId === 'cook') {
@@ -324,6 +397,44 @@ export const evaluateAchievementsAfterBattle = (
       if (result.kind === 'boss' && currentArea === 3) {
         pushIf(achievementIds, !already.has('cook_dice_80'), 'cook_dice_80');
       }
+    } else if (currentJobId === 'unemployed') {
+      pushIf(achievementIds, !already.has('unemployed_first_win'), 'unemployed_first_win');
+      if (result.kind === 'elite') {
+        pushIf(achievementIds, !already.has('unemployed_elite_first'), 'unemployed_elite_first');
+      }
+      if (result.kind === 'boss') {
+        if (currentArea === 1) achievementIds.push('unemployed_area1_clear');
+        if (currentArea === 2) achievementIds.push('unemployed_area2_clear');
+        if (currentArea === 3) achievementIds.push('unemployed_area3_clear');
+      }
+      pushIf(achievementIds, c.battleWins >= 10, 'unemployed_win_10');
+      pushIf(achievementIds, c.battleWins >= 25, 'unemployed_win_25');
+      pushIf(achievementIds, c.eliteWins >= 5, 'unemployed_elite_wins_5');
+      if (result.player.currentHp <= 10) achievementIds.push('unemployed_low_hp_kill');
+      if (result.player.mental <= 0) achievementIds.push('unemployed_zero_mental');
+      if (result.player.currentHp / Math.max(1, result.player.maxHp) <= 0.5) {
+        achievementIds.push('unemployed_hungry_win');
+      }
+      if (result.player.currentHp / Math.max(1, result.player.maxHp) <= 0.3) {
+        achievementIds.push('unemployed_awakened_win');
+      }
+    } else if (currentJobId === 'courier') {
+      pushIf(achievementIds, !already.has('courier_first_win'), 'courier_first_win');
+      if (result.kind === 'elite') {
+        pushIf(achievementIds, !already.has('courier_elite_first'), 'courier_elite_first');
+      }
+      if (result.kind === 'boss') {
+        if (currentArea === 1) achievementIds.push('courier_area1_clear');
+        if (currentArea === 2) achievementIds.push('courier_area2_clear');
+        if (currentArea === 3) achievementIds.push('courier_area3_clear');
+      }
+      pushIf(achievementIds, c.battleWins >= 10, 'courier_win_10');
+      pushIf(achievementIds, c.battleWins >= 25, 'courier_win_25');
+      pushIf(achievementIds, c.eliteWins >= 5, 'courier_elite_wins_5');
+      if (result.player.currentHp <= 10) achievementIds.push('courier_low_hp_kill');
+      if (result.player.mental <= 0) achievementIds.push('courier_zero_mental');
+      if ((result.player.deliveryDownTurns ?? 0) > 0) achievementIds.push('courier_overwork_win');
+      if ((result.player.deliveryStamina ?? 10) <= 3) achievementIds.push('courier_low_stamina_win');
     } else if (currentJobId === 'carpenter') {
       pushIf(achievementIds, !already.has('first_win'), 'first_win');
       if (result.kind === 'elite') {
@@ -344,11 +455,15 @@ export const evaluateAchievementsAfterBattle = (
   }
 
   if (result.outcome === 'defeat') {
-    if (currentJobId === 'cook' || currentJobId === 'carpenter') {
+    if (currentJobId === 'cook' || currentJobId === 'carpenter' || currentJobId === 'unemployed' || currentJobId === 'courier') {
       const count = incrementDefeatCountForJob(currentJobId);
       if (count >= 3) {
         if (currentJobId === 'cook') {
           achievementIds.push('cook_defeat_3');
+        } else if (currentJobId === 'unemployed') {
+          achievementIds.push('unemployed_defeat_3');
+        } else if (currentJobId === 'courier') {
+          achievementIds.push('courier_defeat_3');
         } else {
           achievementIds.push('defeat_3');
         }
@@ -360,7 +475,7 @@ export const evaluateAchievementsAfterBattle = (
     filterAchievementIdsByJob([...new Set(achievementIds)], currentJobId),
   );
   const fromProgress = evaluateAchievementProgress(currentJobId);
-  maybeUnlockCookJobFromConditions();
+  syncJobUnlocksFromConditions();
   const seen = new Set(fromBattle.map((a) => a.id));
   return [...fromBattle, ...fromProgress.filter((a) => !seen.has(a.id))];
 };
@@ -368,5 +483,5 @@ export const evaluateAchievementsAfterBattle = (
 /** 開発用: 全実績を達成済みにする（localStorage に保存） */
 export const unlockAllAchievements = (): void => {
   unlockAchievements(ACHIEVEMENTS.map((a) => a.id));
-  maybeUnlockCookJobFromConditions();
+  syncJobUnlocksFromConditions();
 };

@@ -8,6 +8,8 @@ import { mountCardRewardBanner, removeBannerAd } from '../../utils/adMobClient';
 import type { JobId } from '../../types/game';
 import { getCumulativeAchievementProgressSuffix, type Achievement } from '../../utils/achievementSystem';
 import { AchievementRewardModal } from '../AchievementRewardModal/AchievementRewardModal';
+import { MasteryXpGainPanel } from '../MasteryXpGainPanel/MasteryXpGainPanel';
+import { RunEndRankingPrompt } from '../RunEndRankingPrompt/RunEndRankingPrompt';
 import '../HomeScreen/HomeScreen.css';
 import './VictoryScreen.css';
 
@@ -20,6 +22,7 @@ interface VictoryScreenProps {
   adsRemoved: boolean;
   /** エリア3クリア後ストーリー等で重ねる間はネイティブの下部バナーを出さない */
   suppressNativeBanner?: boolean;
+  onOpenRanking: () => void;
   onHome: () => void;
 }
 
@@ -31,6 +34,7 @@ export const VictoryScreen = ({
   newAchievements = [],
   adsRemoved,
   suppressNativeBanner = false,
+  onOpenRanking,
   onHome,
 }: VictoryScreenProps) => {
   const { t } = useLanguage();
@@ -128,7 +132,8 @@ export const VictoryScreen = ({
     !adsRemoved && !suppressNativeBanner && Capacitor.isNativePlatform() ? ' victory-screen--with-banner' : '';
 
   const jobName = t(`job.${jobId}.name` as MessageKey);
-  const jobColor = { carpenter: '#c0392b', cook: '#f9ca24', unemployed: '#8b949e' }[jobId] ?? '#ffffff';
+  const jobColor =
+    { carpenter: '#c0392b', cook: '#f9ca24', unemployed: '#8b949e', courier: '#22c55e' }[jobId] ?? '#ffffff';
 
   return (
     <div className={`victory-screen${bannerBottomClass}`}>
@@ -199,6 +204,10 @@ export const VictoryScreen = ({
             </div>
           </div>
         )}
+
+        {showStats && <MasteryXpGainPanel jobId={jobId} />}
+
+        {showStats && <RunEndRankingPrompt jobId={jobId} onOpenRanking={onOpenRanking} />}
 
         {showStats && (
           <button type="button" className="btn-victory-home" onClick={onHome}>

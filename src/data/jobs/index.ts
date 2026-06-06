@@ -13,7 +13,14 @@ import {
   UNEMPLOYED_STARTER_DECK,
   UNEMPLOYED_UNCOMMON_POOL,
 } from './unemployed';
+import {
+  COURIER_COMMON_POOL,
+  COURIER_RARE_POOL,
+  COURIER_UNCOMMON_POOL,
+  createCourierStarterDeck,
+} from './courier';
 import { NEUTRAL_COMMON_POOL, NEUTRAL_RARE_POOL, NEUTRAL_UNCOMMON_POOL } from '../cards/neutralCards';
+import { LEGENDARY_REWARD_CARDS } from '../legendaryRewardCards';
 
 export interface JobConfig {
   id: JobId;
@@ -73,33 +80,50 @@ export const UNEMPLOYED_CONFIG: JobConfig = {
   createStarterDeck: () => createFixedStarterDeck(UNEMPLOYED_STARTER_DECK),
 };
 
+export const COURIER_CONFIG: JobConfig = {
+  id: 'courier',
+  initialHp: 75,
+  initialMental: 7,
+  maxMental: 24,
+  createStarterDeck: () => createCourierStarterDeck(),
+};
+
 export const getJobConfig = (jobId: JobId): JobConfig => {
   if (jobId === 'cook') return COOK_CONFIG;
   if (jobId === 'unemployed') return UNEMPLOYED_CONFIG;
+  if (jobId === 'courier') return COURIER_CONFIG;
   return CARPENTER_CONFIG;
 };
 
-const mergeUnlockedAchievementCards = (jobId: JobId, uncommon: Card[], rare: Card[]): { uncommon: Card[]; rare: Card[] } => {
+const mergeUnlockedAchievementCards = (
+  jobId: JobId,
+  common: Card[],
+  uncommon: Card[],
+  rare: Card[],
+): { common: Card[]; uncommon: Card[]; rare: Card[] } => {
   const extra = getUnlockedAchievementCardsForJob(jobId);
+  const ec: Card[] = [];
   const eu: Card[] = [];
   const er: Card[] = [];
   for (const c of extra) {
     const rr = c.rarity ?? 'common';
+    if (rr === 'common') ec.push({ ...c, rarity: 'common' });
     if (rr === 'uncommon') eu.push({ ...c, rarity: 'uncommon' });
     if (rr === 'rare') er.push({ ...c, rarity: 'rare' });
   }
-  return { uncommon: [...uncommon, ...eu], rare: [...rare, ...er] };
+  return { common: [...common, ...ec], uncommon: [...uncommon, ...eu], rare: [...rare, ...er] };
 };
 
 export const getCardPoolsByJob = (jobId: JobId): JobCardPools => {
   if (jobId === 'cook') {
     const merged = mergeUnlockedAchievementCards(
       'cook',
+      [...withRarity(COOK_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
       [...withRarity(COOK_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
-      [...withRarity(COOK_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+      [...withRarity(COOK_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare'), ...LEGENDARY_REWARD_CARDS],
     );
     return {
-      common: [...withRarity(COOK_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
+      common: merged.common,
       uncommon: merged.uncommon,
       rare: merged.rare,
     };
@@ -107,25 +131,52 @@ export const getCardPoolsByJob = (jobId: JobId): JobCardPools => {
   if (jobId === 'unemployed') {
     const merged = mergeUnlockedAchievementCards(
       'unemployed',
+      [...withRarity(UNEMPLOYED_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
       [
         ...withRarity(UNEMPLOYED_UNCOMMON_POOL, 'uncommon'),
         ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon'),
       ],
-      [...withRarity(UNEMPLOYED_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+      [
+        ...withRarity(UNEMPLOYED_RARE_POOL, 'rare'),
+        ...withRarity(NEUTRAL_RARE_POOL, 'rare'),
+        ...LEGENDARY_REWARD_CARDS,
+      ],
     );
     return {
-      common: [...withRarity(UNEMPLOYED_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
+      common: merged.common,
+      uncommon: merged.uncommon,
+      rare: merged.rare,
+    };
+  }
+  if (jobId === 'courier') {
+    const merged = mergeUnlockedAchievementCards(
+      'courier',
+      [...withRarity(COURIER_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
+      [...withRarity(COURIER_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
+      [
+        ...withRarity(COURIER_RARE_POOL, 'rare'),
+        ...withRarity(NEUTRAL_RARE_POOL, 'rare'),
+        ...LEGENDARY_REWARD_CARDS,
+      ],
+    );
+    return {
+      common: merged.common,
       uncommon: merged.uncommon,
       rare: merged.rare,
     };
   }
   const merged = mergeUnlockedAchievementCards(
     'carpenter',
+    [...withRarity(CARPENTER_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
     [...withRarity(CARPENTER_UNCOMMON_POOL, 'uncommon'), ...withRarity(NEUTRAL_UNCOMMON_POOL, 'uncommon')],
-    [...withRarity(CARPENTER_RARE_POOL, 'rare'), ...withRarity(NEUTRAL_RARE_POOL, 'rare')],
+    [
+      ...withRarity(CARPENTER_RARE_POOL, 'rare'),
+      ...withRarity(NEUTRAL_RARE_POOL, 'rare'),
+      ...LEGENDARY_REWARD_CARDS,
+    ],
   );
   return {
-    common: [...withRarity(CARPENTER_COMMON_POOL, 'common'), ...withRarity(NEUTRAL_COMMON_POOL, 'common')],
+    common: merged.common,
     uncommon: merged.uncommon,
     rare: merged.rare,
   };

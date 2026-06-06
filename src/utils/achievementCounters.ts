@@ -2,7 +2,7 @@ const KEY = 'real-card-battle:achievement-counters';
 /** 旧版: 職業横断で1本の敗北回数（職業別へ移行時に carpenter に取り込む） */
 const LEGACY_DEFEAT_COUNT_KEY = 'real-card-battle:defeat-count';
 
-export type AchievementTrackedJobId = 'carpenter' | 'cook';
+export type AchievementTrackedJobId = 'carpenter' | 'cook' | 'unemployed' | 'courier';
 
 /** 1職業分の累計（ラン中のマス・バトル由来） */
 export interface JobAchievementCounters {
@@ -36,7 +36,7 @@ const emptyJob = (): JobAchievementCounters => ({
 });
 
 const isTrackedJob = (jobId: string): jobId is AchievementTrackedJobId =>
-  jobId === 'carpenter' || jobId === 'cook';
+  jobId === 'carpenter' || jobId === 'cook' || jobId === 'unemployed' || jobId === 'courier';
 
 function readLegacyDefeatCount(): number {
   try {
@@ -68,6 +68,8 @@ function migrateFromLegacyFlat(parsed: Record<string, unknown>): AchievementCoun
     perJob: {
       carpenter: { ...row },
       cook: emptyJob(),
+      unemployed: emptyJob(),
+      courier: emptyJob(),
     },
   };
 }
@@ -78,7 +80,7 @@ export const loadAchievementCountersState = (): AchievementCountersStateV2 => {
     if (!raw) {
       return {
         v: 2,
-        perJob: { carpenter: emptyJob(), cook: emptyJob() },
+        perJob: { carpenter: emptyJob(), cook: emptyJob(), unemployed: emptyJob(), courier: emptyJob() },
       };
     }
     const parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -89,6 +91,8 @@ export const loadAchievementCountersState = (): AchievementCountersStateV2 => {
         perJob: {
           carpenter: { ...emptyJob(), ...pj.carpenter },
           cook: { ...emptyJob(), ...pj.cook },
+          unemployed: { ...emptyJob(), ...pj.unemployed },
+          courier: { ...emptyJob(), ...pj.courier },
         },
       };
     }
@@ -96,7 +100,7 @@ export const loadAchievementCountersState = (): AchievementCountersStateV2 => {
   } catch {
     return {
       v: 2,
-      perJob: { carpenter: emptyJob(), cook: emptyJob() },
+      perJob: { carpenter: emptyJob(), cook: emptyJob(), unemployed: emptyJob(), courier: emptyJob() },
     };
   }
 };
@@ -194,7 +198,12 @@ export const getDefeatCountForJob = (jobId: AchievementTrackedJobId): number =>
 /** 料理人解放用: 全職業の敗北の合計 */
 export const getTotalDefeatCountAcrossJobs = (): number => {
   const s = loadAchievementCountersState();
-  return s.perJob.carpenter.defeatCount + s.perJob.cook.defeatCount;
+  return (
+    s.perJob.carpenter.defeatCount +
+    s.perJob.cook.defeatCount +
+    s.perJob.unemployed.defeatCount +
+    s.perJob.courier.defeatCount
+  );
 };
 
 export const clearAchievementCounters = (): void => {

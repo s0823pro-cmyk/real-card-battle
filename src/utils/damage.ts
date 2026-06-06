@@ -39,23 +39,27 @@ export const calculateCardDamage = (
   const safeToolSlots: ToolSlot[] = Array.isArray(toolSlots) ? toolSlots : [];
   let damage = card.damage ?? 0;
   const hungryState = getHungryState(player);
+  const isKitchenLaw = isCardIdVariantOf(card.id, 'kitchen_law');
+  const isDeathFlambe = isCardIdVariantOf(card.id, 'death_flambe');
+  const hasDynamicDamage = isKitchenLaw || isDeathFlambe;
 
-  if (card.id === 'kitchen_law' || card.id.startsWith('kitchen_law_')) {
+  if (isKitchenLaw) {
     const plays = player.cookingGaugePlaysThisTurn ?? 0;
-    return Math.max(0, plays * (card.upgraded ? 4 : 3));
+    damage = Math.max(0, plays * (card.upgraded ? 4 : 3));
   }
 
-  if (card.id === 'death_flambe' || card.id.startsWith('death_flambe_')) {
+  if (isDeathFlambe) {
     if (card.upgraded) {
-      return Math.max(
+      damage = Math.max(
         1,
         player.cookingGauge * (card.cookingMultiplier ?? 5),
       );
+    } else {
+      damage = Math.max(
+        1,
+        (card.damage ?? 0) + player.cookingGauge * (card.cookingMultiplier ?? 3),
+      );
     }
-    return Math.max(
-      1,
-      (card.damage ?? 0) + player.cookingGauge * (card.cookingMultiplier ?? 3),
-    );
   }
 
   if (player.jobId === 'carpenter' && card.tags?.includes('scaffold_bonus')) {
@@ -65,6 +69,7 @@ export const calculateCardDamage = (
 
   if (
     player.jobId === 'cook' &&
+    !isDeathFlambe &&
     (card.tags?.includes('cooking') || card.tags?.includes('cooking_consume')) &&
     card.cookingMultiplier
   ) {
@@ -75,18 +80,42 @@ export const calculateCardDamage = (
     damage += getHungryDamageBonus(hungryState);
   }
 
+  if (player.jobId === 'courier') {
+    const stamina = player.deliveryStamina ?? 10;
+    const staminaDamageBonus = (card.effects ?? [])
+      .filter((effect) => effect.type === 'stamina_damage_bonus' && stamina >= (effect.threshold ?? 5))
+      .reduce((sum, effect) => sum + effect.value, 0);
+    const lowStaminaDamageBonus = (card.effects ?? [])
+      .filter((effect) => effect.type === 'stamina_low_damage_bonus' && stamina <= (effect.threshold ?? 3))
+      .reduce((sum, effect) => sum + effect.value, 0);
+    damage += staminaDamageBonus + lowStaminaDamageBonus;
+  }
+
   if (card.tags?.includes('missing_hp_damage')) {
     damage = (player.maxHp - player.currentHp) + getHungryDamageBonus(hungryState);
   }
 
   if (card.tags?.includes('missing_hp_damage_scaled')) {
-    const multiplier = hungryState === 'awakened' ? 0.8 : 0.5;
+    const multiplier = card.upgraded
+      ? hungryState === 'awakened'
+        ? 1.0
+        : 0.7
+      : hungryState === 'awakened'
+        ? 0.8
+        : 0.5;
     damage = Math.floor((player.maxHp - player.currentHp) * multiplier) + getHungryDamageBonus(hungryState);
   }
 
   if (card.tags?.includes('revenge_damage')) {
     const baseDamage = player.lastTurnDamageTaken;
-    damage = hungryState === 'awakened' ? Math.floor(baseDamage * 1.5) : baseDamage;
+    const multiplier = card.upgraded
+      ? hungryState === 'awakened'
+        ? 1.8
+        : 1.3
+      : hungryState === 'awakened'
+        ? 1.5
+        : 1;
+    damage = Math.floor(baseDamage * multiplier);
   }
 
   if (card.tags?.includes('scaffold_consume')) {
@@ -102,16 +131,19 @@ export const calculateCardDamage = (
   }
 
   if (player.deathWishActive && card.type === 'attack') {
-    damage += 4;
+    damage += player.deathWishDamageBonus ?? 4;
   }
 
   if (card.type === 'attack' && player.nextAttackDamageBoost > 0) {
     damage += player.nextAttackDamageBoost;
   }
+  if (card.type === 'attack' && player.nextAttackDamageBoostThisTurn > 0) {
+    damage += player.nextAttackDamageBoostThisTurn;
+  }
 
   if (card.type === 'attack' && player.lowHpDamageBoost > 0) {
     const ratio = player.currentHp / Math.max(1, player.maxHp);
-    if (ratio <= 0.5) {
+    if (ratio <= (player.lowHpDamageBoostThreshold ?? 0.5)) {
       damage += player.lowHpDamageBoost;
     }
   }
@@ -141,7 +173,12 @@ export const calculateCardDamage = (
     }
   }
 
-  if ((card.damage ?? 0) > 0 || card.tags?.includes('missing_hp_damage') || card.tags?.includes('missing_hp_damage_scaled')) {
+  if (
+    (card.damage ?? 0) > 0 ||
+    (hasDynamicDamage && damage > 0) ||
+    card.tags?.includes('missing_hp_damage') ||
+    card.tags?.includes('missing_hp_damage_scaled')
+  ) {
     damage = Math.max(1, damage);
   }
 

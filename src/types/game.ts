@@ -1,13 +1,18 @@
 export type CardType = 'attack' | 'skill' | 'power' | 'tool' | 'status' | 'curse';
 export type CardBadge =
   | 'exhaust'
+  | 'vanish'
+  | 'limited'
   | 'setup'
   | 'self_damage'
   | 'reserve'
   | 'oikomi'
   | 'ingredient'
-  | 'cooking';
-export type JobId = 'carpenter' | 'cook' | 'unemployed';
+  | 'cooking'
+  | 'stamina'
+  | 'immovable'
+  | 'unyielding';
+export type JobId = 'carpenter' | 'cook' | 'unemployed' | 'courier';
 export type GamePhase =
   | 'battle_start'
   | 'player_turn'
@@ -29,6 +34,7 @@ export type EffectType =
   | 'burn'
   | 'debuff_enemy_atk'
   | 'self_damage'
+  | 'self_damage_above_hp_ratio'
   | 'time_boost'
   | 'double_next'
   | 'double_next_replay'
@@ -41,6 +47,7 @@ export type EffectType =
   | 'upgrade_random_hand_card'
   | 'upgrade_all_hand_card'
   | 'next_attack_damage_boost'
+  | 'next_attack_damage_boost_this_turn'
   | 'damage_immunity_this_turn'
   | 'next_turn_no_block'
   | 'next_turn_time_penalty'
@@ -62,6 +69,8 @@ export type EffectType =
   | 'reserve_double_next'
   /** 集中力：プレイ後に次の攻撃・スキル1枚へ数値1.5倍 */
   | 'concentration_next'
+  /** 次の攻撃・スキル1枚の数値効果を指定割合ぶん加算する（0.25 = +25%） */
+  | 'next_card_effect_boost'
   /** 釘袋整理：捨て札からランダムで指定枚数を手札へ（自動） */
   | 'pick_from_discard'
   /** 食材補充：捨て札の食材からランダムで指定枚数を手札へ（自動） */
@@ -72,8 +81,32 @@ export type EffectType =
   | 'clear_player_poison'
   /** プレイヤーの火傷を解除（火傷があるときのみ） */
   | 'clear_player_burn'
+  /** プレイヤーの弱体を解除（弱体があるときのみ） */
+  | 'clear_player_weak'
   /** 手札の食材カードをこの戦闘中＋に強化（value 枚） */
-  | 'upgrade_ingredient_hand';
+  | 'upgrade_ingredient_hand'
+  /** 配達員: スタミナを回復する */
+  | 'stamina_recover'
+  /** 配達員: パワー枠から毎ターン開始時にスタミナを回復する */
+  | 'stamina_recover_per_turn'
+  /** 配達員: スタミナを消費する */
+  | 'stamina_consume'
+  /** 配達員: スタミナが一定以上ならダメージ加算 */
+  | 'stamina_damage_bonus'
+  /** 配達員: スタミナが一定以下ならダメージ加算 */
+  | 'stamina_low_damage_bonus'
+  /** 配達員: 次にドロー予定のカードを表示する */
+  | 'peek_next_draw'
+  /** 配達員: 次に使うカードの所要時間を短縮する */
+  | 'next_card_time_reduce'
+  /** 配達員: このターン中、アタックカードすべての所要時間を短縮する */
+  | 'turn_attack_time_discount'
+  /** 配達員: このターン中、指定枚数のスキルカードの所要時間を0にする */
+  | 'turn_skill_free_count'
+  /** 指定ターン置きにメンタルを回復するパワー効果 */
+  | 'mental_recover_every_n_turns'
+  /** 配達員: このターン中、以後の攻撃カードを使用不可にする */
+  | 'block_attack_cards_this_turn';
 
 export type CardRarity = 'common' | 'uncommon' | 'rare';
 
@@ -117,6 +150,8 @@ export interface Card {
   rarity?: CardRarity;
   neutral?: boolean;
   imageUrl?: string;
+  /** 熟練度報酬などで使う差し替えイラスト。未設定時は通常イラストにフォールバック */
+  imageVariant2Url?: string;
   icon?: string;
   reserveBonus?: ReserveBonus;
   wasReserved?: boolean;
@@ -130,6 +165,20 @@ export interface Card {
   lowHpBonus?: LowHpBonus;
   hitCount?: number;
   badges?: CardBadge[];
+  /** 戦闘中の使用回数上限。上限到達後はその戦闘中だけ除外 */
+  battleUseLimit?: number;
+  /** 戦闘中の使用済み回数。戦闘終了後・次戦闘開始時にリセット */
+  battleUses?: number;
+  /** パワー枠でターン開始効果を発動した残り回数。0以下でパワー枠から除外 */
+  powerTurnsRemaining?: number;
+  /** 周期発動パワーの経過ターン数 */
+  powerTurnCounter?: number;
+  /** 使用に必要な配達員スタミナ */
+  requiredStamina?: number;
+  /** 配達員の過労ダウン中でも使用できるカード */
+  usableWhileExhausted?: boolean;
+  /** 配達員の過労ダウン中にしか使用できないカード（通常は【不動】バッジで判定） */
+  usableOnlyWhileExhausted?: boolean;
 }
 
 export interface ReserveBonus {
@@ -196,22 +245,39 @@ export interface PlayerState {
   hasRevival: boolean;
   revivalUsed: boolean;
   revivalHp?: number;
+  revivalCharges?: number;
+  revivalHpStack?: number[];
   deathWishActive: boolean;
+  /** デスウィッシュ系パワーによるアタック加算値 */
+  deathWishDamageBonus?: number;
   ridgepoleActive: boolean;
   templeCarpenterActive: boolean;
   templeCarpenterMultiplier?: number;
   cliffEdgeActive: boolean;
+  /** 崖っぷちの底力系パワーが覚醒時に追加する秒数・ドロー枚数 */
+  cliffEdgeTimeBonus?: number;
+  cliffEdgeDrawBonus?: number;
   nextAttackTimeReduce: number;
   /** 0 以外なら次の自分ターン開始までブロックを維持する残り回数 */
   blockPersistTurns: number;
+  /** 次ターンへ持ち越す対象ブロック量。通常は使用カード分、鉄筋コンクリートのみターン終了時の全残ブロック */
+  persistedBlock?: number;
+  /** 次に使用するアタックへの加算。ターンをまたいで保持される */
   nextAttackDamageBoost: number;
+  /** 次に使用するアタックへの加算。ターン終了でリセット */
+  nextAttackDamageBoostThisTurn: number;
   damageImmunityThisTurn: boolean;
   nextTurnNoBlock: boolean;
+  /** 次の自分ターン中のブロック獲得倍率（居直り+など）。1で無効 */
+  nextTurnBlockMultiplier?: number;
+  /** 現在の自分ターン中のブロック獲得倍率。1で無効 */
+  blockGainMultiplierThisTurn?: number;
   nextTurnTimePenalty: number;
   /** 次の自分ターンの maxTime に加算する秒（ターン終了時に5秒以上残していれば 0.5） */
   nextTurnTimeBonus?: number;
   canBlock: boolean;
   lowHpDamageBoost: number;
+  lowHpDamageBoostThreshold?: number;
   kitchenDemonActive: boolean;
   firstCookingUsedThisTurn: boolean;
   lastTurnDamageTaken: number;
@@ -265,6 +331,20 @@ export interface PlayerState {
   relicIngredientCookingBonus?: number;
   /** バトル中のみ：【準備】カード使用時の追加ドロー */
   relicSetupCardDraw?: number;
+  /** 配達員: 現在スタミナ（0〜10） */
+  deliveryStamina?: number;
+  /** 配達員: 過労ダウン残りターン。1以上でアタック/通常スキル不可 */
+  deliveryDownTurns?: number;
+  /** 配達員: このターンに使用したスタミナ回復カード枚数 */
+  staminaRecoverCardsUsedThisTurn?: number;
+  /** 配達員: 次に使用するカードの所要時間減少 */
+  nextCardTimeReduce?: number;
+  /** 配達員: このターン中のアタック所要時間減少 */
+  turnAttackTimeDiscount?: number;
+  /** 配達員: このターン中に無料で使えるスキル枚数 */
+  freeSkillCardsThisTurn?: number;
+  /** 配達員: このターン中、攻撃カードを追加で使えない */
+  attackCardsBlockedThisTurn?: boolean;
 }
 
 export interface ToolSlot {
@@ -299,6 +379,8 @@ export interface GameState {
   toolSlots: ToolSlot[];
   /** 全面改装／リフォーム系のバトル中のみの強化を終了時に戻すため id→強化前 */
   battleCardRevertMap?: Record<string, Card>;
+  /** サイドミラー確認などで確定表示している次ドロー予定枚数 */
+  revealedDrawCount?: number;
   /** 次のターン開始時に手札に強制追加される呪いカード（add_curse で付与） */
   pendingCurseCards?: Card[];
 }

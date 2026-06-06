@@ -1,4 +1,6 @@
 /** 広告削除購入フラグ（ランセーブとは別。データ初期化では削除しない） */
+import { getDebugToolsEnabled } from './debugTools';
+
 export const ADS_REMOVED_STORAGE_KEY = 'real-card-battle:ads-removed';
 
 /**
@@ -6,6 +8,14 @@ export const ADS_REMOVED_STORAGE_KEY = 'real-card-battle:ads-removed';
  * 次回ホームのゲームスタートで先に広告を流す。完了時にクリアする。
  */
 export const PENDING_DEFEAT_INTERSTITIAL_KEY = 'real-card-battle:pending-defeat-interstitial';
+
+export function isDebugAdsDisabled(): boolean {
+  return (
+    import.meta.env.DEV ||
+    import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true' ||
+    getDebugToolsEnabled()
+  );
+}
 
 export function getPendingDefeatInterstitial(): boolean {
   try {
@@ -29,6 +39,7 @@ export function clearPendingDefeatInterstitial(): void {
 }
 
 export function getAdsRemoved(): boolean {
+  if (isDebugAdsDisabled()) return true;
   try {
     return localStorage.getItem(ADS_REMOVED_STORAGE_KEY) === 'true';
   } catch {

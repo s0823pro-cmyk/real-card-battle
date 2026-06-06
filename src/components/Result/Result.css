@@ -6,6 +6,7 @@
   place-items: center;
   text-align: center;
   backdrop-filter: blur(3px);
+  overflow: hidden;
 }
 
 .result-overlay h2 {
@@ -32,6 +33,104 @@
   animation: reward-bounce 0.3s ease-out;
 }
 
+.victory-ranking-points {
+  width: min(100%, 320px);
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 215, 0, 0.42);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 215, 0, 0.18), rgba(255, 255, 255, 0.06)),
+    rgba(8, 16, 28, 0.44);
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.16);
+  box-sizing: border-box;
+}
+
+.victory-ranking-summary {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.result-overlay button.victory-ranking-summary {
+  padding: 0;
+}
+
+.victory-ranking-summary span,
+.victory-ranking-points p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.victory-ranking-summary small {
+  color: rgba(255, 224, 138, 0.86);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.victory-ranking-points strong {
+  color: #ffe08a;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.44);
+  animation: reward-bounce 0.3s ease-out;
+}
+
+.victory-ranking-breakdown {
+  max-height: 190px;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  text-align: left;
+  -webkit-overflow-scrolling: touch;
+}
+
+.victory-ranking-category {
+  display: grid;
+  gap: 4px;
+}
+
+.victory-ranking-category-head,
+.victory-ranking-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.victory-ranking-category-head {
+  color: #fff4bf;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.victory-ranking-detail-row {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.victory-ranking-detail-row strong {
+  flex: 0 0 auto;
+  color: #ffe08a;
+  font-size: 0.72rem;
+  text-shadow: none;
+  animation: none;
+}
+
 .result-overlay button:not(.achievement-item) {
   border: none;
   border-radius: 10px;
@@ -54,6 +153,7 @@
   user-select: none;
   -webkit-user-select: none;
   background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 224, 0.18), transparent 20%),
     radial-gradient(circle at center, rgba(255, 215, 0, 0.2), rgba(8, 16, 28, 0.84) 60%),
     rgba(8, 16, 28, 0.82);
   overflow-y: auto;
@@ -63,6 +163,8 @@
 }
 
 .battle-victory-panel-inner {
+  position: relative;
+  z-index: 2;
   width: 100%;
   max-width: 400px;
   margin: 0 auto;
@@ -72,6 +174,45 @@
   align-items: center;
   text-align: center;
 }
+
+.result-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.result-particles i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 26px;
+  border-radius: 999px;
+  opacity: 0;
+}
+
+.result-particles--victory i {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.95), rgba(255, 211, 91, 0.9), transparent);
+  box-shadow: 0 0 14px rgba(255, 211, 91, 0.8);
+  animation: result-victory-spark 1600ms ease-out infinite;
+}
+
+.result-particles--defeat i {
+  width: 5px;
+  height: 38px;
+  background: linear-gradient(to bottom, rgba(255, 132, 132, 0.72), rgba(87, 33, 33, 0.42), transparent);
+  box-shadow: 0 0 12px rgba(255, 84, 84, 0.32);
+  animation: result-defeat-ash 2200ms ease-in infinite;
+}
+
+.result-particles i:nth-child(1) { --x: -132px; --y: -118px; --r: -24deg; animation-delay: 0ms; }
+.result-particles i:nth-child(2) { --x: 124px; --y: -92px; --r: 22deg; animation-delay: 180ms; }
+.result-particles i:nth-child(3) { --x: -76px; --y: 86px; --r: -52deg; animation-delay: 360ms; }
+.result-particles i:nth-child(4) { --x: 72px; --y: 118px; --r: 46deg; animation-delay: 540ms; }
+.result-particles i:nth-child(5) { --x: 0px; --y: -152px; --r: 0deg; animation-delay: 720ms; }
+.result-particles i:nth-child(6) { --x: 154px; --y: 30px; --r: 68deg; animation-delay: 900ms; }
 
 .battle-victory-achievements {
   width: 100%;
@@ -164,12 +305,26 @@
 }
 
 .result-overlay.defeat {
-  background: rgba(13, 8, 8, 0.82);
+  background:
+    radial-gradient(circle at 50% 52%, rgba(140, 26, 26, 0.2), transparent 28%),
+    linear-gradient(180deg, rgba(13, 8, 8, 0.88), rgba(2, 3, 6, 0.94));
   filter: grayscale(0.38);
 }
 
 .result-overlay.defeat h2 {
+  position: relative;
+  z-index: 2;
   color: #ff6f6f;
+  text-shadow:
+    0 0 18px rgba(255, 74, 74, 0.65),
+    0 0 42px rgba(116, 0, 0, 0.45);
+  animation: defeat-title-drop 720ms ease-out forwards;
+}
+
+.result-overlay.defeat p,
+.result-overlay.defeat button {
+  position: relative;
+  z-index: 2;
 }
 
 .result-overlay.defeat button {
@@ -197,5 +352,50 @@
   }
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes result-victory-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(0, 0) rotate(var(--r)) scaleY(0.4);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--x), var(--y)) rotate(var(--r)) scaleY(1);
+  }
+}
+
+@keyframes result-defeat-ash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--x), -180px) rotate(var(--r)) scaleY(0.5);
+  }
+  22% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(calc(var(--x) * 0.35), 210px) rotate(calc(var(--r) + 28deg)) scaleY(1.1);
+  }
+}
+
+@keyframes defeat-title-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1.08);
+    filter: blur(2px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(4px) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

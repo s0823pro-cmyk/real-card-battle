@@ -74,11 +74,11 @@ export const CARPENTER_EXPANSION_UPGRADES: Record<string, CardUpgrade> = {
   大工鑿の目印: {
     name: '大工鑿の目印+',
     description: '次のアタックのダメージ+7（ターン終了で失効）',
-    effects: [{ type: 'next_attack_damage_boost', value: 7 }],
+    effects: [{ type: 'next_attack_damage_boost_this_turn', value: 7 }],
   },
   作業台: { name: '作業台+', block: 6, description: '6ブロック' },
-  屋根裏確認: {
-    name: '屋根裏確認+',
+  屋根裏からの一撃: {
+    name: '屋根裏からの一撃+',
     damage: 11,
     timeCost: 2.5,
     description: '11ダメージ。',

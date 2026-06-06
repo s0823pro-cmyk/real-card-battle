@@ -42,6 +42,9 @@ function applyUpgrade(card: Card, upgrade: CardUpgrade): Card {
     cookingMultiplier:
       upgrade.cookingMultiplier !== undefined ? upgrade.cookingMultiplier : card.cookingMultiplier,
     lowHpBonus: upgrade.lowHpBonus !== undefined ? upgrade.lowHpBonus : card.lowHpBonus,
+    battleUseLimit: upgrade.battleUseLimit !== undefined ? upgrade.battleUseLimit : card.battleUseLimit,
+    powerTurnsRemaining:
+      upgrade.powerTurnsRemaining !== undefined ? upgrade.powerTurnsRemaining : card.powerTurnsRemaining,
     reserveBonus: upgrade.reserveBonus
       ? {
           ...(card.reserveBonus ?? {
@@ -58,7 +61,13 @@ function applyUpgrade(card: Card, upgrade: CardUpgrade): Card {
         ? upgrade.badges
         : upgrade.tags !== undefined
           ? (upgrade.tags.filter((t) =>
-              t === 'exhaust' || t === 'setup' || t === 'reserve' || t === 'self_damage',
+              t === 'vanish' ||
+              t === 'exhaust' ||
+              t === 'limited' ||
+              t === 'setup' ||
+              t === 'reserve' ||
+              t === 'self_damage' ||
+              t === 'stamina',
             ) as import('../types/game').CardBadge[])
           : card.badges,
     upgraded: true,

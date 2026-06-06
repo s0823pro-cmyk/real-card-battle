@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import './GlossaryModal.css';
 import { ICONS } from '../../assets/icons';
 
@@ -18,12 +19,12 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   {
     type: 'item',
     term: 'タイムバー',
-    desc: 'そのターンに使える行動時間（秒）。基本は「5秒＋メンタル×0.3秒」に、ターンごとのボーナス秒が加算される（小数第1位まで）。最低3秒、メンタルが高いほど長くなる（最大メンタル10まで成長）。カードをタイムラインに置くと、カードのコスト分だけ時間が減る。5秒以上残して次のターンに進むと、次のターンに0.5秒が加算される。温存するたびに0.5秒消費する。',
+    desc: 'そのターンに使える行動時間（秒）。基本は「5秒＋メンタル×0.3秒」に、ターンごとのボーナス秒が加算される（小数第1位まで）。最低3秒、メンタルが高いほど長くなる。メンタル上限は職業ごとに異なる。カードをタイムラインに置くと、カードのコスト分だけ時間が減る。5秒以上残して次のターンに進むと、次のターンに0.5秒が加算される。温存するたびに0.5秒消費する。',
   },
   {
     type: 'item',
     term: 'メンタル',
-    desc: 'タイムバーの長さに効くステータス。職業で初期値が異なる（例：大工7・料理人6・無職10）。戦闘に勝つと+1回復し、最大10まで。敵のメンタル攻撃や一部イベントで減る。0になるとハングリー系の追加効果や、ドロー時の「不安」混入などに注意。',
+    desc: 'タイムバーの長さに効くステータス。職業ごとに初期値・上限が異なる（例：大工7/上限9、料理人6/上限8、無職10/上限10、配達員7/上限24）。戦闘に勝つと+1回復し、職業上限まで成長する。敵のメンタル攻撃や一部イベントで減る。0になるとハングリー系の追加効果や、ドロー時の「不安」混入などに注意。',
   },
   {
     type: 'item',
@@ -82,7 +83,17 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   {
     type: 'item',
     term: '【消耗】',
-    desc: '使用後にデッキに戻らず「除外」されるマーク。強力な代わりに1戦に1回しか使えない。',
+    desc: '使用後に戦闘中の「除外」へ送られるマーク。通常は1回使用で除外される。一部の回復・ゴールド獲得・スタミナ回復カードは同じ【消耗】表示でも戦闘中2回まで使用でき、2回目の使用後に除外される。戦闘終了後はデッキへ戻る。',
+  },
+  {
+    type: 'item',
+    term: '【消滅】',
+    desc: '使用後に戦闘中の「除外」へ送られ、戦闘終了後もデッキへ戻らないマーク。そのラン中のデッキから消える。',
+  },
+  {
+    type: 'item',
+    term: '【制限】',
+    desc: '同じラン中のデッキに複数枚入れない特別カードに付くマーク。ランキング報酬など、強力な1枚限定カードで使用する。',
   },
   {
     type: 'item',
@@ -92,7 +103,22 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   {
     type: 'item',
     term: '【自傷】',
-    desc: 'HPを支払う効果を持つマーク。効果で指定されたダメージを自分に与えたうえでカードを使用する。コストを払った後にHPが1以上残る必要があり、払えないときは使えない。',
+    desc: 'HPを支払う効果を持つマーク。効果で指定されたダメージを自分に与えたうえでカードを使用する。通常はコストを払った後にHPが1以上残る必要があり、払えないときは使えない。無職は専用仕様として自傷ではHP0にならず、HP1では自傷ダメージを受けずに使用できる。',
+  },
+  {
+    type: 'item',
+    term: '【不動】',
+    desc: '配達員専用。過労ダウン中にしか使用できないカードに付くマーク。通常時は使えないが、過労ダウン中は固定3.5秒で使用できる。',
+  },
+  {
+    type: 'item',
+    term: '【不屈】',
+    desc: '配達員専用。通常時も使用でき、過労ダウン中でも使用できるカードに付くマーク。過労ダウン中は固定3.5秒で使用できる。',
+  },
+  {
+    type: 'item',
+    term: '【スタミナ】',
+    desc: '配達員専用。スタミナを回復・消費・参照するカードに付くマーク。スタミナ回復カードは1ターンに2枚まで使用でき、基本的に【消耗】として戦闘中2回使用後に除外される。',
   },
   {
     type: 'item',
@@ -140,6 +166,16 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   },
   {
     type: 'item',
+    term: 'スタミナ（配達員）',
+    desc: '配達員のリソース。最大10で、自分のターン開始時に1減る。スタミナが減るほど全カードのコストが+0.5秒ずつ重くなる。スタミナ回復カードは1ターンに2枚まで。',
+  },
+  {
+    type: 'item',
+    term: '過労ダウン（配達員）',
+    desc: '配達員のスタミナが0になると発生する状態。4ターンの間、アタックと通常スキルは使えない。ブロックカード・【不屈】・【不動】カードは固定3.5秒で使用できる。復帰時はスタミナ6から再開する。',
+  },
+  {
+    type: 'item',
     term: 'ハングリー精神（無職）',
     desc: 'HPが減ると攻撃が強くなる仕組み。HP50%以下でダメージ+3（ハングリー）、30%以下でさらに強化（覚醒）など、状態に応じてボーナスやコスト減が変わる。',
   },
@@ -163,7 +199,7 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   {
     type: 'item',
     term: '攻撃デバフ（アイコン表示）',
-    desc: '敵だけに付くことが多い、剣に下向き矢印のバッジ。敵の攻撃力をそのターンだけ下げる「攻撃力ダウン」。数字は効果量の目安。',
+    desc: '敵だけに付くことが多い、剣に下向き矢印のバッジ。敵の攻撃力を下げる「攻撃力ダウン」。数字は残りターンとして表示され、カードごとに継続ターンが異なる。',
   },
   {
     type: 'item',
@@ -195,7 +231,7 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   {
     type: 'item',
     term: '攻撃力ダウン',
-    desc: '主に敵に付く。敵の物理攻撃の基礎値を減らす。土下座などのカードで付与できる。ターンをまたがない「そのターンだけ」の減少として扱われることが多い。',
+    desc: '主に敵に付く。敵の物理攻撃の基礎値を減らす。土下座などのカードで付与でき、カードごとに指定されたターン数だけ継続する。数字は残りターン。',
   },
 
   { type: 'heading', term: 'マップ' },
@@ -249,7 +285,7 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   {
     type: 'item',
     term: '除外',
-    desc: 'デッキや捨て札の循環に戻らない状態。【消耗】を温存して使ったカードなどが該当。戦闘中は一覧で確認できる。',
+    desc: 'デッキや捨て札の循環に戻らない状態。【消耗】や【消滅】を使ったカードなどが該当。戦闘中は一覧で確認できる。',
   },
   {
     type: 'item',
@@ -258,11 +294,55 @@ const GLOSSARY_ITEMS: GlossaryEntry[] = [
   },
 ];
 
+
+const normalizeGlossaryQuery = (value: string): string => value.trim().toLowerCase();
+
+const itemMatchesQuery = (item: GlossaryEntry, query: string): boolean => {
+  if (query === '') return true;
+  if (item.type === 'heading') return item.term.toLowerCase().includes(query);
+  return `${item.term} ${item.desc}`.toLowerCase().includes(query);
+};
+
+const filterGlossaryItems = (items: GlossaryEntry[], query: string): GlossaryEntry[] => {
+  if (query === '') return items;
+
+  const filtered: GlossaryEntry[] = [];
+  let currentHeading: GlossaryEntry | null = null;
+  let currentItems: GlossaryEntry[] = [];
+
+  const flushSection = () => {
+    if (!currentHeading) return;
+    const headingMatches = itemMatchesQuery(currentHeading, query);
+    const matchedItems = currentItems.filter((item) => itemMatchesQuery(item, query));
+    if (headingMatches || matchedItems.length > 0) {
+      filtered.push(currentHeading, ...(headingMatches ? currentItems : matchedItems));
+    }
+  };
+
+  for (const item of items) {
+    if (item.type === 'heading') {
+      flushSection();
+      currentHeading = item;
+      currentItems = [];
+    } else {
+      currentItems.push(item);
+    }
+  }
+  flushSection();
+
+  return filtered;
+};
+
 interface Props {
   onClose: () => void;
 }
 
-export const GlossaryModal = ({ onClose }: Props) => (
+export const GlossaryModal = ({ onClose }: Props) => {
+  const [searchText, setSearchText] = useState('');
+  const searchQuery = normalizeGlossaryQuery(searchText);
+  const filteredItems = useMemo(() => filterGlossaryItems(GLOSSARY_ITEMS, searchQuery), [searchQuery]);
+
+  return (
   <div className="glossary-overlay" onClick={onClose}>
     <div className="glossary-modal" onClick={(e) => e.stopPropagation()}>
       <div className="glossary-header">
@@ -271,8 +351,18 @@ export const GlossaryModal = ({ onClose }: Props) => (
           ✕
         </button>
       </div>
+      <div className="glossary-search">
+        <input
+          className="glossary-search-input"
+          type="search"
+          value={searchText}
+          onChange={(event) => setSearchText(event.target.value)}
+          placeholder="用語・効果・バッジを検索"
+          aria-label="用語集を検索"
+        />
+      </div>
       <div className="glossary-list">
-        {GLOSSARY_ITEMS.map((item, idx) => {
+        {filteredItems.map((item, idx) => {
           if (item.type === 'heading') {
             return (
               <div key={`heading-${idx}`} className="glossary-heading">
@@ -296,7 +386,14 @@ export const GlossaryModal = ({ onClose }: Props) => (
             </div>
           );
         })}
+        {filteredItems.length === 0 && (
+          <div className="glossary-empty">
+            <p className="glossary-empty-title">該当する用語がありません</p>
+            <p className="glossary-empty-desc">別のキーワードで検索してください。</p>
+          </div>
+        )}
       </div>
     </div>
   </div>
-);
+  );
+};

@@ -15,6 +15,13 @@ const BattleDefeatOverlay = ({ onRetry }: Props) => {
 
   return (
     <div className="result-overlay defeat">
+      <div className="result-particles result-particles--defeat" aria-hidden>
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+      </div>
       <h2>GAME OVER</h2>
       <p>体力が尽きた…</p>
       <button type="button" onClick={onRetry}>

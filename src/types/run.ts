@@ -1,4 +1,5 @@
 import type { Achievement } from '../utils/achievementSystem';
+import type { RankingScoreBreakdown } from '../utils/rankingScore';
 import type { Card, Enemy, EnemyIntent, JobId, PlayerState } from './game';
 
 export type TileType =
@@ -164,6 +165,22 @@ export interface BattleResult {
   defeatedBy?: string;
   /** ランキング用（勝利時のみ useGameState が付与）敵の攻撃で受けたHPダメージ合計 */
   rankingEnemyAttackHpDamageSum?: number;
+  /** ランキング用: 勝利時点で設置されているパワーカード枚数 */
+  rankingActivePowerCount?: number;
+  /** ランキング用: 勝利時点で設置されている道具カード枚数 */
+  rankingToolCount?: number;
+  /** ランキング用: 料理人が調理ゲージを消費した状態で勝利したか */
+  rankingCookConsumedCookingGauge?: boolean;
+  /** ランキング用: 料理人が満腹3回目以降の苦しいダメージを受けた状態で勝利したか */
+  rankingCookFullnessPain?: boolean;
+  /** ランキング用: 状態異常付きの敵を倒したか */
+  rankingCookDefeatedStatusEnemy?: boolean;
+  /** ランキング用: 無職が自傷カードを使用した回数 */
+  rankingUnemployedSelfDamageCardsUsed?: number;
+  /** ランキング用: 無職が復活系カードを発動したか */
+  rankingUnemployedRevivalTriggered?: boolean;
+  /** ランキング用: 配達員が過労ダウンから復帰したか */
+  rankingCourierRecoveredFromDown?: boolean;
 }
 
 export interface EnemyTemplateLike {
@@ -224,6 +241,10 @@ export interface GameProgress {
   /** 直近の勝利バトル表示用（VICTORY 画面用・セーブ可） */
   lastVictoryRewardGold: number;
   lastVictoryMentalRecovery: number;
+  /** 直近の勝利バトルで獲得したランキングポイント（VICTORY 画面用・セーブ可） */
+  lastVictoryRankingPoints: number;
+  /** 直近の勝利バトルで獲得したランキングポイント内訳（VICTORY 画面用・セーブ可） */
+  lastVictoryRankingBreakdown: RankingScoreBreakdown | null;
   /**
    * battle_victory に入るたびに増やす。合計所持金などの後続更新でタップ待ちがリセットされ続けないようにする。
    */

@@ -70,3 +70,35 @@ export function applyStatusBarForAppState(params: {
     }
   })();
 }
+
+export function keepImmersiveStatusBarActive(): () => void {
+  if (!Capacitor.isNativePlatform()) return () => {};
+
+  const gen = ++statusBarApplyGen;
+  const timers: number[] = [];
+
+  const apply = () => {
+    void (async () => {
+      try {
+        const stale = () => gen !== statusBarApplyGen;
+        if (stale()) return;
+        await StatusBar.setOverlaysWebView({ overlay: true });
+        if (stale()) return;
+        await StatusBar.setStyle({ style: Style.Dark });
+      } catch {
+        // ignore
+      }
+    })();
+  };
+
+  apply();
+  for (const delay of [80, 240, 600, 1200]) {
+    timers.push(window.setTimeout(apply, delay));
+  }
+
+  return () => {
+    for (const timer of timers) {
+      window.clearTimeout(timer);
+    }
+  };
+}

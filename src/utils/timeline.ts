@@ -1,5 +1,11 @@
 import type { Card, JobId, PlayerState, TimelineSlot } from '../types/game';
 import { isIngredientCard, prevCardGrantsDandori } from './cardBadgeRules';
+import {
+  canUseCardDuringCourierDown,
+  COURIER_DOWN_FIXED_COST,
+  getCourierCostPenalty,
+  isCourierDown,
+} from './courierSystem';
 import { getHungryState } from './hungrySystem';
 
 export const getEffectiveTimeCost = (
@@ -16,7 +22,19 @@ export const getEffectiveTimeCost = (
   if (player && card.type === 'attack' && player.nextAttackTimeReduce > 0) {
     cost -= player.nextAttackTimeReduce;
   }
+  if (player && card.type === 'attack' && (player.turnAttackTimeDiscount ?? 0) > 0) {
+    cost -= player.turnAttackTimeDiscount ?? 0;
+  }
+  if (player && (player.nextCardTimeReduce ?? 0) > 0) {
+    cost -= player.nextCardTimeReduce ?? 0;
+  }
   const activeJobId = jobId ?? player?.jobId;
+  if (activeJobId === 'courier' && player && isCourierDown(player) && canUseCardDuringCourierDown(card)) {
+    return COURIER_DOWN_FIXED_COST;
+  }
+  if (activeJobId === 'courier' && player && card.type === 'skill' && (player.freeSkillCardsThisTurn ?? 0) > 0) {
+    return 0;
+  }
   if (activeJobId === 'unemployed' && player && getHungryState(player) === 'awakened') {
     cost -= 1;
   }
@@ -43,6 +61,9 @@ export const getEffectiveTimeCost = (
   }
   if (player && card.type === 'skill' && (player.relicSkillTimeDiscount ?? 0) > 0) {
     cost = Math.max(0, cost - (player.relicSkillTimeDiscount ?? 0));
+  }
+  if (activeJobId === 'courier' && player) {
+    cost += getCourierCostPenalty(player);
   }
   return Math.max(0, cost);
 };

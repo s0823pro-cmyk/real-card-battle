@@ -8,6 +8,8 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores([
     'dist',
+    'build',
+    'tmp',
     'node_modules',
     'android',
     'ios',

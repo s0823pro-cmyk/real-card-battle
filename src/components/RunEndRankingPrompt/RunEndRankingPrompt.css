@@ -1,0 +1,212 @@
+.run-end-ranking-prompt {
+  width: 100%;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(240, 180, 41, 0.42);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(240, 180, 41, 0.16), rgba(255, 255, 255, 0.04)),
+    rgba(13, 17, 23, 0.72);
+  box-shadow: 0 0 20px rgba(240, 180, 41, 0.12);
+  box-sizing: border-box;
+  animation: run-end-ranking-prompt-appear 0.5s ease 0.1s both;
+}
+
+@keyframes run-end-ranking-prompt-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.run-end-ranking-prompt-main {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.run-end-ranking-prompt-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.run-end-ranking-prompt-title {
+  margin: 0 0 5px;
+  color: #f0b429;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.run-end-ranking-prompt-desc {
+  margin: 0;
+  color: #c9d1d9;
+  font-family: var(--font-display);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.run-end-ranking-prompt-score {
+  width: fit-content;
+  margin: 9px 0 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(240, 180, 41, 0.14);
+  color: #ffe08a;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.run-end-ranking-prompt-button {
+  width: 100%;
+  border: 1px solid #f0b429;
+  border-radius: 10px;
+  background: #f0b429;
+  color: #0d1117;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 900;
+  padding: 11px 12px;
+  cursor: pointer;
+}
+
+.run-end-ranking-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(5px);
+  box-sizing: border-box;
+}
+
+.run-end-ranking-modal {
+  width: min(380px, 100%);
+  padding: 22px;
+  border: 1px solid rgba(240, 180, 41, 0.42);
+  border-radius: 16px;
+  background: #0d1117;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+}
+
+.run-end-ranking-modal h2 {
+  margin: 0 0 10px;
+  color: #f0b429;
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+
+.run-end-ranking-modal-desc {
+  margin: 0 0 14px;
+  color: #c9d1d9;
+  font-family: var(--font-display);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.run-end-ranking-modal-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #161b22;
+  color: #e6edf3;
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+.run-end-ranking-modal-error {
+  margin: 8px 0 0;
+  color: #f85149;
+  font-family: var(--font-display);
+  font-size: 12px;
+}
+
+.run-end-ranking-modal-notice {
+  margin: 12px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(240, 180, 41, 0.5);
+  border-radius: 8px;
+  background: rgba(240, 180, 41, 0.1);
+  color: #f0b429;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.run-end-ranking-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.run-end-ranking-modal-cancel,
+.run-end-ranking-modal-submit {
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+
+.run-end-ranking-modal-cancel {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #c9d1d9;
+}
+
+.run-end-ranking-modal-submit {
+  border: 1px solid #f0b429;
+  background: #f0b429;
+  color: #0d1117;
+}
+
+.run-end-ranking-modal-cancel:disabled,
+.run-end-ranking-modal-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.run-end-ranking-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 10px 0 0;
+  padding: 10px;
+  border: 1px solid rgba(240, 180, 41, 0.28);
+  border-radius: 8px;
+  background: rgba(240, 180, 41, 0.08);
+  color: #d8dee6;
+  font-family: var(--font-display);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.run-end-ranking-consent input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: #f0b429;
+}
+
+.run-end-ranking-consent small {
+  display: block;
+  margin-top: 4px;
+  color: #8b949e;
+  font-size: 11px;
+  line-height: 1.45;
+}

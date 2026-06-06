@@ -2,6 +2,7 @@ import { ICONS } from '../assets/icons';
 import { cloneRewardCard, getCardPoolsByJob } from './jobs';
 import { isCardIdVariantOf } from '../utils/cardIds';
 import { NEUTRAL_CARD_POOL, NEUTRAL_COMMON_POOL } from './cards/neutralCards';
+import { LEGENDARY_REWARD_CARDS } from './legendaryRewardCards';
 import { ACHIEVEMENT_LOCKED_CARD_IDS } from './achievementDefinitions';
 import { getUnlockedCardIds } from '../utils/achievementSystem';
 import type {
@@ -878,11 +879,13 @@ export const pickRandomRareCard = (jobId: JobId = 'carpenter'): Card => {
 
 const getNeutralPoolForPick = (rarity: 'uncommon' | 'rare'): Card[] => {
   const unlocked = getUnlockedCardIds();
-  return NEUTRAL_CARD_POOL.filter(
+  const neutralPool = NEUTRAL_CARD_POOL.filter(
     (c) =>
       c.rarity === rarity &&
       (!ACHIEVEMENT_LOCKED_CARD_IDS.has(c.id) || unlocked.has(c.id)),
   );
+  if (rarity !== 'rare') return neutralPool;
+  return [...neutralPool, ...LEGENDARY_REWARD_CARDS];
 };
 
 /** 実績ロック等で中立プールが空でも、ジョブ枠にフォールバック（エリート／ボス報酬で onBattleEnd が落ちないようにする） */
@@ -1094,12 +1097,14 @@ const ALL_RARE_NAMES = new Set([
   ...getCardPoolsByJob('carpenter').rare,
   ...getCardPoolsByJob('cook').rare,
   ...getCardPoolsByJob('unemployed').rare,
+  ...getCardPoolsByJob('courier').rare,
 ].map((entry) => entry.name));
 
 const ALL_UNCOMMON_NAMES = new Set([
   ...getCardPoolsByJob('carpenter').uncommon,
   ...getCardPoolsByJob('cook').uncommon,
   ...getCardPoolsByJob('unemployed').uncommon,
+  ...getCardPoolsByJob('courier').uncommon,
 ].map((entry) => entry.name));
 
 export const getCardPrice = (card: Card): number => {
@@ -1125,7 +1130,7 @@ export const generateShopItems = (count: number): RunItem[] => {
 /** 3体は出現率を抑え、1体のときは中央大表示用レイアウトと組み合わせる */
 export const pickArea1EncounterTemplateIds = (): string[] => {
   const r = Math.random();
-  if (r < 0.11) {
+  if (r < 0.04) {
     const triples = [
       ['wildCat', 'wildCat', 'wildCat'],
       ['wildCat', 'bicycle', 'claimer'],
@@ -1133,7 +1138,7 @@ export const pickArea1EncounterTemplateIds = (): string[] => {
     ];
     return triples[Math.floor(Math.random() * triples.length)];
   }
-  if (r < 0.11 + 0.36) {
+  if (r < 0.39) {
     const doubles = [
       ['wildCat', 'wildCat'],
       ['claimer', 'drunk'],
@@ -1282,11 +1287,11 @@ const AREA2_TRIPLE_INDEX_PATTERNS: number[][] = [
 
 export const pickArea2Encounter = (): EnemyTemplateLike[] => {
   const r = Math.random();
-  if (r < 0.12) {
+  if (r < 0.04) {
     const pick = AREA2_TRIPLE_INDEX_PATTERNS[Math.floor(Math.random() * AREA2_TRIPLE_INDEX_PATTERNS.length)];
     return pick.map((i) => AREA2_NORMAL_ENEMIES[i]);
   }
-  if (r < 0.12 + 0.35) {
+  if (r < 0.39) {
     const doubles = [
       [0, 1],
       [2, 3],
@@ -1429,11 +1434,11 @@ const AREA3_TRIPLE_INDEX_PATTERNS: number[][] = [
 
 export const pickArea3Encounter = (): EnemyTemplateLike[] => {
   const r = Math.random();
-  if (r < 0.12) {
+  if (r < 0.04) {
     const pick = AREA3_TRIPLE_INDEX_PATTERNS[Math.floor(Math.random() * AREA3_TRIPLE_INDEX_PATTERNS.length)];
     return pick.map((i) => AREA3_NORMAL_ENEMIES[i]);
   }
-  if (r < 0.12 + 0.35) {
+  if (r < 0.39) {
     const doubles = [
       [0, 1],
       [2, 3],

@@ -120,3 +120,16 @@ export async function getAdminSummary(code: string): Promise<unknown> {
 		return null;
 	}
 }
+
+export async function confirmRankingChampion(code: string): Promise<unknown> {
+	try {
+		const res = await fetch(`${RANKING_API}/admin/confirm-champion`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ code }),
+		});
+		return await res.json();
+	} catch {
+		return null;
+	}
+}
