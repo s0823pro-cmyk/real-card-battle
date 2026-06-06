@@ -7,6 +7,7 @@ import { getDebugEnemyHp1, setDebugEnemyHp1 } from '../../utils/debugEnemyHp1';
 import { DEBUG_TOOLS_CHANGED_EVENT, getDebugToolsEnabled } from '../../utils/debugTools';
 import { unlockJob } from '../../utils/jobUnlockSystem';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
+import { areInAppPurchasesEnabled } from '../../utils/platform';
 import { useAudioContext } from '../../contexts/AudioContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { DevDestination } from '../../hooks/useRunProgress';
@@ -44,6 +45,7 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
   const [iapBusy, setIapBusy] = useState(false);
   const [debugEnemyHp1, setDebugEnemyHp1Local] = useState(() => getDebugEnemyHp1());
   const [debugToolsEnabled, setDebugToolsEnabledLocal] = useState(() => getDebugToolsEnabled());
+  const canUseIap = areInAppPurchasesEnabled();
 
   const toggleSection = (section: string) => {
     setOpenSection((prev) => (prev === section ? null : section));
@@ -64,6 +66,7 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
   const canShowDevTools = ENABLE_DEV_TOOLS || debugToolsEnabled;
 
   const handleIapPurchase = async (productId: string) => {
+    if (!canUseIap) return;
     if (!Capacitor.isNativePlatform()) {
       window.alert(t('home.settings.iapNativeOnly'));
       return;
@@ -80,6 +83,7 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
   };
 
   const handleIapRestore = async () => {
+    if (!canUseIap) return;
     if (!Capacitor.isNativePlatform()) {
       window.alert(t('home.settings.iapRestoreNativeOnly'));
       return;
@@ -204,6 +208,7 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
           )}
         </div>
 
+        {canUseIap && (
         <div className="settings-accordion">
           <button
             type="button"
@@ -280,6 +285,7 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
             </div>
           )}
         </div>
+        )}
 
         <div className="settings-item settings-item--legal-link">
           <button type="button" className="btn-settings-link" onClick={() => void openUrl(TERMS_URL)}>
@@ -293,9 +299,11 @@ const SettingsScreen = ({ onBack, onResetData, onOpenGlossary, onDevNavigate }: 
           </button>
         </div>
 
-        <div className="settings-legal">
-          <p className="settings-legal-text">{t('home.settings.adRemoveLegal')}</p>
-        </div>
+        {canUseIap && (
+          <div className="settings-legal">
+            <p className="settings-legal-text">{t('home.settings.adRemoveLegal')}</p>
+          </div>
+        )}
 
         {canShowDevTools && onDevNavigate && (
           <div className="dev-tools">

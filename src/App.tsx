@@ -77,6 +77,7 @@ import {
 } from './utils/rankingClient';
 import { useLanguage } from './contexts/LanguageContext';
 import { applyStatusBarForAppState } from './utils/nativeStatusBar';
+import { areAdsEnabled, areInAppPurchasesEnabled } from './utils/platform';
 
 type TransitionPhase = 'idle' | 'fade-out' | 'fade-in';
 type ZukanDebugMode = null | { initialTab: 'cards' | 'stories' };
@@ -235,11 +236,13 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!areAdsEnabled()) return;
     if (!Capacitor.isNativePlatform()) return;
     void ensureAdMobInitialized();
   }, []);
 
   useEffect(() => {
+    if (!areInAppPurchasesEnabled()) return;
     if (!Capacitor.isNativePlatform()) return;
     void initIAP();
   }, []);

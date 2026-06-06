@@ -6,6 +6,7 @@ import './index.css'
 import App from './App.tsx'
 import { LanguageProvider } from './contexts/LanguageContext'
 import { ensureRankingDeviceId } from './utils/rankingClient'
+import { isSteamBuild } from './utils/platform'
 try {
   localStorage.removeItem('real-card-battle:debug-enemy-hp1')
 } catch {
@@ -21,6 +22,10 @@ if (Capacitor.isNativePlatform()) {
   StatusBar.setOverlaysWebView({ overlay: false })
   StatusBar.setStyle({ style: Style.Dark })
   StatusBar.setBackgroundColor({ color: '#0d1117' })
+}
+
+if (isSteamBuild()) {
+  document.documentElement.classList.add('platform-steam')
 }
 
 /** Android: decorFitsSystemWindows(true) で WebView は既にステータスバー下から始まる。--android-inset-top を足すと表示とタッチの Y がズレやすいので 0 */

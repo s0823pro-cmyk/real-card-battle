@@ -1,5 +1,6 @@
 /** 広告削除購入フラグ（ランセーブとは別。データ初期化では削除しない） */
 import { getDebugToolsEnabled } from './debugTools';
+import { areAdsEnabled } from './platform';
 
 export const ADS_REMOVED_STORAGE_KEY = 'real-card-battle:ads-removed';
 
@@ -10,6 +11,7 @@ export const ADS_REMOVED_STORAGE_KEY = 'real-card-battle:ads-removed';
 export const PENDING_DEFEAT_INTERSTITIAL_KEY = 'real-card-battle:pending-defeat-interstitial';
 
 export function isDebugAdsDisabled(): boolean {
+  if (!areAdsEnabled()) return true;
   return (
     import.meta.env.DEV ||
     import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true' ||
@@ -54,6 +56,7 @@ export function isAdRemoved(): boolean {
 
 /** IAP 実装時に購入完了で呼ぶ */
 export function setAdsRemoved(value: boolean): void {
+  if (!areAdsEnabled()) return;
   try {
     const prev = getAdsRemoved();
     localStorage.setItem(ADS_REMOVED_STORAGE_KEY, value ? 'true' : 'false');

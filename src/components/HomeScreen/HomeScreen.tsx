@@ -62,6 +62,7 @@ import {
   snoozeRankingRenewalPrompt,
 } from '../../utils/tutorialState';
 import { IAP_PRODUCTS, purchaseProduct, restorePurchases } from '../../utils/iapService';
+import { areInAppPurchasesEnabled } from '../../utils/platform';
 import { confirmRankingChampion, getAdminSummary, getMyStats, verifyCode } from '../../utils/statsApi';
 import type { MyStatsResponse } from '../../utils/statsApi';
 import type { Card, JobId } from '../../types/game';
@@ -659,6 +660,7 @@ const HomeScreen = ({
   const [myStatsLoading, setMyStatsLoading] = useState(false);
   const [myStatsData, setMyStatsData] = useState<MyStatsResponse | null>(null);
   const [myStatsError, setMyStatsError] = useState(false);
+  const canUseIap = areInAppPurchasesEnabled();
 
   const toggleSettingsSection = (section: string) => {
     setOpenSettingsSection((prev) => (prev === section ? null : section));
@@ -773,6 +775,7 @@ const HomeScreen = ({
   }, [playBgm]);
 
   const handleIapPurchase = async (productId: string) => {
+    if (!canUseIap) return;
     if (!Capacitor.isNativePlatform()) {
       window.alert(t('home.settings.iapNativeOnly'));
       return;
@@ -789,6 +792,7 @@ const HomeScreen = ({
   };
 
   const handleIapRestore = async () => {
+    if (!canUseIap) return;
     if (!Capacitor.isNativePlatform()) {
       window.alert(t('home.settings.iapRestoreNativeOnly'));
       return;
@@ -1478,6 +1482,7 @@ const HomeScreen = ({
         )}
       </div>
 
+      {canUseIap && (
       <div className="settings-accordion">
         <button
           type="button"
@@ -1554,6 +1559,7 @@ const HomeScreen = ({
           </div>
         )}
       </div>
+      )}
 
       <div className="settings-divider" />
 
@@ -1586,9 +1592,11 @@ const HomeScreen = ({
         </button>
       </div>
 
-      <div className="settings-legal">
-        <p className="settings-legal-text">{t('home.settings.adRemoveLegal')}</p>
-      </div>
+      {canUseIap && (
+        <div className="settings-legal">
+          <p className="settings-legal-text">{t('home.settings.adRemoveLegal')}</p>
+        </div>
+      )}
 
       {canShowDevTools && (
         <div className="dev-tools">

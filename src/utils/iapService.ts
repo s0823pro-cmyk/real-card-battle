@@ -5,6 +5,7 @@
 import { Capacitor } from '@capacitor/core';
 import { NativePurchases, PURCHASE_TYPE, type Transaction } from '@capgo/native-purchases';
 import { setAdsRemoved } from './adsRemoved';
+import { areInAppPurchasesEnabled } from './platform';
 
 /** 商品 ID（Play Console / App Store Connect と一致させる） */
 export const IAP_PRODUCTS = {
@@ -41,6 +42,7 @@ let iosTransactionListenerRegistered = false;
 
 /** 起動時: リスナー登録（iOS）と購入状態の同期 */
 export async function initIAP(): Promise<void> {
+  if (!areInAppPurchasesEnabled()) return;
   try {
     const { isBillingSupported } = await NativePurchases.isBillingSupported();
     if (!isBillingSupported) return;
@@ -61,6 +63,9 @@ export async function initIAP(): Promise<void> {
 }
 
 export async function purchaseProduct(productId: string): Promise<void> {
+  if (!areInAppPurchasesEnabled()) {
+    throw new Error('In-app purchases are disabled on this platform.');
+  }
   try {
     const tx = await NativePurchases.purchaseProduct({
       productIdentifier: productId,
@@ -74,6 +79,9 @@ export async function purchaseProduct(productId: string): Promise<void> {
 }
 
 export async function restorePurchases(): Promise<void> {
+  if (!areInAppPurchasesEnabled()) {
+    throw new Error('In-app purchases are disabled on this platform.');
+  }
   try {
     await NativePurchases.restorePurchases();
     await syncEntitlementsFromStore();

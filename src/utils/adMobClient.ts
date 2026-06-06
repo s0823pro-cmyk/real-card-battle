@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { clearPendingDefeatInterstitial, isDebugAdsDisabled } from './adsRemoved';
+import { areAdsEnabled } from './platform';
 
 let initPromise: Promise<void> | null = null;
 /** 広告表示〜終了までの連打防止 */
@@ -16,6 +17,7 @@ function invalidateBannerGeneration(): void {
 
 export function setBannerSuppressed(value: boolean): void {
   bannerSuppressed = value;
+  if (!areAdsEnabled()) return;
   if (value) {
     invalidateBannerGeneration();
     // 抑止モードに入った瞬間、既存のバナーも消す
@@ -32,6 +34,7 @@ export function setBannerSuppressed(value: boolean): void {
 }
 
 export async function ensureAdMobInitialized(): Promise<void> {
+  if (!areAdsEnabled()) return;
   if (isDebugAdsDisabled()) return;
   if (!Capacitor.isNativePlatform()) return;
   if (!initPromise) {
@@ -48,6 +51,10 @@ export async function showInterstitialIfAllowed(
   adsRemoved: boolean,
   onAdComplete?: () => void,
 ): Promise<void> {
+  if (!areAdsEnabled()) {
+    onAdComplete?.();
+    return;
+  }
   if (isDebugAdsDisabled() || adsRemoved || !Capacitor.isNativePlatform()) {
     onAdComplete?.();
     return;
@@ -100,6 +107,7 @@ export async function showInterstitialIfAllowed(
 /** ストーリー重ね表示などでネイティブバナーだけ消す */
 export async function removeBannerAd(): Promise<void> {
   invalidateBannerGeneration();
+  if (!areAdsEnabled()) return;
   if (isDebugAdsDisabled()) return;
   if (!Capacitor.isNativePlatform()) return;
   await ensureAdMobInitialized();
@@ -109,6 +117,9 @@ export async function removeBannerAd(): Promise<void> {
 
 /** カード報酬画面用バナー。戻り値のクリーンアップで removeBanner する */
 export async function mountCardRewardBanner(adsRemoved: boolean): Promise<() => Promise<void>> {
+  if (!areAdsEnabled()) {
+    return async () => {};
+  }
   if (isDebugAdsDisabled() || adsRemoved || !Capacitor.isNativePlatform()) {
     return async () => {};
   }

@@ -1,5 +1,6 @@
 import { InAppReview } from '@capacitor-community/in-app-review';
 import { Capacitor } from '@capacitor/core';
+import { isAppStoreReviewPromptEnabled } from './platform';
 
 export const REVIEW_REQUESTED_KEY = 'real-card-battle:review-requested';
 export const REVIEW_COMPLETED_KEY = 'real-card-battle:review-completed';
@@ -35,6 +36,7 @@ function markPromptFinished(): void {
  * ラン敗北（game_over 確定）時のみ呼ぶ。iOS ネイティブのレビュー依頼を条件付きで出す。
  */
 export function maybePromptAppStoreReviewOnRunDefeat(): void {
+  if (!isAppStoreReviewPromptEnabled()) return;
   if (typeof localStorage === 'undefined') return;
   if (Capacitor.getPlatform() !== 'ios') return;
   if (readBool(REVIEW_COMPLETED_KEY)) return;
