@@ -9,6 +9,7 @@ files:
   - package.json
 mac:
   identity: null
+  icon: resources/icon.icns
   target:
     - dir
 win:
