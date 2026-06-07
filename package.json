@@ -15,6 +15,7 @@
     "steam:build": "tsc -b && vite build --mode steam --outDir dist-steam",
     "steam:preview": "tsc -b && vite build --mode steam --outDir dist-steam && electron electron/main.cjs",
     "steam:pack": "tsc -b && vite build --mode steam --outDir dist-steam && electron-builder --dir --config electron-builder.yml",
+    "steam:store-assets": "node scripts/generate-steam-store-assets.mjs",
     "cap:build": "npm run build && npx cap sync",
     "cap:ios": "npm run cap:build && npx cap open ios",
     "cap:android": "npm run cap:build && npx cap open android",
